@@ -1,0 +1,8 @@
+Django>=4.2,<6.0
+django-unfold
+django-axes
+python-dotenv
+psycopg2-binary
+cryptography
+bleach
+playwright

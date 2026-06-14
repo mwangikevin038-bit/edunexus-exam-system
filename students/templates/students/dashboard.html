@@ -1,0 +1,458 @@
+{% extends 'students/base.html' %}
+
+{% block content %}
+<style>
+    .teacher-dashboard {
+        min-height: 100vh;
+        background: #f6f8fb;
+        padding: 38px 42px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .page-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 26px;
+    }
+
+    .page-title h1 {
+        font-family: 'Montserrat', sans-serif;
+        font-size: 34px;
+        line-height: 1.05;
+        font-weight: 900;
+        color: #0f172a;
+        margin: 0 0 8px;
+        letter-spacing: -0.4px;
+    }
+
+    .page-title p {
+        margin: 0;
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .faculty-card {
+        min-width: 245px;
+        background: #ffffff;
+        border: 1px solid #dbe3ee;
+        border-left: 7px solid var(--oraimo-green, #9be816);
+        border-radius: 14px;
+        padding: 18px 20px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+    }
+
+    .faculty-card span,
+    .section-kicker,
+    .metric-card span,
+    .table-head {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+
+    .faculty-card strong {
+        display: block;
+        color: #0f172a;
+        font-size: 20px;
+        font-weight: 900;
+        margin-top: 4px;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .metric-card,
+    .workspace-card,
+    .side-panel {
+        background: #ffffff;
+        border: 1px solid #dbe3ee;
+        border-radius: 16px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+    }
+
+    .metric-card {
+        padding: 20px;
+    }
+
+    .metric-card strong {
+        display: block;
+        color: #0f172a;
+        font-size: 30px;
+        font-weight: 900;
+        margin-top: 6px;
+        line-height: 1;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 22px;
+        align-items: start;
+    }
+
+    .workspace-card {
+        overflow: hidden;
+    }
+
+    .workspace-head {
+        background: #0f172a;
+        color: #ffffff;
+        padding: 24px 28px;
+        border-left: 8px solid var(--oraimo-green, #9be816);
+    }
+
+    .workspace-head h2 {
+        font-family: 'Montserrat', sans-serif;
+        font-size: 24px;
+        font-weight: 900;
+        margin: 0 0 6px;
+    }
+
+    .workspace-head p {
+        margin: 0;
+        color: #dbeafe;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .workspace-body {
+        padding: 24px 28px 28px;
+    }
+
+    .assignment-list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .assignment-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        align-items: center;
+        padding: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #f8fafc;
+    }
+
+    .assignment-row h3 {
+        margin: 0 0 5px;
+        font-size: 16px;
+        font-weight: 900;
+        color: #0f172a;
+    }
+
+    .assignment-row p {
+        margin: 0;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .btn-primary-action,
+    .btn-soft-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        border-radius: 10px;
+        padding: 0 18px;
+        text-decoration: none;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .btn-primary-action {
+        background: #0f172a;
+        color: #ffffff;
+    }
+
+    .btn-primary-action:hover {
+        background: var(--oraimo-green, #9be816);
+        color: #0f172a;
+    }
+
+    .btn-soft-action {
+        background: #ecfccb;
+        color: #365314;
+        border: 1px solid #bef264;
+    }
+
+    .side-panel {
+        padding: 22px;
+        margin-bottom: 18px;
+    }
+
+    .side-panel h2 {
+        margin: 0 0 14px;
+        color: #0f172a;
+        font-size: 18px;
+        font-weight: 900;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .status-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .status-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 10px;
+        color: #334155;
+        font-weight: 800;
+        font-size: 13px;
+    }
+
+    .status-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 7px 12px;
+        background: #eef2f7;
+        color: #334155;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .empty-state {
+        border: 1px dashed #cbd5e1;
+        border-radius: 14px;
+        padding: 28px;
+        text-align: center;
+        color: #64748b;
+        font-weight: 750;
+        background: #f8fafc;
+    }
+
+    @media (max-width: 1100px) {
+        .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dashboard-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 700px) {
+        .teacher-dashboard { padding: 14px; }
+
+        .page-top {
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .page-title h1 {
+            font-size: 24px;
+        }
+
+        .page-title p {
+            font-size: 12px;
+        }
+
+        .faculty-card {
+            min-width: auto;
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 10px;
+        }
+
+        .faculty-card span {
+            font-size: 10px;
+        }
+
+        .faculty-card strong {
+            font-size: 17px;
+        }
+
+        .metrics-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .metric-card {
+            padding: 14px;
+            border-radius: 12px;
+        }
+
+        .metric-card span {
+            font-size: 10px;
+        }
+
+        .metric-card strong {
+            font-size: 24px;
+        }
+
+        .dashboard-grid {
+            gap: 14px;
+        }
+
+        .workspace-head {
+            padding: 16px 18px;
+        }
+
+        .workspace-head h2 {
+            font-size: 18px;
+        }
+
+        .workspace-head p {
+            font-size: 12px;
+        }
+
+        .workspace-body {
+            padding: 16px 18px;
+        }
+
+        .assignment-row {
+            grid-template-columns: 1fr;
+            gap: 10px;
+            padding: 14px;
+        }
+
+        .assignment-row h3 {
+            font-size: 14px;
+        }
+
+        .assignment-row p {
+            font-size: 12px;
+        }
+
+        .btn-primary-action,
+        .btn-soft-action {
+            width: 100%;
+            justify-content: center;
+            min-height: 42px;
+            font-size: 13px;
+        }
+
+        .side-panel {
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .side-panel h2 {
+            font-size: 16px;
+        }
+
+        .status-item {
+            font-size: 12px;
+        }
+
+        .empty-state {
+            padding: 20px;
+            font-size: 13px;
+        }
+    }
+</style>
+
+<div class="teacher-dashboard">
+    <div class="page-top">
+        <div class="page-title">
+            <h1>Faculty Dashboard</h1>
+            <p>Track assigned assessments, submitted score sheets, and published class results from one workspace.</p>
+        </div>
+        <div class="faculty-card">
+            <span>Faculty Account</span>
+            <strong>{% if teacher %}{{ teacher.get_full_title }}{% else %}{{ request.user.username }}{% endif %}</strong>
+        </div>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <span>Subject Allocations</span>
+            <strong>{{ assignment_count }}</strong>
+        </div>
+        <div class="metric-card">
+            <span>Active Exams</span>
+            <strong>{{ active_exam_count }}</strong>
+        </div>
+        <div class="metric-card">
+            <span>Submitted Sheets</span>
+            <strong>{{ submitted_count }}</strong>
+        </div>
+        <div class="metric-card">
+            <span>Published Sheets</span>
+            <strong>{{ published_count }}</strong>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <section class="workspace-card">
+            <div class="workspace-head">
+                <h2>Assessment Workspace</h2>
+                <p>Open your assigned score sheets and continue where you left off.</p>
+            </div>
+            <div class="workspace-body">
+                <div class="assignment-list">
+                    {% for assignment in assignments %}
+                        <div class="assignment-row">
+                            <div>
+                                <h3>{{ assignment.get_subject_code_display }}</h3>
+                                <p>{{ assignment.class_name }} {{ assignment.stream }}</p>
+                            </div>
+                            <a class="btn-primary-action" href="{% url 'select_exam' %}">Open Sheets</a>
+                        </div>
+                    {% empty %}
+                        <div class="empty-state">
+                            No subject allocations are linked to this faculty account yet.
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <aside>
+            <div class="side-panel">
+                <h2>Current Status</h2>
+                <div class="status-list">
+                    <div class="status-item"><span>In Progress</span><strong>{{ in_progress_count }}</strong></div>
+                    <div class="status-item"><span>Returned for correction</span><strong>{{ returned_count }}</strong></div>
+                    <div class="status-item"><span>Ready for reports</span><strong>{{ published_count }}</strong></div>
+                    {% if class_teacher_scope %}
+                        <div class="status-item"><span>Class Teacher</span><strong>{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</strong></div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="side-panel">
+                <h2>Official Results</h2>
+                <div class="status-list">
+                    {% for item in published_contexts %}
+                        <a class="status-item" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}" style="text-decoration: none;">
+                            <span>{{ item.class_name }} {{ item.stream }}</span>
+                            <span class="status-pill">{{ item.term }} {{ item.year }}</span>
+                        </a>
+                    {% empty %}
+                        <div class="empty-state">Published results will appear here after admin approval.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="side-panel">
+                <h2>Quick Actions</h2>
+                <div class="status-list">
+                    <a class="btn-soft-action" href="{% url 'select_exam' %}">Go to Score Capture</a>
+                    <a class="btn-soft-action" href="{% url 'home_alt' %}">View Faculty Profile</a>
+                    <a class="btn-soft-action" href="{% url 'class_lists' %}">Open Learner Lists</a>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+{% endblock %}

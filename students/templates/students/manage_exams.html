@@ -1,0 +1,732 @@
+{% extends 'students/base.html' %}
+{% block content %}
+
+<style>
+    :root {
+        --oraimo-green: #8fea00;
+        --deep-navy: #0f172a;
+        --text-main: #0f172a;
+        --text-soft: #64748b;
+        --line: #e2e8f0;
+        --page-bg: #f6f8fb;
+        --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .exam-admin-page {
+        min-height: 100vh;
+        background: var(--page-bg);
+        padding: 34px;
+    }
+
+    .exam-admin-shell {
+        max-width: 1380px;
+        margin: 0 auto;
+    }
+
+    .exam-admin-header {
+        margin-bottom: 24px;
+    }
+
+    .exam-admin-header h1 {
+        font-family: 'Montserrat', sans-serif;
+        font-size: 34px;
+        font-weight: 900;
+        color: var(--text-main);
+        margin: 0 0 6px;
+        letter-spacing: -0.4px;
+    }
+
+    .exam-admin-header p {
+        color: var(--text-soft);
+        font-size: 15px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .message-alert {
+        background: #f0fdf4;
+        color: #166534;
+        border-left: 5px solid var(--oraimo-green);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 18px;
+        font-weight: 800;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .summary-card {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-left: 5px solid var(--oraimo-green);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+    }
+
+    .summary-card span {
+        display: block;
+        font-size: 11px;
+        font-weight: 900;
+        color: var(--text-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 6px;
+    }
+
+    .summary-card strong {
+        display: block;
+        color: var(--text-main);
+        font-size: 28px;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .exam-grid {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 26px;
+        align-items: start;
+        margin-bottom: 28px;
+    }
+
+    .exam-card,
+    .monitor-card {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-left: 8px solid var(--oraimo-green);
+        border-radius: 14px;
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+    }
+
+    .exam-card-head,
+    .monitor-card-head {
+        background: var(--deep-navy);
+        color: #ffffff;
+        padding: 20px 24px;
+    }
+
+    .exam-card-head h2,
+    .monitor-card-head h2 {
+        font-size: 19px;
+        font-weight: 900;
+        margin: 0 0 4px;
+        letter-spacing: -0.2px;
+    }
+
+    .exam-card-head small,
+    .monitor-card-head small {
+        color: #cbd5e1;
+        font-size: 13px;
+        font-weight: 750;
+    }
+
+    .exam-card-body,
+    .monitor-card-body {
+        padding: 22px;
+    }
+
+    .admin-label {
+        display: block;
+        color: var(--text-soft);
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 7px;
+    }
+
+    .admin-input {
+        width: 100%;
+        height: 46px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #ffffff;
+        color: var(--text-main);
+        font-size: 14px;
+        font-weight: 850;
+        padding: 0 12px;
+        margin-bottom: 16px;
+    }
+
+    .admin-input:focus {
+        outline: none;
+        border-color: var(--oraimo-green);
+        box-shadow: 0 0 0 3px rgba(143, 234, 0, 0.2);
+    }
+
+    .btn-oraimo {
+        width: 100%;
+        height: 46px;
+        border: none;
+        border-radius: 8px;
+        background: var(--oraimo-green);
+        color: var(--text-main);
+        font-size: 13px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+    }
+
+    .btn-oraimo:hover {
+        background: var(--deep-navy);
+        color: #ffffff;
+    }
+
+    .exam-table-wrap {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .exam-table,
+    .monitor-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .exam-table th,
+    .monitor-table th {
+        background: #f8fafc;
+        color: #475569;
+        padding: 13px 14px;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+    }
+
+    .exam-table td,
+    .monitor-table td {
+        padding: 14px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1e293b;
+        font-size: 14px;
+        font-weight: 800;
+        vertical-align: middle;
+    }
+
+    .exam-table tr:last-child td,
+    .monitor-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 7px 12px;
+        min-width: 112px;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .status-active,
+    .status-ready {
+        background: #d9f99d;
+        color: #365314;
+    }
+
+    .status-draft,
+    .status-not_started {
+        background: #e2e8f0;
+        color: #475569;
+    }
+
+    .status-closed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-in_progress {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-submitted {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .status-returned {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-published {
+        background: #d9f99d;
+        color: #365314;
+    }
+
+    .action-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .mini-btn,
+    .review-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 12px;
+        min-height: 38px;
+        font-size: 12px;
+        font-weight: 900;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .toggle-btn,
+    .review-btn {
+        background: var(--deep-navy);
+        color: #ffffff;
+    }
+
+    .delete-btn {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .review-btn:hover,
+    .toggle-btn:hover {
+        background: #020617;
+        color: #ffffff;
+    }
+
+    .delete-btn:hover {
+        background: #fecaca;
+    }
+
+    .monitor-toolbar {
+        display: grid;
+        grid-template-columns: 1fr 260px;
+        gap: 16px;
+        align-items: end;
+        margin-bottom: 22px;
+    }
+
+    .selected-exam-note {
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 16px;
+    }
+
+    .selected-exam-note span {
+        display: block;
+        color: var(--text-soft);
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 4px;
+    }
+
+    .selected-exam-note strong {
+        color: var(--text-main);
+        font-size: 16px;
+        font-weight: 900;
+    }
+
+    .stream-box {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 18px;
+        background: #ffffff;
+    }
+
+    .stream-box-head {
+        background: #f8fafc;
+        border-bottom: 1px solid var(--line);
+        padding: 16px 18px;
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .stream-box-head h3 {
+        color: var(--text-main);
+        font-size: 18px;
+        font-weight: 900;
+        margin: 0;
+    }
+
+    .stream-box-head span {
+        color: var(--text-soft);
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .stream-progress {
+        min-width: 230px;
+    }
+
+    .stream-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .stream-progress-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin-bottom: 7px;
+    }
+
+    .stream-progress-track {
+        height: 9px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+    }
+
+    .stream-progress-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: var(--oraimo-green);
+    }
+
+    .submitted-line {
+        background: #eff6ff;
+    }
+
+    .progress-line {
+        background: #fffaf0;
+    }
+
+    .ready-line {
+        background: #f7fee7;
+    }
+
+    .empty-row {
+        text-align: center;
+        color: #94a3b8 !important;
+        padding: 30px !important;
+        font-style: italic;
+        font-weight: 800 !important;
+    }
+
+    @media (max-width: 1050px) {
+        .exam-admin-page {
+            padding: 20px;
+        }
+
+        .exam-grid,
+        .summary-grid,
+        .monitor-toolbar {
+            grid-template-columns: 1fr;
+        }
+
+        .exam-table-wrap,
+        .stream-box {
+            overflow-x: auto;
+        }
+
+        .monitor-table,
+        .exam-table {
+            min-width: 850px;
+        }
+    }
+</style>
+
+<div class="exam-admin-page">
+    <div class="exam-admin-shell">
+
+        <div class="exam-admin-header">
+            <h1>Manage Assessments</h1>
+            <p>Create assessment windows, monitor teacher submissions, and review score-entry progress by class stream.</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="message-alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="summary-grid">
+            <div class="summary-card">
+                <span>Total Sheets</span>
+                <strong>{{ monitor_summary.total_sheets }}</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>Submitted</span>
+                <strong>{{ monitor_summary.submitted }}</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>Returned</span>
+                <strong>{{ monitor_summary.returned }}</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>Approved</span>
+                <strong>{{ monitor_summary.approved }}</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>Published</span>
+                <strong>{{ monitor_summary.published }}</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>In Progress</span>
+                <strong>{{ monitor_summary.in_progress }}</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>Not Started</span>
+                <strong>{{ monitor_summary.not_started }}</strong>
+            </div>
+        </div>
+
+        <div class="exam-grid">
+
+            <div class="exam-card">
+                <div class="exam-card-head">
+                    <h2>Create Assessment</h2>
+                    <small>Only active assessments are published to assigned teacher marksheets.</small>
+                </div>
+
+                <div class="exam-card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action_type" value="create_exam">
+
+                        <label class="admin-label">Assessment Name</label>
+                        <input type="text" name="exam_name" class="admin-input" placeholder="e.g. Opener Assessment, Mid Term Exam" required>
+
+                        <label class="admin-label">Academic Term</label>
+                        <select name="term" class="admin-input" required>
+                            <option value="" selected disabled>Choose Term</option>
+                            {% for term in terms %}
+                                <option value="{{ term }}">{{ term }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <label class="admin-label">Academic Year</label>
+                        <input type="number" name="year" value="{{ current_year }}" class="admin-input" required>
+
+                        <label class="admin-label">Publication Status</label>
+                        <select name="status" class="admin-input" required>
+                            {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if value == 'active' %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <button type="submit" class="btn-oraimo">
+                            Create / Update Assessment
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="exam-card">
+                <div class="exam-card-head">
+                    <h2>Assessment Registry</h2>
+                    <small>Manage active, draft, and closed assessment windows.</small>
+                </div>
+
+                <div class="exam-card-body">
+                    <div class="exam-table-wrap">
+                        <table class="exam-table">
+                            <thead>
+                                <tr>
+                                    <th>Assessment</th>
+                                    <th>Term</th>
+                                    <th>Year</th>
+                                    <th>Status</th>
+                                    <th style="width: 190px;">Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for exam in exams %}
+                                    <tr>
+                                        <td>{{ exam.name }}</td>
+                                        <td>{{ exam.term }}</td>
+                                        <td>{{ exam.year }}</td>
+                                        <td>
+                                            <span class="status-pill status-{{ exam.status }}">
+                                                {{ exam.status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="action-row">
+                                                <form method="POST">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action_type" value="toggle_status">
+                                                    <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                                    <button type="submit" class="mini-btn toggle-btn">
+                                                        Toggle
+                                                    </button>
+                                                </form>
+
+                                                <form method="POST" onsubmit="return confirm('Delete this assessment? Existing marks will not be deleted, but this assessment will disappear from teacher marksheets.');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action_type" value="delete_exam">
+                                                    <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                                    <button type="submit" class="mini-btn delete-btn">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="empty-row">
+                                            No assessments created yet.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="monitor-card">
+            <div class="monitor-card-head">
+                <h2>Submission Monitor</h2>
+                <small>Teacher marksheets are grouped by class stream for faster academic review.</small>
+            </div>
+
+            <div class="monitor-card-body">
+                <div class="monitor-toolbar">
+                    <div class="selected-exam-note">
+                        <span>Monitoring Assessment</span>
+                        {% if selected_exam %}
+                            <strong>{{ selected_exam.name }} | {{ selected_exam.term }} | {{ selected_exam.year }}</strong>
+                        {% else %}
+                            <strong>No assessment selected</strong>
+                        {% endif %}
+                    </div>
+
+                    <form method="GET">
+                        <label class="admin-label">Switch Assessment</label>
+                        <select name="exam_id" class="admin-input" onchange="this.form.submit()">
+                            {% for exam in exams %}
+                                <option value="{{ exam.id }}" {% if selected_exam and selected_exam.id == exam.id %}selected{% endif %}>
+                                    {{ exam.name }} - {{ exam.term }} {{ exam.year }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+
+                {% if grouped_streams %}
+                    {% for group in grouped_streams %}
+                        <div class="stream-box">
+                            <div class="stream-box-head">
+                                <div>
+                                    <h3>{{ group.class_name }} {{ group.stream }}</h3>
+                                    <span>{{ group.total_students }} learners registered | {{ group.stream_status }}</span>
+                                </div>
+                                <div class="stream-head-actions">
+                                    <div class="stream-progress">
+                                        <div class="stream-progress-meta">
+                                            <span>Completion</span>
+                                            <strong>{{ group.completion_rate }}%</strong>
+                                        </div>
+                                        <div class="stream-progress-track">
+                                            <div class="stream-progress-fill" style="width: {{ group.completion_rate }}%;"></div>
+                                        </div>
+                                    </div>
+                                    <a class="review-btn" href="{% url 'review_stream_submission' %}?exam_id={{ group.exam_id }}&class_name={{ group.class_name|urlencode }}&stream={{ group.stream|urlencode }}">
+                                        Review Stream
+                                    </a>
+                                </div>
+                            </div>
+
+                            <table class="monitor-table">
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Teacher</th>
+                                        <th>Captured</th>
+                                        <th>Absent</th>
+                                        <th>Missing</th>
+                                        <th>Status</th>
+                                        <th>Submitted</th>
+                                        <th>Sheet Detail</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {% for row in group.rows %}
+                                        <tr class="{% if row.status_key == 'submitted' or row.status_key == 'approved' or row.status_key == 'published' %}submitted-line{% elif row.status_key == 'returned' or row.status_key == 'in_progress' %}progress-line{% elif row.status_key == 'ready' %}ready-line{% endif %}">
+                                            <td>{{ row.subject_name }}</td>
+                                            <td>{{ row.teacher_name }}</td>
+                                            <td>{{ row.captured_count }}/{{ row.total_students }}</td>
+                                            <td>{{ row.absent_count }}</td>
+                                            <td>{{ row.missing_count }}</td>
+                                            <td>
+                                                <span class="status-pill status-{{ row.status_key }}">
+                                                    {{ row.status_label }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if row.submitted_at %}
+                                                    {{ row.submitted_at|date:"M d, Y H:i" }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a class="review-btn" href="{% url 'review_stream_submission' %}?exam_id={{ group.exam_id }}&class_name={{ group.class_name|urlencode }}&stream={{ group.stream|urlencode }}">
+                                                    View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-row">
+                        No assessment monitor data is available. Create an assessment and assign teachers in Faculty Matrix.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,283 @@
+{% extends 'students/base.html' %}
+{% block content %}
+<style>
+    .stream-review-page {
+        min-height: 100vh;
+        background: #f6f8fb;
+        padding: 34px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .stream-review-shell {
+        max-width: 1380px;
+        margin: 0 auto;
+    }
+
+    .back-link {
+        display: inline-flex;
+        color: #64748b;
+        font-weight: 900;
+        text-decoration: none;
+        margin-bottom: 18px;
+    }
+
+    .review-hero,
+    .decision-card,
+    .subject-card {
+        background: #ffffff;
+        border: 1px solid #dbe3ee;
+        border-left: 8px solid var(--oraimo-green, #9be816);
+        border-radius: 16px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+        margin-bottom: 22px;
+        overflow: hidden;
+    }
+
+    .review-hero {
+        padding: 28px 32px;
+    }
+
+    .review-hero h1 {
+        font-family: 'Montserrat', sans-serif;
+        font-size: 34px;
+        font-weight: 900;
+        color: #0f172a;
+        margin: 0 0 8px;
+    }
+
+    .review-hero p {
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 750;
+        margin: 0;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 24px;
+    }
+
+    .summary-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 15px;
+    }
+
+    .summary-card span,
+    .decision-label {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 7px;
+    }
+
+    .summary-card strong {
+        display: block;
+        color: #0f172a;
+        font-size: 24px;
+        font-weight: 900;
+    }
+
+    .decision-card {
+        padding: 24px;
+    }
+
+    .decision-card h2 {
+        margin: 0 0 6px;
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 900;
+        color: #0f172a;
+        font-size: 22px;
+    }
+
+    .decision-card p {
+        color: #64748b;
+        font-weight: 750;
+        margin: 0 0 18px;
+    }
+
+    .decision-note {
+        width: 100%;
+        min-height: 92px;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 14px 16px;
+        font-weight: 750;
+        resize: vertical;
+        margin-bottom: 14px;
+    }
+
+    .decision-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .decision-btn {
+        border: none;
+        border-radius: 10px;
+        min-height: 48px;
+        font-weight: 900;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+
+    .return-btn { background: #fee2e2; color: #991b1b; }
+    .approve-btn { background: #0f172a; color: #ffffff; }
+    .publish-btn { background: var(--oraimo-green, #9be816); color: #0f172a; }
+
+    .subject-card {
+        overflow-x: auto;
+    }
+
+    .subject-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+    }
+
+    .subject-table th {
+        background: #f8fafc;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        padding: 15px 16px;
+        text-align: left;
+        border-bottom: 1px solid #dbe3ee;
+    }
+
+    .subject-table td {
+        padding: 16px;
+        border-bottom: 1px solid #eef2f7;
+        color: #0f172a;
+        font-weight: 850;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 120px;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .status-submitted { background: #dbeafe; color: #1d4ed8; }
+    .status-approved { background: #dcfce7; color: #166534; }
+    .status-published { background: #d9f99d; color: #365314; }
+    .status-returned { background: #fee2e2; color: #991b1b; }
+    .status-ready, .status-in_progress { background: #fef3c7; color: #92400e; }
+    .status-not_started { background: #e2e8f0; color: #475569; }
+
+    @media (max-width: 960px) {
+        .summary-grid,
+        .decision-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="stream-review-page">
+    <div class="stream-review-shell">
+        <a href="{% url 'manage_exams' %}?exam_id={{ exam.id }}" class="back-link">Back to Assessment Control</a>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="decision-card">
+                    <strong>{{ message }}</strong>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <section class="review-hero">
+            <h1>{{ class_name }} {{ stream }} Stream Review</h1>
+            <p>{{ exam.name }} | {{ exam.term }} | {{ exam.year }}. Approve or publish the whole stream after every subject sheet is complete.</p>
+
+            <div class="summary-grid">
+                <div class="summary-card"><span>Subjects</span><strong>{{ totals.subjects }}</strong></div>
+                <div class="summary-card"><span>Completion</span><strong>{{ totals.completion_rate }}%</strong></div>
+                <div class="summary-card"><span>Submitted</span><strong>{{ totals.submitted }}</strong></div>
+                <div class="summary-card"><span>Approved</span><strong>{{ totals.approved }}</strong></div>
+                <div class="summary-card"><span>Published</span><strong>{{ totals.published }}</strong></div>
+                <div class="summary-card"><span>Missing Scores</span><strong>{{ totals.missing_scores }}</strong></div>
+            </div>
+        </section>
+
+        <section class="decision-card">
+            <h2>Stream Decision</h2>
+            <p>Use stream decisions for clean complete streams. If only one subject has an issue, return that subject from the table below.</p>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                <input type="hidden" name="class_name" value="{{ class_name }}">
+                <input type="hidden" name="stream" value="{{ stream }}">
+
+                <label class="decision-label">Admin Note</label>
+                <textarea name="admin_note" class="decision-note" placeholder="Optional note for teachers or school record..."></textarea>
+
+                <div class="decision-actions">
+                    <button class="decision-btn return-btn" name="action_type" value="return_stream" type="submit">Return Stream</button>
+                    <button class="decision-btn approve-btn" name="action_type" value="approve_stream" type="submit">Approve Stream</button>
+                    <button class="decision-btn publish-btn" name="action_type" value="publish_stream" type="submit">Publish Stream</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="subject-card">
+            <table class="subject-table">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Teacher</th>
+                        <th>Captured</th>
+                        <th>Absent</th>
+                        <th>Missing</th>
+                        <th>Status</th>
+                        <th>Subject Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <td>{{ row.subject_name }}</td>
+                            <td>{{ row.teacher_name }}</td>
+                            <td>{{ row.captured_count }}/{{ row.total_students }}</td>
+                            <td>{{ row.absent_count }}</td>
+                            <td>{{ row.missing_count }}</td>
+                            <td><span class="status-pill status-{{ row.status_key }}">{{ row.status_label }}</span></td>
+                            <td>
+                                {% if row.submission and row.status_key != "returned" %}
+                                    <form method="POST" style="display:flex; gap:8px; align-items:center; min-width:260px;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                        <input type="hidden" name="class_name" value="{{ class_name }}">
+                                        <input type="hidden" name="stream" value="{{ stream }}">
+                                        <input type="hidden" name="assignment_id" value="{{ row.assignment.id }}">
+                                        <input type="text" name="admin_note" placeholder="Correction note..." style="height:36px; min-width:145px; border:1px solid #cbd5e1; border-radius:8px; padding:0 10px; font-weight:750;">
+                                        <button class="decision-btn return-btn" name="action_type" value="return_subject" type="submit" style="min-height:36px; padding:0 12px; white-space:nowrap;">Return Subject</button>
+                                    </form>
+                                {% else %}
+                                    <span style="color:#94a3b8; font-weight:900;">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="7">No subjects are assigned to this stream.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+</div>
+{% endblock %}

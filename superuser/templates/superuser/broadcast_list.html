@@ -1,0 +1,292 @@
+{% extends 'superuser/base.html' %}
+{% block title %}Broadcasts · EduNexus{% endblock %}
+{% block page_title %}Broadcasts{% endblock %}
+
+{% block content %}
+<style>
+  .bl-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .bl-topbar-left h1 { font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -.4px; margin: 0 0 2px; }
+  .bl-topbar-left p  { font-size: 12px; color: #94a3b8; font-weight: 600; margin: 0; }
+
+  /* stat strip */
+  .bl-stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .bl-stat {
+    background: #fff; border: 1px solid #e8edf3; border-radius: 10px;
+    padding: 12px 18px; display: flex; align-items: center; gap: 10px; min-width: 120px;
+  }
+  .bl-stat-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .bl-stat-icon.amber { background:#fef3c7; color:#d97706; }
+  .bl-stat-icon.green { background:#dcfce7; color:#16a34a; }
+  .bl-stat-icon.gray  { background:#f1f5f9; color:#64748b; }
+  .bl-stat-body strong { display:block; font-size:18px; font-weight:900; color:#0f172a; line-height:1; }
+  .bl-stat-body span   { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.5px; }
+
+  /* toolbar */
+  .bl-toolbar {
+    background: #fff; border: 1px solid #e8edf3; border-radius: 12px 12px 0 0;
+    padding: 13px 18px; display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #f1f5f9; flex-wrap: wrap;
+  }
+  .bl-filters { display: flex; gap: 6px; }
+  .bl-filter-btn {
+    font-size: 11px; font-weight: 800; padding: 5px 13px;
+    border-radius: 20px; border: 1px solid #e2e8f0;
+    background: #f8fafc; color: #64748b; cursor: pointer;
+    transition: all .15s; font-family: inherit; letter-spacing: .3px;
+  }
+  .bl-filter-btn:hover  { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .bl-filter-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .bl-filter-btn.active.green { background: #16a34a; border-color: #16a34a; }
+  .bl-filter-btn.active.gray  { background: #475569; border-color: #475569; }
+  .bl-count {
+    margin-left: auto; font-size: 11px; font-weight: 800; padding: 3px 9px;
+    border-radius: 20px; background: #f1f5f9; color: #475569;
+  }
+
+  /* table wrap */
+  .bl-wrap {
+    background: #fff; border: 1px solid #e8edf3; border-top: none;
+    border-radius: 0 0 12px 12px; overflow: hidden;
+  }
+
+  /* broadcast rows */
+  .bl-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto auto auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f8fafc;
+    transition: background .12s;
+  }
+  .bl-row:last-child { border-bottom: none; }
+  .bl-row:hover { background: #fafbfc; }
+  .bl-row.hidden { display: none; }
+
+  .bl-icon-wrap {
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .bl-icon {
+    width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+    background: #fef3c7; color: #d97706;
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .bl-icon.inactive { background: #f1f5f9; color: #94a3b8; }
+
+  .bl-title-wrap { min-width: 0; }
+  .bl-title { font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 2px; }
+  .bl-date  { font-size: 11px; font-weight: 600; color: #94a3b8; }
+
+  .bl-msg {
+    font-size: 12px; font-weight: 600; color: #64748b;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 100%;
+  }
+
+  /* pills */
+  .pill { display:inline-flex; align-items:center; font-size:10px; font-weight:800; padding:3px 9px; border-radius:20px; letter-spacing:.3px; white-space:nowrap; }
+  .pill-green { background:#dcfce7; color:#15803d; }
+  .pill-red   { background:#fee2e2; color:#b91c1c; }
+  .pill-blue  { background:#dbeafe; color:#1d4ed8; }
+  .pill-amber { background:#fef3c7; color:#b45309; }
+  .pill-gray  { background:#f1f5f9; color:#475569; }
+
+  /* action buttons */
+  .bl-actions { display: flex; gap: 6px; }
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e2e8f0;
+    background: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #64748b; cursor: pointer; transition: all .15s;
+    text-decoration: none;
+  }
+  .icon-btn:hover         { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .icon-btn.pause:hover   { background: #d97706; color: #fff; border-color: #d97706; }
+  .icon-btn.play:hover    { background: #16a34a; color: #fff; border-color: #16a34a; }
+  .icon-btn.danger:hover  { background: #dc2626; color: #fff; border-color: #dc2626; }
+
+  /* toggle form */
+  .toggle-form { display: contents; }
+
+  /* empty */
+  .bl-empty {
+    text-align: center; padding: 52px 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .bl-empty-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: #f1f5f9; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: #cbd5e1;
+  }
+  .bl-empty strong { font-size: 14px; font-weight: 800; color: #1e293b; }
+  .bl-empty p      { font-size: 12px; color: #94a3b8; font-weight: 600; }
+
+  .btn {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:10px 18px; border-radius:9px; font-weight:800; font-size:13px;
+    cursor:pointer; border:none; text-decoration:none; transition:all .2s; font-family:inherit;
+  }
+  .btn-amber       { background:#f59e0b; color:#fff; }
+  .btn-amber:hover { background:#d97706; }
+  .btn-sm { padding:6px 13px; font-size:11px; border-radius:7px; }
+
+  @media(max-width:700px){
+    .bl-row { grid-template-columns: 1fr auto; }
+    .bl-msg, .bl-row > .pill { display: none; }
+  }
+</style>
+
+<!-- TOP -->
+<div class="bl-topbar">
+  <div class="bl-topbar-left">
+    <h1>System Broadcasts</h1>
+    <p>{{ broadcasts|length }} broadcast{{ broadcasts|length|pluralize }} total</p>
+  </div>
+  <a href="{% url 'super_broadcast_create' %}" class="btn btn-amber">
+    <i class="bi bi-plus-lg"></i> New Broadcast
+  </a>
+</div>
+
+<!-- STATS -->
+<div class="bl-stats">
+  <div class="bl-stat">
+    <div class="bl-stat-icon amber"><i class="bi bi-megaphone-fill"></i></div>
+    <div class="bl-stat-body">
+      <strong>{{ broadcasts|length }}</strong>
+      <span>Total</span>
+    </div>
+  </div>
+  <div class="bl-stat">
+    <div class="bl-stat-icon green"><i class="bi bi-broadcast"></i></div>
+    <div class="bl-stat-body">
+      <strong id="activeCount">—</strong>
+      <span>Active</span>
+    </div>
+  </div>
+  <div class="bl-stat">
+    <div class="bl-stat-icon gray"><i class="bi bi-pause-circle-fill"></i></div>
+    <div class="bl-stat-body">
+      <strong id="inactiveCount">—</strong>
+      <span>Paused</span>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="bl-toolbar">
+  <div class="bl-filters" id="blFilters">
+    <button class="bl-filter-btn active"  data-filter="all">All</button>
+    <button class="bl-filter-btn green"   data-filter="active">Active</button>
+    <button class="bl-filter-btn gray"    data-filter="inactive">Paused</button>
+  </div>
+  <span class="bl-count" id="blCount">{{ broadcasts|length }}</span>
+</div>
+
+<!-- LIST -->
+<div class="bl-wrap" id="blList">
+  {% for b in broadcasts %}
+  <div class="bl-row" data-status="{% if b.is_active %}active{% else %}inactive{% endif %}">
+
+    <!-- icon + title -->
+    <div class="bl-icon-wrap">
+      <div class="bl-icon {% if not b.is_active %}inactive{% endif %}">
+        <i class="bi bi-megaphone-fill"></i>
+      </div>
+      <div class="bl-title-wrap">
+        <div class="bl-title">{{ b.title }}</div>
+        <div class="bl-date">{{ b.created_at|date:"d M Y" }}</div>
+      </div>
+    </div>
+
+    <!-- message preview -->
+    <div class="bl-msg" title="{{ b.message }}">{{ b.message }}</div>
+
+    <!-- audience -->
+    <span class="pill pill-blue">{{ b.get_target_audience_display }}</span>
+
+    <!-- status -->
+    <span class="pill {% if b.is_active %}pill-green{% else %}pill-gray{% endif %}">
+      {% if b.is_active %}Live{% else %}Paused{% endif %}
+    </span>
+
+    <!-- actions -->
+    <div class="bl-actions">
+      <form method="POST" action="{% url 'super_broadcast_toggle' b.id %}" class="toggle-form">
+        {% csrf_token %}
+        <button type="submit"
+          class="icon-btn {% if b.is_active %}pause{% else %}play{% endif %}"
+          title="{% if b.is_active %}Pause broadcast{% else %}Resume broadcast{% endif %}">
+          <i class="bi bi-{% if b.is_active %}pause-fill{% else %}play-fill{% endif %}"></i>
+        </button>
+      </form>
+      <a href="{% url 'super_broadcast_delete' b.id %}" class="icon-btn danger" title="Delete broadcast">
+        <i class="bi bi-trash-fill"></i>
+      </a>
+    </div>
+
+  </div>
+  {% empty %}
+  <div class="bl-empty">
+    <div class="bl-empty-icon"><i class="bi bi-megaphone"></i></div>
+    <strong>No broadcasts yet</strong>
+    <p>Create your first broadcast to notify all schools.</p>
+    <a href="{% url 'super_broadcast_create' %}" class="btn btn-amber btn-sm">
+      <i class="bi bi-plus-lg"></i> New Broadcast
+    </a>
+  </div>
+  {% endfor %}
+
+  <!-- no-results state -->
+  <div id="blNoResults" style="display:none;">
+    <div class="bl-empty">
+      <div class="bl-empty-icon"><i class="bi bi-funnel"></i></div>
+      <strong>No broadcasts match this filter</strong>
+      <p>Try switching to a different filter.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// @ts-nocheck
+(function(){
+  const rows      = Array.from(document.querySelectorAll('#blList .bl-row[data-status]'));
+  const filterBtns= Array.from(document.querySelectorAll('#blFilters .bl-filter-btn'));
+  const countEl   = document.getElementById('blCount');
+  const noResults = document.getElementById('blNoResults');
+
+  // populate stat counts
+  let active = 0, inactive = 0;
+  rows.forEach(r => { r.dataset.status === 'active' ? active++ : inactive++; });
+  document.getElementById('activeCount').textContent   = active;
+  document.getElementById('inactiveCount').textContent = inactive;
+
+  let activeFilter = 'all';
+
+  function applyFilter(){
+    let visible = 0;
+    rows.forEach(row => {
+      const show = activeFilter === 'all' || row.dataset.status === activeFilter;
+      row.classList.toggle('hidden', !show);
+      if(show) visible++;
+    });
+    countEl.textContent = visible;
+    noResults.style.display = visible === 0 ? 'block' : 'none';
+  }
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      applyFilter();
+    });
+  });
+})();
+</script>
+
+{% endblock %}

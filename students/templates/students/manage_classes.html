@@ -1,0 +1,373 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    :root {
+        --green: #8ae325;
+        --dark: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --soft: #f8fafc;
+    }
+
+    .classes-shell {
+        padding: 24px 32px 24px 42px;
+        max-width: none;
+        width: 100%;
+        margin: 0;
+    }
+
+    .page-hero {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        border-left: 5px solid var(--green);
+        box-shadow: 0 10px 26px rgba(15,23,42,0.045);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+    }
+
+    .panel {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 24px;
+        box-shadow: 0 8px 24px rgba(15,23,42,0.035);
+        margin-bottom: 22px;
+    }
+
+    .panel-title {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 900;
+        font-size: 14px;
+        color: var(--dark);
+        text-transform: uppercase;
+        border-left: 4px solid var(--green);
+        padding-left: 10px;
+        margin: 0 0 4px 0;
+    }
+
+    .panel-sub {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 0 0 20px 0;
+    }
+
+    .grade-card {
+        background: var(--soft);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 16px;
+    }
+
+    .grade-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .grade-title {
+        font-size: 15px;
+        font-weight: 900;
+        color: var(--dark);
+        margin: 0;
+    }
+
+    .stream-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .stream-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--dark);
+    }
+
+    .btn-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-size: 13px;
+        line-height: 1;
+        color: var(--muted);
+        transition: color 0.2s;
+    }
+
+    .btn-icon:hover { color: #dc2626; }
+
+    .btn-green {
+        background: var(--green);
+        color: var(--dark);
+        border: none;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .btn-green:hover { opacity: 0.85; }
+
+    .btn-danger {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: background 0.2s;
+        text-transform: uppercase;
+    }
+
+    .btn-danger:hover { background: #fecaca; }
+
+    .add-stream-form {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+        padding-top: 12px;
+        border-top: 1px dashed var(--border);
+    }
+
+    .input-field {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--dark);
+        background: #ffffff;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+    .input-field:focus { border-color: var(--green); }
+
+    select.input-field { min-width: 160px; }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+        background: var(--soft);
+        border-radius: 12px;
+        border: 1px dashed #cbd5e1;
+    }
+
+    .available-badge {
+        font-size: 11px;
+        font-weight: 800;
+        color: #166534;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        padding: 4px 10px;
+        border-radius: 999px;
+        text-transform: uppercase;
+    }
+
+    /* Rename inline form */
+    .rename-form {
+        display: none;
+        gap: 6px;
+        align-items: center;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+
+    .rename-form.active { display: flex; }
+
+    @media (max-width: 768px) {
+        .classes-shell { padding: 16px !important; }
+        .grade-card-header { flex-direction: column; align-items: flex-start; }
+    }
+</style>
+
+<div class="classes-shell">
+
+    <!-- Hero -->
+    <div class="page-hero">
+        <div>
+            <h1 style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:22px;color:#111827;margin:0 0 4px;">
+                Class Structure Manager
+            </h1>
+            <p style="color:#6b7280;font-size:13px;margin:0;">
+                Configure grades and streams for <strong style="color:#111827;">{{ request.school.name }}</strong>
+            </p>
+        </div>
+        <span class="available-badge">{{ grades|length }} Grade{{ grades|length|pluralize }} Active</span>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div style="padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:700;
+            {% if message.tags == 'error' %}background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;
+            {% else %}background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Add Grade Panel -->
+    <div class="panel">
+        <h3 class="panel-title">Add a Grade</h3>
+        <p class="panel-sub">Select a grade from the CBC curriculum to add to your school.</p>
+
+        {% if available_grades %}
+        <form method="POST" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_grade">
+            <select name="grade_name" class="input-field" required>
+                <option value="">— Select Grade —</option>
+                {% for grade in available_grades %}
+                <option value="{{ grade }}">{{ grade }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-green">
+                <i class="bi bi-plus-lg"></i> Add Grade
+            </button>
+        </form>
+        <p style="font-size:12px;color:var(--muted);margin:10px 0 0;">
+            A single stream named <strong>Main</strong> is created automatically. You can rename or add more streams after.
+        </p>
+        {% else %}
+        <div style="font-size:13px;font-weight:700;color:#166534;background:#f0fdf4;padding:12px 16px;border-radius:8px;border:1px solid #bbf7d0;">
+            ✅ All Grade 1–12 have been added to this school.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Active Grades Panel -->
+    <div class="panel">
+        <h3 class="panel-title">Active Grades & Streams</h3>
+        <p class="panel-sub">Manage streams within each grade. Streams drive student enrollment, mark entry, and report cards.</p>
+
+        {% if grades %}
+            {% for grade in grades %}
+            <div class="grade-card">
+                <div class="grade-card-header">
+                    <h4 class="grade-title">
+                        <i class="bi bi-mortarboard-fill" style="color:var(--green);margin-right:6px;"></i>
+                        {{ grade.name }}
+                        <span style="font-size:12px;font-weight:700;color:var(--muted);margin-left:8px;">
+                            {{ grade.streams.count }} stream{{ grade.streams.count|pluralize }}
+                        </span>
+                    </h4>
+
+                    <!-- Delete grade button -->
+                    <form method="POST" onsubmit="return confirm('Delete {{ grade.name }} and ALL its streams? This cannot be undone.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_grade">
+                        <input type="hidden" name="grade_id" value="{{ grade.id }}">
+                        <button type="submit" class="btn-danger">
+                            <i class="bi bi-trash3"></i> Delete Grade
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Stream chips -->
+                <div class="stream-list">
+                    {% for stream in grade.streams.all %}
+                    <div>
+                        <div class="stream-chip">
+                            <i class="bi bi-diagram-2" style="color:var(--muted);font-size:12px;"></i>
+                            <span class="stream-label-{{ stream.id }}">{{ stream.name }}</span>
+
+                            <!-- Rename trigger -->
+                            <button type="button" class="btn-icon"
+                                title="Rename"
+                                onclick="toggleRename "{{ stream.id }}",
+                                ✏️
+                            </button>
+
+                            <!-- Delete stream -->
+                            <form method="POST" style="display:inline;"
+                                onsubmit="return confirm('Delete stream {{ stream.name }}?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_stream">
+                                <input type="hidden" name="stream_id" value="{{ stream.id }}">
+                                <button type="submit" class="btn-icon" title="Delete">✕</button>
+                            </form>
+                        </div>
+
+                        <!-- Inline rename form -->
+                        <form method="POST" class="rename-form" id="rename-{{ stream.id }}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="rename_stream">
+                            <input type="hidden" name="stream_id" value="{{ stream.id }}">
+                            <input type="text" name="new_name" class="input-field"
+                                placeholder="New name" value="{{ stream.name }}"
+                                style="width:120px;" required>
+                            <button type="submit" class="btn-green" style="padding:7px 14px;font-size:12px;">
+                                Save
+                            </button>
+                            <button type="button" class="btn-danger"
+                                style="padding:7px 12px;"
+                                onclick="toggleRename "{{ stream.id }}">
+                                Cancel
+                            </button>
+                        </form>
+                    </div>
+                    {% empty %}
+                    <span style="font-size:13px;color:var(--muted);font-style:italic;">No streams yet.</span>
+                    {% endfor %}
+                </div>
+
+                <!-- Add stream form -->
+                <form method="POST" class="add-stream-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_stream">
+                    <input type="hidden" name="grade_id" value="{{ grade.id }}">
+                    <input type="text" name="stream_name" class="input-field"
+                        placeholder="Stream name e.g. Eagle" style="width:180px;" required>
+                    <button type="submit" class="btn-green" style="padding:8px 16px;font-size:12px;">
+                        <i class="bi bi-plus-lg"></i> Add Stream
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            No grades added yet. Use the panel above to add your first grade.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+function toggleRename(streamId) {
+    const form = document.getElementById('rename-' + streamId);
+    form.classList.toggle('active');
+}
+</script>
+{% endblock %}

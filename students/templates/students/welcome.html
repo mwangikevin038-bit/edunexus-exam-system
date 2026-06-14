@@ -1,0 +1,284 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<script>
+    const _ws = document.createElement('style');
+    _ws.innerHTML = `
+        .sidebar, nav, .hamburger-btn, .sidebar-overlay { display: none !important; }
+        .main-content { width: 100% !important; margin-left: 0 !important; padding: 0 !important; }
+        body { background: #f0f4f8 !important; }
+    `;
+    document.head.appendChild(_ws);
+</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+    --green: #A3E635; --green-dark: #84CC16; --green-deeper: #65A30D;
+    --green-glow: rgba(163,230,53,0.10);
+    --blue: #1e40af; --blue-mid: #2563eb; --blue-dark: #0f2b5b;
+    --blue-deeper: #0a1f3f; --blue-light: #dbeafe;
+    --dark: #0f172a; --text: #374151; --text-sec: #6B7280;
+    --muted: #94a3b8; --border: #e2e8f0; --bg: #f0f4f8; --white: #ffffff;
+    --font-head: 'Montserrat', sans-serif; --font-body: 'Inter', sans-serif;
+}
+.lp-root { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; overflow-x: hidden; }
+
+/* TOPBAR */
+.lp-topbar { background: var(--blue-deeper); padding: 10px 40px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.6); }
+.lp-topbar a { color: rgba(255,255,255,0.6); text-decoration: none; transition: color .2s; }
+.lp-topbar a:hover { color: var(--green); }
+.lp-topbar-contact { display: flex; gap: 28px; flex-wrap: wrap; }
+.lp-topbar-contact span { display: flex; align-items: center; gap: 7px; }
+.lp-topbar-contact i { color: var(--green); font-size: 0.9rem; }
+.lp-topbar-right { display: flex; align-items: center; gap: 12px; }
+.lp-social-icon { width: 30px; height: 30px; border-radius: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5); font-size: 0.85rem; text-decoration: none; transition: all .2s; }
+.lp-social-icon:hover { background: var(--green); color: var(--blue-deeper); border-color: var(--green); }
+
+/* NAVBAR */
+.lp-navbar { background: rgba(255,255,255,0.97); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); padding: 0 40px; display: flex; align-items: center; justify-content: space-between; height: 68px; position: sticky; top: 0; z-index: 100; }
+.lp-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.lp-brand img { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; }
+.lp-brand-name { font-family: var(--font-head); font-size: 1.3rem; font-weight: 900; color: var(--blue-dark); letter-spacing: -0.3px; }
+.lp-brand-name span { color: var(--green-dark); }
+.lp-nav-links { display: flex; align-items: center; gap: 4px; }
+.lp-nav-link { padding: 8px 16px; border-radius: 8px; color: var(--text-sec); font-weight: 600; font-size: 0.88rem; text-decoration: none; transition: all .2s; }
+.lp-nav-link:hover { background: var(--blue-light); color: var(--blue); }
+.lp-nav-actions { display: flex; align-items: center; gap: 10px; }
+.lp-btn-login { padding: 9px 22px; background: var(--green); color: var(--blue-deeper); font-weight: 800; font-size: 0.88rem; border-radius: 8px; text-decoration: none; transition: all .25s; display: inline-flex; align-items: center; gap: 7px; }
+.lp-btn-login:hover { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 8px 22px rgba(163,230,53,0.35); }
+
+/* HERO */
+.lp-hero { position: relative; padding: 100px 40px 90px; overflow: hidden; text-align: center; background: linear-gradient(160deg, var(--blue-deeper) 0%, var(--blue-dark) 50%, #12294a 100%); }
+.lp-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 60% 50% at 50% -10%, rgba(163,230,53,0.12) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 80% 80%, rgba(37,99,235,0.15) 0%, transparent 60%); z-index: 0; }
+.lp-hero::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px); background-size: 60px 60px; z-index: 0; }
+.lp-hero-inner { position: relative; z-index: 1; max-width: 820px; margin: 0 auto; }
+.lp-hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(163,230,53,0.12); border: 1px solid rgba(163,230,53,0.3); color: var(--green); border-radius: 999px; padding: 7px 18px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 28px; }
+.lp-hero-badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse-dot 1.8s infinite; }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.4); } }
+.lp-hero h1 { font-family: var(--font-head); font-size: clamp(2.4rem, 5.5vw, 3.8rem); font-weight: 900; line-height: 1.08; letter-spacing: -1.5px; margin-bottom: 22px; color: var(--white); }
+.lp-hero h1 .accent { color: var(--green); }
+.lp-hero p { color: rgba(255,255,255,0.65); font-size: clamp(1rem, 2vw, 1.15rem); line-height: 1.7; max-width: 640px; margin: 0 auto 40px; font-weight: 500; }
+.lp-hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.lp-btn-primary { padding: 15px 34px; background: var(--green); color: var(--blue-deeper); font-family: var(--font-head); font-weight: 900; font-size: 0.95rem; border-radius: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 9px; transition: all .25s; box-shadow: 0 4px 20px rgba(163,230,53,0.3); }
+.lp-btn-primary:hover { background: var(--green-dark); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(163,230,53,0.4); }
+.lp-btn-outline { padding: 15px 34px; background: transparent; color: var(--white); font-family: var(--font-head); font-weight: 800; font-size: 0.95rem; border-radius: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 9px; border: 1.5px solid rgba(255,255,255,0.2); transition: all .25s; }
+.lp-btn-outline:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.35); transform: translateY(-2px); }
+
+/* STATS */
+.lp-stats { background: var(--white); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 28px 40px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+.lp-stat { text-align: center; padding: 10px 20px; border-right: 1px solid var(--border); }
+.lp-stat:last-child { border-right: none; }
+.lp-stat-value { font-family: var(--font-head); font-size: 1.9rem; font-weight: 900; color: var(--blue); line-height: 1; margin-bottom: 4px; }
+.lp-stat-value.green { color: var(--green-dark); }
+.lp-stat-label { font-size: 0.8rem; color: var(--text-sec); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* SECTIONS */
+.lp-section { padding: 80px 40px; max-width: 1280px; margin: 0 auto; }
+.lp-section-tag { display: inline-block; font-size: 0.78rem; font-weight: 800; color: var(--blue); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.lp-section-title { font-family: var(--font-head); font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 900; color: var(--dark); line-height: 1.15; letter-spacing: -0.8px; margin-bottom: 14px; }
+.lp-section-sub { color: var(--text-sec); font-size: 1rem; max-width: 560px; line-height: 1.65; margin-bottom: 48px; }
+
+/* MODULES */
+.lp-modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.lp-module-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 28px; transition: all .3s; position: relative; overflow: hidden; }
+.lp-module-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--blue), var(--green-dark)); opacity: 0; transition: opacity .3s; }
+.lp-module-card:hover { border-color: rgba(30,64,175,0.2); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(15,43,91,0.08); }
+.lp-module-card:hover::before { opacity: 1; }
+.lp-module-icon { width: 48px; height: 48px; background: var(--blue-light); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--blue); margin-bottom: 18px; transition: all .3s; }
+.lp-module-card:hover .lp-module-icon { background: var(--blue); color: var(--white); }
+.lp-module-title { font-family: var(--font-head); font-size: 1.05rem; font-weight: 800; color: var(--dark); margin-bottom: 10px; }
+.lp-module-desc { font-size: 0.88rem; color: var(--text-sec); line-height: 1.6; }
+
+/* WHY */
+.lp-why-section { background: var(--white); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 80px 40px; }
+.lp-why-inner { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+.lp-why-list { display: flex; flex-direction: column; gap: 20px; margin-top: 36px; }
+.lp-why-item { display: flex; gap: 16px; padding: 20px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; transition: all .25s; }
+.lp-why-item:hover { border-color: rgba(30,64,175,0.2); transform: translateX(4px); }
+.lp-why-icon { width: 40px; height: 40px; min-width: 40px; background: var(--blue-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--blue); font-size: 1.1rem; }
+.lp-why-text h4 { font-family: var(--font-head); font-size: 0.95rem; font-weight: 800; color: var(--dark); margin-bottom: 5px; }
+.lp-why-text p { font-size: 0.85rem; color: var(--text-sec); line-height: 1.55; }
+
+/* MOCKUP */
+.lp-dashboard-mock { background: var(--white); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: 0 30px 60px rgba(15,43,91,0.1); }
+.lp-mock-bar { background: var(--blue-deeper); padding: 12px 18px; display: flex; align-items: center; gap: 8px; }
+.lp-mock-dot { width: 10px; height: 10px; border-radius: 50%; }
+.lp-mock-body { padding: 20px; }
+.lp-mock-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.lp-mock-kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.lp-mock-kpi-val { font-family: var(--font-head); font-size: 1.4rem; font-weight: 900; color: var(--blue); }
+.lp-mock-kpi-lbl { font-size: 0.72rem; color: var(--text-sec); margin-top: 2px; font-weight: 600; }
+.lp-mock-chart { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; height: 100px; display: flex; align-items: flex-end; gap: 8px; }
+.lp-mock-bar-item { flex: 1; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--blue) 0%, var(--blue-dark) 100%); min-height: 10px; opacity: 0.85; }
+.lp-mock-table { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.lp-mock-table-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 0.75rem; }
+.lp-mock-table-row:last-child { border-bottom: none; }
+.lp-mock-table-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green-dark); }
+.lp-mock-table-row .name { flex: 1; color: var(--text); font-weight: 600; }
+.lp-mock-table-row .score { color: var(--blue); font-weight: 800; }
+.lp-mock-table-hdr { background: var(--white); display: flex; padding: 8px 14px; gap: 10px; font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+
+/* CONTACT */
+.lp-contact-section { padding: 80px 40px; max-width: 1280px; margin: 0 auto; }
+.lp-contact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 48px; }
+.lp-contact-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; gap: 18px; align-items: flex-start; transition: all .25s; }
+.lp-contact-card:hover { border-color: rgba(30,64,175,0.2); transform: translateY(-3px); box-shadow: 0 16px 32px rgba(15,43,91,0.06); }
+.lp-contact-icon { width: 48px; height: 48px; min-width: 48px; background: var(--blue-light); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; color: var(--blue); }
+.lp-contact-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+.lp-contact-value { font-family: var(--font-head); font-size: 1rem; font-weight: 800; color: var(--dark); }
+.lp-contact-value a { color: var(--dark); text-decoration: none; transition: color .2s; }
+.lp-contact-value a:hover { color: var(--blue); }
+
+/* CTA */
+.lp-cta-banner { margin: 0 40px 80px; background: linear-gradient(135deg, var(--blue-dark) 0%, #12294a 100%); border-radius: 20px; padding: 56px 60px; display: flex; align-items: center; justify-content: space-between; gap: 30px; flex-wrap: wrap; position: relative; overflow: hidden; }
+.lp-cta-banner::before { content: ''; position: absolute; right: -60px; top: -60px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(163,230,53,0.15), transparent 70%); }
+.lp-cta-text h2 { font-family: var(--font-head); font-size: clamp(1.5rem, 2.5vw, 2rem); font-weight: 900; color: var(--white); letter-spacing: -0.5px; margin-bottom: 10px; }
+.lp-cta-text p { color: rgba(255,255,255,0.65); font-size: 0.95rem; line-height: 1.6; max-width: 440px; }
+
+/* FOOTER */
+.lp-footer { background: var(--blue-deeper); padding: 32px 40px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.lp-footer-brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-head); font-size: 1rem; font-weight: 900; color: var(--white); }
+.lp-footer-brand img { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; }
+.lp-footer-brand span { color: var(--green); }
+.lp-footer-copy { font-size: 0.8rem; color: rgba(255,255,255,0.4); font-weight: 600; text-align: center; }
+.lp-footer-links { display: flex; gap: 20px; }
+.lp-footer-links a { font-size: 0.8rem; color: rgba(255,255,255,0.4); font-weight: 600; text-decoration: none; transition: color .2s; }
+.lp-footer-links a:hover { color: var(--green); }
+
+/* RESPONSIVE */
+@media (max-width: 1024px) { .lp-modules-grid { grid-template-columns: repeat(2, 1fr); } .lp-why-inner { grid-template-columns: 1fr; } .lp-dashboard-mock { display: none; } .lp-stats { grid-template-columns: repeat(2, 1fr); } .lp-stat { border-bottom: 1px solid var(--border); } .lp-contact-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .lp-topbar { padding: 8px 20px; } .lp-topbar-contact { gap: 14px; } .lp-navbar { padding: 0 20px; } .lp-nav-links { display: none; } .lp-hero { padding: 60px 20px 50px; } .lp-section, .lp-contact-section { padding: 50px 20px; } .lp-why-section { padding: 50px 20px; } .lp-modules-grid { grid-template-columns: 1fr; } .lp-cta-banner { margin: 0 20px 50px; padding: 36px 24px; } .lp-footer { padding: 24px 20px; flex-direction: column; text-align: center; } .lp-footer-links { justify-content: center; } .lp-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+<div class="lp-root">
+    <div class="lp-topbar">
+        <div class="lp-topbar-contact">
+            <span><i class="bi bi-whatsapp"></i> <a href="https://wa.me/254728007320">+254 728 007 320</a></span>
+            <span><i class="bi bi-envelope-fill"></i> <a href="mailto:edunexus.system@gmail.com">edunexus.system@gmail.com</a></span>
+        </div>
+        <div class="lp-topbar-right">
+            <a href="mailto:edunexus.system@gmail.com" class="lp-social-icon"><i class="bi bi-envelope-fill"></i></a>
+            <a href="https://wa.me/254728007320" class="lp-social-icon"><i class="bi bi-whatsapp"></i></a>
+        </div>
+    </div>
+
+    <nav class="lp-navbar">
+        <a href="#" class="lp-brand">
+            <img src="{% static 'images/edunexus_logo.png' %}" alt="EDUNEXUS">
+            <span class="lp-brand-name">EDU<span>NEXUS</span></span>
+        </a>
+        <div class="lp-nav-links">
+            <a href="#modules" class="lp-nav-link">Modules</a>
+            <a href="#features" class="lp-nav-link">Features</a>
+            <a href="#contact" class="lp-nav-link">Contact</a>
+        </div>
+        <div class="lp-nav-actions">
+            <a href="{% url 'login' %}" class="lp-btn-login"><i class="bi bi-box-arrow-in-right"></i> Login</a>
+        </div>
+    </nav>
+
+    <section class="lp-hero">
+        <div class="lp-hero-inner">
+            <div class="lp-hero-badge">Kenya's Smart Exam Management Platform</div>
+            <h1>Powering Smarter<br><span class="accent">School Analytics</span><br>for Every Institution</h1>
+            <p>EDUNEXUS brings professional-grade exam management, real-time analytics, and seamless reporting to secondary schools across Kenya &mdash; all from one unified platform.</p>
+            <div class="lp-hero-cta">
+                <a href="{% url 'login' %}" class="lp-btn-primary">Access Your Portal <i class="bi bi-arrow-right"></i></a>
+                <a href="#modules" class="lp-btn-outline"><i class="bi bi-grid-3x3-gap"></i> Explore Modules</a>
+            </div>
+        </div>
+    </section>
+
+    <div class="lp-stats">
+        <div class="lp-stat"><div class="lp-stat-value">3</div><div class="lp-stat-label">Grade Levels Supported</div></div>
+        <div class="lp-stat"><div class="lp-stat-value green">CBE</div><div class="lp-stat-label">Curriculum Aligned</div></div>
+        <div class="lp-stat"><div class="lp-stat-value">100%</div><div class="lp-stat-label">Data Security</div></div>
+        <div class="lp-stat"><div class="lp-stat-value">24/7</div><div class="lp-stat-label">System Availability</div></div>
+    </div>
+
+    <section class="lp-section" id="modules">
+        <div class="lp-section-tag">System Modules</div>
+        <h2 class="lp-section-title">Everything Your School Needs<br>In One Platform</h2>
+        <p class="lp-section-sub">From score capture to final report card generation, EDUNEXUS handles your entire exam workflow with precision and speed.</p>
+        <div class="lp-modules-grid">
+            <div class="lp-module-card"><div class="lp-module-icon"><i class="bi bi-input-cursor-text"></i></div><div class="lp-module-title">Score Capture</div><div class="lp-module-desc">Subject teachers enter marks directly online per stream and exam. Bulk CSV upload available for fast data entry across all classes.</div></div>
+            <div class="lp-module-card"><div class="lp-module-icon"><i class="bi bi-graph-up-arrow"></i></div><div class="lp-module-title">Published Results & Analytics</div><div class="lp-module-desc">Auto-computed broadsheet with ranks, means, PLV levels, and grade distributions. Export to PDF with one click.</div></div>
+            <div class="lp-module-card"><div class="lp-module-icon"><i class="bi bi-file-earmark-pdf-fill"></i></div><div class="lp-module-title">Report Cards</div><div class="lp-module-desc">Generate individual and bulk report cards with teacher remarks, performance levels and scores formatted to print-ready standards.</div></div>
+            <div class="lp-module-card"><div class="lp-module-icon"><i class="bi bi-people-fill"></i></div><div class="lp-module-title">Learner Registry</div><div class="lp-module-desc">Manage complete student profiles including guardian contacts, class assignments, religion subjects, gender and full enrolment history.</div></div>
+            <div class="lp-module-card"><div class="lp-module-icon"><i class="bi bi-diagram-3-fill"></i></div><div class="lp-module-title">Faculty Management</div><div class="lp-module-desc">Assign teachers to classes and subjects. Control which teachers can access which streams with a precise role-based permission matrix.</div></div>
+            <div class="lp-module-card"><div class="lp-module-icon"><i class="bi bi-shield-lock-fill"></i></div><div class="lp-module-title">Assessment Locks & Audit</div><div class="lp-module-desc">Lock or unlock specific exam entry windows per class. Track submission status, reviews, and publishing across all streams in real time.</div></div>
+        </div>
+    </section>
+
+    <div class="lp-why-section" id="features">
+        <div class="lp-why-inner">
+            <div>
+                <div class="lp-section-tag">Why EDUNEXUS</div>
+                <h2 class="lp-section-title">Built for Kenya's<br>CBE Framework</h2>
+                <p class="lp-section-sub">Designed from the ground up for Junior Secondary schools operating the Competency-Based Education system, with CBE-aligned grading, PLV levels, and local context baked in.</p>
+                <div class="lp-why-list">
+                    <div class="lp-why-item"><div class="lp-why-icon"><i class="bi bi-lock-fill"></i></div><div class="lp-why-text"><h4>School-Isolated Data</h4><p>Every school's data is completely isolated. No cross-school data leakage &mdash; ever. Your records are yours alone.</p></div></div>
+                    <div class="lp-why-item"><div class="lp-why-icon"><i class="bi bi-lightning-charge-fill"></i></div><div class="lp-why-text"><h4>Instant Result Publishing</h4><p>Admin reviews, approves, and publishes results in seconds. Teachers see status in real-time without chasing paper.</p></div></div>
+                    <div class="lp-why-item"><div class="lp-why-icon"><i class="bi bi-bar-chart-fill"></i></div><div class="lp-why-text"><h4>Deep Performance Analytics</h4><p>View performance by stream, grade, subject and student. Identify outliers and track improvement trends across terms.</p></div></div>
+                    <div class="lp-why-item"><div class="lp-why-icon"><i class="bi bi-printer-fill"></i></div><div class="lp-why-text"><h4>Print-Ready Outputs</h4><p>Broadsheets, class registers and report cards are formatted to exact A4 print dimensions &mdash; ready to hand out same day.</p></div></div>
+                </div>
+            </div>
+            <div class="lp-dashboard-mock">
+                <div class="lp-mock-bar"><div class="lp-mock-dot" style="background:#ff5f57;"></div><div class="lp-mock-dot" style="background:#febc2e;"></div><div class="lp-mock-dot" style="background:var(--green);"></div></div>
+                <div class="lp-mock-body">
+                    <div class="lp-mock-row">
+                        <div class="lp-mock-kpi"><div class="lp-mock-kpi-val">87.4%</div><div class="lp-mock-kpi-lbl">Grade 9 Mean</div></div>
+                        <div class="lp-mock-kpi"><div class="lp-mock-kpi-val">312</div><div class="lp-mock-kpi-lbl">Students</div></div>
+                        <div class="lp-mock-kpi"><div class="lp-mock-kpi-val">ME</div><div class="lp-mock-kpi-lbl">Top PLV</div></div>
+                    </div>
+                    <div class="lp-mock-chart">
+                        <div class="lp-mock-bar-item" style="height:55%;"></div><div class="lp-mock-bar-item" style="height:70%;"></div><div class="lp-mock-bar-item" style="height:48%;"></div><div class="lp-mock-bar-item" style="height:82%;"></div><div class="lp-mock-bar-item" style="height:60%;"></div><div class="lp-mock-bar-item" style="height:91%;"></div><div class="lp-mock-bar-item" style="height:74%;"></div><div class="lp-mock-bar-item" style="height:65%;"></div>
+                    </div>
+                    <div style="margin-top:14px;">
+                        <div class="lp-mock-table">
+                            <div class="lp-mock-table-hdr"><div style="flex:1;">Student</div><div>Score</div><div>PLV</div></div>
+                            <div class="lp-mock-table-row"><div class="dot"></div><div class="name">Amina W.</div><div class="score">94%</div><div style="color:var(--muted);font-size:0.72rem;font-weight:700;">EE</div></div>
+                            <div class="lp-mock-table-row"><div class="dot"></div><div class="name">Brian O.</div><div class="score">88%</div><div style="color:var(--muted);font-size:0.72rem;font-weight:700;">ME</div></div>
+                            <div class="lp-mock-table-row"><div class="dot"></div><div class="name">Clara M.</div><div class="score">81%</div><div style="color:var(--muted);font-size:0.72rem;font-weight:700;">ME</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="lp-contact-section" id="contact">
+        <div class="lp-section-tag">Get In Touch</div>
+        <h2 class="lp-section-title">Contact & Support</h2>
+        <p class="lp-section-sub">Need help onboarding your school or have a question about the platform? Reach us directly through the channels below.</p>
+        <div class="lp-contact-grid">
+            <div class="lp-contact-card"><div class="lp-contact-icon"><i class="bi bi-whatsapp"></i></div><div><div class="lp-contact-label">WhatsApp / Phone</div><div class="lp-contact-value"><a href="https://wa.me/254728007320">+254 728 007 320</a></div></div></div>
+            <div class="lp-contact-card"><div class="lp-contact-icon"><i class="bi bi-envelope-fill"></i></div><div><div class="lp-contact-label">System Email</div><div class="lp-contact-value"><a href="mailto:edunexus.system@gmail.com">edunexus.system@gmail.com</a></div></div></div>
+            <div class="lp-contact-card"><div class="lp-contact-icon"><i class="bi bi-globe2"></i></div><div><div class="lp-contact-label">System Access</div><div class="lp-contact-value"><a href="{% url 'login' %}">Login to Your Portal &rarr;</a></div></div></div>
+        </div>
+    </section>
+
+    <div class="lp-cta-banner">
+        <div class="lp-cta-text">
+            <h2>Ready to Transform Your School's Exam Management?</h2>
+            <p>Join schools across Kenya using EDUNEXUS to manage assessments, publish results, and generate report cards faster than ever before.</p>
+        </div>
+        <a href="{% url 'login' %}" class="lp-btn-primary" style="white-space:nowrap; font-size:1rem; padding:16px 36px;">Access Your Portal <i class="bi bi-arrow-right"></i></a>
+    </div>
+
+    <footer class="lp-footer">
+        <div class="lp-footer-brand"><img src="{% static 'images/edunexus_logo.png' %}" alt="Logo"> EDU<span>NEXUS</span></div>
+        <div class="lp-footer-copy">&copy; 2026 EDUNEXUS Exam Management System. All Rights Reserved.</div>
+        <div class="lp-footer-links">
+            <a href="mailto:edunexus.system@gmail.com">Support</a>
+            <a href="https://wa.me/254728007320">Contact</a>
+            <a href="{% url 'login' %}">Login</a>
+        </div>
+    </footer>
+</div>
+{% endblock %}

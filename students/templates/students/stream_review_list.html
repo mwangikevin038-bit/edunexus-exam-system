@@ -1,0 +1,188 @@
+{% extends 'students/base.html' %}
+{% block content %}
+<style>
+    .stream-list-page {
+        min-height: 100vh;
+        background: #f6f8fb;
+        padding: 38px 42px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .hero,
+    .stream-card {
+        background: #ffffff;
+        border: 1px solid #dbe3ee;
+        border-radius: 16px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+    }
+
+    .hero {
+        border-left: 8px solid var(--oraimo-green, #9be816);
+        padding: 28px 32px;
+        margin-bottom: 24px;
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .hero h1 {
+        margin: 0 0 8px;
+        color: #0f172a;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 34px;
+        font-weight: 900;
+    }
+
+    .hero p {
+        margin: 0;
+        color: #64748b;
+        font-weight: 750;
+    }
+
+    .exam-select {
+        min-width: 280px;
+        height: 46px;
+        border: 1px solid #dbe3ee;
+        border-radius: 10px;
+        padding: 0 14px;
+        font-weight: 850;
+        background: #f8fafc;
+    }
+
+    .stream-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .stream-card {
+        padding: 22px;
+        border-left: 6px solid var(--oraimo-green, #9be816);
+    }
+
+    .stream-card h2 {
+        margin: 0 0 5px;
+        color: #0f172a;
+        font-size: 22px;
+        font-weight: 900;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .stream-card p {
+        margin: 0 0 16px;
+        color: #64748b;
+        font-weight: 750;
+    }
+
+    .mini-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .mini-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+    }
+
+    .mini-box span {
+        display: block;
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin-bottom: 5px;
+    }
+
+    .mini-box strong {
+        color: #0f172a;
+        font-size: 20px;
+        font-weight: 900;
+    }
+
+    .open-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        border-radius: 10px;
+        padding: 0 18px;
+        background: #0f172a;
+        color: #ffffff;
+        text-decoration: none;
+        font-weight: 900;
+    }
+
+    .open-btn:hover {
+        background: var(--oraimo-green, #9be816);
+        color: #0f172a;
+    }
+
+    @media (max-width: 980px) {
+        .stream-grid { grid-template-columns: 1fr; }
+        .mini-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 640px) {
+        .stream-list-page { padding: 14px; }
+        .hero { flex-direction: column; gap: 12px; }
+        .hero h1 { font-size: 22px; }
+        .hero p { font-size: 12px; }
+        .exam-select { min-width: 0; width: 100%; }
+        .stream-card { padding: 16px; border-radius: 12px; }
+        .stream-card h2 { font-size: 18px; }
+        .stream-card p { font-size: 12px; }
+        .mini-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+        .mini-box { padding: 12px; border-radius: 8px; }
+        .mini-box span { font-size: 10px; }
+        .mini-box strong { font-size: 18px; }
+        .open-btn { width: 100%; text-align: center; padding: 12px; font-size: 13px; }
+    }
+</style>
+
+<div class="stream-list-page">
+    <section class="hero">
+        <div>
+            <h1>Stream Publishing</h1>
+            <p>Review, approve, and publish complete class streams from one place.</p>
+        </div>
+        <form method="GET">
+            <select name="exam_id" class="exam-select" onchange="this.form.submit()">
+                {% for item in exams %}
+                    <option value="{{ item.id }}" {% if item.id == exam.id %}selected{% endif %}>
+                        {{ item.name }} - {{ item.term }} {{ item.year }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </section>
+
+    <div class="stream-grid">
+        {% for card in stream_cards %}
+            <article class="stream-card">
+                <h2>{{ card.class_name }} {{ card.stream }}</h2>
+                <p>{{ exam.name }} | {{ exam.term }} | {{ exam.year }}. Status: {{ card.totals.stream_status }}</p>
+                <div class="mini-grid">
+                    <div class="mini-box"><span>Subjects</span><strong>{{ card.totals.subjects }}</strong></div>
+                    <div class="mini-box"><span>Complete</span><strong>{{ card.totals.completion_rate }}%</strong></div>
+                    <div class="mini-box"><span>Approved</span><strong>{{ card.totals.approved }}</strong></div>
+                    <div class="mini-box"><span>Published</span><strong>{{ card.totals.published }}</strong></div>
+                </div>
+                <a class="open-btn" href="{% url 'review_stream_submission' %}?exam_id={{ exam.id }}&class_name={{ card.class_name|urlencode }}&stream={{ card.stream|urlencode }}">
+                    Open Stream Review
+                </a>
+            </article>
+        {% empty %}
+            <article class="stream-card">
+                <h2>No Streams Available</h2>
+                <p>Assign teachers to class streams in Faculty Allocation first.</p>
+            </article>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

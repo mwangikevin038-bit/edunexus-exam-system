@@ -1,0 +1,363 @@
+{% extends 'superuser/base.html' %}
+{% block title %}All Schools · EduNexus{% endblock %}
+{% block page_title %}All Schools{% endblock %}
+
+{% block content %}
+<style>
+  .sl-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .sl-topbar-left h1 {
+    font-size: 20px; font-weight: 900; color: #0f172a;
+    letter-spacing: -.4px; margin: 0 0 2px;
+  }
+  .sl-topbar-left p { font-size: 12px; color: #94a3b8; font-weight: 600; margin: 0; }
+
+  /* ── STAT STRIP ── */
+  .sl-stats {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px;
+  }
+  .sl-stat {
+    background: #fff; border: 1px solid #e8edf3; border-radius: 10px;
+    padding: 12px 18px; display: flex; align-items: center; gap: 10px;
+    min-width: 130px;
+  }
+  .sl-stat-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .sl-stat-icon.green { background:#dcfce7; color:#16a34a; }
+  .sl-stat-icon.blue  { background:#dbeafe; color:#2563eb; }
+  .sl-stat-icon.amber { background:#fef3c7; color:#d97706; }
+  .sl-stat-icon.red   { background:#fee2e2; color:#dc2626; }
+  .sl-stat-body strong { display:block; font-size:18px; font-weight:900; color:#0f172a; line-height:1; }
+  .sl-stat-body span   { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.5px; }
+
+  /* ── TOOLBAR ── */
+  .sl-toolbar {
+    background: #fff; border: 1px solid #e8edf3; border-radius: 12px 12px 0 0;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .sl-search {
+    display: flex; align-items: center; gap: 8px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 7px 12px; flex: 1; min-width: 200px; max-width: 320px;
+  }
+  .sl-search i { font-size: 13px; color: #94a3b8; flex-shrink: 0; }
+  .sl-search input {
+    border: none; background: transparent; outline: none;
+    font-size: 12px; font-weight: 700; color: #1e293b; width: 100%;
+    font-family: inherit;
+  }
+  .sl-search input::placeholder { color: #94a3b8; }
+
+  .sl-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sl-filter-btn {
+    font-size: 11px; font-weight: 800; padding: 6px 13px;
+    border-radius: 20px; border: 1px solid #e2e8f0;
+    background: #f8fafc; color: #64748b; cursor: pointer;
+    transition: all .15s; letter-spacing: .3px; font-family: inherit;
+  }
+  .sl-filter-btn:hover  { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .sl-filter-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .sl-filter-btn.active.green  { background: #16a34a; border-color: #16a34a; }
+  .sl-filter-btn.active.amber  { background: #d97706; border-color: #d97706; }
+  .sl-filter-btn.active.red    { background: #dc2626; border-color: #dc2626; }
+
+  .sl-spacer { flex: 1; }
+
+  /* ── TABLE ── */
+  .sl-table-wrap {
+    background: #fff;
+    border: 1px solid #e8edf3; border-top: none;
+    border-radius: 0 0 12px 12px;
+    overflow: hidden;
+  }
+  .sl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sl-table thead tr { background: #f8fafc; }
+  .sl-table th {
+    padding: 10px 16px; text-align: left;
+    font-size: 10px; font-weight: 800; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: .6px;
+    border-bottom: 1px solid #f1f5f9; white-space: nowrap;
+  }
+  .sl-table th.sortable { cursor: pointer; user-select: none; }
+  .sl-table th.sortable:hover { color: #475569; }
+  .sl-table td {
+    padding: 13px 16px; border-bottom: 1px solid #f8fafc;
+    vertical-align: middle;
+  }
+  .sl-table tbody tr { transition: background .12s; }
+  .sl-table tbody tr:hover td { background: #fafbfc; }
+  .sl-table tbody tr:last-child td { border-bottom: none; }
+  .sl-table tbody tr.hidden { display: none; }
+
+  /* school cell */
+  .school-cell { display: flex; align-items: center; gap: 11px; }
+  .school-av {
+    width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+    background: linear-gradient(135deg,#e2e8f0,#cbd5e1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 900; color: #475569; overflow: hidden;
+  }
+  .school-av img { width:100%; height:100%; object-fit:cover; border-radius:9px; }
+  .school-av.green  { background: linear-gradient(135deg,#bbf7d0,#86efac); color:#166534; }
+  .school-av.blue   { background: linear-gradient(135deg,#bfdbfe,#93c5fd); color:#1e40af; }
+  .school-av.amber  { background: linear-gradient(135deg,#fde68a,#fcd34d); color:#92400e; }
+  .school-name-wrap strong { display:block; font-size:13px; font-weight:800; color:#1e293b; }
+  .school-name-wrap span   { font-size:11px; font-family:monospace; color:#94a3b8; }
+
+  /* pills */
+  .pill {
+    display:inline-flex; align-items:center;
+    font-size:10px; font-weight:800; padding:3px 9px;
+    border-radius:20px; letter-spacing:.3px; white-space:nowrap;
+  }
+  .pill-green  { background:#dcfce7; color:#15803d; }
+  .pill-blue   { background:#dbeafe; color:#1d4ed8; }
+  .pill-amber  { background:#fef3c7; color:#b45309; }
+  .pill-red    { background:#fee2e2; color:#b91c1c; }
+  .pill-gray   { background:#f1f5f9; color:#475569; }
+
+  /* expiry */
+  .expiry-cell { display:flex; flex-direction:column; gap:1px; }
+  .expiry-date { font-size:12px; font-weight:700; color:#374151; }
+  .expiry-tag  { font-size:10px; font-weight:700; }
+  .expiry-tag.soon    { color:#d97706; }
+  .expiry-tag.urgent  { color:#dc2626; }
+  .expiry-tag.ok      { color:#16a34a; }
+  .expiry-tag.none    { color:#94a3b8; }
+
+  /* actions */
+  .action-btns { display:flex; gap:6px; }
+  .icon-btn {
+    width:30px; height:30px; border-radius:8px; border:1px solid #e2e8f0;
+    background:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:12px; color:#64748b; cursor:pointer; transition:all .15s;
+    text-decoration:none;
+  }
+  .icon-btn:hover        { background:#0f172a; color:#fff; border-color:#0f172a; }
+  .icon-btn.danger:hover { background:#dc2626; color:#fff; border-color:#dc2626; }
+
+  /* empty state */
+  .sl-empty {
+    text-align:center; padding:52px 20px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .sl-empty-icon {
+    width:52px; height:52px; border-radius:14px;
+    background:#f1f5f9; display:flex; align-items:center; justify-content:center;
+    font-size:22px; color:#cbd5e1;
+  }
+  .sl-empty strong { font-size:14px; font-weight:800; color:#1e293b; }
+  .sl-empty p      { font-size:12px; color:#94a3b8; font-weight:600; }
+
+  /* count badge */
+  .sl-count {
+    font-size:11px; font-weight:800; padding:3px 9px;
+    border-radius:20px; background:#f1f5f9; color:#475569;
+    margin-left:auto;
+  }
+</style>
+
+<!-- TOP -->
+<div class="sl-topbar">
+  <div class="sl-topbar-left">
+    <h1>All Schools</h1>
+    <p>{{ schools|length }} school{{ schools|length|pluralize }} registered on the platform</p>
+  </div>
+  <a href="{% url 'super_school_create' %}" class="btn btn-dark">
+    <i class="bi bi-plus-lg"></i> Add School
+  </a>
+</div>
+
+<!-- STAT STRIP -->
+<div class="sl-stats">
+  <div class="sl-stat">
+    <div class="sl-stat-icon green"><i class="bi bi-building-fill"></i></div>
+    <div class="sl-stat-body">
+      <strong>{{ schools|length }}</strong>
+      <span>Total</span>
+    </div>
+  </div>
+  <div class="sl-stat">
+    <div class="sl-stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="sl-stat-body">
+      <strong>{{ schools|dictsort:"status"|length }}</strong>
+      <span>Active</span>
+    </div>
+  </div>
+  <div class="sl-stat">
+    <div class="sl-stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+    <div class="sl-stat-body">
+      <strong id="trialCount">—</strong>
+      <span>Trial</span>
+    </div>
+  </div>
+  <div class="sl-stat">
+    <div class="sl-stat-icon red"><i class="bi bi-slash-circle-fill"></i></div>
+    <div class="sl-stat-body">
+      <strong id="suspendedCount">—</strong>
+      <span>Suspended</span>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLBAR + TABLE -->
+<div class="sl-toolbar">
+  <div class="sl-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="slSearch" placeholder="Search schools by name or code…">
+  </div>
+  <div class="sl-filters" id="slFilters">
+    <button class="sl-filter-btn active" data-filter="all">All</button>
+    <button class="sl-filter-btn green"  data-filter="active">Active</button>
+    <button class="sl-filter-btn amber"  data-filter="trial">Trial</button>
+    <button class="sl-filter-btn red"    data-filter="suspended">Suspended</button>
+  </div>
+  <span class="sl-count" id="slCount">{{ schools|length }}</span>
+</div>
+
+<div class="sl-table-wrap">
+  <table class="sl-table" id="slTable">
+    <thead>
+      <tr>
+        <th>School</th>
+        <th>Tier</th>
+        <th>Status</th>
+        <th>Paid Until</th>
+        <th>Registered</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="slBody">
+      {% for school in schools %}
+      <tr data-status="{{ school.status }}"
+          data-name="{{ school.name|lower }}"
+          data-code="{{ school.code|lower }}">
+        <td>
+          <div class="school-cell">
+            <div class="school-av {% if school.tier == 'Enterprise' %}blue{% elif school.tier == 'Premium' %}amber{% else %}green{% endif %}">
+              {% if school.logo %}
+                <img src="{{ school.logo.url }}" alt="">
+              {% else %}
+                {{ school.name|first|upper }}
+              {% endif %}
+            </div>
+            <div class="school-name-wrap">
+              <strong>{{ school.name }}</strong>
+              <span>{{ school.code }}</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="pill {% if school.tier == 'Enterprise' %}pill-blue{% elif school.tier == 'Premium' %}pill-amber{% else %}pill-green{% endif %}">
+            {{ school.tier }}
+          </span>
+        </td>
+        <td>
+          <span class="pill {% if school.status == 'active' %}pill-green{% elif school.status == 'trial' %}pill-amber{% else %}pill-red{% endif %}">
+            {{ school.get_status_display }}
+          </span>
+        </td>
+        <td>
+          {% if school.paid_until %}
+            <div class="expiry-cell">
+              <span class="expiry-date">{{ school.paid_until|date:"d M Y" }}</span>
+              <span class="expiry-tag {{ school.paid_until|timeuntil }}">{{ school.paid_until|timeuntil }}</span>
+            </div>
+          {% else %}
+            <span style="color:#cbd5e1; font-size:14px;">—</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px; color:#94a3b8; font-weight:600;">
+          {{ school.created_on|date:"d M Y" }}
+        </td>
+        <td>
+          <div class="action-btns">
+            <a href="{% url 'super_school_edit' school.id %}" class="icon-btn" title="Edit school">
+              <i class="bi bi-pencil-fill"></i>
+            </a>
+            <a href="{% url 'super_school_delete' school.id %}" class="icon-btn danger" title="Delete school">
+              <i class="bi bi-trash-fill"></i>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">
+        <div class="sl-empty">
+          <div class="sl-empty-icon"><i class="bi bi-building"></i></div>
+          <strong>No schools registered yet</strong>
+          <p>Add your first school to get started.</p>
+          <a href="{% url 'super_school_create' %}" class="btn btn-dark btn-sm">
+            <i class="bi bi-plus-lg"></i> Add School
+          </a>
+        </div>
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- empty-filter state (hidden by default) -->
+  <div id="slNoResults" style="display:none;">
+    <div class="sl-empty">
+      <div class="sl-empty-icon"><i class="bi bi-funnel"></i></div>
+      <strong>No schools match this filter</strong>
+      <p>Try a different filter or clear the search.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// @ts-nocheck
+(function(){
+  const rows      = Array.from(document.querySelectorAll('#slBody tr[data-status]'));
+  const searchEl  = document.getElementById('slSearch');
+  const filterBtns= Array.from(document.querySelectorAll('#slFilters .sl-filter-btn'));
+  const countEl   = document.getElementById('slCount');
+  const noResults = document.getElementById('slNoResults');
+
+  // populate stat counts from live data
+  const counts = {active:0, trial:0, suspended:0};
+  rows.forEach(r => { if(counts[r.dataset.status] !== undefined) counts[r.dataset.status]++; });
+  document.getElementById('trialCount').textContent     = counts.trial;
+  document.getElementById('suspendedCount').textContent = counts.suspended;
+
+  let activeFilter = 'all';
+  let searchQ      = '';
+
+  function applyFilters(){
+    let visible = 0;
+    rows.forEach(row => {
+      const statusOk = activeFilter === 'all' || row.dataset.status === activeFilter;
+      const q = searchQ.toLowerCase();
+      const nameOk = !q || row.dataset.name.includes(q) || row.dataset.code.includes(q);
+      const show = statusOk && nameOk;
+      row.classList.toggle('hidden', !show);
+      if(show) visible++;
+    });
+    countEl.textContent = visible;
+    noResults.style.display = visible === 0 ? 'block' : 'none';
+  }
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      applyFilters();
+    });
+  });
+
+  searchEl.addEventListener('input', () => {
+    searchQ = searchEl.value;
+    applyFilters();
+  });
+})();
+</script>
+
+{% endblock %}

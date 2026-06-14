@@ -1,0 +1,709 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    :root {
+        --green: #22c55e;
+        --green-light: #f0fdf4;
+        --green-border: #bbf7d0;
+        --dark: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --soft: #f8fafc;
+        --blue: #3b82f6;
+        --blue-light: #eff6ff;
+        --amber: #f59e0b;
+        --amber-light: #fffbeb;
+        --red: #ef4444;
+        --red-light: #fef2f2;
+        --pink: #ec4899;
+        --pink-light: #fdf2f8;
+    }
+
+    /* ── Hero Header ── */
+    .admin-hero {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 22px 26px;
+        border-left: 5px solid var(--green);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    .admin-hero-left { display: flex; align-items: center; gap: 16px; }
+    .admin-hero-logo {
+        width: 52px; height: 52px; border-radius: 12px;
+        object-fit: contain; background: var(--soft); border: 1px solid var(--border);
+    }
+    .admin-hero h1 {
+        font-family: 'Montserrat', sans-serif; font-weight: 900;
+        font-size: 20px; color: var(--dark); margin: 0;
+    }
+    .admin-hero p { color: var(--muted); font-size: 13px; margin: 3px 0 0; font-weight: 600; }
+    .hero-term-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: var(--green-light); border: 1px solid var(--green-border);
+        padding: 7px 14px; border-radius: 999px;
+        font-size: 11px; font-weight: 800; color: #166534;
+        text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .hero-term-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+
+    /* ── Metric Cards ── */
+    .metric-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+    .metric-box {
+        background: #fff; border: 1px solid var(--border); border-radius: 12px;
+        padding: 16px; text-align: center;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+        transition: border-color 0.2s;
+    }
+    .metric-box:hover { border-color: var(--green); }
+    .metric-icon {
+        width: 40px; height: 40px; border-radius: 10px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 18px; margin-bottom: 8px;
+    }
+    .metric-box .num {
+        display: block; font-size: 28px; font-weight: 900; color: var(--dark);
+        line-height: 1; margin-bottom: 2px;
+    }
+    .metric-box .lbl {
+        display: block; font-size: 10px; font-weight: 800; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* ── Performance Hero ── */
+    .perf-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border-radius: 14px; padding: 28px 30px;
+        color: #fff; margin-bottom: 20px;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 20px;
+        box-shadow: 0 4px 20px rgba(15,23,42,0.15);
+    }
+    .perf-hero-left h2 {
+        font-family: 'Montserrat', sans-serif; font-weight: 900;
+        font-size: 13px; color: #94a3b8; text-transform: uppercase;
+        letter-spacing: 1px; margin: 0 0 6px;
+    }
+    .perf-hero-left .exam-name {
+        font-size: 20px; font-weight: 800; color: #fff; margin: 0 0 12px;
+    }
+    .perf-hero-left .mean-score-row {
+        display: flex; align-items: baseline; gap: 10px;
+    }
+    .perf-hero-left .mean-big {
+        font-size: 42px; font-weight: 900; color: var(--green); line-height: 1;
+    }
+    .perf-hero-left .mean-grade {
+        font-size: 18px; font-weight: 800; color: #cbd5e1;
+    }
+    .perf-hero-right {
+        display: flex; gap: 14px; flex-wrap: wrap;
+    }
+    .perf-stat-box {
+        background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px; padding: 14px 18px; text-align: center; min-width: 100px;
+    }
+    .perf-stat-box .val {
+        display: block; font-size: 22px; font-weight: 900; color: #fff;
+    }
+    .perf-stat-box .lbl {
+        display: block; font-size: 10px; font-weight: 700; color: #94a3b8;
+        text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;
+    }
+
+    /* ── Navigation Grid ── */
+    .nav-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .nav-grid-item {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 8px; background: #fff; border: 1px solid var(--border);
+        border-radius: 12px; padding: 20px 12px; text-decoration: none;
+        color: var(--dark); text-align: center;
+        transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .nav-grid-item:hover {
+        border-color: var(--green); transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    }
+    .nav-grid-icon {
+        width: 44px; height: 44px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px;
+    }
+    .nav-grid-item .title {
+        font-size: 12px; font-weight: 800; color: var(--dark);
+        text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .nav-grid-item .sub {
+        font-size: 10px; font-weight: 600; color: var(--muted);
+    }
+
+    /* ── Panel Card ── */
+    .panel {
+        background: #fff; border: 1px solid var(--border); border-radius: 14px;
+        padding: 22px 24px; margin-bottom: 20px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    }
+    .panel-header {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 10px;
+        border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 18px;
+    }
+    .panel-title {
+        font-family: 'Montserrat', sans-serif; font-weight: 900;
+        font-size: 14px; color: var(--dark); text-transform: uppercase;
+        border-left: 4px solid var(--green); padding-left: 10px;
+    }
+    .panel-badge {
+        font-size: 10px; font-weight: 800; padding: 5px 12px;
+        border-radius: 999px; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+
+    /* ── Enrollment Grid ── */
+    .enroll-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 14px;
+    }
+    .enroll-card {
+        background: var(--soft); border: 1px solid var(--border);
+        border-radius: 12px; padding: 16px; text-align: center;
+    }
+    .enroll-card .grade-name {
+        font-size: 13px; font-weight: 900; color: var(--dark);
+        text-transform: uppercase; margin-bottom: 4px;
+    }
+    .enroll-card .total {
+        font-size: 32px; font-weight: 900; color: var(--dark); line-height: 1;
+        margin-bottom: 8px;
+    }
+    .enroll-card .stream-row {
+        display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+    .enroll-card .stream-chip {
+        font-size: 10px; font-weight: 700; color: #475569;
+        background: #fff; border: 1px solid var(--border);
+        padding: 3px 8px; border-radius: 999px;
+    }
+    .enroll-card .status-chip {
+        font-size: 10px; font-weight: 800; padding: 3px 10px;
+        border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .chip-active { background: var(--green-light); color: #166534; }
+    .chip-empty { background: #f1f5f9; color: #94a3b8; }
+
+    /* ── Gender Split ── */
+    .gender-row {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+        margin-bottom: 20px;
+    }
+    .gender-card {
+        background: #fff; border: 1px solid var(--border); border-radius: 12px;
+        padding: 18px; display: flex; align-items: center; gap: 14px;
+    }
+    .gender-icon {
+        width: 44px; height: 44px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .gender-card .g-num {
+        font-size: 26px; font-weight: 900; color: var(--dark); line-height: 1;
+    }
+    .gender-card .g-lbl {
+        font-size: 11px; font-weight: 800; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.3px;
+    }
+
+    /* ── Submission Tracker ── */
+    .tracker-list { display: grid; gap: 10px; }
+    .tracker-row {
+        display: grid; grid-template-columns: 42px 1fr auto;
+        align-items: center; gap: 14px;
+        padding: 14px 16px; background: var(--soft);
+        border: 1px solid var(--border); border-radius: 10px;
+    }
+    .tracker-row .t-icon {
+        width: 42px; height: 42px; border-radius: 10px;
+        background: #fff; border: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .tracker-row .t-subject {
+        font-weight: 800; font-size: 14px; color: var(--dark);
+    }
+    .tracker-row .t-meta {
+        font-size: 11px; color: var(--muted); font-weight: 600;
+    }
+    .tracker-row .t-class {
+        font-size: 10px; font-weight: 800; color: #334155;
+        background: #e2e8f0; padding: 2px 8px; border-radius: 999px;
+        display: inline-block; margin-top: 3px;
+    }
+    .tracker-nudge {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: var(--dark); color: #fff;
+        padding: 8px 14px; border-radius: 8px;
+        text-decoration: none; font-size: 11px; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.3px;
+        transition: background 0.2s;
+    }
+    .tracker-nudge:hover { background: #334155; color: #fff; text-decoration: none; }
+
+    /* ── Grade Progress Bars ── */
+    .grade-bar-row { margin-bottom: 14px; }
+    .grade-bar-row:last-child { margin-bottom: 0; }
+    .grade-bar-label {
+        display: flex; justify-content: space-between;
+        font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 5px;
+    }
+    .grade-bar-track {
+        width: 100%; height: 8px; background: #e2e8f0;
+        border-radius: 999px; overflow: hidden;
+    }
+    .grade-bar-fill {
+        height: 100%; border-radius: 999px;
+        transition: width 0.6s ease;
+    }
+
+    /* ── Operations Grid ── */
+    .ops-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+    .ops-card {
+        display: flex; align-items: center; gap: 12px;
+        background: var(--soft); border: 1px solid var(--border);
+        padding: 14px 16px; border-radius: 10px;
+        text-decoration: none; color: var(--dark);
+        transition: all 0.2s;
+    }
+    .ops-card:hover {
+        border-color: var(--green); background: #fff;
+    }
+    .ops-card .ops-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center; font-size: 17px;
+        flex-shrink: 0;
+    }
+    .ops-card .ops-title {
+        font-size: 12px; font-weight: 800; color: var(--dark);
+        text-transform: uppercase; letter-spacing: 0.2px;
+    }
+    .ops-card .ops-sub {
+        font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 1px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+        .admin-hero { flex-direction: column; align-items: flex-start; padding: 18px 16px; }
+        .metric-strip { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .metric-box .num { font-size: 22px; }
+        .perf-hero { flex-direction: column; padding: 20px 18px; }
+        .perf-hero-left .mean-big { font-size: 34px; }
+        .nav-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .nav-grid-item { padding: 16px 10px; }
+        .gender-row { grid-template-columns: 1fr; }
+        .tracker-row { grid-template-columns: 1fr; gap: 10px; }
+        .tracker-row .t-icon { display: none; }
+        .tracker-nudge { width: 100%; justify-content: center; }
+        .enroll-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+        .ops-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+        .metric-strip { grid-template-columns: 1fr 1fr; }
+        .nav-grid { grid-template-columns: 1fr 1fr; }
+        .enroll-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="container-fluid" style="padding: 24px 32px 24px 42px; max-width: none; width: 100%; margin: 0;">
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- 1. HERO HEADER — School Identity + Term Status                   -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="admin-hero">
+        <div class="admin-hero-left">
+            {% if request.school.logo %}
+                <img src="{{ request.school.logo.url }}" alt="Logo" class="admin-hero-logo"
+                     onerror="this.style.display='none';">
+            {% endif %}
+            <div>
+                <h1>{{ request.school.name }}</h1>
+                <p>Academic Year {{ current_year }} &middot; Administrative Dashboard</p>
+            </div>
+        </div>
+        <div class="hero-term-pill">
+            <span class="hero-term-dot"></span>
+            {{ active_term_label }}
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- 2. TOP METRIC CARDS — Quick Counters                             -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="metric-strip">
+        <div class="metric-box">
+            <div class="metric-icon" style="background: var(--blue-light); color: var(--blue);">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <span class="num">{{ total_students }}</span>
+            <span class="lbl">Total Learners</span>
+        </div>
+        <div class="metric-box">
+            <div class="metric-icon" style="background: var(--pink-light); color: var(--pink);">
+                <i class="bi bi-person-workspace"></i>
+            </div>
+            <span class="num">{{ total_teachers }}</span>
+            <span class="lbl">Active Faculty</span>
+        </div>
+        <div class="metric-box">
+            <div class="metric-icon" style="background: var(--green-light); color: #16a34a;">
+                <i class="bi bi-building"></i>
+            </div>
+            <span class="num">{{ active_classes }}</span>
+            <span class="lbl">Active Classes</span>
+        </div>
+        <div class="metric-box">
+            <div class="metric-icon" style="background: var(--amber-light); color: var(--amber);">
+                <i class="bi bi-journal-text"></i>
+            </div>
+            <span class="num">{{ total_exams }}</span>
+            <span class="lbl">Exams Loaded</span>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- 3. PERFORMANCE HERO — Last Exam Analysis Summary                 -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="perf-hero">
+        <div class="perf-hero-left">
+            <h2><i class="bi bi-bar-chart-fill"></i> Latest Exam Performance</h2>
+            <p class="exam-name">{{ active_term_label }}</p>
+            <div class="mean-score-row">
+                <span class="mean-big">{{ overall_average }}%</span>
+                <span class="mean-grade">School Mean</span>
+            </div>
+        </div>
+        <div class="perf-hero-right">
+            <div class="perf-stat-box">
+                <span class="val">{{ completion_rate }}%</span>
+                <span class="lbl">Completion</span>
+            </div>
+            <div class="perf-stat-box">
+                <span class="val" style="{% if missing_entries_count > 0 %}color: #fca5a5{% endif %}">
+                    {{ missing_entries_count }}
+                </span>
+                <span class="lbl">Pending</span>
+            </div>
+            <div class="perf-stat-box">
+                <span class="val" style="font-size: 14px;">{{ best_stream }}</span>
+                <span class="lbl">Top Stream</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- 4. NAVIGATION GRID — Quick Access Shortcuts                      -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="nav-grid">
+        <a href="{% url 'admin_add_student' %}" class="nav-grid-item">
+            <div class="nav-grid-icon" style="background: var(--blue-light); color: var(--blue);">
+                <i class="bi bi-person-plus-fill"></i>
+            </div>
+            <span class="title">Learners</span>
+            <span class="sub">Register & manage students</span>
+        </a>
+        <a href="{% url 'manage_exams' %}" class="nav-grid-item">
+            <div class="nav-grid-icon" style="background: var(--amber-light); color: var(--amber);">
+                <i class="bi bi-journal-check"></i>
+            </div>
+            <span class="title">Exams</span>
+            <span class="sub">Assessment control</span>
+        </a>
+        <a href="{% url 'results_list' %}" class="nav-grid-item">
+            <div class="nav-grid-icon" style="background: var(--green-light); color: #16a34a;">
+                <i class="bi bi-graph-up-arrow"></i>
+            </div>
+            <span class="title">Results</span>
+            <span class="sub">Published broadsheets</span>
+        </a>
+        <a href="{% url 'report_card_select' %}" class="nav-grid-item">
+            <div class="nav-grid-icon" style="background: #faf5ff; color: #9333ea;">
+                <i class="bi bi-file-earmark-pdf-fill"></i>
+            </div>
+            <span class="title">Reports</span>
+            <span class="sub">Report cards & PDFs</span>
+        </a>
+        <a href="{% url 'manage_classes' %}" class="nav-grid-item">
+            <div class="nav-grid-icon" style="background: #f0fdfa; color: #0d9488;">
+                <i class="bi bi-diagram-3"></i>
+            </div>
+            <span class="title">Classes</span>
+            <span class="sub">Grade & stream setup</span>
+        </a>
+        <a href="{% url 'manage_faculty_matrix' %}" class="nav-grid-item">
+            <div class="nav-grid-icon" style="background: var(--pink-light); color: var(--pink);">
+                <i class="bi bi-diagram-3-fill"></i>
+            </div>
+            <span class="title">Faculty</span>
+            <span class="sub">Teacher allocations</span>
+        </a>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- 5. ENROLLMENT DEMOGRAPHICS — Class Population + Gender Split     -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">School Demographics & Enrollment</div>
+            <span class="panel-badge" style="background: var(--blue-light); color: #1e40af;">
+                {{ total_students }} Learners
+            </span>
+        </div>
+
+        <!-- Gender Split -->
+        <div class="gender-row">
+            <div class="gender-card">
+                <div class="gender-icon" style="background: var(--blue-light); color: var(--blue);">
+                    <i class="bi bi-gender-male"></i>
+                </div>
+                <div>
+                    <div class="g-num">{{ boys_count }}</div>
+                    <div class="g-lbl">Male Learners</div>
+                </div>
+            </div>
+            <div class="gender-card">
+                <div class="gender-icon" style="background: var(--pink-light); color: var(--pink);">
+                    <i class="bi bi-gender-female"></i>
+                </div>
+                <div>
+                    <div class="g-num">{{ girls_count }}</div>
+                    <div class="g-lbl">Female Learners</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Class Breakdown -->
+        <div class="enroll-grid">
+            {% for grade_name, data in class_stats.items %}
+            <div class="enroll-card">
+                <div class="grade-name">{{ grade_name }}</div>
+                <div class="total">{{ data.total }}</div>
+                <div class="stream-row">
+                    {% if data.streams %}
+                        {% for stream_name, stream_count in data.streams.items %}
+                            <span class="stream-chip">{{ stream_name }}: {{ stream_count }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span style="font-size: 10px; color: #94a3b8; font-style: italic;">No streams</span>
+                    {% endif %}
+                </div>
+                {% if data.total > 0 %}
+                    <span class="status-chip chip-active">Active</span>
+                {% else %}
+                    <span class="status-chip chip-empty">Empty</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- 6. ACADEMIC PERFORMANCE — Grade Progress + Analytics             -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">Academic Performance Snapshot</div>
+            <span class="panel-badge" style="background: var(--green-light); color: #166534;">
+                {{ active_term_label }}
+            </span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+            <!-- Grade Performance Bars -->
+            <div style="border: 1px solid var(--border); border-radius: 12px; padding: 18px; background: var(--soft);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <strong style="font-size: 13px; color: var(--dark);">Grade Comparison</strong>
+                    <span style="font-size: 20px; font-weight: 900; color: var(--dark);">{{ overall_average }}%</span>
+                </div>
+                {% for row in grade_performance_rows %}
+                <div class="grade-bar-row">
+                    <div class="grade-bar-label">
+                        <span>{{ row.label }}</span>
+                        <span>{{ row.score }}%</span>
+                    </div>
+                    <div class="grade-bar-track">
+                        <div class="grade-bar-fill" style="width: {{ row.score }}%; background: {{ row.color }};"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Quick Stats -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <div style="border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: #fff;">
+                    <span style="font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px;">Completion Rate</span>
+                    <h4 style="font-size: 26px; margin: 6px 0 0; color: var(--dark); font-weight: 900;">{{ completion_rate }}%</h4>
+                </div>
+                <div style="border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: #fff;">
+                    <span style="font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px;">Missing Entries</span>
+                    <h4 style="font-size: 26px; margin: 6px 0 0; color: var(--red); font-weight: 900;">{{ missing_entries_count }}</h4>
+                </div>
+                <div style="border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: #fff;">
+                    <span style="font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px;">Best Stream</span>
+                    <h4 style="font-size: 16px; margin: 8px 0 0; color: var(--dark); font-weight: 800;">{{ best_stream }}</h4>
+                </div>
+                <div style="border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: #fff;">
+                    <span style="font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px;">Exam Window</span>
+                    <h4 style="font-size: 16px; margin: 8px 0 0; font-weight: 800; {% if exam_window_status == 'Open' %}color: var(--amber);{% else %}color: #16a34a;{% endif %}">
+                        {{ exam_window_status }}
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- 7. TEACHER SUBMISSION TRACKER — Who's Done, Who's Pending       -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title" style="border-left-color: var(--red);">
+                Teacher Submission Tracker
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <span class="panel-badge" style="background: var(--red-light); color: #991b1b;">
+                    {{ missing_entries_count }} Pending
+                </span>
+                <span class="panel-badge" style="background: var(--green-light); color: #166534;">
+                    {{ completed_assignments }} Complete
+                </span>
+            </div>
+        </div>
+
+        <div class="tracker-list">
+            {% for alert in missing_entries_feed %}
+            <div class="tracker-row">
+                <div class="t-icon">📝</div>
+                <div>
+                    <div class="t-subject">{{ alert.subject_name }}</div>
+                    <div class="t-meta">Assigned: <strong style="color: var(--dark);">{{ alert.teacher_name }}</strong></div>
+                    <span class="t-class">{{ alert.target_class }}</span>
+                </div>
+                <a href="tel:{{ alert.phone }}" class="tracker-nudge">
+                    <i class="bi bi-telephone-fill"></i> Nudge
+                </a>
+            </div>
+            {% empty %}
+            <div style="text-align: center; padding: 32px 20px; color: var(--muted); font-weight: 700; font-size: 13px; background: var(--soft); border-radius: 10px; border: 1px dashed #cbd5e1;">
+                <i class="bi bi-check-circle-fill" style="color: #16a34a; font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                All faculty have submitted their mark sheets. Great work!
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- 8. ADMIN OVERRIDE (Conditional)                                  -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    {% if admin_override_enabled %}
+    <div class="panel" style="border-left: 5px solid var(--red); background: #fff7ed;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <div>
+                <div class="panel-title" style="border-left-color: var(--red);">Admin Override Desk</div>
+                <p style="color: var(--muted); font-size: 13px; margin: 4px 0 0; font-weight: 600;">
+                    Bypass published-result locks to correct learner scores. Corrections recalculate immediately.
+                </p>
+            </div>
+            <a href="{% url 'manage_exams' %}" style="display: inline-flex; align-items: center; gap: 8px; background: var(--dark); color: #fff; padding: 10px 20px; border-radius: 10px; text-decoration: none; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;">
+                <i class="bi bi-gear-fill"></i> Open Override Desk
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- 9. OPERATIONS HUB — Quick Action Links                           -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="panel" style="margin-bottom: 24px;">
+        <div class="panel-header">
+            <div class="panel-title">Operations Hub</div>
+            <span class="panel-badge" style="background: #f1f5f9; color: #475569;">Quick Actions</span>
+        </div>
+
+        <div class="ops-grid">
+            <a href="{% url 'premium_csv_upload' %}" class="ops-card">
+                <div class="ops-icon" style="background: var(--blue-light); color: var(--blue);">
+                    <i class="bi bi-cloud-arrow-up-fill"></i>
+                </div>
+                <div>
+                    <div class="ops-title">CSV Import</div>
+                    <div class="ops-sub">Upload CSV learner records</div>
+                </div>
+            </a>
+            <a href="{% url 'admin_add_student' %}?tab=directory" class="ops-card">
+                <div class="ops-icon" style="background: var(--green-light); color: #16a34a;">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div>
+                    <div class="ops-title">Student Directory</div>
+                    <div class="ops-sub">View & manage all learners</div>
+                </div>
+            </a>
+            <a href="{% url 'results_list' %}" class="ops-card">
+                <div class="ops-icon" style="background: var(--amber-light); color: var(--amber);">
+                    <i class="bi bi-printer-fill"></i>
+                </div>
+                <div>
+                    <div class="ops-title">Broadsheets</div>
+                    <div class="ops-sub">Download official result sheets</div>
+                </div>
+            </a>
+            <a href="{% url 'admin_add_student' %}?tab=promotions" class="ops-card">
+                <div class="ops-icon" style="background: #faf5ff; color: #9333ea;">
+                    <i class="bi bi-arrow-up-circle-fill"></i>
+                </div>
+                <div>
+                    <div class="ops-title">Promotions</div>
+                    <div class="ops-sub">Move learners to next grade</div>
+                </div>
+            </a>
+            <a href="{% url 'class_lists' %}" class="ops-card">
+                <div class="ops-icon" style="background: var(--pink-light); color: var(--pink);">
+                    <i class="bi bi-clipboard2-data-fill"></i>
+                </div>
+                <div>
+                    <div class="ops-title">Class Lists</div>
+                    <div class="ops-sub">Mark entry sheets & registers</div>
+                </div>
+            </a>
+            <a href="{% url 'report_card_select' %}" class="ops-card">
+                <div class="ops-icon" style="background: #f0fdfa; color: #0d9488;">
+                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                </div>
+                <div>
+                    <div class="ops-title">Report Cards</div>
+                    <div class="ops-sub">Generate learner transcripts</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

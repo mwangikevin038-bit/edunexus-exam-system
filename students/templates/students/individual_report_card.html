@@ -1,0 +1,354 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+
+{% block content %}
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #f5f5f5; font-family: 'Times New Roman', Times, serif; }
+    .container-fluid { max-width: 1200px !important; margin: 0 auto !important; padding: 20px !important; }
+
+    /* REPORT CARD */
+    .report-card {
+        background: white;
+        width: 7.9in;
+        margin: 20px auto;
+        padding: 0.5in;
+        position: relative;
+        font-family: 'Times New Roman', Times, serif;
+        display: flex;
+        flex-direction: column;
+        border: none;
+        box-shadow: none !important;
+    }
+    .report-content { display: flex; flex-direction: column; flex: 1; }
+
+    /* HEADER */
+    .report-header { display: flex; align-items: center; gap: 30px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 5px solid var(--oraimo-green); }
+    .report-logo { width: 140px; height: 140px; object-fit: contain; display: block; margin: 0 auto; border: 3px solid var(--oraimo-green); border-radius: 15px; padding: 8px; background: #fff; flex-shrink: 0; }
+    .report-logo-placeholder { width: 140px; height: 140px; min-width: 140px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border: 3px solid var(--oraimo-green); border-radius: 15px; background: linear-gradient(135deg, #1a7d47 0%, #0f5a35 100%); color: #fff; font-family: 'Montserrat', sans-serif; font-size: 48px; font-weight: 900; flex-shrink: 0; }
+    .school-info { flex: 1; text-align: left; }
+    .school-info h1 { font-family: 'Montserrat', sans-serif; font-size: 28px; font-weight: 900; color: #1a1a1a; text-transform: uppercase; margin: 0; letter-spacing: -1px; }
+    .school-info .location-text { font-size: 14px; color: #666; font-weight: 600; margin-bottom: 10px; }
+    .contact-info { display: flex; gap: 20px; font-size: 12px; color: #444; font-weight: 500; margin-top: 5px; }
+    .contact-info i { color: var(--oraimo-green); margin-right: 5px; }
+    .report-title-badge { background: var(--oraimo-green); color: #000; display: inline-block; padding: 8px 25px; border-radius: 50px; font-weight: 900; font-size: 14px; margin-top: 15px; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* STUDENT DETAILS */
+    .student-details { margin: 10px 0; padding: 5px 0; border-top: 2px solid #000; border-bottom: 1px solid #eee; }
+    .detail-row { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 2px; }
+    .detail-item { display: grid; grid-template-columns: 140px 1fr; align-items: end; border-bottom: 1px dotted #ccc; padding-bottom: 2px; }
+    .detail-label { font-size: 11px; font-weight: bold; color: #444; text-transform: uppercase; font-family: Arial, sans-serif; }
+    .detail-value { font-size: 13px; font-weight: bold; color: #000; text-transform: uppercase; }
+
+    /* TABLE */
+    .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .marks-table { width: 100%; border-collapse: collapse; margin: 15px 0; min-width: 480px; }
+    .marks-table thead th { background-color: var(--oraimo-green); color: #000; padding: 8px 6px; font-size: 12px; text-transform: uppercase; border: 1px solid #000; white-space: nowrap; }
+    .marks-table td { padding: 6px; border: 1px solid #000; font-size: 12px; }
+
+    /* SUMMARY */
+    .summary { margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); border: 2px solid #000; text-align: center; }
+    .summary-grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .summary-item { padding: 10px; border-right: 1px solid #000; }
+    .summary-item:last-child { border-right: none; }
+    .summary-label { font-size: 11px; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 5px; }
+    .summary-value { font-size: 18px; font-weight: bold; }
+
+    /* REMARKS */
+    .remarks-container { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .remark-row { border-bottom: 1px solid #000; padding-bottom: 10px; }
+    .remark-header { font-size: 11px; font-weight: 900; color: var(--oraimo-green); text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .remark-text { font-size: 14px; font-style: italic; color: #333; min-height: 30px; }
+
+    /* FOOTER */
+    .footer-dates { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; }
+    .sign-box { text-align: center; border-top: 1px solid #000; padding-top: 5px; font-size: 12px; font-weight: bold; }
+    .date-box { display: flex; justify-content: flex-start; gap: 30px; font-size: 12px; font-weight: bold; border-bottom: 2px solid var(--oraimo-green); padding-bottom: 3px; }
+    .system-footer { display: block; margin-top: auto; text-align: center; width: 100%; font-size: 10px; color: #bbb; letter-spacing: 5px; text-transform: uppercase; font-weight: bold; z-index: 9999; pointer-events: none; }
+
+    /* ======================= MOBILE ======================= */
+    @media (max-width: 900px) {
+        .container-fluid {
+            padding: 10px !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
+        .premium-header-banner {
+            min-width: 700px;
+        }
+        .report-card {
+            min-width: 7.9in;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .container-fluid {
+            padding: 8px !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
+        .premium-header-banner {
+            min-width: 600px;
+        }
+        .report-card {
+            min-width: 7in;
+        }
+    }
+
+    /* PRINT */
+    @media print {
+        .sidebar, .navbar, .left-menu, .control-panel, .btn-print, .green-header-box, nav, .premium-header-banner { display: none !important; }
+        html, body { font-family: "Times New Roman", Times, serif !important; font-size: 12pt !important; height: auto !important; max-height: none !important; overflow: visible !important; visibility: visible !important; background: white !important; margin: 0 !important; padding: 0 !important; }
+        .system-footer { display: block !important; position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; height: 12mm !important; padding-top: 2mm !important; text-align: center !important; width: 100% !important; font-family: "Times New Roman", Times, serif !important; font-size: 9pt !important; color: #ccc !important; letter-spacing: 5px !important; text-transform: uppercase !important; font-weight: bold !important; z-index: 9999 !important; }
+        #reportCardsContainer { display: block !important; visibility: visible !important; position: relative !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        .report-card { display: flex !important; page-break-after: always !important; page-break-inside: avoid !important; break-after: page !important; break-inside: avoid !important; margin: 0 auto !important; width: 7.9in !important; height: 10.5in !important; padding-bottom: 18mm !important; overflow: hidden !important; border: none !important; }
+        .marks-table, .marks-table th, .marks-table td, .summary, .summary-item { border-color: #000 !important; border-width: 1.2pt !important; }
+        .report-card:last-child { page-break-after: auto !important; break-after: auto !important; }
+        @page { size: portrait; margin: 0mm 0mm 12mm 0mm; }
+    }
+
+    .report-card, #reportCardsContainer, div[class*="card"] { border: none !important; border-image: none !important; outline: none !important; box-shadow: none !important; -webkit-box-shadow: none !important; -moz-box-shadow: none !important; }
+</style>
+
+<div class="container-fluid">
+    <div class="premium-header-banner" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px 32px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <div>
+            <h2 style="font-family: system-ui, -apple-system, sans-serif; font-size: 28px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em;">Report Card Viewer</h2>
+            <p style="font-family: system-ui, -apple-system, sans-serif; font-size: 14px; font-weight: 500; color: #64748b; margin-top: 6px; margin-bottom: 0;">Official school results generated dynamically from master comment configs.</p>
+            <p style="font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: 700; color: #475569; margin-top: 10px; margin-bottom: 0;">
+                Closing: {% if closing_date %}{{ closing_date|date:"d / m / Y" }}{% else %}Not configured{% endif %}
+                &nbsp; | &nbsp;
+                Opening: {% if opening_date %}{{ opening_date|date:"d / m / Y" }}{% else %}Not configured{% endif %}
+            </p>
+        </div>
+    
+        <!-- Right-aligned clean text badge echoing the layout look -->
+        <div style="background: #f0fdf4; border: 1px solid #dcfce7; color: #166534; font-family: system-ui, -apple-system, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 16px; border-radius: 9999px;">
+            Individual View
+        </div>
+        <button onclick="downloadPDF()" class="btn-print" style="background:#111827;color:#fff;border:0;padding:10px 16px;border-radius:8px;font-weight:800;text-transform:uppercase;">
+            Download PDF
+        </button>
+    </div>
+    
+    <!-- REPORT CARDS -->
+    <div id="reportCardsContainer">
+        {% for student_data in student_marks_list %}
+        <div class="report-card">
+            <div class="report-content">
+                {% load static %}
+                <!-- HEADER -->
+                <div class="report-header">
+                    {% if request.school.logo %}
+                    <img src="{{ request.school.logo.url }}" alt="School Logo" class="report-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="report-logo-placeholder" style="display:none;">{{ request.school.name|truncatechars:1 }}</div>
+                    {% else %}
+                    <div class="report-logo-placeholder">{{ request.school.name|truncatechars:1 }}</div>
+                    {% endif %}
+                    <div class="school-info">
+                        <h1>{{ request.school.name|upper }}</h1>
+                        <p class="location-text">{{ request.school.address }}</p>
+                        <div class="contact-info">
+                            <span><i class="bi bi-envelope-fill"></i> {{ request.school.email }}</span>
+                            <span><i class="bi bi-telephone-fill"></i> {{ request.school.phone_number }}</span>
+                        </div>
+        
+                        <div class="report-title-badge">
+                            Student Assessment Report
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- STUDENT DETAILS SECTION -->
+                <div class="student-details">
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">STUDENT NAME:</span>
+                            <span class="detail-value">{{ student_data.student.name }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">ADMISSION NO:</span>
+                            <span class="detail-value">{{ student_data.student.admission_no }}</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">CLASS / GRADE:</span>
+                            <span class="detail-value">{{ student_data.student.class_name }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">STREAM:</span>
+                            <span class="detail-value">{{ student_data.student.stream }}</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">TERM:</span>
+                            <span class="detail-value">{{ selected_term }}</span>
+                        </div>
+                        <!-- ASSESSMENT MOVED HERE TO SAVE SPACE -->
+                        <div class="detail-item">
+                            <span class="detail-label">ASSESSMENT:</span>
+                            <span class="detail-value">{{ selected_assessment }}</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">YEAR:</span>
+                            <span class="detail-value">{{ selected_year }}</span>
+                        </div>
+                        <div class="detail-item" style="border: none;"></div> <!-- Empty space to balance grid -->
+                    </div>
+                </div>
+
+
+                <!-- MARKS TABLE -->
+                <div class="table-scroll">
+                <table class="marks-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Learning Area</th>
+                            <th>Marks</th>
+                            <th>Performance Level</th>
+                            <th>Points</th>
+                            <th>Teacher</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mark in student_data.marks %}
+                            {% if mark.score != None and mark.score != "-" %}
+                            <tr>
+                                <td style="font-weight: bold;">{{ mark.subject_name }}</td>
+                                <td style="text-align: center;">{% if mark.is_absent %}AB{% else %}{{ mark.score }}{% endif %}</td>
+                                <td style="text-align: center;">{{ mark.performance_level|default:"-" }}</td>
+                                <td style="text-align: center;">{% if mark.is_absent %}-{% else %}{{ mark.points|default:"-" }}{% endif %}</td>
+                                <td style="text-align: left; padding-left: 10px; font-weight: bold; font-style: italic;">{{ mark.teacher_name }}</td>
+
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+                </div>
+
+                <!-- SUMMARY SECTION WITH NEW PLV BOX --> 
+                <div class="summary summary-grid-4">
+                    <div class="summary-item"> 
+                        <span class="summary-label">Total Marks</span> 
+                        <span class="summary-value">{{ student_data.total_marks }}</span> 
+                    </div> 
+                    <div class="summary-item"> 
+                        <span class="summary-label">Total Points</span> 
+                        <span class="summary-value">{{ student_data.total_points }}</span> 
+                    </div> 
+                    <!-- ðŸŒŸ NEW OVERALL PLV COLUMN BOX -->
+                    <div class="summary-item"> 
+                        <span class="summary-label" style="color: #000 !important; font-weight: 800;">Overall PLV</span> 
+                        <span class="summary-value" style="color: #000 !important;">{{ student_data.overall_plv|default:overall_plv }}</span> 
+                    </div> 
+                    <div class="summary-item"> 
+                        <span class="summary-label">Position</span> 
+                        <span class="summary-value">{{ student_data.position }} / {{ class_count }}</span> 
+                    </div> 
+                </div>
+
+                <div class="remarks-container">
+                    <!-- CLASS TEACHER SECTION --> 
+                    <div class="remark-row"> 
+                        <div class="remark-header"> 
+                            <span>Class Teacher's Remarks</span> 
+                            <span>Signature: ____________________</span> 
+                        </div> 
+                        <div class="remark-text" style="font-style: italic; font-weight: 600;"> 
+                            <!-- ðŸŒŸ Connected directly to your master comments system selection -->
+                            {{ student_data.class_teacher_remark|default:class_teacher_remark }} 
+                        </div> 
+                    </div>
+
+
+                    <!-- HEAD TEACHER SECTION -->
+                    <div class="remark-row">
+                        <div class="remark-header">
+                            <span>Head Teacher's Remarks</span>
+                            <span>Signature & Stamp: ____________________</span>
+                        </div>
+                        <div class="remark-text">
+                            {{ student_data.headteacher_comment|default:headteacher_comment }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DATES SECTION -->
+                <div class="footer-dates">
+                    <div class="date-box">
+                        <span>CLOSING DATE:</span>
+                        <span>{% if student_data.closing_date %}{{ student_data.closing_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span>
+                    </div>
+                    <div class="date-box">
+                        <span>OPENING DATE:</span>
+                        <span>{% if student_data.opening_date %}{{ student_data.opening_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span>
+                    </div>
+                </div>
+
+
+                <!-- PROFESSIONAL WATERMARK -->
+                <div class="system-footer">
+                    â€” GENERATED BY EDUNEXUS EXAM MANAGEMENT SYSTEM â€”
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- 2. SCRIPT TAG SECOND (For JavaScript) -->
+<script>
+    async function downloadPDF() {
+        console.log("Starting bulk download...");
+        // 1. Find every report card on the page
+        const reportCards = document.querySelectorAll('.report-card');
+
+        if (reportCards.length === 0) {
+            alert("âŒ No report cards found to download.");
+            return;
+        }
+
+        // 2. Loop through each card one by one
+        for (let i = 0; i < reportCards.length; i++) {
+            const card = reportCards[i];
+            
+            // 3. Get the student name from the specific card
+            // We assume the first '.detail-value' is the Student Name
+            const nameElement = card.querySelector('.detail-value');
+            const studentName = nameElement ? nameElement.textContent.trim().replace(/\s+/g, '_') : `Student_${i+1}`;
+
+            card.classList.add('pdf-export-card');
+
+            const opt = {
+                margin:       0,
+                filename:     `${studentName}_Report_Card.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true, 
+                    letterRendering: true,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            // 4. Download this specific card and WAIT for it to finish
+            await html2pdf().set(opt).from(card).save();
+            card.classList.remove('pdf-export-card');
+        }
+    }
+</script>
+
+{% endblock %}
+
+

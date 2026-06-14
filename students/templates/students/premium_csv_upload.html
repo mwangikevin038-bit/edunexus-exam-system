@@ -1,0 +1,555 @@
+{% extends "students/base.html" %}
+{% load static %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<style>
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0;
+    --primary: #2563eb; --primary-hover: #1d4ed8;
+    --success: #16a34a; --warning: #f59e0b; --error: #dc2626;
+    --text: #1e293b; --muted: #64748b; --subtle: #f1f5f9;
+  }
+
+  .onboard-container { max-width: 960px; margin: 0 auto; padding: 30px 20px; }
+  .onboard-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px; margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .onboard-title {
+    font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 4px;
+  }
+  .onboard-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+  /* Step indicators */
+  .step-bar { display: flex; gap: 0; margin-bottom: 24px; }
+  .step-item {
+    flex: 1; text-align: center; padding: 10px 0; font-size: 12px; font-weight: 700;
+    color: var(--muted); border-bottom: 3px solid var(--border); transition: all .2s;
+  }
+  .step-item.active { color: var(--primary); border-color: var(--primary); }
+  .step-item.done   { color: var(--success); border-color: var(--success); }
+  .step-item .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%; background: var(--subtle);
+    font-size: 12px; font-weight: 800; margin-bottom: 4px;
+  }
+  .step-item.active .step-num { background: var(--primary); color: #fff; }
+  .step-item.done .step-num   { background: var(--success); color: #fff; }
+
+  /* Upload zone */
+  .drop-zone {
+    border: 2px dashed #93c5fd; border-radius: 12px; padding: 40px 20px;
+    text-align: center; cursor: pointer; background: #f8fafc; transition: all .2s;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--primary); background: #eff6ff;
+  }
+  .drop-zone input[type="file"] { display: none; }
+
+  /* Mapping grid */
+  .mapping-grid { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 8px 12px; align-items: center; }
+  .mapping-label { font-size: 13px; font-weight: 700; color: var(--text); text-align: right; }
+  .mapping-arrow { text-align: center; color: var(--muted); font-size: 16px; }
+  .mapping-select {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 13px; background: #fff; color: var(--text);
+    transition: border-color .15s;
+  }
+  .mapping-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+  .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 14px; }
+  .preview-table th {
+    background: var(--subtle); padding: 8px 10px; text-align: left;
+    font-weight: 700; color: var(--muted); border-bottom: 2px solid var(--border);
+  }
+  .preview-table td {
+    padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text);
+  }
+
+  /* Progress bar */
+  .progress-track {
+    width: 100%; height: 10px; background: var(--subtle); border-radius: 999px;
+    overflow: hidden; margin: 12px 0;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--primary), var(--success));
+    border-radius: 999px; transition: width .3s ease;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all .15s; text-decoration: none;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: #15803d; }
+  .btn-outline {
+    background: transparent; color: var(--primary); border: 1px solid var(--primary);
+  }
+  .btn-outline:hover { background: #eff6ff; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Results */
+  .result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+  .result-box {
+    padding: 14px; border-radius: 10px; text-align: center;
+  }
+  .result-box .num { font-size: 28px; font-weight: 900; }
+  .result-box .lbl { font-size: 11px; font-weight: 700; margin-top: 2px; }
+  .result-created  { background: #f0fdf4; color: #166534; }
+  .result-updated  { background: #eff6ff; color: #1e40af; }
+  .result-skipped  { background: #fefce8; color: #854d0e; }
+  .result-errors   { background: #fef2f2; color: #991b1b; }
+
+  .error-list {
+    max-height: 160px; overflow-y: auto; background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #991b1b;
+    margin-top: 10px;
+  }
+  .error-list li { margin-bottom: 4px; }
+
+  .hidden { display: none; }
+
+  @media (max-width: 640px) {
+    .mapping-grid { grid-template-columns: 1fr; gap: 6px; }
+    .mapping-label { text-align: left; }
+    .mapping-arrow { display: none; }
+    .result-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="onboard-container">
+  <div class="onboard-card">
+    <div class="onboard-title">CSV Student Onboarding</div>
+    <div class="onboard-subtitle">Upload a CSV file, map columns to your fields, and import students in the background.</div>
+
+    <!-- Step Bar -->
+    <div class="step-bar">
+      <div class="step-item active" id="step-ind-1"><span class="step-num">1</span><br>Upload CSV</div>
+      <div class="step-item" id="step-ind-2"><span class="step-num">2</span><br>Map Columns</div>
+      <div class="step-item" id="step-ind-3"><span class="step-num">3</span><br>Review</div>
+      <div class="step-item" id="step-ind-4"><span class="step-num">4</span><br>Import</div>
+    </div>
+
+    <!-- ═══════════════════ STEP 1: UPLOAD ═══════════════════ -->
+    <div id="step-1">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="csvInput" accept=".csv">
+        <div style="font-size:2.5rem;margin-bottom:10px">📄</div>
+        <div style="font-weight:800;color:var(--text);font-size:14px;margin-bottom:4px">
+          Click or drag a CSV file here
+        </div>
+        <div style="color:var(--muted);font-size:12px">
+          Only <code>.csv</code> files are accepted. Max 10,000 rows.
+        </div>
+      </div>
+      <div id="fileInfo" style="margin-top:10px;font-size:13px;color:var(--success);font-weight:700" class="hidden"></div>
+    </div>
+
+    <!-- ═══════════════════ STEP 2: MAP ═══════════════════ -->
+    <div id="step-2" class="hidden">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:4px">Map Your Columns</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px">
+        Match each CSV header to the correct system field. Required fields are marked with <span style="color:var(--error)">*</span>.
+      </p>
+
+      <div class="mapping-grid" id="mappingGrid"></div>
+
+      <div style="margin-top:16px">
+        <button class="btn btn-primary" onclick="goToStep3()">
+          <i class="bi bi-arrow-right"></i> Continue to Review
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ STEP 3: REVIEW ═══════════════════ -->
+    <div id="step-3" class="hidden">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:4px">Review Data</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Preview of the first 10 rows after mapping. Confirm everything looks correct.
+      </p>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">
+        <span id="reviewCount"></span> records ready to import
+      </div>
+      <div style="overflow-x:auto">
+        <table class="preview-table" id="previewTable"></table>
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button class="btn btn-outline" onclick="goToStep(2)">
+          <i class="bi bi-arrow-left"></i> Back
+        </button>
+        <button class="btn btn-success" id="startImportBtn" onclick="startImport()">
+          <i class="bi bi-rocket-takeoff"></i> Start Background Import
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ STEP 4: PROGRESS ═══════════════════ -->
+    <div id="step-4" class="hidden">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:4px">Importing Students...</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px" id="progressMsg">
+        Connecting to background worker...
+      </p>
+
+      <div class="progress-track">
+        <div class="progress-fill" id="progressBar" style="width:0%"></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;text-align:center" id="progressPct">0%</div>
+
+      <div class="result-grid" id="resultGrid" class="hidden">
+        <div class="result-box result-created"><div class="num" id="resCreated">0</div><div class="lbl">Created</div></div>
+        <div class="result-box result-updated"><div class="num" id="resUpdated">0</div><div class="lbl">Updated</div></div>
+        <div class="result-box result-skipped"><div class="num" id="resSkipped">0</div><div class="lbl">Skipped</div></div>
+        <div class="result-box result-errors"><div class="num" id="resErrors">0</div><div class="lbl">Errors</div></div>
+      </div>
+
+      <div id="errorList" class="error-list hidden"></div>
+
+      <div id="completionActions" class="hidden" style="margin-top:16px;display:flex;gap:10px">
+        <a href="{% url 'class_lists' %}" class="btn btn-primary">
+          <i class="bi bi-list-ul"></i> View Class Lists
+        </a>
+        <button class="btn btn-outline" onclick="resetWizard()">
+          <i class="bi bi-arrow-repeat"></i> Upload Another File
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   PREMIUM CSV ONBOARDING ENGINE — Client-Side Logic
+   Uses PapaParse for fast CSV parsing, then maps + sends to backend.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const CSRF_TOKEN = '{{ csrf_token }}';
+const SYSTEM_FIELDS = [
+  { key: 'student_name',  label: 'Student Name',  required: true  },
+  { key: 'admission_no',  label: 'Admission No',  required: false },
+  { key: 'assessment_no', label: 'Assessment No',  required: false },
+  { key: 'class_name',    label: 'Class / Form',  required: true  },
+  { key: 'stream',        label: 'Stream',         required: true  },
+  { key: 'term',          label: 'Term',           required: false },
+  { key: 'gender',        label: 'Gender',         required: false },
+  { key: 'religion',      label: 'Religion',       required: false },
+  { key: 'parent_name',   label: 'Parent Name',    required: true  },
+  { key: 'parent_phone',  label: 'Parent Phone',   required: true  },
+];
+
+const AUTO_MAP = {
+  'adm': 'admission_no', 'adm no': 'admission_no', 'admission': 'admission_no', 'admission number': 'admission_no',
+  'adm_no': 'admission_no', 'admno': 'admission_no', 'register no': 'admission_no',
+  'name': 'student_name', 'student name': 'student_name', 'learner name': 'student_name',
+  'student': 'student_name', 'full name': 'student_name', 'pupil name': 'student_name',
+  'class': 'class_name', 'form': 'class_name', 'grade': 'class_name', 'class_name': 'class_name',
+  'stream': 'stream', 'house': 'stream',
+  'term': 'term',
+  'gender': 'gender', 'sex': 'gender',
+  'religion': 'religion', 'religion subject': 'religion', 'rel sub': 'religion',
+  'parent name': 'parent_name', 'guardian name': 'parent_name', 'parent': 'parent_name',
+  'parent_name': 'parent_name', 'guardian': 'parent_name', 'father name': 'parent_name', 'mother name': 'parent_name',
+  'parent phone': 'parent_phone', 'guardian phone': 'parent_phone', 'phone': 'parent_phone',
+  'parent_phone': 'parent_phone', 'contact phone': 'parent_phone', 'mobile': 'parent_phone', 'tel': 'parent_phone',
+  'assessment no': 'assessment_no', 'assessment_no': 'assessment_no', 'ass no': 'assessment_no', 'ass_no': 'assessment_no',
+};
+
+let csvHeaders = [];
+let csvData = [];
+let mapping = {};
+
+/* ── Drop zone ──────────────────────────────────────────────────────── */
+const dropZone = document.getElementById('dropZone');
+const csvInput = document.getElementById('csvInput');
+
+dropZone.addEventListener('click', () => csvInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+csvInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+/* ── File handler ───────────────────────────────────────────────────── */
+function handleFile(file) {
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    alert('Please upload a .csv file.');
+    return;
+  }
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: h => h.trim(),
+    complete: function(results) {
+      csvHeaders = results.meta.fields || [];
+      csvData = results.data;
+
+      if (csvData.length > 10000) {
+        alert('Maximum 10,000 rows allowed. Your file has ' + csvData.length + ' rows.');
+        return;
+      }
+      if (csvData.length === 0) {
+        alert('The CSV file appears to be empty.');
+        return;
+      }
+
+      document.getElementById('fileInfo').textContent =
+        '✓ Loaded "' + file.name + '" — ' + csvData.length + ' rows, ' + csvHeaders.length + ' columns';
+      document.getElementById('fileInfo').classList.remove('hidden');
+
+      buildMappingUI();
+      goToStep(2);
+    },
+    error: function(err) {
+      alert('Failed to parse CSV: ' + err.message);
+    }
+  });
+}
+
+/* ── Auto-map headers ───────────────────────────────────────────────── */
+function autoMapKey(csvHeader) {
+  const h = csvHeader.toLowerCase().replace(/[_\-]/g, ' ').trim();
+  if (AUTO_MAP[h]) return AUTO_MAP[h];
+  for (const [pattern, field] of Object.entries(AUTO_MAP)) {
+    if (h.includes(pattern)) return field;
+  }
+  return '';
+}
+
+/* ── Step 2: Build mapping UI ───────────────────────────────────────── */
+function buildMappingUI() {
+  const grid = document.getElementById('mappingGrid');
+  grid.innerHTML = '';
+  mapping = {};
+
+  SYSTEM_FIELDS.forEach(sf => {
+    const mappedVal = autoMapKey(sf.label);
+    mapping[sf.key] = mappedVal;
+
+    const label = document.createElement('div');
+    label.className = 'mapping-label';
+    label.innerHTML = sf.label + (sf.required ? ' <span style="color:var(--error)">*</span>' : '');
+
+    const arrow = document.createElement('div');
+    arrow.className = 'mapping-arrow';
+    arrow.textContent = '→';
+
+    const select = document.createElement('select');
+    select.className = 'mapping-select';
+    select.id = 'map-' + sf.key;
+    select.dataset.field = sf.key;
+
+    let optNone = document.createElement('option');
+    optNone.value = '';
+    optNone.textContent = '— Not in CSV —';
+    select.appendChild(optNone);
+
+    csvHeaders.forEach(h => {
+      let opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = h;
+      select.appendChild(opt);
+    });
+
+    if (mappedVal && csvHeaders.includes(mappedVal)) select.value = mappedVal;
+
+    select.addEventListener('change', () => { mapping[sf.key] = select.value; });
+
+    grid.appendChild(label);
+    grid.appendChild(arrow);
+    grid.appendChild(select);
+  });
+}
+
+/* ── Step 3: Build preview table ────────────────────────────────────── */
+function goToStep3() {
+  const required = SYSTEM_FIELDS.filter(f => f.required);
+  const missing = required.filter(f => !mapping[f.key]);
+  if (missing.length) {
+    alert('Please map the required fields: ' + missing.map(f => f.label).join(', '));
+    return;
+  }
+  buildPreview();
+  goToStep(3);
+}
+
+function buildPreview() {
+  const mapped = getMappedData();
+  const count = mapped.length;
+  document.getElementById('reviewCount').textContent = count;
+
+  const table = document.getElementById('previewTable');
+  const showFields = SYSTEM_FIELDS.filter(f => mapping[f.key]);
+  const headers = showFields.map(f => f.label);
+  const rows = mapped.slice(0, 10);
+
+  let html = '<thead><tr>';
+  headers.forEach(h => { html += '<th>' + h + '</th>'; });
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(row => {
+    html += '<tr>';
+    showFields.forEach(f => { html += '<td>' + (row[f.key] || '—') + '</td>'; });
+    html += '</tr>';
+  });
+
+  if (count > 10) {
+    html += '<tr><td colspan="' + headers.length + '" style="text-align:center;color:var(--muted);font-style:italic">... and ' + (count - 10) + ' more rows</td></tr>';
+  }
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+/* ── Map data and send to backend ───────────────────────────────────── */
+function getMappedData() {
+  return csvData.map(row => {
+    const mapped = {};
+    SYSTEM_FIELDS.forEach(sf => {
+      const csvCol = mapping[sf.key];
+      if (csvCol) mapped[sf.key] = (row[csvCol] || '').trim();
+      else mapped[sf.key] = '';
+    });
+    return mapped;
+  }).filter(row => row.student_name || row.parent_phone);
+}
+
+function startImport() {
+  const btn = document.getElementById('startImportBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Dispatching...';
+
+  const mapped = getMappedData();
+
+  fetch("{% url 'csv_upload_api' %}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN,
+    },
+    body: JSON.stringify({ rows: mapped }),
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      goToStep(4);
+      connectWebSocket(data.upload_id);
+    } else {
+      alert('Upload failed: ' + (data.error || 'Unknown error'));
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-rocket-takeoff"></i> Start Background Import';
+    }
+  })
+  .catch(err => {
+    alert('Network error: ' + err.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-rocket-takeoff"></i> Start Background Import';
+  });
+}
+
+/* ── WebSocket: real-time progress ──────────────────────────────────── */
+function connectWebSocket(uploadId) {
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = wsProtocol + '//' + window.location.host + '/ws/upload-progress/' + uploadId + '/';
+
+  let ws;
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (e) {
+    pollProgress(uploadId);
+    return;
+  }
+
+  ws.onmessage = function(e) {
+    const d = JSON.parse(e.data);
+    updateProgressUI(d);
+  };
+
+  ws.onerror = function() {
+    ws.close();
+    pollProgress(uploadId);
+  };
+
+  ws.onclose = function() {
+    pollProgress(uploadId);
+  };
+}
+
+function pollProgress(uploadId) {
+  fetch("{% url 'csv_upload_progress' %}?upload_id=" + uploadId)
+    .then(r => r.json())
+    .then(d => {
+      updateProgressUI(d);
+      if (d.status === 'processing') {
+        setTimeout(() => pollProgress(uploadId), 1500);
+      }
+    })
+    .catch(() => setTimeout(() => pollProgress(uploadId), 3000));
+}
+
+function updateProgressUI(d) {
+  const total = d.total || 1;
+  const pct = Math.round(((d.processed || 0) / total) * 100);
+
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressMsg').textContent = d.message || 'Processing...';
+
+  document.getElementById('resCreated').textContent = d.created || 0;
+  document.getElementById('resUpdated').textContent = d.updated || 0;
+  document.getElementById('resSkipped').textContent = d.skipped || 0;
+  document.getElementById('resErrors').textContent = (d.errors || []).length;
+  document.getElementById('resultGrid').classList.remove('hidden');
+
+  if (d.errors && d.errors.length > 0) {
+    const el = document.getElementById('errorList');
+    el.innerHTML = '<strong>Errors (' + d.errors.length + '):</strong><ul>' +
+      d.errors.map(e => '<li>' + e + '</li>').join('') + '</ul>';
+    el.classList.remove('hidden');
+  }
+
+  if (d.status === 'completed' || d.status === 'completed_with_errors' || d.status === 'error') {
+    document.getElementById('progressMsg').textContent = d.message || 'Done.';
+    document.getElementById('completionActions').classList.remove('hidden');
+    document.getElementById('startImportBtn').disabled = false;
+  }
+}
+
+/* ── Navigation ──────────────────────────────────────────────────────── */
+function goToStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById('step-' + i).classList.toggle('hidden', i !== n);
+    const ind = document.getElementById('step-ind-' + i);
+    ind.classList.remove('active', 'done');
+    if (i < n) ind.classList.add('done');
+    if (i === n) ind.classList.add('active');
+  }
+}
+
+function resetWizard() {
+  csvHeaders = [];
+  csvData = [];
+  mapping = {};
+  document.getElementById('csvInput').value = '';
+  document.getElementById('fileInfo').classList.add('hidden');
+  document.getElementById('errorList').classList.add('hidden');
+  document.getElementById('completionActions').classList.add('hidden');
+  document.getElementById('resultGrid').classList.add('hidden');
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('progressPct').textContent = '0%';
+  document.getElementById('resCreated').textContent = '0';
+  document.getElementById('resUpdated').textContent = '0';
+  document.getElementById('resSkipped').textContent = '0';
+  document.getElementById('resErrors').textContent = '0';
+  goToStep(1);
+}
+</script>
+
+{% endblock %}

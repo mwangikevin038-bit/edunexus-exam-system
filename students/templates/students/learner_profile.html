@@ -1,0 +1,512 @@
+{% extends 'students/base.html' %}
+{% block content %}
+<style>
+    .learner-page {
+        min-height: 100vh;
+        background: #f6f8fb;
+        padding: 38px 42px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .learner-hero,
+    .metric-card,
+    .profile-card,
+    .history-card {
+        background: #ffffff;
+        border: 1px solid #dbe3ee;
+        border-radius: 16px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+    }
+
+    .learner-hero {
+        border-left: 8px solid var(--oraimo-green, #9be816);
+        padding: 28px 32px;
+        margin-bottom: 22px;
+        display: flex;
+        justify-content: space-between;
+        gap: 22px;
+        flex-wrap: wrap;
+    }
+
+    .learner-hero h1 {
+        margin: 0 0 8px;
+        color: #0f172a;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 34px;
+        font-weight: 900;
+    }
+
+    .learner-hero p {
+        margin: 0;
+        color: #64748b;
+        font-weight: 750;
+    }
+
+    .hero-pill {
+        align-self: flex-start;
+        background: #ecfccb;
+        color: #365314;
+        border: 1px solid #bef264;
+        border-radius: 999px;
+        padding: 10px 16px;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .metric-card {
+        padding: 18px 20px;
+    }
+
+    .metric-card span,
+    .profile-card span {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 7px;
+    }
+
+    .metric-card strong {
+        display: block;
+        color: #0f172a;
+        font-size: 26px;
+        font-weight: 900;
+    }
+
+    .main-grid {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 22px;
+        align-items: start;
+    }
+
+    .profile-card {
+        padding: 22px;
+    }
+
+    .profile-card h2,
+    .history-card h2 {
+        margin: 0 0 16px;
+        color: #0f172a;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 22px;
+        font-weight: 900;
+    }
+
+    .profile-row {
+        border-bottom: 1px solid #eef2f7;
+        padding: 12px 0;
+    }
+
+    .profile-row:last-child {
+        border-bottom: none;
+    }
+
+    .profile-row strong {
+        color: #0f172a;
+        font-weight: 900;
+    }
+
+    .edit-form {
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid #eef2f7;
+    }
+
+    .edit-form label {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin: 12px 0 7px;
+    }
+
+    .edit-form input,
+    .edit-form select {
+        width: 100%;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 11px 12px;
+        color: #0f172a;
+        font-weight: 800;
+    }
+
+    .save-btn {
+        width: 100%;
+        margin-top: 16px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--oraimo-green, #9be816);
+        color: #0f172a;
+        padding: 13px 14px;
+        font-weight: 900;
+        cursor: pointer;
+    }
+
+    .chart-box {
+        height: 260px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 18px;
+        background: #f8fafc;
+        margin-bottom: 22px;
+    }
+
+    .bars {
+        height: 100%;
+        display: flex;
+        align-items: end;
+        gap: 12px;
+        border-left: 2px solid #cbd5e1;
+        border-bottom: 2px solid #cbd5e1;
+        padding: 10px 10px 0;
+        overflow-x: auto;
+    }
+
+    .bar-wrap {
+        min-width: 72px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+    }
+
+    .bar {
+        width: 38px;
+        border-radius: 9px 9px 0 0;
+        background: linear-gradient(180deg, var(--oraimo-green, #9be816), #65a30d);
+        min-height: 4px;
+    }
+
+    .bar-value {
+        font-size: 11px;
+        font-weight: 900;
+        color: #0f172a;
+        margin-bottom: 5px;
+    }
+
+    .bar-label {
+        margin-top: 8px;
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 850;
+        text-align: center;
+        line-height: 1.2;
+    }
+
+    .history-card {
+        padding: 24px;
+        margin-bottom: 18px;
+    }
+
+    .exam-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+
+    .exam-head h3 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 18px;
+        font-weight: 900;
+    }
+
+    .exam-head p {
+        margin: 5px 0 0;
+        color: #64748b;
+        font-weight: 750;
+    }
+
+    .plv-pill {
+        background: #ecfccb;
+        color: #365314;
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 900;
+        align-self: flex-start;
+    }
+
+    .marks-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .marks-table th {
+        background: #f8fafc;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        padding: 13px 14px;
+        text-align: left;
+        border-bottom: 1px solid #dbe3ee;
+    }
+
+    .marks-table td {
+        padding: 13px 14px;
+        border-bottom: 1px solid #eef2f7;
+        color: #0f172a;
+        font-weight: 800;
+    }
+
+    .empty-state {
+        background: #ffffff;
+        border: 1px dashed #cbd5e1;
+        border-radius: 16px;
+        padding: 44px 28px;
+        text-align: center;
+        color: #64748b;
+        font-weight: 750;
+    }
+
+    @media (max-width: 1000px) {
+        .main-grid { grid-template-columns: 1fr !important; }
+        .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    }
+
+    @media (max-width: 640px) {
+        .learner-page { padding: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .learner-hero { flex-direction: column; gap: 12px; padding: 18px 16px; }
+        .learner-hero h1 { font-size: 22px; }
+        .learner-hero p { font-size: 12px; }
+        .hero-pill { font-size: 10px; padding: 6px 12px; }
+        .metrics-grid { grid-template-columns: 1fr !important; gap: 10px; }
+        .metrics-card { padding: 14px; border-radius: 10px; }
+        .metrics-card span { font-size: 10px; }
+        .metrics-card strong { font-size: 18px; }
+        .profile-card { padding: 16px; border-radius: 12px; }
+        .history-card { padding: 14px; border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .marks-table { min-width: 450px; }
+        .marks-table th, .marks-table td { padding: 10px 12px; font-size: 11px; }
+    }
+</style>
+
+<div class="learner-page">
+    {% if messages %}
+        {% for message in messages %}
+            <div style="padding:10px 16px;border-radius:8px;margin-bottom:12px;font-weight:600;font-size:13px;
+                {% if message.tags == 'success' %}background:#dcfce7;color:#166534;border:1px solid #bbf7d0;
+                {% elif message.tags == 'error' %}background:#fef2f2;color:#991b1b;border:1px solid #fecaca;
+                {% else %}background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if form.non_field_errors %}
+        <div style="padding:10px 16px;border-radius:8px;margin-bottom:12px;font-weight:600;font-size:13px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;">
+            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="learner-hero">
+        <div>
+            <h1>{{ student.name }}</h1>
+            <p>Longitudinal learner account showing assessment history, performance levels, and progress across years.</p>
+        </div>
+        <span class="hero-pill">{{ student.class_name }} {{ student.stream }}</span>
+    </section>
+
+    <div class="metrics-grid">
+        <div class="metric-card"><span>Admission No</span><strong>{{ student.admission_no }}</strong></div>
+        <div class="metric-card"><span>Exams Captured</span><strong>{{ exam_count }}</strong></div>
+        <div class="metric-card"><span>Latest Mean</span><strong>{% if latest_exam %}{{ latest_exam.mean }}%{% else %}-{% endif %}</strong></div>
+        <div class="metric-card"><span>Latest PLV</span><strong>{% if latest_exam %}{{ latest_exam.plv }}{% else %}-{% endif %}</strong></div>
+    </div>
+
+    <div class="main-grid">
+        <aside class="profile-card">
+            <h2>Learner Details</h2>
+            <div class="profile-row"><span>Assessment No</span><strong>{{ student.assessment_no|default:"-" }}</strong></div>
+            <div class="profile-row"><span>Class Stream</span><strong>{{ student.class_name }} {{ student.stream }}</strong></div>
+            <div class="profile-row"><span>Religion Subject</span><strong>{{ student.religion|default:"Not Assigned" }}</strong></div>
+            <div class="profile-row"><span>Gender</span><strong>{{ student.gender|default:"Not Specified" }}</strong></div>
+            <div class="profile-row"><span>Guardian</span><strong>{{ student.guardian.name|default:"-" }}</strong></div>
+            <div class="profile-row"><span>Guardian Phone</span><strong>{{ student.guardian.phone|default:"-" }}</strong></div>
+
+            {% if can_edit_student %}
+                <form class="edit-form" method="POST">
+                    {% csrf_token %}
+                    <h2>Edit Account</h2>
+
+                    {% if form.errors %}
+                        <div style="padding:8px 12px;border-radius:6px;margin-bottom:10px;font-size:12px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;">
+                            {% for field, errors in form.errors.items %}
+                                {% for error in errors %}
+                                    <div>{{ field }}: {{ error }}</div>
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <label for="{{ form.admission_no.id_for_label }}">Admission No</label>
+                    {{ form.admission_no }}
+
+                    <label for="{{ form.assessment_no.id_for_label }}">Assessment No</label>
+                    {{ form.assessment_no }}
+
+                    <label for="{{ form.name.id_for_label }}">Learner Name</label>
+                    {{ form.name }}
+
+                    <label for="{{ form.religion.id_for_label }}">Religion Subject</label>
+                    {{ form.religion }}
+
+                    <label for="{{ form.gender.id_for_label }}">Gender</label>
+                    {{ form.gender }}
+
+                    <label for="{{ form.class_name.id_for_label }}">Class</label>
+                    {{ form.class_name }}
+
+                    <label for="{{ form.stream.id_for_label }}">Stream</label>
+                    {{ form.stream }}
+
+                    <label for="{{ form.term.id_for_label }}">Term</label>
+                    {{ form.term }}
+
+                    <label for="{{ form.year.id_for_label }}">Year</label>
+                    {{ form.year }}
+
+                    <label for="{{ form.guardian_name.id_for_label }}">Guardian Name</label>
+                    {% if is_school_admin %}
+                        {{ form.guardian_name }}
+                    {% else %}
+                        <input type="text" class="form-control" value="{{ student.guardian.name|default:'' }}" readonly style="background:#f1f5f9; color:#64748b; cursor:not-allowed;">
+                        <input type="hidden" name="guardian_name" value="{{ student.guardian.name|default:'' }}">
+                    {% endif %}
+
+                    <label for="{{ form.guardian_phone.id_for_label }}">Guardian Phone</label>
+                    {% if is_school_admin %}
+                        {{ form.guardian_phone }}
+                    {% else %}
+                        <input type="text" class="form-control" value="{{ student.guardian.phone|default:'' }}" readonly style="background:#f1f5f9; color:#64748b; cursor:not-allowed;">
+                        <input type="hidden" name="guardian_phone" value="{{ student.guardian.phone|default:'' }}">
+                    {% endif %}
+
+                    {% if not is_school_admin %}
+                        <p style="margin-top:8px; font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">
+                            <i class="bi bi-lock-fill"></i> Guardian details can only be edited by the school admin
+                        </p>
+                    {% endif %}
+
+                    <button class="save-btn" type="submit">Save Learner Changes</button>
+                </form>
+            {% endif %}
+        </aside>
+
+        <main>
+            <section class="history-card">
+                <h2>Performance Trend</h2>
+                {% if exam_history %}
+                    <div class="chart-box">
+                        <div class="bars">
+                            {% for item in chart_history %}
+                                <div class="bar-wrap">
+                                    <div class="bar-value">{{ item.mean }}%</div>
+                                    <div class="bar" style="height: {{ item.mean }}%;"></div>
+                                    <div class="bar-label">{{ item.exam_type }}<br>{{ item.term }} {{ item.year }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="empty-state">No assessment history has been captured for this learner yet.</div>
+                {% endif %}
+            </section>
+
+            {% for exam in exam_history %}
+                <section class="history-card">
+                    <div class="exam-head">
+                        <div>
+                            <h3>{{ exam.exam_type }}</h3>
+                            <p>{{ exam.term }} | {{ exam.year }} | Mean {{ exam.mean }}% | Total {{ exam.total }}</p>
+                        </div>
+                        <span class="plv-pill">{{ exam.plv }}</span>
+                    </div>
+                    <table class="marks-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Score</th>
+                                <th>Level</th>
+                                <th>Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mark in exam.marks %}
+                                <tr>
+                                    <td>{{ mark.subject }}</td>
+                                    <td>{{ mark.score }}</td>
+                                    <td>{{ mark.level }}</td>
+                                    <td>{{ mark.points }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            {% endfor %}
+        </main>
+    </div>
+</div>
+
+<script>
+(function() {
+    var classSelect = document.getElementById('id_class_name');
+    var streamSelect = document.getElementById('id_stream');
+    if (!classSelect || !streamSelect) return;
+
+    var savedStream = streamSelect.value;
+
+    function loadStreams(grade, preserveValue) {
+        if (!grade) return;
+        fetch('/api/streams-for-grade/?grade=' + encodeURIComponent(grade))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var streams = data.streams || [];
+                if (streams.length === 0) return;
+                var prev = preserveValue || streamSelect.value;
+                streamSelect.innerHTML = '<option value="" disabled>Select stream</option>';
+                streams.forEach(function(name) {
+                    var opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    if (name === prev) opt.selected = true;
+                    streamSelect.appendChild(opt);
+                });
+                if (prev && streams.indexOf(prev) === -1) {
+                    var opt = document.createElement('option');
+                    opt.value = prev;
+                    opt.textContent = prev + ' (current)';
+                    opt.selected = true;
+                    streamSelect.appendChild(opt);
+                }
+            });
+    }
+
+    classSelect.addEventListener('change', function() {
+        loadStreams(this.value, '');
+    });
+
+    if (classSelect.value && !savedStream) {
+        loadStreams(classSelect.value, savedStream);
+    }
+})();
+</script>
+{% endblock %}

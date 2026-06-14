@@ -1,0 +1,773 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .matrix-card {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    width: 100%;
+    max-width: 1400px;
+    padding: 30px;
+    border-radius: 16px;
+    border-left: 8px solid var(--oraimo-green);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+    margin: 0 auto;
+    box-sizing: border-box;
+  }
+
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: 310px 1fr;
+    gap: 30px;
+    margin-top: 25px;
+    align-items: start;
+  }
+
+  .setup-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 22px;
+    border-radius: 12px;
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+  }
+
+  .matrix-label {
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+    letter-spacing: 0.5px;
+  }
+
+  .matrix-select {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-weight: 600;
+    font-size: 14px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 18px;
+    transition: all 0.2s ease;
+    background-color: white;
+    color: #334155;
+  }
+
+  .matrix-select:focus {
+    border-color: var(--oraimo-green);
+    box-shadow: 0 0 0 3px rgba(164, 230, 29, 0.15);
+    outline: none;
+  }
+
+  .btn-matrix-submit {
+    background: var(--oraimo-green);
+    color: #000000;
+    font-weight: 800;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 13px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s ease;
+  }
+
+  .btn-matrix-submit:hover {
+    background: #1e293b;
+    color: #ffffff;
+  }
+
+  .filter-bar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+
+  .search-input {
+    flex: 1;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  .search-input:focus {
+    border-color: var(--oraimo-green);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(164, 230, 29, 0.15);
+  }
+
+  .btn-create-faculty {
+    background: #0f172a;
+    color: white;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 11px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .btn-create-faculty:hover {
+    background: var(--oraimo-green);
+    color: black;
+  }
+
+  .table-holder {
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+  }
+
+  .assignment-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .assignment-table th {
+    background: #f8fafc;
+    color: #475569;
+    padding: 14px 18px;
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 700;
+    border-bottom: 2px solid #e2e8f0;
+    letter-spacing: 0.5px;
+  }
+
+  .assignment-table td {
+    padding: 16px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  .badge-allocation {
+    display: inline-flex;
+    align-items: center;
+    background: #f0f4f8;
+    color: #1e3a8a;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 4px;
+    border: 1px solid #dbeafe;
+    transition: transform 0.15s ease;
+  }
+
+  .badge-allocation:hover {
+    transform: translateY(-1px);
+    background: #e0e7ff;
+  }
+
+  .edit-btn {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+  }
+
+  .edit-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+
+  .modal-overlay-bg {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+
+  .modal-container-box {
+    background: white;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 580px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+  }
+
+  .modal-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 28px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 20px 20px 0 0;
+  }
+
+  .modal-header-row h3 {
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .modal-header-row h3 i {
+    color: #a4e61d;
+    font-size: 20px;
+  }
+
+  .modal-header-row button {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #94a3b8;
+    line-height: 1;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .modal-header-row button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+
+  .modal-body-content {
+    padding: 28px;
+  }
+
+  .form-section-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .form-section-title i {
+    color: #a4e61d;
+    font-size: 12px;
+  }
+
+  .form-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .form-row-grid.single-col {
+    grid-template-columns: 1fr;
+  }
+
+  .form-group-label {
+    display: block;
+    font-weight: 700;
+    font-size: 11px;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .form-group-label .required {
+    color: #ef4444;
+    margin-left: 2px;
+  }
+
+  .form-input-field {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+    background: #f8fafc;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .form-input-field::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+  }
+
+  .form-input-field:focus {
+    border-color: #a4e61d;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(164, 230, 29, 0.12);
+  }
+
+  .form-input-field:hover {
+    border-color: #cbd5e1;
+  }
+
+  select.form-input-field {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  .form-hint-text {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .form-hint-text i {
+    color: #a4e61d;
+    font-size: 10px;
+  }
+
+  .modal-footer-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 28px 24px;
+    border-top: 1px solid #f1f5f9;
+    background: #f8fafc;
+    border-radius: 0 0 20px 20px;
+  }
+
+  .btn-cancel-modal {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    padding: 11px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .btn-cancel-modal:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+  }
+
+  .btn-submit-modal {
+    background: #a4e61d;
+    color: #0f172a;
+    border: none;
+    padding: 11px 24px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Inter', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-submit-modal:hover {
+    background: #8ec316;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(164, 230, 29, 0.3);
+  }
+
+  .email-notice {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1px solid #86efac;
+    border-left: 4px solid #22c55e;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .email-notice i {
+    color: #16a34a;
+    font-size: 16px;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+
+  .email-notice-text {
+    font-size: 12px;
+    color: #166534;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .email-notice-text strong {
+    color: #15803d;
+  }
+</style>
+
+<div class="matrix-card">
+  <div>
+    <h2 style="font-family: 'Montserrat', sans-serif; font-weight: 800; color: #0f172a; margin-top: 0; margin-bottom: 6px; letter-spacing: -0.5px;">
+      Faculty Assignment Matrix
+    </h2>
+    <p style="color: #64748b; font-size: 0.9rem; margin: 0; font-weight: 500;">
+      Link active teacher records to specialized subject parameters and target streams seamlessly.
+    </p>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div style="background-color: #f0fdf4; color: #166534; padding: 14px; border-radius: 8px; border-left: 5px solid #22c55e; margin-top: 20px; font-weight: 600; font-size: 14px;">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="matrix-grid">
+
+    <!-- Left Column: Settings Form -->
+    <div class="setup-box">
+      <h3 style="font-size: 13px; font-weight: 800; color: #1e293b; text-transform: uppercase; border-left: 4px solid var(--oraimo-green); padding-left: 8px; margin-top: 0; margin-bottom: 20px; letter-spacing: 0.5px;">
+        🔗 Deploy Allocation
+      </h3>
+      <form method="POST">
+        {% csrf_token %}
+
+        <label class="matrix-label">Select Faculty Teacher:</label>
+        <select name="teacher_id" class="matrix-select" required>
+          <option value="" selected disabled>Choose Faculty Profile</option>
+          {% for teacher in teachers %}
+            <option value="{{ teacher.id }}">{{ teacher.get_full_title }} (TSC: {{ teacher.tsc_number }})</option>
+          {% endfor %}
+        </select>
+
+        <label class="matrix-label">Subject Parameter:</label>
+        <select name="subject_code" class="matrix-select" required>
+          <option value="" selected disabled>Choose Subject Assignment</option>
+          {% for code, name in subjects %}
+            <option value="{{ code }}">{{ name }}</option>
+          {% endfor %}
+        </select>
+
+        <label class="matrix-label">Target Class / Grade:</label>
+        <select name="grade" class="matrix-select" required>
+          <option value="" selected disabled>Choose Grade</option>
+          {% for grade in grades %}
+            <option value="{{ grade }}">{{ grade }}</option>
+          {% endfor %}
+        </select>
+
+        <label class="matrix-label">Target Stream Allocations:</label>
+        <select name="stream" class="matrix-select" required>
+          <option value="" selected disabled>Choose Stream</option>
+          {% for stream in streams %}
+            <option value="{{ stream }}">{{ stream }}</option>
+          {% endfor %}
+        </select>
+
+        <button type="submit" class="btn-matrix-submit"> Deploy Allocation ✓ </button>
+      </form>
+    </div>
+
+    <!-- Right Column: Data List View -->
+    <div>
+      <div class="filter-bar">
+        <input
+          type="text"
+          id="matrixSearch"
+          class="search-input"
+          placeholder="🔍 Search by teacher name or subject allocation..."
+          onkeyup="filterMatrixTable()"
+        >
+        <button type="button" onclick="openCreateModal()" class="btn-create-faculty">
+          ➕ Create Teacher
+        </button>
+      </div>
+
+      <div class="table-holder">
+        <table class="assignment-table" id="facultyTable">
+          <thead>
+            <tr>
+              <th style="width: 30%;">Teacher Profile</th>
+              <th style="width: 70%;">Allocated Subject &amp; Class Targets</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for teacher in teachers %}
+              <tr class="teacher-row">
+                <td style="vertical-align: top;">
+                  <div style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; gap: 10px;">
+                    <div>
+                      <div style="font-size: 15px; color: #0f172a; font-weight: 700;">{{ teacher.get_full_title }}</div>
+                      <div style="color: #64748b; font-weight: 500; font-size: 12px; margin-top: 2px;">TSC: {{ teacher.tsc_number }}</div>
+                    </div>
+                    <div>
+                      <button type="button" class="edit-btn"
+                              data-id="{{ teacher.id }}"
+                              data-title="{{ teacher.title|default:'Mr.' }}"
+                              data-fullname="{{ teacher.user.first_name|default:teacher.user.username }}"
+                              data-tsc="{{ teacher.tsc_number }}"
+                              data-phone="{{ teacher.phone_number|default:'' }}"
+                              data-email="{{ teacher.email|default:'' }}"
+                              onclick="handleEditClick(this)">
+                        ⚙️ Edit
+                      </button>
+                      <form method="POST" action="" onsubmit="return confirm('Are you completely sure you want to delete this teacher? This will permanently delete their login credentials and all subject assignments.');" style="display: inline-block; margin-left: 5px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action_type" value="delete_profile">
+                            <input type="hidden" name="teacher_id" value="{{ teacher.id }}">
+                            <button type="submit" style="background: #fef2f2; border: 1px solid #fee2e2; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; color: #dc2626; display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s ease;">
+                                🗑️ Delete
+                            </button>
+                      </form>
+                    </div>
+                  </div>
+                </td>
+                <td style="vertical-align: top;">
+                  <div style="display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start;">
+                    {% if teacher.assignments.all %}
+                      {% for assignment in teacher.assignments.all %}
+                        <span class="badge-allocation">
+                          📚 {{ assignment.get_subject_code_display }}: {{ assignment.class_name }} ({{ assignment.stream }})
+                        </span>
+                      {% endfor %}
+                    {% else %}
+                      <span style="color: #94a3b8; font-size: 13px; font-style: italic;">No active assignments mapped to this profile.</span>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="2" style="text-align: center; color: #94a3b8; font-style: italic; padding: 30px;">
+                  No active faculty definitions found within this school account.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 16px;">
+        <a href="{% url 'school_admin_dashboard' %}" style="color: #64748b; font-size: 13px; font-weight: 600; text-decoration: none;">
+          ➔ Back to Admin Control Deck
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Faculty Modal -->
+<div id="facultyModal" class="modal-overlay-bg" style="display: none;">
+  <div class="modal-container-box">
+    <div class="modal-header-row">
+      <h3 id="modalTitle">
+        <i class="bi bi-person-plus-fill"></i>
+        <span>Register New Faculty Member</span>
+      </h3>
+      <button onclick="closeFacultyModal()">×</button>
+    </div>
+
+    <form id="facultyActionForm" method="POST" action="/school-admin/faculty/">
+      {% csrf_token %}
+      <input type="hidden" id="modal_action_type" name="action_type" value="">
+      <input type="hidden" id="modal_teacher_id" name="teacher_id" value="">
+
+      <div class="modal-body-content">
+        <!-- Personal Information Section -->
+        <div class="form-section-title">
+          <i class="bi bi-person-badge"></i> Personal Information
+        </div>
+
+        <div class="form-row-grid">
+          <div>
+            <label class="form-group-label">Title <span class="required">*</span></label>
+            <select id="field_title" name="title" class="form-input-field">
+              <option value="Mr.">Mr.</option>
+              <option value="Ms.">Ms.</option>
+              <option value="Mrs.">Mrs.</option>
+              <option value="Dr.">Dr.</option>
+              <option value="Prof.">Prof.</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-group-label">Full Legal Name <span class="required">*</span></label>
+            <input type="text" id="field_full_name" name="full_name" class="form-input-field" placeholder="e.g. John Mwangi" required>
+          </div>
+        </div>
+
+        <!-- Professional Details Section -->
+        <div class="form-section-title" style="margin-top: 24px;">
+          <i class="bi bi-briefcase"></i> Professional Details
+        </div>
+
+        <div class="form-row-grid">
+          <div>
+            <label class="form-group-label">TSC Number <span class="required">*</span></label>
+            <input type="text" id="field_tsc_number" name="tsc_number" class="form-input-field" placeholder="e.g. 123456" required>
+          </div>
+          <div>
+            <label class="form-group-label">Assigned Role</label>
+            <select name="assigned_task" class="form-input-field">
+              <option value="Teacher" selected>Regular Teacher</option>
+              {% for role in grade_streams %}
+                <option value="{{ role }}">{{ role }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Contact Information Section -->
+        <div class="form-section-title" style="margin-top: 24px;">
+          <i class="bi bi-envelope"></i> Contact Information
+        </div>
+
+        <div class="form-row-grid">
+          <div>
+            <label class="form-group-label">Phone Number</label>
+            <input type="text" id="field_phone_number" name="phone_number" class="form-input-field" placeholder="e.g. 0712345678">
+            <div class="form-hint-text">
+              <i class="bi bi-info-circle"></i> Used for login username
+            </div>
+          </div>
+          <div>
+            <label class="form-group-label">Email Address <span class="required">*</span></label>
+            <input type="email" name="email" class="form-input-field" placeholder="teacher@school.com" required>
+            <div class="form-hint-text">
+              <i class="bi bi-info-circle"></i> Login credentials will be sent here
+            </div>
+          </div>
+        </div>
+
+        <!-- Email Notification Notice -->
+        <div class="email-notice" id="emailNotice">
+          <i class="bi bi-envelope-check"></i>
+          <div class="email-notice-text">
+            <strong>Login credentials will be sent automatically</strong><br>
+            The teacher will receive their username and default password at the email address above. They will be required to change their password on first login.
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer-row">
+        <button type="button" onclick="closeFacultyModal()" class="btn-cancel-modal">
+          Cancel
+        </button>
+        <button type="submit" class="btn-submit-modal">
+          <i class="bi bi-check-circle"></i> Create Account
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function filterMatrixTable() {
+    let input = document.getElementById("matrixSearch").value.toUpperCase();
+    let table = document.getElementById("facultyTable");
+    let rows = table.getElementsByClassName("teacher-row");
+    for (let i = 0; i < rows.length; i++) {
+      let textContent = rows[i].textContent || rows[i].innerText;
+      if (textContent.toUpperCase().indexOf(input) > -1) {
+        rows[i].style.display = "";
+      } else {
+        rows[i].style.display = "none";
+      }
+    }
+  }
+
+  function handleEditClick(buttonElement) {
+    const id = buttonElement.getAttribute('data-id');
+    const title = buttonElement.getAttribute('data-title');
+    const fullName = buttonElement.getAttribute('data-fullname');
+    const tscNumber = buttonElement.getAttribute('data-tsc');
+    const phoneNumber = buttonElement.getAttribute('data-phone');
+    const email = buttonElement.getAttribute('data-email');
+    openEditModal(id, title, fullName, tscNumber, phoneNumber, email);
+  }
+
+  function openCreateModal() {
+    const modal = document.getElementById("facultyModal");
+    document.getElementById("modal_action_type").value = "create_profile";
+    document.getElementById("modal_teacher_id").value = "";
+    document.getElementById("modalTitle").innerHTML = '<i class="bi bi-person-plus-fill"></i><span>Register New Faculty Member</span>';
+    document.getElementById("field_title").value = "Mr.";
+    document.getElementById("field_full_name").value = "";
+    document.getElementById("field_tsc_number").value = "";
+    document.getElementById("field_phone_number").value = "";
+    // Show email notice for create mode
+    document.getElementById("emailNotice").style.display = "flex";
+    modal.style.display = "flex";
+  }
+
+  function openEditModal(id, title, fullName, tscNumber, phoneNumber, email) {
+    const modal = document.getElementById("facultyModal");
+    document.getElementById("modal_action_type").value = "edit_profile";
+    document.getElementById("modal_teacher_id").value = id;
+    document.getElementById("modalTitle").innerHTML = '<i class="bi bi-pencil-square"></i><span>Modify Faculty Details</span>';
+    document.getElementById("field_title").value = title || "Mr.";
+    document.getElementById("field_full_name").value = fullName || "";
+    document.getElementById("field_tsc_number").value = tscNumber || "";
+    document.getElementById("field_phone_number").value = phoneNumber || "";
+    // Populate email field
+    const emailField = document.querySelector('input[name="email"]');
+    if (emailField) emailField.value = email || "";
+    // Hide email notice for edit mode
+    document.getElementById("emailNotice").style.display = "none";
+    modal.style.display = "flex";
+  }
+
+  function closeFacultyModal() {
+    document.getElementById("facultyModal").style.display = "none";
+  }
+</script>
+
+{% endblock %}

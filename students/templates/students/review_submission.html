@@ -1,0 +1,650 @@
+{% extends 'students/base.html' %}
+{% block content %}
+
+<style>
+    :root {
+        --oraimo-green: #8fea00;
+        --deep-navy: #0f172a;
+        --text-main: #0f172a;
+        --text-soft: #64748b;
+        --line: #e2e8f0;
+        --page-bg: #f6f8fb;
+        --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .review-page {
+        min-height: 100vh;
+        background: var(--page-bg);
+        padding: 34px;
+    }
+
+    .review-shell {
+        max-width: 1380px;
+        margin: 0 auto;
+    }
+
+    .review-header {
+        margin-bottom: 24px;
+    }
+
+    .review-header a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 900;
+        text-decoration: none;
+        margin-bottom: 18px;
+    }
+
+    .review-header a:hover {
+        color: var(--deep-navy);
+    }
+
+    .review-header h1 {
+        font-family: 'Montserrat', sans-serif;
+        font-size: 34px;
+        font-weight: 900;
+        color: var(--text-main);
+        margin: 0 0 6px;
+        letter-spacing: -0.4px;
+    }
+
+    .review-header p {
+        color: var(--text-soft);
+        font-size: 15px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .review-hero,
+    .review-action-card,
+    .review-table-card {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-left: 8px solid var(--oraimo-green);
+        border-radius: 14px;
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+        margin-bottom: 22px;
+    }
+
+    .review-hero-top,
+    .review-table-head {
+        background: var(--deep-navy);
+        color: #ffffff;
+        padding: 22px 26px;
+    }
+
+    .review-hero-top h2,
+    .review-table-head h2 {
+        font-size: 22px;
+        font-weight: 900;
+        margin: 0 0 6px;
+        letter-spacing: -0.2px;
+    }
+
+    .review-hero-top p,
+    .review-table-head small {
+        color: #cbd5e1;
+        font-weight: 750;
+        margin: 0;
+    }
+
+    .review-hero-body {
+        padding: 24px 26px;
+    }
+
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .detail-card,
+    .summary-card {
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 15px;
+    }
+
+    .detail-card span,
+    .summary-card span {
+        display: block;
+        color: var(--text-soft);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.7px;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+
+    .detail-card strong {
+        color: var(--text-main);
+        font-size: 17px;
+        font-weight: 900;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .summary-card {
+        background: #ffffff;
+        border-left: 5px solid var(--oraimo-green);
+    }
+
+    .summary-card strong {
+        display: block;
+        color: var(--text-main);
+        font-size: 26px;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .review-action-card {
+        padding: 22px 24px;
+    }
+
+    .review-action-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        margin-bottom: 18px;
+    }
+
+    .review-action-head h2 {
+        color: var(--text-main);
+        font-size: 20px;
+        font-weight: 900;
+        margin: 0 0 4px;
+    }
+
+    .review-action-head p {
+        color: var(--text-soft);
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .decision-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 150px;
+        border-radius: 999px;
+        padding: 9px 14px;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .decision-submitted {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .decision-returned {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .decision-approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .decision-published {
+        background: #d9f99d;
+        color: #365314;
+    }
+
+    .admin-note-display {
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
+
+    .admin-note-display span {
+        display: block;
+        color: var(--text-soft);
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 5px;
+    }
+
+    .admin-note-display p {
+        color: var(--text-main);
+        font-weight: 750;
+        margin: 0;
+    }
+
+    .decision-label {
+        display: block;
+        color: var(--text-soft);
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 7px;
+    }
+
+    .decision-note {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        background: #ffffff;
+        color: var(--text-main);
+        font-size: 14px;
+        font-weight: 750;
+        padding: 12px 14px;
+        resize: vertical;
+        margin-bottom: 16px;
+    }
+
+    .decision-note:focus {
+        outline: none;
+        border-color: var(--oraimo-green);
+        box-shadow: 0 0 0 3px rgba(143, 234, 0, 0.2);
+    }
+
+    .decision-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .decision-btn {
+        border: none;
+        border-radius: 8px;
+        min-height: 46px;
+        font-size: 13px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        cursor: pointer;
+    }
+
+    .return-btn {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .approve-btn {
+        background: var(--deep-navy);
+        color: #ffffff;
+    }
+
+    .publish-btn {
+        background: var(--oraimo-green);
+        color: var(--text-main);
+    }
+
+    .return-btn:hover {
+        background: #fecaca;
+    }
+
+    .approve-btn:hover {
+        background: #020617;
+    }
+
+    .publish-btn:hover {
+        background: #d9f99d;
+    }
+
+    .review-table-wrap {
+        overflow-x: auto;
+    }
+
+    .review-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+    }
+
+    .review-table th {
+        background: #f8fafc;
+        color: #475569;
+        padding: 14px 16px;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+    }
+
+    .review-table td {
+        padding: 15px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1e293b;
+        font-size: 14px;
+        font-weight: 800;
+        vertical-align: middle;
+    }
+
+    .review-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .status-pill,
+    .performance-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .status-pill {
+        min-width: 110px;
+    }
+
+    .status-captured {
+        background: #d9f99d;
+        color: #365314;
+    }
+
+    .status-absent {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-missing {
+        background: #e2e8f0;
+        color: #475569;
+    }
+
+    .performance-pill {
+        background: #eef2ff;
+        color: #1e3a8a;
+    }
+
+    .missing-text {
+        color: #94a3b8;
+        font-style: italic;
+        font-weight: 800;
+    }
+
+    .decision-info {
+        grid-column: 1 / -1;
+        background: #fff7ed;
+        color: #9a3412;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-size: 14px;
+        font-weight: 850;
+    }
+
+    .published-info {
+        background: #f0fdf4;
+        color: #166534;
+        border-color: #bbf7d0;
+    }
+
+    @media (max-width: 1050px) {
+        .review-page {
+            padding: 20px;
+        }
+
+        .details-grid,
+        .summary-grid,
+        .decision-actions {
+            grid-template-columns: 1fr;
+        }
+
+        .review-action-head {
+            display: grid;
+        }
+    }
+</style>
+
+<div class="review-page">
+    <div class="review-shell">
+
+        <div class="review-header">
+            <a href="{% url 'manage_exams' %}">
+                ← Back to Manage Assessments
+            </a>
+
+            <h1>Assessment Review</h1>
+            <p>Review a subject sheet before the full class stream is approved and published.</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="admin-note-display">
+                    <span>System Message</span>
+                    <p>{{ message }}</p>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="review-hero">
+            <div class="review-hero-top">
+                <h2>{{ assignment.class_name }} {{ assignment.stream }} - {{ subject_name }}</h2>
+                <p>{{ exam.name }} | {{ exam.term }} | {{ exam.year }}</p>
+            </div>
+
+            <div class="review-hero-body">
+                <div class="details-grid">
+                    <div class="detail-card">
+                        <span>Teacher</span>
+                        <strong>{{ teacher.get_full_title }}</strong>
+                    </div>
+
+                    <div class="detail-card">
+                        <span>Subject</span>
+                        <strong>{{ subject_name }}</strong>
+                    </div>
+
+                    <div class="detail-card">
+                        <span>Class Stream</span>
+                        <strong>{{ assignment.class_name }} {{ assignment.stream }}</strong>
+                    </div>
+
+                    <div class="detail-card">
+                        <span>Submission Status</span>
+                        <strong>{{ submission_status }}</strong>
+                    </div>
+                </div>
+
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <span>Learners</span>
+                        <strong>{{ total_students }}</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span>Captured</span>
+                        <strong>{{ captured_count }}</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span>Absent</span>
+                        <strong>{{ absent_count }}</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span>Missing</span>
+                        <strong>{{ missing_count }}</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span>Mean Score</span>
+                        <strong>{{ mean_score }}%</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if submission %}
+            <div class="review-action-card">
+                <div class="review-action-head">
+                    <div>
+                        <h2>Admin Decision</h2>
+                        <p>Return the sheet for correction or approve it. Publishing is now completed once per class stream.</p>
+                    </div>
+
+                    <span class="decision-status decision-{{ submission.status }}">
+                        {{ submission.get_status_display }}
+                    </span>
+                </div>
+
+                {% if submission.admin_note %}
+                    <div class="admin-note-display">
+                        <span>Latest Admin Note</span>
+                        <p>{{ submission.admin_note }}</p>
+                    </div>
+                {% endif %}
+
+                <form method="POST" class="decision-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="assignment_id" value="{{ assignment.id }}">
+                    <input type="hidden" name="exam_id" value="{{ exam.id }}">
+
+                    <label class="decision-label">Admin Note</label>
+                    <textarea name="admin_note" class="decision-note" rows="3" placeholder="Write an optional note for the teacher or school record...">{{ submission.admin_note }}</textarea>
+
+                    <div class="decision-actions">
+                        {% if submission.status == "submitted" %}
+                            <button type="submit" name="action_type" value="return_submission" class="decision-btn return-btn">
+                                Return to Teacher
+                            </button>
+
+                            <button type="submit" name="action_type" value="approve_submission" class="decision-btn approve-btn">
+                                Approve Sheet
+                            </button>
+                        {% elif submission.status == "approved" %}
+                            <button type="submit" name="action_type" value="return_submission" class="decision-btn return-btn">
+                                Return to Teacher
+                            </button>
+
+                            <div class="decision-info published-info">
+                                This subject sheet is approved. Use Review Stream in Assessment Control to publish the whole stream.
+                            </div>
+                        {% elif submission.status == "returned" %}
+                            <div class="decision-info">
+                                This sheet has been returned to the teacher and is awaiting correction.
+                            </div>
+                        {% elif submission.status == "published" %}
+                            <button type="submit" name="action_type" value="return_submission" class="decision-btn return-btn">
+                                Reopen for Teacher Correction
+                            </button>
+
+                            <div class="decision-info published-info">
+                                This sheet is published. Admin score corrections can also be saved from the score table below.
+                            </div>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        {% endif %}
+
+        <div class="review-table-card">
+            <div class="review-table-head">
+                <h2>Learner Score Sheet</h2>
+                <small>Scores, absence records, performance levels, and points are shown exactly as captured.</small>
+            </div>
+
+            <div class="review-table-wrap">
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="assignment_id" value="{{ assignment.id }}">
+                    <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                    <input type="hidden" name="action_type" value="save_admin_scores">
+                    <input type="hidden" name="admin_note" value="{{ submission.admin_note|default:'' }}">
+
+                    <div style="display:flex; justify-content:flex-end; gap:12px; align-items:center; margin-bottom:14px; flex-wrap:wrap;">
+                        <label style="font-weight:900; color:#64748b; text-transform:uppercase; font-size:11px;">Total Marks</label>
+                        <input type="number" name="maximum_marks" value="{{ current_maximum_marks }}" min="1" style="width:110px; border:2px solid #e2e8f0; border-radius:10px; padding:10px; font-weight:900;">
+                        {% if admin_override_enabled %}
+                            <button type="submit" class="decision-btn approve-btn">Save Admin Corrections</button>
+                        {% else %}
+                            <span class="decision-info published-info">Only the Main School Admin can save score overrides.</span>
+                        {% endif %}
+                    </div>
+
+                <table class="review-table">
+                    <thead>
+                        <tr>
+                            <th>Adm</th>
+                            <th>Learner Name</th>
+                            <th>Raw Score</th>
+                            <th>Percentage</th>
+                            <th>Performance Level</th>
+                            <th>Points</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for learner in learner_rows %}
+                            <tr>
+                                <td>{{ learner.admission_no }}</td>
+                                <td>{{ learner.name }}</td>
+                                <td>
+                                    <input
+                                        type="text"
+                                        name="score_{{ learner.student_id }}"
+                                        value="{{ learner.editable_score }}"
+                                        placeholder="Score or AB"
+                                        style="width:92px; border:2px solid #e2e8f0; border-radius:9px; padding:8px 10px; font-weight:900;"
+                                    >
+                                </td>
+                                <td>{{ learner.percentage_display }}</td>
+                                <td>
+                                    {% if learner.performance_level == 'Missing' %}
+                                        <span class="missing-text">Missing</span>
+                                    {% else %}
+                                        <span class="performance-pill">
+                                            {{ learner.performance_level }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ learner.points_display }}</td>
+                                <td>
+                                    {% if learner.row_status == 'Captured' %}
+                                        <span class="status-pill status-captured">Captured</span>
+                                    {% elif learner.row_status == 'Absent' %}
+                                        <span class="status-pill status-absent">Absent</span>
+                                    {% else %}
+                                        <span class="status-pill status-missing">Missing</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="7" class="missing-text">
+                                    No learners found for this class stream.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

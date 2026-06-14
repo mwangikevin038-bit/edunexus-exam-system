@@ -1,0 +1,14 @@
+<h2>Record Exam Marks</h2>
+<form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save Mark</button>
+</form>
+
+<br>
+<!-- Add this line below -->
+<a href="{% url 'add_student' %}">Back to Add Student</a>
+<hr>
+<a href="{% url 'results_list' %}">📊 View All Results & Analysis</a> | 
+<a href="{% url 'add_student' %}">👤 Register New Student</a>
+

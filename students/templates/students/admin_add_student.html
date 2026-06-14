@@ -1,0 +1,778 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --oraimo-green: #a4e61d;
+    --oraimo-green-hover: #b4f52d;
+    --dark-slate: #0f172a;
+    --muted-slate: #64748b;
+    --border-color: #f1f5f9;
+    --card-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.04), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  }
+
+  .registry-shell {
+    padding: 30px;
+    max-width: 1440px;
+    margin: 0 auto;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .registry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+    background: #ffffff;
+    padding: 24px 32px;
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    border-left: 6px solid var(--oraimo-green);
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .registry-title h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0 0 6px 0;
+    color: var(--dark-slate);
+    letter-spacing: -0.5px;
+  }
+
+  .registry-title p {
+    color: var(--muted-slate);
+    font-weight: 500;
+    font-size: 0.92rem;
+    margin: 0;
+  }
+
+  .registry-pill {
+    background: #f1f5f9;
+    color: #1e293b;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+    border: 1px solid #e2e8f0;
+    letter-spacing: 0.5px;
+  }
+
+  .registry-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 6px;
+    border-radius: 12px;
+  }
+
+  .registry-tab {
+    border: 0;
+    background: transparent;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--muted-slate);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    font-size: 0.88rem;
+    transition: all 0.2s ease;
+  }
+
+  .registry-tab:hover {
+    color: var(--dark-slate);
+    background: #ffffff;
+  }
+
+  .registry-tab.active {
+    background: var(--oraimo-green);
+    color: var(--dark-slate);
+    box-shadow: 0 4px 12px rgba(164, 230, 29, 0.2);
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+
+  .metric-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
+  }
+
+  .metric-card:hover {
+    transform: translateY(-4px);
+    border-color: #cbd5e1;
+    box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.08);
+  }
+
+  .metric-info span {
+    color: var(--muted-slate);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+  }
+
+  .metric-info strong {
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    margin-top: 6px;
+    color: var(--dark-slate);
+    letter-spacing: -0.5px;
+  }
+
+  .metric-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  .mc-total    { border-bottom: 4px solid var(--dark-slate); }
+  .mc-total    .metric-icon-wrapper { background: #f1f5f9; color: var(--dark-slate); }
+
+  .mc-guardians { border-bottom: 4px solid #3b82f6; }
+  .mc-guardians .metric-icon-wrapper { background: #eff6ff; color: #3b82f6; }
+
+  .mc-g7 { border-bottom: 4px solid #10b981; }
+  .mc-g7 .metric-icon-wrapper { background: #ecfdf5; color: #10b981; }
+
+  .mc-g8 { border-bottom: 4px solid #f59e0b; }
+  .mc-g8 .metric-icon-wrapper { background: #fffbeb; color: #f59e0b; }
+
+  .mc-g9 { border-bottom: 4px solid #8b5cf6; }
+  .mc-g9 .metric-icon-wrapper { background: #f5f3ff; color: #8b5cf6; }
+
+  .registry-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: var(--card-shadow);
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--dark-slate);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #475569;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  .form-control, .form-select {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-weight: 600;
+    margin-bottom: 18px;
+    background: #fff;
+    box-sizing: border-box;
+    font-size: 14px;
+    color: #334155;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .form-control:focus, .form-select:focus {
+    border-color: var(--dark-slate);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+  }
+
+  .btn-primary-action {
+    border: 0;
+    background: var(--dark-slate);
+    color: #ffffff;
+    font-weight: 700;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+    gap: 6px;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .btn-primary-action:hover {
+    background: var(--oraimo-green);
+    color: var(--dark-slate);
+    box-shadow: 0 4px 12px rgba(164, 230, 29, 0.15);
+  }
+
+  .btn-secondary-action {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+    gap: 6px;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .btn-secondary-action:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: var(--dark-slate);
+  }
+
+  .table-tools {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .registry-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .registry-table th {
+    background: #f8fafc;
+    color: #64748b;
+    text-align: left;
+    padding: 14px 16px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    border-bottom: 2px solid #e2e8f0;
+    letter-spacing: 0.5px;
+  }
+
+  .registry-table td {
+    padding: 16px;
+    border-bottom: 1px solid #f1f5f9;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  .registry-table tr:hover td {
+    background: #f8fafc;
+  }
+
+  .status-chip {
+    display: inline-flex;
+    padding: 4px 10px;
+    border-radius: 30px;
+    background: #ecfccb;
+    color: #365314;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    border: 1px solid #d9f99d;
+  }
+
+  .dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 14px;
+    padding: 50px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: #f8fafc;
+    display: block;
+    margin-bottom: 20px;
+    transition: all 0.2s ease;
+  }
+
+  .dropzone:hover {
+    border-color: var(--oraimo-green);
+    background: rgba(164, 230, 29, 0.04);
+  }
+
+  .msg-success {
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-weight: 700;
+    background: #f0fdf4;
+    color: #166534;
+    border-left: 5px solid #22c55e;
+    font-size: 0.9rem;
+  }
+
+  .msg-error {
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-weight: 700;
+    background: #fef2f2;
+    color: #991b1b;
+    border-left: 5px solid #ef4444;
+    font-size: 0.9rem;
+  }
+
+  .schema-hint {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.8rem;
+    color: var(--muted-slate);
+    font-weight: 600;
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  .schema-hint code {
+    background: #e2e8f0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    color: #334155;
+    font-weight: 700;
+  }
+
+  @media (max-width: 1100px) {
+    .metric-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .metric-grid,
+    .form-grid,
+    .field-grid {
+      grid-template-columns: 1fr;
+    }
+    .registry-header,
+    .table-tools {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .registry-shell {
+      padding: 16px;
+    }
+  }
+</style>
+
+<div class="registry-shell">
+
+  <!-- Command Strip -->
+  <div class="registry-header">
+    <div class="registry-title">
+      <h2>Student Registry</h2>
+      <p>Enroll students, upload bulk records, inspect class population, and manage registry data from one desk.</p>
+    </div>
+    <div class="registry-pill"><i class="bi bi-hash"></i> ADM Next: {{ next_admission_no }}</div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="{% if 'success' in message.tags %}msg-success{% else %}msg-error{% endif %}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Workspace Section Banner -->
+  {% if request.session.school_section == 'BOTH' %}
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; background: #fff; padding: 14px 20px; border-radius: 12px; box-shadow: var(--card-shadow); flex-wrap: wrap;">
+    <span style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Active Workspace:</span>
+    <div style="display: flex; gap: 6px;">
+      <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="PRIMARY">
+        <button type="submit" style="border: 2px solid {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#fff{% else %}#64748b{% endif %}; padding: 8px 18px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s;">
+          <i class="bi bi-book"></i> Primary
+        </button>
+      </form>
+      <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="JSS">
+        <button type="submit" style="border: 2px solid {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'JSS' %}#fff{% else %}#64748b{% endif %}; padding: 8px 18px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s;">
+          <i class="bi bi-mortarboard"></i> JSS
+        </button>
+      </form>
+    </div>
+    <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">
+      Currently viewing: <strong style="color: #0f172a;">{{ request.session.workspace_section|default:"PRIMARY" }}</strong> section
+    </span>
+  </div>
+  {% endif %}
+
+  <!-- Navigation Tab Strip -->
+  <div class="registry-tabs">
+    <a href="?tab=overview" class="registry-tab {% if active_tab == 'overview' or not active_tab %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> Overview
+    </a>
+    <a href="?tab=add_student" class="registry-tab {% if active_tab == 'add_student' %}active{% endif %}">
+      <i class="bi bi-person-plus-fill"></i> Add Student
+    </a>
+    <a href="{% url 'premium_csv_upload' %}" class="registry-tab" style="background: linear-gradient(135deg, #eff6ff, #f0fdf4); border-color: #2563eb;">
+      <i class="bi bi-rocket-takeoff-fill"></i> CSV Onboard
+    </a>
+    <a href="?tab=directory" class="registry-tab {% if active_tab == 'directory' %}active{% endif %}">
+      <i class="bi bi-person-lines-fill"></i> Student List
+    </a>
+    <a href="?tab=promotions" class="registry-tab {% if active_tab == 'promotions' %}active{% endif %}">
+      <i class="bi bi-arrow-left-right"></i> Manage Records
+    </a>
+  </div>
+
+  <!-- Overview Tab -->
+  {% if active_tab == 'overview' or not active_tab %}
+    <div class="metric-grid">
+      <div class="metric-card mc-total">
+        <div class="metric-info">
+          <span>Total Students</span>
+          <strong>{{ total_students|default:0 }}</strong>
+        </div>
+        <div class="metric-icon-wrapper"><i class="bi bi-people-fill"></i></div>
+      </div>
+      <div class="metric-card mc-guardians">
+        <div class="metric-info">
+          <span>Guardians</span>
+          <strong>{{ guardian_count|default:0 }}</strong>
+        </div>
+        <div class="metric-icon-wrapper"><i class="bi bi-shield-check"></i></div>
+      </div>
+      <div class="metric-card mc-g7">
+        <div class="metric-info">
+          <span>{{ grade_1_name|default:"Grade 7" }}</span>
+          <strong>{{ grade_1_count|default:0 }}</strong>
+        </div>
+        <div class="metric-icon-wrapper"><i class="bi bi-mortarboard-fill"></i></div>
+      </div>
+      <div class="metric-card mc-g8">
+        <div class="metric-info">
+          <span>{{ grade_2_name|default:"Grade 8" }}</span>
+          <strong>{{ grade_2_count|default:0 }}</strong>
+        </div>
+        <div class="metric-icon-wrapper"><i class="bi bi-mortarboard-fill"></i></div>
+      </div>
+      <div class="metric-card mc-g9">
+        <div class="metric-info">
+          <span>{{ grade_3_name|default:"Grade 9" }}</span>
+          <strong>{{ grade_3_count|default:0 }}</strong>
+        </div>
+        <div class="metric-icon-wrapper"><i class="bi bi-mortarboard-fill"></i></div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Add Student Tab -->
+  {% if active_tab == 'add_student' %}
+    <div class="registry-card">
+      <div class="section-title">
+        <i class="bi bi-person-plus-fill"></i> Single Student Admission
+      </div>
+      <form method="POST" action="?tab=add_student">
+        {% csrf_token %}
+        <input type="hidden" name="registration_mode" value="single">
+
+        <div class="form-grid">
+          <div>
+            <label class="form-label">Admission No</label>
+            <input class="form-control" name="admission_no" value="{{ next_admission_no }}" required style="border-color: var(--oraimo-green); font-weight: 800;">
+
+            <label class="form-label">Assessment Number</label>
+            <input class="form-control" name="assessment_no" placeholder="Enter assessment number" required>
+
+            <label class="form-label">Student Name</label>
+            <input class="form-control" name="name" placeholder="Full legal name" required>
+
+            <label class="form-label">Religion Subject</label>
+            <select class="form-select" name="religion" required>
+              <option value="" selected disabled>Select CRE or IRE</option>
+              <option value="CRE">CRE</option>
+              <option value="IRE">IRE</option>
+            </select>
+
+            <label class="form-label">Gender</label>
+            <select class="form-select" name="gender" required>
+              <option value="" selected disabled>Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Not Specified">Not Specified</option>
+            </select>
+
+            <div class="field-grid">
+              <div>
+                <label class="form-label">Class / Grade</label>
+                <select class="form-select" name="class_name" id="grade-select" required>
+                  <option value="" selected disabled>Select grade</option>
+                  {% for g in grades %}
+                    <option value="{{ g }}">{{ g }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <label class="form-label">Stream</label>
+                <select class="form-select" name="stream" id="stream-select" required>
+                  <option value="" selected disabled>Select stream</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field-grid">
+              <div>
+                <label class="form-label">Term</label>
+                <select class="form-select" name="term" required>
+                  <option value="" selected disabled>Select term</option>
+                  {% for t in terms %}
+                    <option value="{{ t }}">{{ t }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <label class="form-label">Year</label>
+                <input class="form-control" name="year" placeholder="e.g. 2025" required>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="form-label">Guardian Name</label>
+            <input class="form-control" name="guardian_name" placeholder="Full guardian name" required>
+
+            <label class="form-label">Guardian Phone</label>
+            <input class="form-control" name="guardian_phone" placeholder="e.g. 0712345678" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary-action">
+          <i class="bi bi-check-circle-fill"></i> Confirm Enrollment
+        </button>
+      </form>
+    </div>
+  {% endif %}
+
+  <!-- Directory Tab -->
+  {% if active_tab == 'directory' %}
+    <div class="registry-card">
+      <div class="section-title">
+        <i class="bi bi-person-lines-fill"></i> Student List
+      </div>
+      <div class="table-tools">
+        <input
+          type="text"
+          id="directoryLiveSearch"
+          class="form-control"
+          placeholder="Search by name, admission, class..."
+          style="max-width: 340px; margin-bottom: 0;"
+          onkeyup="performLocalDirectoryFilter()"
+        >
+        {% if request.GET.q %}
+          <a href="?tab=directory" class="btn-secondary-action">
+            <i class="bi bi-x-circle"></i> Clear
+          </a>
+        {% endif %}
+      </div>
+
+      <table class="registry-table" id="directoryStudentTable">
+        <thead>
+          <tr>
+            <th>Adm</th>
+            <th>Name</th>
+            <th>Class</th>
+            <th>Stream</th>
+            <th>Gender</th>
+            <th>Religion</th>
+            <th>Assessment No</th>
+            <th>Guardian</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+            <tr class="student-table-row">
+              <td style="font-weight: 700; color: var(--muted-slate);">#{{ student.admission_no }}</td>
+              <td style="font-weight: 700; color: var(--dark-slate);">{{ student.name }}</td>
+              <td>{{ student.class_name }}</td>
+              <td>{{ student.stream }}</td>
+              <td>{{ student.gender|default:"Not Specified" }}</td>
+              <td>{{ student.religion|default:"Not Assigned" }}</td>
+              <td>{{ student.assessment_no|default:"-" }}</td>
+              <td>
+                <div style="font-weight: 700; color: #334155;">{{ student.guardian.name }}</div>
+                <small style="color: var(--muted-slate); font-weight: 600;">📞 {{ student.guardian.phone }}</small>
+              </td>
+              <td><span class="status-chip">Active</span></td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="9" style="text-align: center; color: var(--muted-slate); padding: 40px; font-weight: 600;">
+                No student records found matching your search criteria.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  <!-- Promotions Tab -->
+  {% if active_tab == 'promotions' %}
+    <div class="registry-card">
+      <div class="section-title">
+        <i class="bi bi-arrow-left-right"></i> Manage Records &amp; Promotions
+      </div>
+      <p style="color: var(--muted-slate); font-size: 0.9rem; font-weight: 600; margin-bottom: 28px; line-height: 1.6;">
+        Execute seasonal rollovers directly against the active shared school ledger buffers to promote class blocks at year-end.
+      </p>
+
+      <form method="POST" action="?tab=promotions">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="promote">
+
+        <div class="form-grid" style="max-width: 680px;">
+          <div>
+            <label class="form-label">Source Grade Block</label>
+            <select class="form-select" name="source_grade" required>
+              <option value="" selected disabled>Select class to elevate</option>
+              {% for g in grades %}
+                <option value="{{ g }}">{{ g }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Target Destination Grade</label>
+            <select class="form-select" name="target_grade" required>
+              <option value="" selected disabled>Select destination path</option>
+              <option value="Grade 8">Grade 8</option>
+              <option value="Grade 9">Grade 9</option>
+              <option value="graduate">Graduate / Exit</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
+          <button type="submit" name="bulk_action" value="promote" class="btn-primary-action">
+            <i class="bi bi-arrow-up-circle-fill"></i> Run Mass Promotion
+          </button>
+          <a href="?tab=directory" class="btn-secondary-action">
+            <i class="bi bi-person-lines-fill"></i> Open Class Lists
+          </a>
+        </div>
+      </form>
+    </div>
+  {% endif %}
+
+</div>
+
+<script>
+  function showSelectedFile(input) {
+    var label = document.getElementById('selectedFileLabel');
+    if (label && input.files && input.files.length) {
+      label.innerHTML = '🎯 Target Selected: <strong>' + input.files[0].name + '</strong>';
+    } else if (label) {
+      label.innerText = '';
+    }
+  }
+
+  function performLocalDirectoryFilter() {
+    var input = document.getElementById('directoryLiveSearch');
+    if (!input) return;
+    var filter = input.value.toUpperCase();
+    var table = document.getElementById('directoryStudentTable');
+    if (!table) return;
+    var rows = table.getElementsByClassName('student-table-row');
+    for (var i = 0; i < rows.length; i++) {
+      var text = rows[i].textContent || rows[i].innerText;
+      rows[i].style.display = text.toUpperCase().indexOf(filter) > -1 ? '' : 'none';
+    }
+  }
+
+  // ── Dynamic stream loading based on selected grade ──────────────────────
+  (function() {
+    var gradeSelect = document.getElementById('grade-select');
+    var streamSelect = document.getElementById('stream-select');
+    if (!gradeSelect || !streamSelect) return;
+
+    gradeSelect.addEventListener('change', function() {
+      var grade = this.value;
+      // Clear current streams
+      streamSelect.innerHTML = '<option value="" selected disabled>Select stream</option>';
+      if (!grade) return;
+
+      fetch('/api/streams-for-grade/?grade=' + encodeURIComponent(grade))
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+          (data.streams || []).forEach(function(name) {
+            var opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            streamSelect.appendChild(opt);
+          });
+        });
+    });
+  })();
+</script>
+{% endblock %}

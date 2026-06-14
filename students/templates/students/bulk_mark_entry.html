@@ -1,0 +1,238 @@
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+    body {
+        background: #f3f7f5;
+    }
+
+    .zeraki-header {
+        background: #006b05;
+        color: white;
+        padding: 18px 28px;
+        border-radius: 0 0 4px 4px;
+        margin-bottom: 28px;
+    }
+
+    .zeraki-tabs {
+        display: flex;
+        gap: 8px;
+        background: #005700;
+        padding: 0 24px;
+    }
+
+    .zeraki-tab {
+        color: white;
+        padding: 12px 18px;
+        font-weight: 700;
+        text-decoration: none;
+        opacity: .85;
+    }
+
+    .zeraki-tab.active {
+        background: white;
+        color: #006b05;
+    }
+
+    .exam-card {
+        background: white;
+        border: 1px solid #e4ebe7;
+        border-radius: 4px;
+        padding: 26px;
+        box-shadow: 0 8px 24px rgba(15, 45, 25, .06);
+    }
+
+    .section-title {
+        color: #4d5b52;
+        font-weight: 800;
+        margin-bottom: 14px;
+    }
+
+    .soft-input {
+        background: #f1f4f2;
+        border: 1px solid #e4ebe7;
+        height: 48px;
+        border-radius: 2px;
+        font-weight: 700;
+    }
+
+    .result-table thead th {
+        background: #f9fbfa;
+        color: #56635b;
+        font-size: 14px;
+        border-bottom: 1px solid #e5ece8;
+    }
+
+    .result-table td,
+    .result-table th {
+        vertical-align: middle;
+        padding: 14px 16px;
+    }
+
+    .mark-input {
+        max-width: 110px;
+        text-align: center;
+        font-weight: 700;
+    }
+
+    .config-btn {
+        width: 46px;
+        height: 42px;
+        border: none;
+        background: #0d2738;
+        color: white;
+        font-weight: 800;
+        border-radius: 2px;
+    }
+
+    .save-bar {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        border-top: 1px solid #e1e7e3;
+        padding: 16px 0;
+        margin-top: 18px;
+    }
+
+    .save-btn {
+        background: #63b82f;
+        border: none;
+        color: white;
+        font-weight: 900;
+        padding: 14px 28px;
+        border-radius: 3px;
+    }
+</style>
+
+<div class="zeraki-header">
+    <h4 class="mb-1 fw-bold">Zeraki</h4>
+
+    <div class="zeraki-tabs mt-3">
+        <a class="zeraki-tab active" href="#">Manage Exams</a>
+        <a class="zeraki-tab" href="#">My Classes</a>
+        <a class="zeraki-tab" href="#">Create Exam</a>
+        <a class="zeraki-tab" href="#">Grading System</a>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="exam-card">
+        <h5 class="section-title">
+            Upload Results - {{ grade }} {{ stream }} - {{ subject_display }}
+        </h5>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="mb-4">
+                <label class="fw-bold text-muted d-block mb-2">Upload Type</label>
+
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="upload_type" id="spreadsheet">
+                    <label class="form-check-label" for="spreadsheet">
+                        Upload results from a spreadsheet
+                    </label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="upload_type" id="keyin" checked>
+                    <label class="form-check-label fw-semibold" for="keyin">
+                        Key in marks
+                    </label>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="fw-bold text-muted mb-2">Exam</label>
+                    <input class="form-control soft-input" value="{{ assessment|default:'CAT 2' }}" readonly>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="fw-bold text-muted mb-2">Maximum Marks</label>
+                    <input type="number" name="maximum_marks" class="form-control" placeholder="out of value e.g. 30" min="1" max="100" value="100">
+                </div>
+            </div>
+
+            <h6 class="section-title">Students without results</h6>
+
+            <div class="table-responsive">
+                <table class="table result-table table-bordered bg-white">
+                    <thead>
+                        <tr>
+                            <th style="width: 14%;">Adm</th>
+                            <th>Name</th>
+                            <th style="width: 18%;">Marks</th>
+                            <th style="width: 26%;">KJSEA Performance Level</th>
+                            <th style="width: 8%;"></th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student.admission_no|default:student.id }}</td>
+                            <td class="fw-semibold">{{ student.name }}</td>
+                            <td>
+                                <input type="number"
+                                       name="score_{{ student.id }}"
+                                       class="form-control mark-input"
+                                       min="0"
+                                       max="100"
+                                       oninput="calculateKNEC(this)">
+                            </td>
+                            <td class="fw-bold text-muted knec-level">Waiting...</td>
+                            <td>
+                                <button type="button" class="config-btn">⚙</button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                No students found for this class and stream.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="save-bar text-end">
+                <button type="submit" class="save-btn">SAVE ALL MARKS ✓</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function calculateKNEC(input) {
+    const score = parseInt(input.value);
+    const row = input.closest('tr');
+    const display = row.querySelector('.knec-level');
+
+    if (isNaN(score)) {
+        display.innerText = "Waiting...";
+        display.className = "fw-bold text-muted knec-level";
+    } else if (score >= 90) {
+        display.innerText = "Exceeding Expectations (EE1)";
+        display.className = "fw-bold text-success knec-level";
+    } else if (score >= 75) {
+        display.innerText = "Exceeding Expectations (EE2)";
+        display.className = "fw-bold text-success knec-level";
+    } else if (score >= 58) {
+        display.innerText = "Meeting Expectations (ME1)";
+        display.className = "fw-bold text-primary knec-level";
+    } else if (score >= 41) {
+        display.innerText = "Meeting Expectations (ME2)";
+        display.className = "fw-bold text-primary knec-level";
+    } else if (score >= 31) {
+        display.innerText = "Approaching Expectations (AE1)";
+        display.className = "fw-bold text-warning knec-level";
+    } else if (score >= 21) {
+        display.innerText = "Approaching Expectations (AE2)";
+        display.className = "fw-bold text-warning knec-level";
+    } else {
+        display.innerText = "Below Expectations (BE)";
+        display.className = "fw-bold text-danger knec-level";
+    }
+}
+</script>

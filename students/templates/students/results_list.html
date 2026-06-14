@@ -1,0 +1,1489 @@
+{% extends 'students/base.html' %}
+{% block content %}
+<style>
+    :root { --oraimo-green: #a4e61d; }
+
+    .analysis-container {
+        position: relative;
+        padding: 40px;
+        background-color: #f8f9fa;
+        min-height: 100vh;
+        font-family: 'Inter', 'Montserrat', sans-serif;
+    }
+
+    .official-results-hero {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-left: 8px solid var(--oraimo-green);
+        border-radius: 16px;
+        padding: 26px 30px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+        margin-bottom: 30px;
+    }
+
+    .official-results-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+    }
+
+    .official-results-title h1 {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 900;
+        margin: 0 0 6px;
+        color: #0f172a;
+        font-size: 28px;
+        letter-spacing: -0.4px;
+    }
+
+    .official-results-title p {
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .official-status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #ecfccb;
+        color: #365314;
+        border: 1px solid #bef264;
+        border-radius: 999px;
+        padding: 9px 16px;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .official-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .official-meta-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px 16px;
+    }
+
+    .official-meta-card span {
+        display: block;
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 5px;
+    }
+
+    .official-meta-card strong {
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 900;
+    }
+
+    .published-switcher {
+        margin-top: 18px;
+        max-width: 420px;
+    }
+
+    .published-switcher label {
+        display: block;
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 7px;
+    }
+
+    .form-select {
+        width: 100%;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 12px 14px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        height: auto;
+        transition: all 0.2s ease;
+        background-color: #f9f9f9;
+    }
+
+    .form-select:hover {
+        border-color: var(--oraimo-green);
+        background-color: #fafafa;
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: var(--oraimo-green);
+        box-shadow: 0 0 0 3px rgba(164, 230, 29, 0.1);
+    }
+
+    .btn-analysis {
+        width: 100%;
+        background: #1a1a1a;
+        color: #fff;
+        font-weight: 900;
+        border: none;
+        border-radius: 12px;
+        text-transform: uppercase;
+        height: 50px;
+        transition: 0.3s;
+    }
+
+    .btn-analysis:hover {
+        background: var(--oraimo-green);
+        color: #000;
+    }
+
+    .empty-official-state {
+        background: #ffffff;
+        border: 1px dashed #cbd5e1;
+        border-radius: 16px;
+        padding: 44px 28px;
+        text-align: center;
+        color: #64748b;
+        font-weight: 750;
+    }
+
+    .empty-official-state strong {
+        display: block;
+        color: #0f172a;
+        font-size: 20px;
+        font-weight: 900;
+        margin-bottom: 8px;
+    }
+
+    /* ===================== EXAM GROUP CARDS ===================== */
+    .exam-groups-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .exam-group-card {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.07);
+        border: 1px solid #dbe3ee;
+        transition: box-shadow 0.2s;
+    }
+
+    .exam-group-card:hover {
+        box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+    }
+
+    .exam-group-header {
+        background: #0f172a;
+        padding: 18px 26px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .exam-group-card.is-latest .exam-group-header {
+        background: linear-gradient(135deg, #1a2e05 0%, #1e4008 50%, #264d0a 100%);
+        border-bottom: 3px solid var(--oraimo-green);
+    }
+
+    .exam-group-header-left {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .exam-group-label {
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--oraimo-green);
+    }
+
+    .exam-group-name {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 900;
+        font-size: 1.1rem;
+        color: #ffffff;
+        margin: 0;
+        letter-spacing: 0.3px;
+    }
+
+    .exam-group-timeline {
+        background: rgba(255,255,255,0.1);
+        color: #cbd5e1;
+        border-radius: 999px;
+        padding: 6px 16px;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .new-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: var(--oraimo-green);
+        color: #0f172a;
+        border-radius: 999px;
+        padding: 5px 13px;
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        animation: pulse-badge 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-badge {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(164, 230, 29, 0.5); }
+        50%       { box-shadow: 0 0 0 6px rgba(164, 230, 29, 0); }
+    }
+
+    .streams-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #ffffff;
+    }
+
+    .streams-table thead tr {
+        background: #f8fafc;
+    }
+
+    .streams-table th {
+        padding: 11px 24px;
+        text-align: left;
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        color: #64748b;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .streams-table th:nth-child(2) { text-align: center; }
+    .streams-table th:nth-child(3) { text-align: right; }
+
+    .streams-table td {
+        padding: 15px 24px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .streams-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .streams-table tbody tr:nth-child(even) td {
+        background: #ffffff;
+    }
+    .streams-table tbody tr:nth-child(odd) td {
+        background: #F0F0F0;
+    }
+    .streams-table tbody tr:hover td {
+        background: #f7fee7;
+    }
+
+    .stream-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--oraimo-green);
+        display: inline-block;
+        margin-right: 9px;
+        flex-shrink: 0;
+    }
+
+    .stream-name {
+        font-weight: 900;
+        color: #0f172a;
+        font-size: 0.93rem;
+    }
+
+    .subject-count-badge {
+        background: #ecfccb;
+        color: #365314;
+        border: 1px solid #bef264;
+        border-radius: 999px;
+        padding: 4px 14px;
+        font-size: 11px;
+        font-weight: 900;
+        display: inline-block;
+    }
+
+    .open-results-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: #0f172a;
+        color: #fff;
+        padding: 9px 20px;
+        border-radius: 10px;
+        font-weight: 900;
+        font-size: 0.78rem;
+        text-decoration: none;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .open-results-btn:hover {
+        background: var(--oraimo-green);
+        color: #000;
+        text-decoration: none;
+    }
+
+    /* ===================== BROADSHEET ===================== */
+    :root {
+        --bs-burgundy: #541212;
+        --bs-burgundy-light: #6B1D1D;
+        --bs-dark: #2D2D2D;
+        --bs-dark-mid: #4A5568;
+        --bs-gold: #F3EFE0;
+        --bs-gold-dark: #D4C9A8;
+        --bs-charcoal: #2D2D2D;
+        --bs-border: #D1D5DB;
+        --bs-gray: #E2E8F0;
+        --bs-zebra: #F8F9FA;
+    }
+
+    .btn-print-action {
+        background: #1a1a1a;
+        color: #fff;
+        font-weight: 900;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        font-size: 11pt;
+        cursor: pointer;
+        transition: 0.3s;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    }
+    .btn-print-action:hover {
+        background: var(--oraimo-green) !important;
+        color: #000 !important;
+    }
+    .print-watermark-fixed {
+        display: block;
+        text-align: center;
+        margin-top: 8px;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        font-size: 8pt;
+        color: #94A3B8;
+        letter-spacing: 0.4pt;
+        text-transform: uppercase;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .broadsheet-card {
+        position: relative;
+        background: #ffffff;
+        border-radius: 0;
+        box-shadow: none;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border: none;
+        padding: 0;
+    }
+
+    .table-analysis {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9pt;
+        table-layout: fixed;
+        position: relative;
+        z-index: 1;
+        background: #ffffff;
+        border: 1px solid var(--bs-border);
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        color: var(--bs-charcoal);
+    }
+
+    .table-analysis th, .table-analysis td {
+        border: 1px solid var(--bs-border);
+        padding: 5px 3px;
+        text-align: center;
+        vertical-align: middle;
+        overflow: hidden;
+        white-space: nowrap;
+        color: var(--bs-charcoal);
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        font-size: 9pt;
+        line-height: 1.15;
+    }
+
+    .table-analysis tbody tr:hover td { background: #eef2f7; }
+    .table-analysis tbody tr:nth-child(even) td { background: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .table-analysis tbody tr:nth-child(odd) td { background: #E8E8E7 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .table-analysis tbody tr:nth-child(even) td.tps-col  { background: #FDF5E6 !important; }
+    .table-analysis tbody tr:nth-child(odd)  td.tps-col  { background: #EEE0C8 !important; }
+    .table-analysis tbody tr:nth-child(even) td.total-col { background: #F5EAD2 !important; }
+    .table-analysis tbody tr:nth-child(odd)  td.total-col { background: #E8D9BC !important; }
+    .table-analysis tbody tr:nth-child(even) td.plv-col  { background: #F5EAD2 !important; }
+    .table-analysis tbody tr:nth-child(odd)  td.plv-col  { background: #E8D9BC !important; }
+    .col-adm   { width: 30px; }
+    .col-name  { width: 110px; text-align: left !important; padding-left: 5px !important; white-space: normal !important; }
+    .col-tps   { width: 34px; }
+    .col-total { width: 48px; }
+    .col-plv   { width: 36px; }
+    .col-mk    { width: 26px !important; font-size: 9pt !important; }
+    .col-lv    { width: 26px !important; font-size: 9pt !important; }
+
+    .table-analysis .col-lv,
+    .table-analysis th.lv-col,
+    .table-analysis td.lv-col {
+        overflow: hidden !important;
+        text-overflow: clip !important;
+        padding-left: 3px !important;
+        padding-right: 3px !important;
+        font-size: 9pt !important;
+    }
+
+    .header-label  { background: #fff; font-weight: 900; text-align: left; padding-left: 15px !important; }
+    .header-value  { font-weight: 800; text-transform: uppercase; text-align: center; }
+
+    .subj-header { background: #C6C6C6 !important; color: #000000 !important; font-weight: 700 !important; font-size: 9pt !important; border-color: #999999 !important; }
+    .sub-hdr-mk  { background: #DCDCDC !important; color: #000000 !important; font-weight: 600 !important; font-size: 8pt !important; border-color: #999999 !important; }
+    .sub-hdr-lv  { background: #DCDCDC !important; color: #000000 !important; font-weight: 600 !important; font-size: 8pt !important; border-color: #999999 !important; }
+    .tps-col   { background-color: #FDF5E6 !important; font-weight: 700; color: var(--bs-charcoal) !important; border-color: #999999 !important; }
+    .total-col { background-color: #F5EAD2 !important; font-weight: 800; white-space: normal !important; line-height: 1.1; color: var(--bs-charcoal) !important; border-color: #999999 !important; font-size: 9pt !important; }
+    .plv-col   { background-color: #F5EAD2 !important; font-weight: 800; color: var(--bs-charcoal) !important; white-space: normal !important; line-height: 1.1; border-color: #999999 !important; font-size: 9pt !important; }
+    .lv-col    { color: var(--bs-charcoal) !important; }
+
+    /* ===================== PREMIUM BROADSHEET HEADER ===================== */
+    .bs-header-block {
+        display: flex;
+        flex-direction: column;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        overflow: hidden;
+        margin-bottom: 0;
+        box-shadow: none;
+        border-bottom: 3px solid var(--bs-burgundy);
+    }
+
+    .bs-header-topbar {
+        display: none !important;
+    }
+
+    .bs-header-main {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 0;
+        background: transparent;
+    }
+
+    .bs-header-logo-wrap {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .bs-logo-frame {
+        width: 1in;
+        height: 1in;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    .bs-header-logo-wrap img {
+        width: 100%;
+        height: 100%;
+        max-width: 1in;
+        max-height: 1in;
+        object-fit: contain;
+        display: block;
+    }
+
+    .bs-logo-placeholder {
+        width: 1in;
+        height: 1in;
+        background: #f1f5f9;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #475569;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        font-weight: 800;
+        font-size: 9px;
+        text-align: center;
+        letter-spacing: 0.5px;
+        line-height: 1.3;
+    }
+
+    .bs-header-green-stripe {
+        display: none;
+    }
+
+    .bs-header-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .bs-header-copy {
+        min-width: 0;
+    }
+
+    .bs-header-eyebrow {
+        display: none;
+    }
+
+    .bs-school-name {
+        font-family: 'Georgia', 'Times New Roman', Times, serif;
+        font-size: 22pt;
+        font-weight: 700;
+        color: #541212;
+        letter-spacing: 0.5px;
+        line-height: 1.1;
+        margin: 0 0 3px;
+        text-transform: uppercase;
+    }
+
+    .bs-results-badge {
+        flex-shrink: 0;
+        align-self: center;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        color: #ffffff !important;
+        background: var(--bs-burgundy) !important;
+        border: none !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 18px;
+        border-radius: 20px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .bs-meta-line {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        font-size: 9pt;
+        font-weight: 700;
+        color: #374151;
+        text-transform: uppercase;
+    }
+
+    .bs-meta-chip {
+        white-space: nowrap;
+    }
+
+    .bs-meta-dot {
+        display: inline;
+        color: #9CA3AF;
+        font-weight: 900;
+    }
+
+    .bs-header-accent {
+        display: none !important;
+    }
+
+    .analysis-page-container {
+        margin-top: 30px;
+        background: #ffffff;
+        border-radius: 0;
+        padding: 16px;
+        border: 1px solid var(--bs-border);
+        box-shadow: none;
+    }
+
+    .analysis-page-container h3 {
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        font-size: 11pt;
+        font-weight: 700;
+        letter-spacing: 0;
+        color: #541212;
+        margin-bottom: 14px;
+        border-bottom: 2px solid #541212;
+        padding-bottom: 8px;
+        text-align: center;
+        line-height: 1.3;
+        text-transform: uppercase;
+    }
+
+    .summary-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9pt;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        border: 1px solid var(--bs-border);
+        border-radius: 0;
+        overflow: hidden;
+    }
+    .summary-table th {
+        background-color: #B6B6B5;
+        color: #000000;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: 8pt;
+        border: 1px solid #999999;
+        padding: 8px 5px;
+    }
+    .summary-table td {
+        border: 1px solid #999999;
+        text-align: center;
+        padding: 6px 5px;
+        color: var(--bs-charcoal);
+        font-weight: 600;
+    }
+    .summary-table tr:nth-child(even) { background-color: #ffffff; }
+    .summary-table tr:nth-child(odd) { background-color: #F0F0F0; }
+    .summary-table td.sub-lbl  { text-align: left; font-weight: 800; padding-left: 10px; color: #000000; }
+    .summary-table td.teacher-col { text-align: left; font-weight: 600; padding-left: 8px; color: #374151; }
+    .mean-score-col { background-color: #ffffff !important; font-weight: 700 !important; color: var(--bs-charcoal) !important; }
+    .badge-ee { background-color: #dcfce7 !important; color: #166534 !important; font-weight: 700; }
+    .badge-me { background-color: #fef9c3 !important; color: #854d0e !important; font-weight: 700; }
+    .badge-ae { background-color: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; }
+    .badge-be { background-color: #fee2e2 !important; color: #991b1b !important; font-weight: 700; }
+    @media print {
+        .d-print-none, .official-results-hero { 
+            display: none !important; 
+        }
+        .bs-branding-only {
+            display: block !important;
+        }
+        .analysis-container { 
+            padding: 0 !important; 
+            background: white !important;
+            margin-bottom: 0 !important; 
+        }
+        .broadsheet-card { 
+            border: none !important; 
+            box-shadow: none !important; 
+            border-radius: 0 !important; 
+            overflow: visible !important; 
+            padding: 0 !important;
+        }
+        .table-analysis thead {
+            display: table-header-group !important;
+        }
+        .table-analysis tbody {
+            display: table-row-group !important;
+        }
+        html, body { 
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important; 
+            font-size: 11pt !important; 
+            color: #000 !important;
+            background: white !important;
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+        }
+  
+        .table-analysis { 
+            font-size: 11pt !important; 
+            border-collapse: collapse !important;
+            width: 100% !important;
+            table-layout: fixed !important;
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
+        }
+        .table-analysis th,
+        .table-analysis td{
+            padding: 3px 3px !important;     
+            border: 1px solid var(--bs-border) !important;
+            font-size: 11pt !important;        
+            box-sizing: border-box;
+            line-height: 1.2 !important;
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
+        }
+
+        .table-analysis .col-adm { width: 30px !important; }
+        .table-analysis .col-name { width: 110px !important; padding-left: 3px !important; }
+        .table-analysis .col-mk { width: 26px !important; font-size: 11pt !important; padding: 3px 3px !important; }
+        .table-analysis td.col-lv,
+        .table-analysis th.col-lv { width: 26px !important; font-size: 11pt !important; padding: 3px 3px !important; }
+        .table-analysis .col-tps { width: 34px !important; }
+        .table-analysis .col-total { width: 48px !important; }
+        .table-analysis .col-plv { width: 36px !important; }
+
+        .table-analysis tr, .summary-table tr { 
+            page-break-inside: avoid !important; 
+            break-inside: avoid !important; 
+        }
+        .summary-table, .summary-table th, .summary-table td { 
+            border: 1px solid #999 !important; 
+        }
+
+        /* Premium header print rules — branding only on page 1 */
+        .bs-branding-only {
+            display: block !important;
+            border-bottom: 3px solid var(--bs-burgundy) !important;
+            margin-bottom: 0 !important;
+        }
+        .bs-header-block {
+            border: none !important;
+            margin-bottom: 0 !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            border-bottom: 3px solid var(--bs-burgundy) !important;
+        }
+        .bs-header-topbar {
+            display: none !important;
+        }
+        .bs-header-main {
+            padding: 6px 0 !important;
+            gap: 12px !important;
+            background: transparent !important;
+        }
+        .bs-logo-frame {
+            width: 0.9in !important;
+            height: 0.9in !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+        }
+        .bs-header-logo-wrap img {
+            max-width: 0.9in !important;
+            max-height: 0.9in !important;
+        }
+        .bs-school-name {
+            font-family: 'Georgia', 'Times New Roman', Times, serif !important;
+            font-size: 20pt !important;
+            line-height: 1.1 !important;
+            letter-spacing: 0.3pt !important;
+            margin-bottom: 2px !important;
+            color: #541212 !important;
+        }
+        .bs-results-badge {
+            background: var(--bs-burgundy) !important;
+            color: #ffffff !important;
+            border: none !important;
+            font-size: 12pt !important;
+            padding: 6px 14px !important;
+            border-radius: 20px !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .bs-meta-line {
+            font-size: 12pt !important;
+            color: #374151 !important;
+        }
+        .bs-header-accent {
+            display: none !important;
+        }
+        .bs-header-green-stripe {
+            display: none !important;
+        }
+
+        .subj-header { background: #C6C6C6 !important; color: #000000 !important; border-color: #999999 !important; font-size: 11pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .sub-hdr-mk  { background: #DCDCDC !important; color: #000000 !important; border-color: #999999 !important; font-size: 11pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .sub-hdr-lv  { background: #DCDCDC !important; color: #000000 !important; border-color: #999999 !important; font-size: 11pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .tps-col   { background-color: #FDF5E6 !important; color: #000000 !important; font-size: 11pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .total-col { background-color: #F5EAD2 !important; color: #000000 !important; font-size: 11pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .plv-col   { background-color: #F5EAD2 !important; color: #000000 !important; font-size: 11pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        @page { 
+            size: A4 landscape; 
+            margin: 0.5in 0.3in;
+
+            @bottom-center {
+                content: "GENERATED FROM EDUNEXUS EXAM SYSTEM @2026";
+                font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+                font-size: 7pt;
+                font-weight: 600;
+                color: #9CA3AF;
+                text-transform: uppercase;
+                letter-spacing: 0.4pt;
+                vertical-align: middle;
+            }
+        }
+
+        .analysis-page-container { 
+            break-before: page !important; 
+            page-break-before: always !important; 
+            box-shadow: none !important; 
+            border-radius: 0 !important; 
+            padding: 10px 0 0 0 !important; 
+            margin: 0 !important; 
+            border: none !important; 
+            background: #ffffff !important; 
+        }
+
+        .print-watermark-fixed { 
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .analysis-page-container h3 {
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
+            font-size: 11pt !important;
+            color: #541212 !important;
+            margin-bottom: 8px !important;
+            padding-bottom: 5px !important;
+            border-bottom: 2px solid #541212 !important;
+        }
+
+        .summary-table th {
+            background-color: #B6B6B5 !important;
+            color: #000000 !important;
+            font-size: 11pt !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .summary-table td {
+            font-size: 11pt !important;
+        }
+        .summary-table tr:nth-child(even) { background-color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .summary-table tr:nth-child(odd) { background-color: #F0F0F0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .streams-table tbody tr:nth-child(even) td { background-color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .streams-table tbody tr:nth-child(odd) td { background-color: #F0F0F0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .badge-ee { background-color: #c8e6c9 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .badge-me { background-color: #fff9c4 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .badge-ae { background-color: #ffe0b2 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .badge-be { background-color: #ffcdd2 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+
+    @media (max-width: 980px) {
+        .official-meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .exam-group-header { flex-direction: column; align-items: flex-start; }
+    }
+    @media (max-width: 640px) {
+        .analysis-container { padding: 14px; }
+
+        .official-results-hero {
+            padding: 18px 16px;
+            border-radius: 12px;
+            border-left-width: 5px;
+        }
+
+        .official-results-top {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .official-results-title h1 {
+            font-size: 22px;
+        }
+
+        .official-results-title p {
+            font-size: 12px;
+        }
+
+        .official-status-pill {
+            font-size: 10px;
+            padding: 7px 12px;
+            align-self: flex-start;
+        }
+
+        .official-meta-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .official-meta-card {
+            padding: 12px 14px;
+            border-radius: 10px;
+        }
+
+        .official-meta-card span {
+            font-size: 9px;
+        }
+
+        .official-meta-card strong {
+            font-size: 13px;
+        }
+
+        .published-switcher {
+            max-width: 100%;
+        }
+
+        .form-select {
+            font-size: 13px;
+            padding: 10px 12px;
+        }
+
+        .btn-print-action {
+            width: 100%;
+            justify-content: center;
+            margin-left: 0 !important;
+            margin-bottom: 8px;
+            padding: 12px 16px;
+            font-size: 12px;
+        }
+
+        .d-print-none.d-flex {
+            flex-direction: column;
+        }
+
+        .exam-group-card {
+            border-radius: 12px;
+        }
+
+        .exam-group-header {
+            padding: 14px 16px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .exam-group-name {
+            font-size: 16px;
+        }
+
+        .exam-group-timeline {
+            font-size: 10px;
+            padding: 5px 12px;
+        }
+
+        .new-badge {
+            font-size: 9px;
+            padding: 4px 10px;
+        }
+
+        /* ── Streams table: stack rows on mobile ── */
+        .streams-table thead {
+            display: none;
+        }
+
+        .streams-table,
+        .streams-table tbody,
+        .streams-table tr,
+        .streams-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .streams-table tr {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .streams-table td {
+            padding: 4px 0;
+            border: none;
+            text-align: left !important;
+        }
+
+        .streams-table td:nth-child(1) {
+            margin-bottom: 6px;
+        }
+
+        .streams-table td:nth-child(2) {
+            margin-bottom: 6px;
+        }
+
+        .streams-table td:nth-child(3) {
+            text-align: left !important;
+        }
+
+        .stream-name {
+            font-size: 14px;
+        }
+
+        .subject-count-badge {
+            font-size: 11px;
+            padding: 4px 12px;
+        }
+
+        .open-results-btn {
+            font-size: 12px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            width: auto;
+            display: inline-flex;
+        }
+
+        .results-shell,
+        .analysis-container {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .broadsheet-card {
+            padding: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .table-analysis {
+            min-width: 1100px;
+            table-layout: auto;
+            font-size: 9pt;
+        }
+
+        .table-analysis th,
+        .table-analysis td {
+            padding: 5px 3px;
+            font-size: 9pt;
+            white-space: nowrap;
+        }
+
+        .table-analysis .col-lv,
+        .table-analysis th.col-lv,
+        .table-analysis td.lv-col {
+            width: 26px !important;
+        }
+
+        .bs-header-block {
+            border-bottom: 3px solid var(--bs-burgundy);
+        }
+
+        .bs-header-main {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 8px;
+            width: 100%;
+        }
+
+        .bs-header-logo-wrap {
+            flex-shrink: 0;
+        }
+
+        .bs-logo-frame {
+            width: 60px;
+            height: 60px;
+        }
+
+        .bs-logo-placeholder {
+            width: 60px;
+            height: 60px;
+            font-size: 7px;
+        }
+
+        .bs-header-logo-wrap img {
+            max-width: 60px;
+            max-height: 60px;
+        }
+
+        .bs-header-text {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .bs-header-copy {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .bs-school-name {
+            font-size: 13px;
+            word-break: break-word;
+            line-height: 1.2;
+            margin: 0 0 2px;
+        }
+
+        .bs-meta-line {
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .bs-meta-chip {
+            font-size: 9px;
+            padding: 2px 8px;
+        }
+
+        .bs-results-badge {
+            font-size: 10px;
+            padding: 6px 12px;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .analysis-page-container {
+            margin-top: 0;
+            padding: 16px;
+            border-radius: 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .summary-table {
+            min-width: 600px;
+            font-size: 9pt;
+        }
+
+        .summary-table th {
+            padding: 8px 4px;
+            font-size: 9pt;
+        }
+
+        .summary-table td {
+            padding: 6px 4px;
+            font-size: 9pt;
+        }
+
+        .empty-official-state {
+            padding: 32px 20px;
+            border-radius: 12px;
+        }
+
+        .empty-official-state strong {
+            font-size: 17px;
+        }
+
+        .published-switcher {
+            max-width: 100%;
+            margin-top: 14px;
+        }
+
+        .published-switcher label {
+            font-size: 9px !important;
+        }
+    }
+
+    .pdf-export-mode {
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        width: 1080px !important;
+        max-width: 1080px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .pdf-export-mode .table-analysis,
+    .pdf-export-mode .summary-table {
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+    .pdf-export-mode .table-analysis th, 
+    .pdf-export-mode .table-analysis td,
+    .pdf-export-mode .summary-table th,
+    .pdf-export-mode .summary-table td {
+        padding: 3px 3px !important;
+        border: 1px solid var(--bs-border) !important;
+        font-size: 11pt !important;
+        color: var(--bs-charcoal) !important;
+        line-height: 1.2 !important;
+    }
+    .pdf-export-mode .table-analysis .col-adm { width: 30px !important; }
+    .pdf-export-mode .table-analysis .col-name { width: 110px !important; }
+    .pdf-export-mode .table-analysis .col-mk { width: 26px !important; }
+    .pdf-export-mode .table-analysis .col-lv { width: 26px !important; }
+    .pdf-export-mode .table-analysis .col-tps { width: 34px !important; }
+    .pdf-export-mode .table-analysis .col-total { width: 48px !important; }
+    .pdf-export-mode .table-analysis .col-plv { width: 36px !important; }
+    .pdf-export-mode .bs-header-topbar { display: none !important; }
+    .pdf-export-mode .bs-results-badge { background: var(--bs-burgundy) !important; color: #ffffff !important; border: none !important; border-radius: 20px !important; }
+    .pdf-export-mode .bs-header-accent { display: none !important; }
+    .pdf-export-mode .subj-header { background: #C6C6C6 !important; color: #000000 !important; border-color: #999999 !important; }
+    .pdf-export-mode .sub-hdr-mk  { background: #DCDCDC !important; color: #000000 !important; border-color: #999999 !important; }
+    .pdf-export-mode .sub-hdr-lv  { background: #DCDCDC !important; color: #000000 !important; border-color: #999999 !important; }
+    .pdf-export-mode .tps-col { background-color: #FDF5E6 !important; color: var(--bs-charcoal) !important; }
+    .pdf-export-mode .total-col { background-color: #F5EAD2 !important; color: var(--bs-charcoal) !important; }
+    .pdf-export-mode .plv-col { background-color: #F5EAD2 !important; color: var(--bs-charcoal) !important; }
+    .pdf-export-mode .lv-col { background-color: inherit !important; }
+    .pdf-export-mode .print-watermark-fixed {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    /* PDF export header colors */
+    .pdf-export-mode .bs-header-logo-wrap { background: transparent !important; }
+    .pdf-export-mode .bs-header-green-stripe { display: none !important; }
+    .pdf-export-mode .bs-header-block { border: none !important; border-bottom: 3px solid var(--bs-burgundy) !important; }
+    .pdf-export-mode .bs-school-name { font-family: 'Georgia', 'Times New Roman', Times, serif !important; color: #541212 !important; }
+    .pdf-export-mode .summary-table th { background-color: #B6B6B5 !important; color: #000000 !important; }
+</style>
+
+<div class="analysis-container">
+
+    <!-- ===================== HERO HEADER ===================== -->
+    <div class="official-results-hero d-print-none">
+        <div class="official-results-top">
+            <div class="official-results-title">
+                <h1>Published Results</h1>
+                <p>Official school results generated only from sheets published by the assessment administrator.</p>
+            </div>
+            <span class="official-status-pill">{{ access_label }}</span>
+        </div>
+
+        {% if show_table %}
+            <div class="official-meta-grid">
+                <div class="official-meta-card">
+                    <span>Assessment</span>
+                    <strong>{{ selected_exam }}</strong>
+                </div>
+                <div class="official-meta-card">
+                    <span>Academic Term</span>
+                    <strong>{{ selected_term }}</strong>
+                </div>
+                <div class="official-meta-card">
+                    <span>Academic Year</span>
+                    <strong>{{ selected_year }}</strong>
+                </div>
+                <div class="official-meta-card">
+                    <span>Class Stream</span>
+                    <strong>{{ selected_grade }} {{ selected_stream }}</strong>
+                </div>
+                <div class="official-meta-card">
+                    <span>Published Subjects</span>
+                    <strong>{{ published_subject_count }}</strong>
+                </div>
+            </div>
+
+            {% if published_contexts|length > 1 %}
+                <form method="GET" class="published-switcher">
+                    <label>Switch Published View</label>
+                    <select name="context" class="form-select" onchange="this.form.submit()">
+                        {% for item in published_contexts %}
+                            <option value="{{ item.context_key }}" {% if item.context_key == selected_context_key %}selected{% endif %}>
+                                {{ item.class_name }} {{ item.stream }} — {{ item.exam_name }} | {{ item.term }} {{ item.year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- ===================== BROADSHEET VIEW ===================== -->
+    {% if show_table %}
+    <div class="d-print-none d-flex justify-content-end mb-3">
+        <button onclick="window.print()" class="btn-print-action">
+            <i class="bi bi-printer-fill me-2"></i> PRINT BROADSHEET
+        </button>
+        <a href="{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}" 
+            class="btn-print-action" 
+            style="margin-left: 10px; text-decoration: none; display: inline-flex; align-items: center;">
+            <i class="bi bi-download me-2"></i> DOWNLOAD PDF
+        </a>
+    </div>
+
+    <!-- Branding header OUTSIDE the scrollable card so it stays at screen width -->
+    <div class="bs-header-block bs-branding-only">
+        <div class="bs-header-main">
+            <div class="bs-header-logo-wrap">
+                <div class="bs-logo-frame">
+                    {% if request.school.logo %}
+                        <img src="{{ request.school.logo.url }}" alt="{{ request.school.name }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="bs-logo-placeholder" style="display:none;">SCHOOL<br>CREST</div>
+                    {% else %}
+                        <div class="bs-logo-placeholder">SCHOOL<br>CREST</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="bs-header-text">
+                <div class="bs-header-copy">
+                    <div class="bs-school-name">{{ request.school.name }}</div>
+                    <div class="bs-meta-line">
+                        <span class="bs-meta-chip">{{ selected_grade|upper }} {{ selected_stream|upper }}</span>
+                        <span class="bs-meta-dot">&middot;</span>
+                        <span class="bs-meta-chip">{{ selected_year }}</span>
+                        <span class="bs-meta-dot">&middot;</span>
+                        <span class="bs-meta-chip">{{ selected_exam|upper }}</span>
+                    </div>
+                </div>
+                <div class="bs-results-badge">{{ selected_term|upper }} Results List</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="broadsheet-card">
+        <table class="table-analysis">
+            <colgroup>
+                <col class="col-adm">
+                <col class="col-name">
+                {% for code, short in published_subjects %}
+                    <col class="col-mk">
+                    <col class="col-lv">
+                {% endfor %}
+                <col class="col-tps">
+                <col class="col-total">
+                <col class="col-plv">
+            </colgroup>
+
+            <thead>
+                <!-- ===== COLUMN LABELS ===== -->
+                <tr>
+                    <th rowspan="2" class="col-adm" style="background:#D5D4D3; color:#000000; font-weight:700; border-color:#999999;">ADM</th>
+                    <th rowspan="2" class="col-name" style="background:#D5D4D3; color:#000000; font-weight:700; border-color:#999999; text-align:left !important; padding-left:5px !important;">STUDENT NAME</th>
+                    {% for code, short in published_subjects %}
+                        <th colspan="2" class="subj-header" style="background:#C6C6C6 !important; color:#000000 !important; border-color:#999999 !important;">{{ short }}</th>
+                    {% endfor %}
+                    <th rowspan="2" class="tps-col col-tps" style="font-weight:700; border-color:#999999; background:#FDF5E6 !important; color:#000000 !important;">TPS</th>
+                    <th rowspan="2" class="total-col col-total" style="font-weight:800; border-color:#999999; background:#F5EAD2 !important; color:#000000 !important;">TOTAL<br>MARK</th>
+                    <th rowspan="2" class="plv-col col-plv" style="font-weight:800; border-color:#999999; background:#F5EAD2 !important; color:#000000 !important;">PLV</th>
+                </tr>
+                <tr>
+                    {% for code, short in published_subjects %}
+                        <th class="col-mk sub-hdr-mk">MK</th>
+                        <th class="col-lv sub-hdr-lv">LV</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for row in broadsheet %}
+                <tr>
+                    <td style="font-weight:700; padding-left:4px; text-align:left;">{{ row.student.admission_no }}</td>
+                    <td class="col-name" style="font-weight:600;">{{ row.student.name }}</td>
+                    {% for score_entry in row.scores %}
+                        <td class="col-mk">{{ score_entry.score }}</td>
+                        <td class="col-lv lv-col">{{ score_entry.level }}</td>
+                    {% endfor %}
+                    <td class="tps-col">{{ row.tps }}</td>
+                    <td class="total-col">{{ row.total }}</td>
+                    <td class="plv-col">{{ row.plv }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div><!-- end broadsheet-card (table only) -->
+
+    <!-- Subject Performance Analysis OUTSIDE the scrollable card -->
+    <div class="analysis-page-container">
+        <h3 style="text-align:center; text-transform:uppercase;">
+            {{ selected_grade }} {{ selected_stream }} Subject Performance Analysis Summary
+        </h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>SUBJECT</th>
+                    <th>ENTRIES</th>
+                    {% for lvl in ordered_levels %}<th>{{ lvl }}</th>{% endfor %}
+                    <th>MEAN SCORE</th>
+                    <th>TEACHER</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in analysis_rows %}
+                <tr>
+                    <td class="sub-lbl">{{ item.short }}</td>
+                    <td>{{ item.entries }}</td>
+                    {% for lvl in ordered_levels %}
+                        <td class="{% if lvl == 'EE1' or lvl == 'EE2' %}badge-ee{% elif lvl == 'ME1' or lvl == 'ME2' %}badge-me{% elif lvl == 'AE1' or lvl == 'AE2' %}badge-ae{% elif lvl == 'BE1' or lvl == 'BE2' %}badge-be{% endif %}">
+                            {% if lvl == 'EE1' %}{{ item.distribution.EE1 }}
+                            {% elif lvl == 'EE2' %}{{ item.distribution.EE2 }}
+                            {% elif lvl == 'ME1' %}{{ item.distribution.ME1 }}
+                            {% elif lvl == 'ME2' %}{{ item.distribution.ME2 }}
+                            {% elif lvl == 'AE1' %}{{ item.distribution.AE1 }}
+                            {% elif lvl == 'AE2' %}{{ item.distribution.AE2 }}
+                            {% elif lvl == 'BE1' %}{{ item.distribution.BE1 }}
+                            {% elif lvl == 'BE2' %}{{ item.distribution.BE2 }}
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="mean-score-col">{{ item.mean_score }}</td>
+                    <td class="teacher-col">{{ item.teacher_name }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="12">No analytical metrics captured for this selection.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="print-watermark-fixed">GENERATED FROM EDUNEXUS EXAM SYSTEM @2026</div>
+
+    <!-- ===================== EXAM GROUP CARDS (Landing) ===================== -->
+    {% elif published_contexts %}
+    <div class="exam-groups-wrapper">
+        {% regroup published_contexts by exam_name as exam_groups %}
+        {% for exam_group in exam_groups %}
+            {% with first=exam_group.list.0 %}
+            <div class="exam-group-card {% if forloop.first %}is-latest{% endif %}">
+
+                <div class="exam-group-header">
+                    <div class="exam-group-header-left">
+                        <span class="exam-group-label">
+                            {% if forloop.first %}
+                                <i class="bi bi-lightning-charge-fill"></i> Latest Published
+                            {% else %}
+                                Assessment
+                            {% endif %}
+                        </span>
+                        <h3 class="exam-group-name">{{ exam_group.grouper }}</h3>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        {% if forloop.first %}
+                            <span class="new-badge">
+                                <i class="bi bi-star-fill"></i> NEW
+                            </span>
+                        {% endif %}
+                        <span class="exam-group-timeline">
+                            <i class="bi bi-calendar3"></i>
+                            {{ first.term }} | {{ first.year }}
+                        </span>
+                    </div>
+                </div>
+
+                <table class="streams-table">
+                    <thead>
+                        <tr>
+                            <th>Class Stream</th>
+                            <th style="text-align:center;">Published Subjects</th>
+                            <th style="text-align:right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in exam_group.list %}
+                        <tr>
+                            <td>
+                                <div style="display:flex; align-items:center;">
+                                    <span class="stream-dot"></span>
+                                    <span class="stream-name">{{ item.class_name }} {{ item.stream }}</span>
+                                </div>
+                            </td>
+                            <td style="text-align:center;">
+                                <span class="subject-count-badge">{{ item.subject_count }} Subjects</span>
+                            </td>
+                            <td style="text-align:right;">
+                                <a href="?context={{ item.context_key|urlencode }}" class="open-results-btn">
+                                    <i class="bi bi-bar-chart-line-fill"></i> Open Results
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+            </div>
+            {% endwith %}
+        {% endfor %}
+    </div>
+
+    <!-- ===================== EMPTY STATE ===================== -->
+    {% else %}
+    <div class="empty-official-state">
+        <strong>No Published Results Available</strong>
+        Results will appear here after the assessment administrator publishes at least one completed subject sheet for your permitted class stream.
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,1338 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" href="/static/images/edunexus_logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDUNEXUS Exam System</title>
+    
+    <!-- BOOTSTRAP ICONS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- GOOGLE FONTS -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --oraimo-green: #9be816;
+            --dark-green: #0f3d22;
+            --sidebar-white: #ffffff;
+            --main-bg: #f6f8fb;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-light: #e2e8f0;
+            --nav-soft: #f8fafc;
+            --shadow-soft: 0 10px 28px rgba(15, 23, 42, 0.06);
+        }
+
+        body {
+            background-color: var(--main-bg);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dark);
+            min-width: 0;
+            overflow-x: hidden;
+        }
+
+        html {
+            min-width: 0;
+            overflow-x: hidden;
+        }
+
+        img, video, canvas, svg {
+            max-width: 100%;
+        }
+
+        input, select, textarea, button {
+            max-width: 100%;
+        }
+
+        /* ===== MOBILE TOP BAR (matches KEMIS/Reference design) ===== */
+        .mobile-topbar {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-light);
+            z-index: 1002;
+            padding: 0 12px;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .mobile-topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mobile-hamburger {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .mobile-hamburger:active {
+            background: var(--nav-soft);
+        }
+
+        .mobile-hamburger span {
+            width: 22px;
+            height: 2.5px;
+            background: var(--text-dark);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translateY(10px);
+        }
+        .mobile-hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+        .mobile-hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translateY(-10px);
+        }
+
+        .mobile-topbar-brand {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            letter-spacing: -0.3px;
+        }
+
+        .mobile-topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mobile-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 800;
+            font-size: 14px;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .mobile-logout-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: none;
+            background: #f1f5f9;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .mobile-logout-btn:active {
+            background: #fee2e2;
+            color: #dc2626;
+            transform: scale(0.93);
+        }
+
+        /* ===== GLOBAL LOADING OVERLAY ===== */
+        .global-loader-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.72);
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .global-loader-overlay.active {
+            display: flex;
+        }
+
+        .loader-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 5px;
+            height: 48px;
+            margin-bottom: 16px;
+        }
+
+        .loader-bars .bar {
+            width: 7px;
+            background: #ffffff;
+            border-radius: 4px;
+            animation: loaderBounce 1s ease-in-out infinite;
+        }
+
+        .loader-bars .bar:nth-child(1) { height: 18px; animation-delay: 0s; }
+        .loader-bars .bar:nth-child(2) { height: 32px; animation-delay: 0.1s; }
+        .loader-bars .bar:nth-child(3) { height: 48px; animation-delay: 0.2s; }
+        .loader-bars .bar:nth-child(4) { height: 32px; animation-delay: 0.3s; }
+        .loader-bars .bar:nth-child(5) { height: 18px; animation-delay: 0.4s; }
+
+        @keyframes loaderBounce {
+            0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+            50% { transform: scaleY(1); opacity: 1; }
+        }
+
+        .loader-text {
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== HAMBURGER MENU BUTTON (MOBILE ONLY) ===== */
+        .hamburger-btn {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            width: 44px;
+            height: 44px;
+            background: var(--oraimo-green);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            z-index: 1001;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(164, 230, 29, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .hamburger-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 6px rgba(164, 230, 29, 0.2);
+        }
+
+        .hamburger-btn span {
+            width: 24px;
+            height: 3px;
+            background: var(--text-dark);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        /* Hamburger animation when menu is open */
+        .hamburger-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translateY(10px);
+        }
+        .hamburger-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+        .hamburger-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translateY(-10px);
+        }
+
+        /* ===== SIDEBAR STYLES ===== */
+        .sidebar {
+            width: 248px;
+            background: var(--sidebar-white);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            color: var(--text-dark);
+            z-index: 1000;
+            border-right: 1px solid var(--border-light);
+            padding: 18px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-y: auto;
+            box-shadow: var(--shadow-soft);
+        }
+
+        /* Mobile: Sidebar slides in from left */
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 8px 8px 18px 8px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: 18px;
+        }
+
+        .brand-logo {
+            width: 66px;
+            height: 66px;
+            margin: 0 auto 10px auto;
+            display: block;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .brand-text {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: var(--text-dark);
+            letter-spacing: -0.4px;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1.1;
+            text-align: center;
+        }
+
+        .brand-accent {
+            color: var(--oraimo-green);
+        }
+
+        .brand-subtext {
+            font-size: 0.62rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-top: 4px;
+            display: block;
+            text-align: center;
+        }
+
+        /* ===== NAVIGATION STYLES ===== */
+        nav.flex-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-link-card {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 48px;
+            padding: 0 14px;
+            background: #ffffff;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            color: var(--text-dark) !important;
+            font-weight: 700;
+            font-size: 0.92rem;
+            text-decoration: none !important;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .nav-link-card i {
+            width: 22px;
+            font-size: 1.05rem;
+            margin-right: 10px;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        .nav-link-card:hover {
+            background: var(--nav-soft);
+            color: var(--text-dark) !important;
+            border-color: #b7ef61;
+            transform: translateX(2px);
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+        }
+
+        .nav-link-card.active-section {
+            background: var(--oraimo-green);
+            color: var(--text-dark) !important;
+            font-weight: 800;
+            border-color: var(--dark-green);
+            box-shadow: 0 10px 22px rgba(164, 230, 29, 0.24);
+        }
+
+        .nav-divider {
+            height: 1px;
+            background: var(--border-light);
+            margin: 5px 0;
+            border: none;
+        }
+
+        /* ── Sidebar Section Groups ── */
+        .nav-section-label {
+            font-size: 9px;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            padding: 12px 10px 4px;
+            letter-spacing: 0.9px;
+            line-height: 1;
+        }
+
+        .nav-section-label:first-child {
+            padding-top: 0;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            margin-left: 248px;
+            padding: 0;
+            min-height: 100vh;
+            width: calc(100% - 248px);
+            box-sizing: border-box;
+        }
+
+        /* Overlay for mobile when menu is open */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            /* Hide old hamburger, show mobile topbar */
+            .hamburger-btn {
+                display: none !important;
+            }
+
+            .mobile-topbar {
+                display: flex;
+            }
+
+            /* Sidebar becomes overlay on mobile */
+            .sidebar {
+                width: 75%;
+                max-width: 280px;
+                height: 100vh;
+                position: fixed;
+                top: 0;
+                left: 0;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 1000;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            /* Main content takes full width on mobile */
+            .main-content {
+                margin-left: 0;
+                width: 100vw;
+                max-width: 100vw;
+                padding-top: 56px;
+                overflow-x: hidden;
+            }
+
+            /* Navigation stays vertical on mobile */
+            nav.flex-column {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .nav-link-card {
+                width: 100%;
+                justify-content: flex-start;
+                min-height: 44px;
+                padding: 0 12px;
+                font-size: 0.85rem;
+            }
+
+            .nav-link-card i {
+                font-size: 1rem;
+                margin-right: 8px;
+            }
+
+            .nav-divider {
+                margin: 8px 0;
+            }
+
+            .container,
+            .container-fluid,
+            .dashboard-shell,
+            .dashboard-page,
+            .directory-page,
+            .analysis-container,
+            .reports-page,
+            .profile-page,
+            .teacher-dashboard,
+            .capture-page,
+            .capture-shell,
+            .admin-shell,
+            .registration-shell,
+            .reports-shell,
+            .results-shell,
+            .faculty-matrix-page,
+            .admin-register-page,
+            .exam-control-page,
+            .review-page,
+            .locks-page {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                padding: 12px !important;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .stat-grid,
+            .summary-grid,
+            .metric-grid,
+            .metrics-grid,
+            .quick-actions-grid,
+            .dashboard-grid,
+            .enrollment-grid,
+            .class-grid,
+            .form-grid,
+            .form-grid-2,
+            .form-grid-3,
+            .cards-grid,
+            .context-grid,
+            .readonly-grid {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 12px !important;
+            }
+
+            .hero-card,
+            .page-top,
+            .capture-header,
+            .admin-hero,
+            .directory-hero,
+            .official-results-hero,
+            .reports-hero,
+            .profile-hero,
+            .dashboard-card,
+            .summary-card,
+            .metric-card,
+            .card,
+            .panel,
+            .toolbar,
+            .filter-bar,
+            .assignment-row,
+            .teacher-chip,
+            .faculty-card,
+            .workspace-card,
+            .side-panel,
+            .capture-card,
+            .upload-card,
+            .dashboard-panel,
+            .quick-action-card,
+            .population-card,
+            .reports-table-card,
+            .broadsheet-card,
+            .register-sheet,
+            .table-wrap,
+            .exam-group-card,
+            .official-results-hero,
+            .exam-groups-wrapper {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+            }
+
+            .toolbar,
+            .filter-bar,
+            .hero-actions,
+            .action-row,
+            .button-row,
+            .page-top,
+            .capture-header,
+            .dashboard-hero,
+            .assignment-row,
+            .status-item {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 10px !important;
+            }
+
+            .toolbar *,
+            .filter-bar *,
+            .hero-actions *,
+            .action-row *,
+            .button-row *,
+            .page-top *,
+            .capture-header * {
+                max-width: 100% !important;
+            }
+
+            table {
+                max-width: none;
+            }
+
+            .table-responsive,
+            .table-wrapper,
+            .table-scroll,
+            .table-wrap,
+            .reports-table-card,
+            .broadsheet-card,
+            .register-sheet,
+            .review-table-card,
+            .faculty-table-card,
+            .exam-group-card {
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .data-table,
+            .reports-table,
+            .table-analysis,
+            .register-table,
+            .review-table,
+            .capture-table,
+            .matrix-table,
+            .streams-table {
+                min-width: 700px;
+            }
+
+            .capture-table {
+                min-width: 700px;
+            }
+
+            .score-entry-control {
+                width: 120px !important;
+            }
+
+            .level-badge {
+                min-width: 140px !important;
+                font-size: 10px !important;
+            }
+
+            .btn-primary-action,
+            .btn-soft-action,
+            .btn-oraimo,
+            .upload-btn,
+            .quick-action-card {
+                width: 100% !important;
+                justify-content: center !important;
+            }
+
+            h1 {
+                font-size: clamp(1.3rem, 6vw, 1.8rem) !important;
+                line-height: 1.15 !important;
+                overflow-wrap: anywhere;
+            }
+
+            h2 {
+                font-size: clamp(1.1rem, 5vw, 1.4rem) !important;
+                line-height: 1.2 !important;
+                overflow-wrap: anywhere;
+            }
+
+            h3,
+            .brand-text {
+                overflow-wrap: anywhere;
+            }
+
+            .sidebar-header {
+                padding: 6px 6px 14px 6px;
+            }
+
+            .brand-logo {
+                width: 56px;
+                height: 56px;
+            }
+
+            .brand-text {
+                font-size: 1rem;
+            }
+
+            .brand-subtext {
+                font-size: 0.55rem;
+            }
+        }
+
+        /* ===== TABLET RESPONSIVE ===== */
+        @media (max-width: 1024px) and (min-width: 769px) {
+            .sidebar {
+                width: 232px;
+            }
+
+            .main-content {
+                margin-left: 232px;
+                width: calc(100% - 232px);
+            }
+
+            .brand-logo {
+                width: 70px;
+                height: 70px;
+            }
+
+            .brand-text {
+                font-size: 1rem;
+            }
+
+            .nav-link-card {
+                font-size: 0.9rem;
+                padding: 10px 14px;
+            }
+
+            .nav-link-card i {
+                font-size: 1.1rem;
+                margin-right: 10px;
+            }
+        }
+
+        /* ===== PRINT STYLES ===== */
+        @media print {
+            @page {
+                size: auto;
+                margin: 0.5cm;
+            }
+
+            body * {
+                visibility: hidden !important;
+            }
+
+            .broadsheet-card, .broadsheet-card *,
+            .bs-header-block, .bs-header-block *,
+            .analysis-page-container, .analysis-page-container *,
+            .print-watermark-fixed,
+            .register-sheet, .register-sheet *,
+            #reportCardsContainer, #reportCardsContainer * {
+                visibility: visible !important;
+            }
+
+            .sidebar, .hamburger-btn, .sidebar-overlay, .mobile-topbar, .global-loader-overlay {
+                display: none !important;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+
+            .broadsheet-card, .register-sheet, #reportCardsContainer, .report-card {
+                position: relative !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                outline: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .lv-col { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: #c5d9f1 !important; }
+            .tps-col { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: #fcd5b4 !important; }
+            .total-col { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: #92d050 !important; }
+            .plv-col { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: #FFFF00 !important; color: #000000 !important; }
+        }
+
+        #reportCardsContainer, .report-card {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* ===== SCROLLBAR STYLING ===== */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--oraimo-green);
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: var(--dark-green);
+        }
+
+        /* ===== TOP BAR (SaaS-style header) ===== */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            height: 60px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-light);
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            z-index: 500;
+        }
+
+        .topbar-spacer {
+            flex: 1;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .topbar-user {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 12px 6px 6px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .topbar-user:hover {
+            background: var(--nav-soft);
+            border-color: var(--border-light);
+        }
+
+        .topbar-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 800;
+            font-size: 14px;
+            font-family: 'Montserrat', sans-serif;
+            flex-shrink: 0;
+        }
+
+        .topbar-username {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-dark);
+            white-space: nowrap;
+        }
+
+        .topbar-chevron {
+            font-size: 11px;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .topbar-user.open .topbar-chevron {
+            transform: rotate(180deg);
+        }
+
+        /* Dropdown */
+        .topbar-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            min-width: 220px;
+            background: #ffffff;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12);
+            z-index: 600;
+            overflow: hidden;
+        }
+
+        .topbar-user.open .topbar-dropdown {
+            display: block;
+        }
+
+        .topbar-dropdown-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .topbar-dropdown-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 800;
+            font-size: 15px;
+            font-family: 'Montserrat', sans-serif;
+            flex-shrink: 0;
+        }
+
+        .topbar-dropdown-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .topbar-dropdown-role {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .topbar-dropdown-divider {
+            height: 1px;
+            background: var(--border-light);
+            margin: 0;
+        }
+
+        .topbar-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+            transition: background 0.15s;
+        }
+
+        .topbar-dropdown-item:hover {
+            background: var(--nav-soft);
+        }
+
+        .topbar-dropdown-item.topbar-logout {
+            color: #dc2626;
+        }
+
+        .topbar-dropdown-item.topbar-logout:hover {
+            background: #fef2f2;
+        }
+
+        @media (max-width: 768px) {
+            .topbar {
+                display: none;
+            }
+        }
+
+        /* ===== WORKSPACE TOGGLE (Admin Only) ===== */
+        .workspace-toggle {
+            display: flex;
+            align-items: center;
+            background: #f1f5f9;
+            border-radius: 10px;
+            padding: 3px;
+            gap: 2px;
+            border: 1px solid var(--border-light);
+        }
+
+        .workspace-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: transparent;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .workspace-toggle-btn:hover {
+            color: var(--text-dark);
+            background: rgba(255,255,255,0.6);
+        }
+
+        .workspace-toggle-btn.active {
+            background: var(--oraimo-green);
+            color: var(--text-dark);
+            box-shadow: 0 2px 8px rgba(164, 230, 29, 0.3);
+        }
+
+        .workspace-toggle-btn i {
+            font-size: 13px;
+        }
+
+        .workspace-toggle-label {
+            font-size: 9px;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-right: 6px;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+            .workspace-toggle {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- GLOBAL LOADING OVERLAY -->
+    <div class="global-loader-overlay" id="globalLoader">
+        <div class="loader-bars">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        <div class="loader-text">Please Wait...</div>
+    </div>
+
+    <!-- MOBILE TOP BAR -->
+    <div class="mobile-topbar" id="mobileTopbar">
+        <div class="mobile-topbar-left">
+            <button class="mobile-hamburger" id="mobileHamburger" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <span class="mobile-topbar-brand">{% if request.school %}{{ request.school.name }}{% else %}EDUNEXUS{% endif %}</span>
+            <span style="font-size: 9px; font-weight: 800; color: #fff; background: #0f172a; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">{{ request.session.workspace_section|default:"PRIMARY" }}</span>
+        </div>
+        <div class="mobile-topbar-right">
+            <div class="mobile-avatar" id="mobileAvatar">
+                {{ request.user.first_name|first|default:"U" }}
+            </div>
+            <a href="{% url 'logout' %}" class="mobile-logout-btn" aria-label="Logout">
+                <i class="bi bi-power"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- HAMBURGER BUTTON (Desktop legacy — hidden by CSS on mobile) -->
+    <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <!-- SIDEBAR OVERLAY (Mobile Only) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <div class="sidebar" id="sidebar">
+        <div>
+            <!-- HEADER -->
+            <div class="sidebar-header">
+                <img src="{% static 'images/edunexus_logo.png' %}" alt="EDUNEXUS Logo" class="brand-logo">
+                <h1 class="brand-text">EDU<span class="brand-accent">NEXUS</span></h1>
+                <span class="brand-subtext">Exam Management System</span>
+            </div>
+            
+            <!-- MAIN NAVIGATION BLOCK -->
+            <nav class="flex-column">
+    
+                {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
+                    <!-- ======================================================= -->
+                    <!-- ISOLATED SCHOOL ADMIN/ICT SIDEBAR (GROUPED) -->
+                    <!-- ======================================================= -->
+
+                    <!-- GROUP: Overview -->
+                    <div class="nav-section-label">Overview</div>
+
+                    <a class="nav-link-card {% if request.resolver_match.url_name == 'school_admin_dashboard' %}active-section{% endif %}" href="{% url 'school_admin_dashboard' %}">
+                        <i class="bi bi-speedometer2"></i> <span>Command Center</span>
+                    </a>
+
+                    <!-- GROUP: Students & Classes -->
+                    <div class="nav-section-label">Students & Classes</div>
+
+                    <a class="nav-link-card {% if request.resolver_match.url_name == 'admin_add_student' %}active-section{% endif %}" href="{% url 'admin_add_student' %}">
+                        <i class="bi bi-person-plus-fill"></i> <span>Learner Registry</span>
+                    </a>
+
+                    <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_classes' %}active-section{% endif %}" href="{% url 'manage_classes' %}">
+                        <i class="bi bi-diagram-3"></i> <span>Class Structure</span>
+                    </a>
+
+                    <a class="nav-link-card {% if request.resolver_match.url_name == 'class_lists' %}active-section{% endif %}" href="{% url 'class_lists' %}">
+                        <i class="bi bi-people"></i> <span>Learner Lists</span>
+                    </a>
+
+                    <!-- GROUP: Assessments & Results -->
+                    <div class="nav-section-label">Assessments & Results</div>
+
+                    <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'review_submission' %}active-section{% endif %}" href="{% url 'manage_exams' %}">
+                        <i class="bi bi-journal-check"></i> <span>Assessment Control</span>
+                    </a>
+
+                    <a class="nav-link-card {% if request.resolver_match.url_name == 'review_stream_submission' %}active-section{% endif %}" href="{% url 'review_stream_submission' %}">
+                        <i class="bi bi-check2-square"></i> <span>Stream Publishing</span>
+                    </a>
+
+                    <a class="nav-link-card {% if request.resolver_match.url_name == 'results_list' %}active-section{% endif %}" href="{% url 'results_list' %}">
+                        <i class="bi bi-graph-up-arrow"></i> <span>Published Results</span>
+                    </a>
+
+                    <a class="nav-link-card {% if request.resolver_match.url_name == 'report_card_select' %}active-section{% endif %}" href="{% url 'report_card_select' %}">
+                        <i class="bi bi-file-earmark-pdf-fill"></i> <span>Report Cards</span>
+                    </a>
+
+                    <!-- GROUP: Staff -->
+                    <div class="nav-section-label">Staff</div>
+
+                    <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active-section{% endif %}" href="{% url 'manage_faculty_matrix' %}">
+                        <i class="bi bi-diagram-3-fill"></i> <span>Faculty Allocation</span>
+                    </a>
+
+{% else %}
+    <!-- ======================================================= -->
+    <!-- STANDARD SCHOOL TEACHER SIDEBAR -->
+    <!-- ======================================================= -->
+
+    <div class="nav-section-label">Menu</div>
+
+    <a class="nav-link-card {% if request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'dashboard' %}active-section{% endif %}" href="{% url 'dashboard_alt' %}">
+        <i class="bi bi-grid-1x2-fill"></i> <span>Dashboard</span>
+    </a>
+
+    <a class="nav-link-card {% if request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'home' %}active-section{% endif %}" href="{% url 'home_alt' %}">
+        <i class="bi bi-person-badge"></i> <span>Faculty Profile</span>
+    </a>
+
+    {% with ws=request.session.workspace_section sec=request.session.school_section %}
+    {% if ws == 'PRIMARY' or sec == 'PRIMARY' %}
+        <a class="nav-link-card {% if request.resolver_match.url_name == 'select_exam_primary' %}active-section{% endif %}" href="{% url 'select_exam_primary' %}">
+            <i class="bi bi-input-cursor-text"></i> <span>Score Capture</span>
+        </a>
+    {% else %}
+        <a class="nav-link-card {% if request.resolver_match.url_name == 'select_exam' %}active-section{% endif %}" href="{% url 'select_exam' %}">
+            <i class="bi bi-input-cursor-text"></i> <span>Score Capture</span>
+        </a>
+    {% endif %}
+    {% endwith %}
+
+    <div class="nav-section-label">Results</div>
+
+    <a class="nav-link-card {% if request.resolver_match.url_name == 'results_list' %}active-section{% endif %}" href="{% url 'results_list' %}">
+        <i class="bi bi-graph-up-arrow"></i> <span>Published Results</span>
+    </a>
+
+    {% if "Class Teacher" in request.user.teacher_profile.assigned_task %}
+        <a class="nav-link-card {% if request.resolver_match.url_name == 'report_card_select' %}active-section{% endif %}" href="{% url 'report_card_select' %}">
+            <i class="bi bi-file-earmark-pdf-fill"></i> <span>Report Cards</span>
+        </a>
+    {% endif %}
+
+    <a class="nav-link-card {% if request.resolver_match.url_name == 'class_lists' %}active-section{% endif %}" href="{% url 'class_lists' %}">
+        <i class="bi bi-people"></i> <span>Learner Lists</span>
+    </a>
+{% endif %}
+
+                {% if request.session.school_section == 'BOTH' %}
+                <div style="padding: 8px 10px; margin-top: 8px;">
+                    <div style="font-size: 9px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;">Workspace</div>
+                    <div style="display: flex; gap: 6px;">
+                        <form method="post" action="{% url 'switch_workspace' %}" style="flex:1; display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="section" value="PRIMARY">
+                            <button type="submit" style="width:100%; border: 2px solid {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#fff{% else %}#64748b{% endif %}; padding: 10px 0; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                <i class="bi bi-book"></i> Primary
+                            </button>
+                        </form>
+                        <form method="post" action="{% url 'switch_workspace' %}" style="flex:1; display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="section" value="JSS">
+                            <button type="submit" style="width:100%; border: 2px solid {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'JSS' %}#fff{% else %}#64748b{% endif %}; padding: 10px 0; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                <i class="bi bi-mortarboard"></i> JSS
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+            </nav>
+
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="main-content">
+        <!-- TOP BAR -->
+        <div class="topbar">
+            <div class="topbar-spacer"></div>
+            <div class="topbar-right">
+                {% if request.session.school_section == 'BOTH' %}
+                <!-- Workspace Toggle (Admin only) -->
+                <div class="workspace-toggle">
+                    <span class="workspace-toggle-label">Workspace</span>
+                    <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="PRIMARY">
+                        <button type="submit" class="workspace-toggle-btn {% if request.session.workspace_section == 'PRIMARY' or request.session.workspace_section == 'BOTH' or not request.session.workspace_section %}active{% endif %}">
+                            <i class="bi bi-book"></i> Primary
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="JSS">
+                        <button type="submit" class="workspace-toggle-btn {% if request.session.workspace_section == 'JSS' %}active{% endif %}">
+                            <i class="bi bi-mortarboard"></i> JSS
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+                <div class="topbar-user" id="topbarUserMenu">
+                    <div class="topbar-avatar">
+                        {{ request.user.first_name|first|default:"U" }}
+                    </div>
+                    <span class="topbar-username">{{ request.user.get_full_name|default:request.user.username }}</span>
+                    <i class="bi bi-chevron-down topbar-chevron"></i>
+                    <div class="topbar-dropdown" id="topbarDropdown">
+                        <div class="topbar-dropdown-header">
+                            <div class="topbar-dropdown-avatar">
+                                {{ request.user.first_name|first|default:"U" }}
+                            </div>
+                            <div>
+                                <div class="topbar-dropdown-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+                                <div class="topbar-dropdown-role">
+                                    {% if request.user.is_staff or request.user.is_superuser or request.user.school_admin_profile %}
+                                        School Administrator
+                                    {% else %}
+                                        {% if request.user.teacher_profile %}
+                                            {{ request.user.teacher_profile.assigned_task|default:"Teacher" }}
+                                        {% else %}
+                                            Staff
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="topbar-dropdown-divider"></div>
+                        <a href="{% url 'logout' %}" class="topbar-dropdown-item topbar-logout">
+                            <i class="bi bi-box-arrow-right"></i> Sign Out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <script>
+        // ── Mobile Menu Toggle ────────────────────────────────────────
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const mobileHamburger = document.getElementById('mobileHamburger');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function openMenu() {
+            sidebar.classList.add('active');
+            sidebarOverlay.classList.add('active');
+            if (hamburgerBtn) hamburgerBtn.classList.add('active');
+            if (mobileHamburger) mobileHamburger.classList.add('active');
+        }
+        function closeMenu() {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+            if (hamburgerBtn) hamburgerBtn.classList.remove('active');
+            if (mobileHamburger) mobileHamburger.classList.remove('active');
+        }
+
+        if (hamburgerBtn) hamburgerBtn.addEventListener('click', function() {
+            sidebar.classList.contains('active') ? closeMenu() : openMenu();
+        });
+        if (mobileHamburger) mobileHamburger.addEventListener('click', function() {
+            sidebar.classList.contains('active') ? closeMenu() : openMenu();
+        });
+
+        sidebarOverlay.addEventListener('click', closeMenu);
+
+        const navLinks = sidebar.querySelectorAll('.nav-link-card');
+        navLinks.forEach(link => link.addEventListener('click', closeMenu));
+
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) closeMenu();
+        });
+
+        // ── Global Loading Overlay ────────────────────────────────────
+        const globalLoader = document.getElementById('globalLoader');
+
+        function showLoader()  { if (globalLoader) globalLoader.classList.add('active'); }
+        function hideLoader()  { if (globalLoader) globalLoader.classList.remove('active'); }
+
+        showLoader();
+        window.addEventListener('load', hideLoader);
+
+        document.querySelectorAll('.nav-link-card, .btn, a[href]').forEach(el => {
+            el.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                if (href && href !== '#' && !href.startsWith('javascript:') && !href.startsWith('mailto:')) {
+                    showLoader();
+                    setTimeout(hideLoader, 8000);
+                }
+            });
+        });
+
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                showLoader();
+                setTimeout(hideLoader, 12000);
+            });
+        });
+
+        window.showLoader = showLoader;
+        window.hideLoader = hideLoader;
+
+        // ── Topbar User Dropdown ────────────────────────────────────
+        const topbarUser = document.getElementById('topbarUserMenu');
+        if (topbarUser) {
+            topbarUser.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.classList.toggle('open');
+            });
+            document.addEventListener('click', function() {
+                topbarUser.classList.remove('open');
+            });
+        }
+    </script>
+
+</body>
+</html>

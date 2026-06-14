@@ -1,0 +1,319 @@
+{% extends 'superuser/base.html' %}
+{% block title %}New Broadcast · EduNexus{% endblock %}
+{% block page_title %}New Broadcast{% endblock %}
+
+{% block content %}
+<style>
+  .bf-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    align-items: start;
+    max-width: 940px;
+  }
+
+  .bf-card {
+    background: #fff; border: 1px solid #e8edf3; border-radius: 12px; overflow: hidden;
+  }
+  .bf-card-header {
+    padding: 18px 22px; border-bottom: 1px solid #f1f5f9;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .bf-header-icon {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: #fef3c7; color: #d97706;
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .bf-card-header h3  { font-size: 14px; font-weight: 800; color: #0f172a; margin: 0; }
+  .bf-card-header p   { font-size: 11px; color: #94a3b8; font-weight: 600; margin: 1px 0 0; }
+  .bf-card-body { padding: 22px; }
+
+  .bf-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+  .bf-label {
+    font-size: 11px; font-weight: 800; color: #475569;
+    text-transform: uppercase; letter-spacing: .6px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .bf-label .required { color: #ef4444; }
+  .bf-input {
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 9px 12px; font-size: 13px; font-weight: 600;
+    color: #1e293b; background: #f8fafc; outline: none;
+    transition: border-color .2s, box-shadow .2s; font-family: inherit; width: 100%;
+  }
+  .bf-input:focus {
+    border-color: #7ec41a; box-shadow: 0 0 0 3px rgba(126,196,26,.1); background: #fff;
+  }
+  .bf-input::placeholder { color: #cbd5e1; }
+
+  textarea.bf-input { resize: vertical; min-height: 130px; line-height: 1.6; }
+
+  /* character counter */
+  .bf-field-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 4px;
+  }
+  .bf-hint  { font-size: 11px; color: #94a3b8; font-weight: 600; }
+  .bf-count { font-size: 11px; color: #94a3b8; font-weight: 700; }
+  .bf-count.warn { color: #d97706; }
+
+  /* audience tiles */
+  .bf-audience-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+  }
+  .bf-audience-tile {
+    position: relative; cursor: pointer;
+  }
+  .bf-audience-tile input[type=radio] { position: absolute; opacity: 0; pointer-events: none; }
+  .bf-audience-label {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 14px 10px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+    background: #f8fafc; transition: all .15s; text-align: center; cursor: pointer;
+  }
+  .bf-audience-label:hover { border-color: #7ec41a; background: #fafff5; }
+  .bf-audience-tile input:checked + .bf-audience-label {
+    border-color: #7ec41a; background: #f4fce8;
+    box-shadow: 0 0 0 3px rgba(126,196,26,.1);
+  }
+  .bf-aud-icon {
+    width: 34px; height: 34px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .bf-aud-icon.all     { background: #dbeafe; color: #2563eb; }
+  .bf-aud-icon.admins  { background: #fef3c7; color: #d97706; }
+  .bf-aud-icon.teachers{ background: #dcfce7; color: #16a34a; }
+  .bf-aud-name { font-size: 11px; font-weight: 800; color: #1e293b; }
+  .bf-aud-desc { font-size: 10px; color: #94a3b8; font-weight: 600; }
+
+  /* preview card */
+  .bf-preview {
+    background: #fff; border: 1px solid #e8edf3; border-radius: 12px;
+    overflow: hidden; position: sticky; top: 76px;
+  }
+  .bf-preview-header {
+    padding: 13px 18px; border-bottom: 1px solid #f1f5f9;
+    font-size: 11px; font-weight: 800; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: .6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .bf-preview-body { padding: 18px; }
+
+  /* mock broadcast notification */
+  .bf-mock {
+    background: #fffbeb; border: 1px solid #fde68a;
+    border-radius: 10px; padding: 14px 16px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .bf-mock-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: #fef3c7; color: #d97706;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .bf-mock-title {
+    font-size: 13px; font-weight: 800; color: #1e293b;
+    margin-bottom: 4px; min-height: 18px;
+  }
+  .bf-mock-msg {
+    font-size: 12px; font-weight: 600; color: #64748b;
+    line-height: 1.5; min-height: 36px;
+  }
+  .bf-mock-meta {
+    margin-top: 8px; font-size: 10px; font-weight: 700;
+    color: #94a3b8; display: flex; align-items: center; gap: 5px;
+  }
+
+  .bf-tip {
+    margin-top: 16px; padding: 12px 14px;
+    background: #f8fafc; border-radius: 8px; border: 1px solid #f1f5f9;
+  }
+  .bf-tip-title { font-size: 11px; font-weight: 800; color: #475569; margin-bottom: 6px; }
+  .bf-tip-list  { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+  .bf-tip-list li { font-size: 11px; font-weight: 600; color: #94a3b8; display: flex; align-items: flex-start; gap: 6px; }
+  .bf-tip-list li::before { content: '·'; color: #7ec41a; font-weight: 900; flex-shrink: 0; }
+
+  .bf-actions { display: flex; gap: 10px; margin-top: 4px; }
+  .btn {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:10px 18px; border-radius:9px; font-weight:800; font-size:13px;
+    cursor:pointer; border:none; text-decoration:none; transition:all .2s; font-family:inherit;
+  }
+  .btn-amber       { background:#f59e0b; color:#fff; }
+  .btn-amber:hover { background:#d97706; }
+  .btn-ghost       { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+  .btn-ghost:hover { background:#e2e8f0; }
+
+  .pill { display:inline-flex; align-items:center; font-size:10px; font-weight:800; padding:3px 9px; border-radius:20px; }
+  .pill-blue  { background:#dbeafe; color:#1d4ed8; }
+  .pill-amber { background:#fef3c7; color:#b45309; }
+  .pill-green { background:#dcfce7; color:#15803d; }
+
+  @media(max-width:760px){
+    .bf-layout { grid-template-columns: 1fr; }
+    .bf-preview { position: static; }
+    .bf-audience-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="bf-layout">
+
+  <!-- FORM -->
+  <div class="bf-card">
+    <div class="bf-card-header">
+      <div class="bf-header-icon"><i class="bi bi-megaphone-fill"></i></div>
+      <div>
+        <h3>Compose Broadcast</h3>
+        <p>This message will appear on all targeted school dashboards immediately.</p>
+      </div>
+    </div>
+
+    <div class="bf-card-body">
+      <form method="POST" id="bcastForm">
+        {% csrf_token %}
+
+        <div class="bf-field">
+          <label class="bf-label">Headline <span class="required">*</span></label>
+          <input type="text" name="title" id="bcastTitle" class="bf-input"
+                 placeholder="e.g. Scheduled Maintenance Tonight" required maxlength="100">
+          <div class="bf-field-meta">
+            <span class="bf-hint">Shown as the bold heading on all dashboards</span>
+            <span class="bf-count" id="titleCount">0 / 100</span>
+          </div>
+        </div>
+
+        <div class="bf-field">
+          <label class="bf-label">Message Body <span class="required">*</span></label>
+          <textarea name="message" id="bcastMsg" class="bf-input"
+                    placeholder="Full message shown on all school dashboards…" required maxlength="600"></textarea>
+          <div class="bf-field-meta">
+            <span class="bf-hint">Keep it clear and actionable</span>
+            <span class="bf-count" id="msgCount">0 / 600</span>
+          </div>
+        </div>
+
+        <div class="bf-field">
+          <label class="bf-label" style="margin-bottom:10px;">Target Audience</label>
+          <div class="bf-audience-grid">
+
+            <label class="bf-audience-tile">
+              <input type="radio" name="target_audience" value="all" checked>
+              <div class="bf-audience-label">
+                <div class="bf-aud-icon all"><i class="bi bi-people-fill"></i></div>
+                <span class="bf-aud-name">Everyone</span>
+                <span class="bf-aud-desc">All users on all schools</span>
+              </div>
+            </label>
+
+            <label class="bf-audience-tile">
+              <input type="radio" name="target_audience" value="admins">
+              <div class="bf-audience-label">
+                <div class="bf-aud-icon admins"><i class="bi bi-person-badge-fill"></i></div>
+                <span class="bf-aud-name">Admins Only</span>
+                <span class="bf-aud-desc">School administrators</span>
+              </div>
+            </label>
+
+            <label class="bf-audience-tile">
+              <input type="radio" name="target_audience" value="teachers">
+              <div class="bf-audience-label">
+                <div class="bf-aud-icon teachers"><i class="bi bi-mortarboard-fill"></i></div>
+                <span class="bf-aud-name">Teachers Only</span>
+                <span class="bf-aud-desc">All teaching staff</span>
+              </div>
+            </label>
+
+          </div>
+        </div>
+
+        <div class="bf-actions">
+          <button type="submit" class="btn btn-amber">
+            <i class="bi bi-send-fill"></i> Publish Broadcast
+          </button>
+          <a href="{% url 'super_broadcast_list' %}" class="btn btn-ghost">
+            <i class="bi bi-arrow-left"></i> Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div>
+    <!-- Live Preview -->
+    <div class="bf-preview" style="margin-bottom:16px;">
+      <div class="bf-preview-header">
+        <i class="bi bi-eye"></i> Live Preview
+      </div>
+      <div class="bf-preview-body">
+        <p style="font-size:11px; color:#94a3b8; font-weight:600; margin-bottom:12px;">
+          How it will appear on school dashboards:
+        </p>
+        <div class="bf-mock">
+          <div class="bf-mock-icon"><i class="bi bi-megaphone-fill"></i></div>
+          <div style="flex:1; min-width:0;">
+            <div class="bf-mock-title" id="previewTitle">Your headline here…</div>
+            <div class="bf-mock-msg"  id="previewMsg">Your message will appear here as you type.</div>
+            <div class="bf-mock-meta">
+              <i class="bi bi-clock"></i> Just now &nbsp;·&nbsp;
+              <span id="previewAud">All Users</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="bf-preview">
+      <div class="bf-preview-header"><i class="bi bi-lightbulb"></i> Broadcast Tips</div>
+      <div class="bf-preview-body">
+        <ul class="bf-tip-list">
+          <li>Keep headlines under 60 characters for best display</li>
+          <li>State the impact first — what does the user need to know?</li>
+          <li>Include dates and times where relevant</li>
+          <li>Use "Admins Only" for billing and subscription notices</li>
+          <li>Delete broadcasts promptly once the event has passed</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// @ts-nocheck
+(function(){
+  const titleEl   = document.getElementById('bcastTitle');
+  const msgEl     = document.getElementById('bcastMsg');
+  const titleCount= document.getElementById('titleCount');
+  const msgCount  = document.getElementById('msgCount');
+  const prevTitle = document.getElementById('previewTitle');
+  const prevMsg   = document.getElementById('previewMsg');
+  const prevAud   = document.getElementById('previewAud');
+
+  const audLabels = { all:'All Users', admins:'Admins Only', teachers:'Teachers Only' };
+
+  function updateCount(input, countEl, max){
+    const n = input.value.length;
+    countEl.textContent = n + ' / ' + max;
+    countEl.classList.toggle('warn', n > max * 0.85);
+  }
+
+  titleEl.addEventListener('input', () => {
+    updateCount(titleEl, titleCount, 100);
+    prevTitle.textContent = titleEl.value || 'Your headline here…';
+  });
+
+  msgEl.addEventListener('input', () => {
+    updateCount(msgEl, msgCount, 600);
+    prevMsg.textContent = msgEl.value || 'Your message will appear here as you type.';
+  });
+
+  document.querySelectorAll('input[name=target_audience]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      prevAud.textContent = audLabels[radio.value] || radio.value;
+    });
+  });
+})();
+</script>
+
+{% endblock %}

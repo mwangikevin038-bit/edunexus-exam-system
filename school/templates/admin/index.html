@@ -1,0 +1,46 @@
+{% extends 'unfold/layouts/base_simple.html' %}
+{% load i18n unfold %}
+
+{% block content %}
+<div class="px-6 py-8 mx-auto max-w-7xl">
+    <!-- Executive Summary Welcome Banner -->
+    <div class="pb-6 mb-8 border-b border-gray-200 dark:border-gray-800">
+        <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Welcome back, {{ request.user.username }}
+        </h1>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            School Management Live Executive KPI Analytics.
+        </p>
+    </div>
+
+    <!-- Executive Metric Cards Grid Row -->
+    <div class="grid grid-cols-1 gap-6 mb-10 sm:grid-cols-2 lg:grid-cols-3">
+        {% for metric in kpi_metrics %}
+        <div class="overflow-hidden bg-white border border-gray-200 rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-800">
+            <div class="p-6">
+                <div class="flex items-center gap-5">
+                    <div class="p-3 rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
+                        <span class="text-2xl material-symbols-outlined">
+                            {{ metric.icon }}
+                        </span>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            {{ metric.title }}
+                        </dt>
+                        <dd class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white mt-0.5">
+                            {{ metric.metric }}
+                        </dd>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 dark:bg-gray-800/50 dark:border-gray-800/80">
+                <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    {{ metric.footer }}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

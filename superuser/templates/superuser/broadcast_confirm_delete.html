@@ -1,0 +1,20 @@
+{% extends 'superuser/base.html' %}
+{% block title %}Delete Broadcast · EduNexus{% endblock %}
+{% block page_title %}Delete Broadcast{% endblock %}
+{% block content %}
+<div class="card" style="max-width:500px;">
+    <div class="card-header">
+        <h3 style="color:#991b1b;"><i class="bi bi-exclamation-triangle-fill"></i> &nbsp;Confirm Delete</h3>
+    </div>
+    <div class="card-body">
+        <p style="font-size:15px; font-weight:700; margin-bottom:18px;">
+            Delete broadcast: <strong>{{ broadcast.title }}</strong>?
+        </p>
+        <form method="POST" style="display:flex; gap:12px;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-red"><i class="bi bi-trash-fill"></i> Delete</button>
+            <a href="{% url 'super_broadcast_list' %}" class="btn btn-dark">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

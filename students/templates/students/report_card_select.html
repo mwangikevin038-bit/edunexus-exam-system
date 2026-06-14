@@ -1,0 +1,556 @@
+{% extends 'students/base.html' %}
+
+{% block content %}
+<style>
+    .reports-page {
+        min-height: 100vh;
+        background: #f6f8fb;
+        padding: 38px 42px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .reports-hero,
+    .summary-card,
+    .reports-table-card {
+        background: #ffffff;
+        border: 1px solid #dbe3ee;
+        border-radius: 16px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+    }
+
+    .reports-hero {
+        padding: 28px 32px;
+        border-left: 8px solid var(--oraimo-green, #9be816);
+        margin-bottom: 24px;
+    }
+
+    .hero-row,
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .hero-title h1 {
+        margin: 0 0 8px;
+        color: #0f172a;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 34px;
+        font-weight: 900;
+        letter-spacing: -0.4px;
+    }
+
+    .hero-title p {
+        margin: 0;
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .access-pill {
+        background: #ecfccb;
+        color: #365314;
+        border: 1px solid #bef264;
+        border-radius: 999px;
+        padding: 10px 16px;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        white-space: nowrap;
+    }
+
+    .context-switcher {
+        margin-top: 22px;
+        max-width: 520px;
+    }
+
+    .context-switcher label,
+    .summary-card span {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 7px;
+    }
+
+    .context-switcher select,
+    .search-input {
+        width: 100%;
+        min-height: 46px;
+        border: 1px solid #dbe3ee;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #0f172a;
+        padding: 0 14px;
+        font-weight: 850;
+        outline: none;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 14px;
+        margin-bottom: 22px;
+    }
+
+    .summary-card {
+        padding: 16px 18px;
+    }
+
+    .summary-card strong {
+        color: #0f172a;
+        font-size: 18px;
+        font-weight: 900;
+    }
+
+    .notice {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+        border-radius: 14px;
+        padding: 14px 16px;
+        font-weight: 800;
+        margin-bottom: 18px;
+    }
+
+    .toolbar {
+        align-items: center;
+        margin-bottom: 16px;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+    }
+
+    .toolbar-actions {
+        flex-wrap: wrap !important;
+    }
+
+    .hero-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        gap: 20px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .context-switcher {
+        max-width: 520px;
+    }
+
+    .search-input {
+        max-width: 420px;
+        background: #ffffff;
+    }
+
+    .toolbar-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .btn-dark,
+    .btn-light-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        border-radius: 10px;
+        padding: 0 18px;
+        border: none;
+        font-weight: 900;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .btn-dark {
+        background: #0f172a;
+        color: #ffffff;
+    }
+
+    .btn-dark:hover {
+        background: var(--oraimo-green, #9be816);
+        color: #0f172a;
+    }
+
+    .btn-light-action {
+        background: #eef2f7;
+        color: #334155;
+        border: 1px solid #dbe3ee;
+    }
+
+    .reports-table-card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .archive-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .archive-table th {
+        background: #f8fafc;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        padding: 15px 18px;
+        text-align: left;
+        border-bottom: 1px solid #dbe3ee;
+    }
+
+    .archive-table td {
+        padding: 16px 18px;
+        border-bottom: 1px solid #eef2f7;
+        color: #0f172a;
+        font-weight: 850;
+        vertical-align: middle;
+    }
+
+    .reports-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .reports-table th {
+        background: #f8fafc;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        padding: 16px 18px;
+        text-align: left;
+        border-bottom: 1px solid #dbe3ee;
+    }
+
+    .reports-table td {
+        padding: 17px 18px;
+        border-bottom: 1px solid #eef2f7;
+        color: #0f172a;
+        font-weight: 850;
+        vertical-align: middle;
+    }
+
+    .reports-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .check-cell {
+        text-align: center !important;
+        width: 70px;
+    }
+
+    .nexus-checkbox {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--oraimo-green, #9be816);
+        cursor: pointer;
+    }
+
+    .empty-state {
+        background: #ffffff;
+        border: 1px dashed #cbd5e1;
+        border-radius: 16px;
+        padding: 44px 28px;
+        text-align: center;
+        color: #64748b;
+        font-weight: 750;
+    }
+
+    @media (max-width: 980px) {
+        .reports-page {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .reports-page {
+            padding: 14px !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
+        .reports-hero,
+        .summary-grid,
+        .toolbar,
+        .reports-table-card {
+            min-width: 700px;
+        }
+    }
+    }
+</style>
+
+<div class="reports-page">
+    <section class="reports-hero">
+        <div class="hero-row">
+            <div class="hero-title">
+                <h1>Report Cards</h1>
+                <p>Generate learner reports only from assessment sheets published by the school administrator.</p>
+            </div>
+            <span class="access-pill">{{ access_label }}</span>
+        </div>
+
+        {% if published_contexts|length > 1 %}
+            <form method="GET" class="context-switcher">
+                <label>Published Assessment Context</label>
+                <select name="context" onchange="this.form.submit()">
+                    {% for item in published_contexts %}
+                        <option value="{{ item.context_key }}" {% if item.context_key == selected_context_key %}selected{% endif %}>
+                            {{ item.class_name }} {{ item.stream }} - {{ item.exam_name }} | {{ item.term }} {{ item.year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+        {% endif %}
+    </section>
+
+    {% if selected_grade and selected_stream %}
+        <div class="summary-grid">
+            <div class="summary-card">
+                <span>Assessment</span>
+                <strong>{{ selected_exam }}</strong>
+            </div>
+            <div class="summary-card">
+                <span>Academic Term</span>
+                <strong>{{ selected_term }}</strong>
+            </div>
+            <div class="summary-card">
+                <span>Academic Year</span>
+                <strong>{{ selected_year }}</strong>
+            </div>
+            <div class="summary-card">
+                <span>Class Stream</span>
+                <strong>{{ selected_grade }} {{ selected_stream }}</strong>
+            </div>
+            <div class="summary-card">
+                <span>Published Subjects</span>
+                <strong>{{ published_subject_count }}/{{ total_required_subjects }}</strong>
+            </div>
+        </div>
+
+        {% if published_subject_count < total_required_subjects %}
+            <div class="notice">
+                Some subject sheets are not yet published. Reports can still be previewed, but final class reports are strongest after all subjects are published.
+            </div>
+        {% endif %}
+
+        <div class="toolbar">
+            <input type="text" id="studentSearch" class="search-input" placeholder="Search learner by name or admission number..." onkeyup="searchTable()">
+            <div class="toolbar-actions">
+                {% if not is_admin_view %}
+                <button type="button" class="btn-light-action" onclick="loadCommentsModal()">
+                    <i class="bi bi-chat-right-text me-2"></i>Class Comments
+                </button>
+                {% endif %}
+                {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
+                <button type="button" class="btn-light-action" onclick="loadHtCommentsModal()" style="background:#dbeafe; color:#1e40af;">
+                    <i class="bi bi-chat-square-quote me-2"></i>Headteacher Remarks
+                </button>
+                {% endif %}
+                <button type="button" class="btn-dark" onclick="printSelectedReports()">
+                    <i class="bi bi-printer me-2"></i>Print Selected
+                </button>
+            </div>
+        </div>
+
+        <div id="commentsModalContainer"></div>
+        <div id="htCommentsModalContainer"></div>
+
+        <section class="reports-table-card">
+            <table class="reports-table" id="studentTable">
+                <thead>
+                    <tr>
+                        <th>Adm No</th>
+                        <th>Learner Name</th>
+                        <th>Class Stream</th>
+                        <th>Action</th>
+                        <th class="check-cell">
+                            <input type="checkbox" id="selectAll" class="nexus-checkbox" onclick="toggleAll(this)">
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                        <tr class="student-row">
+                            <td>{{ student.admission_no }}</td>
+                            <td class="student-name"><a href="{% url 'learner_profile' student.id %}" style="color:#0f172a; font-weight:900; text-decoration:none;">{{ student.name }}</a></td>
+                            <td>{{ selected_grade }} {{ selected_stream }}</td>
+                            <td>
+                                <a href="{% url 'individual_report' student.id %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="btn-dark">
+                                    Open Report
+                                </a>
+                            </td>
+                            <td class="check-cell">
+                                <input type="checkbox" class="nexus-checkbox student-check" value="{{ student.id }}">
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% elif published_contexts %}
+        <section class="reports-table-card">
+            <table class="archive-table">
+                <thead>
+                    <tr>
+                        <th>Report Set</th>
+                        <th>Timeline</th>
+                        <th>Class Stream</th>
+                        <th>Published Subjects</th>
+                        <th>Open</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in published_contexts %}
+                        <tr>
+                            <td>{{ item.exam_name }} Reports</td>
+                            <td>{{ item.term }} | {{ item.year }}</td>
+                            <td>{{ item.class_name }} {{ item.stream }}</td>
+                            <td>{{ item.subject_count }}</td>
+                            <td>
+                                <a href="?context={{ item.context_key|urlencode }}" class="btn-dark">Open Reports</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% else %}
+        <div class="empty-state">
+            No report cards are ready yet. Report cards appear after the assessment administrator publishes results for your permitted class stream.
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function loadCommentsModal() {
+    var year = '{{ selected_year|default:"" }}';
+    var term = '{{ selected_term|default:"" }}';
+    var grade = '{{ selected_grade|default:"" }}';
+    var stream = '{{ selected_stream|default:"" }}';
+    var assessment = '{{ selected_assessment|default:"opener" }}';
+
+    if (!year || !term || !grade || !stream) {
+        alert('Please select a class context first before configuring comments.');
+        return;
+    }
+
+    var url = '/manage-master-comments/?year=' + encodeURIComponent(year) + '&term=' + encodeURIComponent(term) + '&grade=' + encodeURIComponent(grade) + '&stream=' + encodeURIComponent(stream) + '&assessment=' + encodeURIComponent(assessment);
+
+    var container = document.getElementById('commentsModalContainer');
+    container.innerHTML = '<div style="position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;"><div style="background:#fff;padding:24px 32px;border-radius:12px;font-weight:700;color:#0f172a;">Loading comments...</div></div>';
+
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(response) {
+            if (!response.ok) throw new Error('Server error');
+            return response.text();
+        })
+        .then(function(html) {
+            container.innerHTML = html;
+            var modal = document.getElementById('commentsModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        })
+        .catch(function() {
+            container.innerHTML = '';
+            alert('Unable to load class comments. Please try again.');
+        });
+}
+
+function closeCommentsModal() {
+    var modal = document.getElementById('commentsModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+}
+
+function loadHtCommentsModal() {
+    var year = '{{ selected_year|default:"" }}';
+    var term = '{{ selected_term|default:"" }}';
+    var assessment = '{{ selected_assessment|default:"opener" }}';
+
+    if (!year || !term) {
+        alert('Please select a class context first before configuring headteacher remarks.');
+        return;
+    }
+
+    var url = '/manage-headteacher-comments/?year=' + encodeURIComponent(year) + '&term=' + encodeURIComponent(term) + '&assessment=' + encodeURIComponent(assessment) + '&modal=true';
+
+    var container = document.getElementById('htCommentsModalContainer');
+    container.innerHTML = '<div style="position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;"><div style="background:#fff;padding:24px 32px;border-radius:12px;font-weight:700;color:#0f172a;">Loading headteacher remarks...</div></div>';
+
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(response) {
+            if (!response.ok) throw new Error('Server error');
+            return response.text();
+        })
+        .then(function(html) {
+            container.innerHTML = html;
+            var modal = document.getElementById('htCommentsModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        })
+        .catch(function() {
+            container.innerHTML = '';
+            alert('Unable to load headteacher remarks. Please try again.');
+        });
+}
+
+function closeHtCommentsModal() {
+    var modal = document.getElementById('htCommentsModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+}
+
+function searchTable() {
+    const input = document.getElementById('studentSearch');
+    if (!input) return;
+    const term = input.value.toLowerCase();
+    document.querySelectorAll('.student-row').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
+    });
+}
+
+function toggleAll(source) {
+    document.querySelectorAll('.student-check').forEach(checkbox => {
+        checkbox.checked = source.checked;
+    });
+}
+
+function printSelectedReports() {
+    const selectedIds = Array.from(document.querySelectorAll('.student-check:checked')).map(cb => cb.value);
+    if (selectedIds.length === 0) {
+        alert('Please select at least one learner first.');
+        return;
+    }
+    window.location.href = `{% url 'bulk_report_cards' %}?ids=${selectedIds.join(',')}&year={{ selected_year }}&term={{ selected_term|urlencode }}&assessment={{ selected_assessment }}`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('open_ht_modal') === 'true') {
+        var year = '{{ selected_year|default:"" }}';
+        var term = '{{ selected_term|default:"" }}';
+        if (year && term) {
+            loadHtCommentsModal();
+        } else {
+            alert('Please first select a class context from the list below, then click "Headteacher Remarks".');
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+});
+</script>
+{% endblock %}

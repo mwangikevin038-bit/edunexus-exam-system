@@ -1,0 +1,385 @@
+{% extends 'superuser/base.html' %}
+{% block title %}{{ action }} School · EduNexus{% endblock %}
+{% block page_title %}{{ action }} School{% endblock %}
+
+{% block content %}
+<style>
+  .sf-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    align-items: start;
+    max-width: 1000px;
+  }
+
+  /* ── FORM CARD ── */
+  .sf-card {
+    background: #fff;
+    border: 1px solid #e8edf3;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .sf-card-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sf-card-header-icon {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: #dcfce7; color: #16a34a;
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .sf-card-header h3 {
+    font-size: 14px; font-weight: 800; color: #0f172a; margin: 0;
+  }
+  .sf-card-header p {
+    font-size: 11px; color: #94a3b8; font-weight: 600; margin: 1px 0 0;
+  }
+  .sf-card-body { padding: 22px; }
+
+  /* ── SECTION ── */
+  .sf-section {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #f8fafc;
+  }
+  .sf-section:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .sf-section-title {
+    font-size: 10px; font-weight: 800; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: .7px;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sf-section-title::after {
+    content: ''; flex: 1; height: 1px; background: #f1f5f9;
+  }
+
+  /* ── FIELD ── */
+  .sf-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .sf-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  .sf-field { display: flex; flex-direction: column; gap: 5px; }
+  .sf-label {
+    font-size: 11px; font-weight: 800; color: #475569;
+    text-transform: uppercase; letter-spacing: .6px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .sf-label .required { color: #ef4444; }
+  .sf-label .hint {
+    font-size: 10px; font-weight: 600; color: #94a3b8;
+    text-transform: none; letter-spacing: 0; margin-left: 2px;
+  }
+  .sf-input {
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 9px 12px; font-size: 13px; font-weight: 600;
+    color: #1e293b; background: #f8fafc; outline: none;
+    transition: border-color .2s, box-shadow .2s; font-family: inherit;
+    width: 100%;
+  }
+  .sf-input:focus {
+    border-color: #7ec41a;
+    box-shadow: 0 0 0 3px rgba(126,196,26,.1);
+    background: #fff;
+  }
+  .sf-input::placeholder { color: #cbd5e1; }
+  select.sf-input { cursor: pointer; }
+
+  /* tier/status select with visual cues */
+  .sf-select-wrap { position: relative; }
+  .sf-select-wrap select { appearance: none; padding-right: 30px; }
+  .sf-select-wrap::after {
+    content: '\F282';
+    font-family: 'bootstrap-icons';
+    position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px; color: #94a3b8; pointer-events: none;
+  }
+
+  /* file input */
+  .sf-file-wrap {
+    border: 1.5px dashed #e2e8f0; border-radius: 8px;
+    padding: 14px; cursor: pointer; transition: border-color .2s;
+    display: flex; align-items: center; gap: 10px; background: #f8fafc;
+  }
+  .sf-file-wrap:hover { border-color: #7ec41a; background: #fafff5; }
+  .sf-file-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: #dcfce7; color: #16a34a;
+    display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;
+  }
+  .sf-file-text strong { display:block; font-size:12px; font-weight:800; color:#1e293b; }
+  .sf-file-text span   { font-size:10px; font-weight:600; color:#94a3b8; }
+  .sf-file-wrap input[type=file] { display: none; }
+
+  /* current logo preview */
+  .sf-logo-preview {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: #f8fafc;
+    border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px;
+  }
+  .sf-logo-preview img {
+    height: 40px; width: 40px; object-fit: cover;
+    border-radius: 8px; border: 1px solid #e2e8f0;
+  }
+  .sf-logo-preview span { font-size:12px; font-weight:700; color:#64748b; }
+
+  /* ── ACTIONS ── */
+  .sf-actions {
+    display: flex; gap: 10px; padding-top: 4px;
+  }
+  .btn {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:10px 18px; border-radius:9px; font-weight:800;
+    font-size:13px; cursor:pointer; border:none;
+    text-decoration:none; transition:all .2s; font-family:inherit;
+  }
+  .btn-green       { background:#7ec41a; color:#fff; }
+  .btn-green:hover { background:#6db015; }
+  .btn-ghost       { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+  .btn-ghost:hover { background:#e2e8f0; }
+  .btn-dark        { background:#0f172a; color:#fff; }
+  .btn-dark:hover  { background:#1e293b; }
+
+  /* ── SIDEBAR INFO CARD ── */
+  .sf-info-card {
+    background: #fff; border: 1px solid #e8edf3; border-radius: 12px;
+    overflow: hidden; position: sticky; top: 76px;
+  }
+  .sf-info-header {
+    padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
+    font-size: 11px; font-weight: 800; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: .6px;
+  }
+  .sf-info-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  .sf-info-row { display: flex; flex-direction: column; gap: 3px; }
+  .sf-info-row-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+  .sf-info-row-val   { font-size: 12px; font-weight: 700; color: #374151; }
+
+  .tier-option {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; border-radius: 8px; border: 1px solid #f1f5f9;
+    margin-bottom: 6px;
+  }
+  .tier-option:last-child { margin-bottom: 0; }
+  .tier-dot-sm { width:8px; height:8px; border-radius:50%; margin-top:4px; flex-shrink:0; }
+  .tier-option-text strong { display:block; font-size:12px; font-weight:800; color:#1e293b; }
+  .tier-option-text span   { font-size:11px; font-weight:600; color:#94a3b8; }
+
+  @media(max-width:820px){
+    .sf-layout { grid-template-columns: 1fr; }
+    .sf-info-card { position:static; }
+  }
+  @media(max-width:600px){
+    .sf-grid-2, .sf-grid-3 { grid-template-columns:1fr; }
+  }
+</style>
+
+<div class="sf-layout">
+
+  <!-- ── MAIN FORM ── -->
+  <div class="sf-card">
+    <div class="sf-card-header">
+      <div class="sf-card-header-icon">
+        <i class="bi bi-building-fill"></i>
+      </div>
+      <div>
+        <h3>{{ action }} School Account</h3>
+        <p>{% if action == 'Edit' %}Update the school's details and subscription.{% else %}Fill in the details to register a new school.{% endif %}</p>
+      </div>
+    </div>
+
+    <div class="sf-card-body">
+      <form method="POST" enctype="multipart/form-data" id="schoolForm">
+        {% csrf_token %}
+
+        <!-- IDENTITY -->
+        <div class="sf-section">
+          <div class="sf-section-title">School Identity</div>
+          <div class="sf-grid-2" style="margin-bottom:14px;">
+            <div class="sf-field">
+              <label class="sf-label">School Name <span class="required">*</span></label>
+              <input type="text" name="name" class="sf-input"
+                     value="{{ school.name|default:'' }}"
+                     placeholder="e.g. Baringo High School" required>
+            </div>
+            <div class="sf-field">
+              <label class="sf-label">
+                School Code <span class="required">*</span>
+                <span class="hint">· used in phone@code login</span>
+              </label>
+              <input type="text" name="code" class="sf-input"
+                     value="{{ school.code|default:'' }}"
+                     placeholder="e.g. baringohigh"
+                     pattern="[a-z0-9-]+" required>
+            </div>
+          </div>
+
+          <div class="sf-field">
+            <label class="sf-label">School Logo</label>
+            {% if school.logo %}
+            <div class="sf-logo-preview">
+              <img src="{{ school.logo.url }}" alt="Current logo">
+              <span>Current logo — upload a new file to replace</span>
+            </div>
+            {% endif %}
+            <label class="sf-file-wrap" for="logoInput">
+              <div class="sf-file-icon"><i class="bi bi-image-fill"></i></div>
+              <div class="sf-file-text">
+                <strong id="fileLabel">Click to upload logo</strong>
+                <span>PNG, JPG or SVG · Max 2 MB</span>
+              </div>
+              <input type="file" id="logoInput" name="logo" accept="image/*">
+            </label>
+          </div>
+        </div>
+
+        <!-- SUBSCRIPTION -->
+        <div class="sf-section">
+          <div class="sf-section-title">Subscription</div>
+          <div class="sf-grid-3">
+            <div class="sf-field">
+              <label class="sf-label">Tier</label>
+              <div class="sf-select-wrap">
+                <select name="tier" class="sf-input">
+                  <option value="Basic"      {% if school.tier == 'Basic'      %}selected{% endif %}>Basic</option>
+                  <option value="Premium"    {% if school.tier == 'Premium'    %}selected{% endif %}>Premium</option>
+                  <option value="Enterprise" {% if school.tier == 'Enterprise' %}selected{% endif %}>Enterprise</option>
+                </select>
+              </div>
+            </div>
+            <div class="sf-field">
+              <label class="sf-label">Status</label>
+              <div class="sf-select-wrap">
+                <select name="status" class="sf-input">
+                  <option value="trial"     {% if school.status == 'trial'     %}selected{% endif %}>Free Trial</option>
+                  <option value="active"    {% if school.status == 'active'    %}selected{% endif %}>Active</option>
+                  <option value="suspended" {% if school.status == 'suspended' %}selected{% endif %}>Suspended</option>
+                </select>
+              </div>
+            </div>
+            <div class="sf-field">
+              <label class="sf-label">Paid Until</label>
+              <input type="date" name="paid_until" class="sf-input"
+                     value="{{ school.paid_until|default:'' }}">
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTACT -->
+        <div class="sf-section">
+          <div class="sf-section-title">Contact Details</div>
+          <div class="sf-grid-2" style="margin-bottom:14px;">
+            <div class="sf-field">
+              <label class="sf-label">Phone Number</label>
+              <input type="text" name="phone_number" class="sf-input"
+                     value="{{ school.phone_number|default:'' }}"
+                     placeholder="+254 700 000 000">
+            </div>
+            <div class="sf-field">
+              <label class="sf-label">Billing Email</label>
+              <input type="email" name="email" class="sf-input"
+                     value="{{ school.email|default:'' }}"
+                     placeholder="admin@school.ac.ke">
+            </div>
+          </div>
+          <div class="sf-field">
+            <label class="sf-label">Postal Address</label>
+            <input type="text" name="address" class="sf-input"
+                   value="{{ school.address|default:'' }}"
+                   placeholder="e.g. P.O. Box 31-80402, Lungalunga">
+          </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="sf-actions">
+          <button type="submit" class="btn btn-green">
+            <i class="bi bi-check-lg"></i>
+            {% if action == 'Edit' %}Save Changes{% else %}Create School{% endif %}
+          </button>
+          <a href="{% url 'super_school_list' %}" class="btn btn-ghost">
+            <i class="bi bi-arrow-left"></i> Cancel
+          </a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ── SIDEBAR ── -->
+  <div>
+    {% if action == 'Edit' and school %}
+    <div class="sf-info-card" style="margin-bottom:16px;">
+      <div class="sf-info-header">School Info</div>
+      <div class="sf-info-body">
+        <div class="sf-info-row">
+          <div class="sf-info-row-label">Created</div>
+          <div class="sf-info-row-val">{{ school.created_on|date:"d M Y" }}</div>
+        </div>
+        <div class="sf-info-row">
+          <div class="sf-info-row-label">Current Status</div>
+          <div class="sf-info-row-val">
+            <span class="pill {% if school.status == 'active' %}pill-green{% elif school.status == 'trial' %}pill-amber{% else %}pill-red{% endif %}"
+                  style="font-size:11px;">
+              {{ school.get_status_display }}
+            </span>
+          </div>
+        </div>
+        <div class="sf-info-row">
+          <div class="sf-info-row-label">Current Tier</div>
+          <div class="sf-info-row-val">
+            <span class="pill {% if school.tier == 'Enterprise' %}pill-blue{% elif school.tier == 'Premium' %}pill-amber{% else %}pill-green{% endif %}"
+                  style="font-size:11px;">
+              {{ school.tier }}
+            </span>
+          </div>
+        </div>
+        {% if school.paid_until %}
+        <div class="sf-info-row">
+          <div class="sf-info-row-label">Expires</div>
+          <div class="sf-info-row-val">{{ school.paid_until|date:"d M Y" }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="sf-info-card">
+      <div class="sf-info-header">Tier Guide</div>
+      <div class="sf-info-body">
+        <div class="tier-option">
+          <div class="tier-dot-sm" style="background:#22c55e;"></div>
+          <div class="tier-option-text">
+            <strong>Basic</strong>
+            <span>Core exam management, results & reports</span>
+          </div>
+        </div>
+        <div class="tier-option">
+          <div class="tier-dot-sm" style="background:#f59e0b;"></div>
+          <div class="tier-option-text">
+            <strong>Premium</strong>
+            <span>All Basic + analytics, bulk imports, priority support</span>
+          </div>
+        </div>
+        <div class="tier-option">
+          <div class="tier-dot-sm" style="background:#3b82f6;"></div>
+          <div class="tier-option-text">
+            <strong>Enterprise</strong>
+            <span>All Premium + multi-campus, custom branding, API access</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// @ts-nocheck
+document.getElementById('logoInput').addEventListener('change', function(){
+  const label = document.getElementById('fileLabel');
+  label.textContent = this.files[0] ? this.files[0].name : 'Click to upload logo';
+});
+</script>
+
+{% endblock %}
