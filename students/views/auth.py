@@ -160,11 +160,6 @@ def switch_workspace(request):
     label_map = {'PRIMARY': 'Upper Primary', 'JSS': 'Junior Secondary'}
     messages.success(request, f"Switched to {label_map[target]} workspace.")
 
-    # Redirect back to the page the user was on
-    referer = request.META.get('HTTP_REFERER')
-    if referer and referer.startswith(request.build_absolute_uri('/')):
-        from django.http import HttpResponseRedirect
-        return HttpResponseRedirect(referer)
     return redirect('school_admin_dashboard')
 
 

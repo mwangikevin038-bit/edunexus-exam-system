@@ -443,6 +443,17 @@
                 transform: translateX(-100%);
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 z-index: 1000;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .sidebar > div {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
             }
 
             .sidebar.active {
@@ -1164,29 +1175,29 @@
     </a>
 {% endif %}
 
-                {% if request.session.school_section == 'BOTH' %}
-                <div style="padding: 8px 10px; margin-top: 8px;">
-                    <div style="font-size: 9px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;">Workspace</div>
-                    <div style="display: flex; gap: 6px;">
-                        <form method="post" action="{% url 'switch_workspace' %}" style="flex:1; display:inline;">
-                            {% csrf_token %}
-                            <input type="hidden" name="section" value="PRIMARY">
-                            <button type="submit" style="width:100%; border: 2px solid {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#fff{% else %}#64748b{% endif %}; padding: 10px 0; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                <i class="bi bi-book"></i> Primary
-                            </button>
-                        </form>
-                        <form method="post" action="{% url 'switch_workspace' %}" style="flex:1; display:inline;">
-                            {% csrf_token %}
-                            <input type="hidden" name="section" value="JSS">
-                            <button type="submit" style="width:100%; border: 2px solid {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'JSS' %}#fff{% else %}#64748b{% endif %}; padding: 10px 0; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                <i class="bi bi-mortarboard"></i> JSS
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                {% endif %}
-
             </nav>
+
+            {% if request.session.school_section == 'BOTH' %}
+            <div style="padding: 8px 10px; margin-top: auto; border-top: 1px solid var(--border-light); background: var(--sidebar-white); flex-shrink: 0;">
+                <div style="font-size: 9px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;">Workspace</div>
+                <div style="display: flex; gap: 6px;">
+                    <form method="post" action="{% url 'switch_workspace' %}" style="flex:1; display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="PRIMARY">
+                        <button type="submit" style="width:100%; border: 2px solid {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#fff{% else %}#64748b{% endif %}; padding: 10px 0; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            <i class="bi bi-book"></i> Primary
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'switch_workspace' %}" style="flex:1; display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="JSS">
+                        <button type="submit" style="width:100%; border: 2px solid {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'JSS' %}#fff{% else %}#64748b{% endif %}; padding: 10px 0; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            <i class="bi bi-mortarboard"></i> JSS
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
 
         </div>
     </div>

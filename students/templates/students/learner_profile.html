@@ -474,39 +474,38 @@
 
     var savedStream = streamSelect.value;
 
-    function loadStreams(grade, preserveValue) {
+    function loadStreams(grade, selectVal) {
         if (!grade) return;
         fetch('/api/streams-for-grade/?grade=' + encodeURIComponent(grade))
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 var streams = data.streams || [];
                 if (streams.length === 0) return;
-                var prev = preserveValue || streamSelect.value;
                 streamSelect.innerHTML = '<option value="" disabled>Select stream</option>';
                 streams.forEach(function(name) {
                     var opt = document.createElement('option');
                     opt.value = name;
                     opt.textContent = name;
-                    if (name === prev) opt.selected = true;
+                    if (name === selectVal) opt.selected = true;
                     streamSelect.appendChild(opt);
                 });
-                if (prev && streams.indexOf(prev) === -1) {
+                if (selectVal && streams.indexOf(selectVal) === -1) {
                     var opt = document.createElement('option');
-                    opt.value = prev;
-                    opt.textContent = prev + ' (current)';
+                    opt.value = selectVal;
+                    opt.textContent = selectVal + ' (current)';
                     opt.selected = true;
                     streamSelect.appendChild(opt);
                 }
             });
     }
 
+    if (classSelect.value) {
+        loadStreams(classSelect.value, savedStream);
+    }
+
     classSelect.addEventListener('change', function() {
         loadStreams(this.value, '');
     });
-
-    if (classSelect.value && !savedStream) {
-        loadStreams(classSelect.value, savedStream);
-    }
 })();
 </script>
 {% endblock %}
