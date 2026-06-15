@@ -3,6 +3,12 @@
 <html lang="en">
 <head>
     <link rel="icon" type="image/png" href="/static/images/edunexus_logo.png">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EduNexus">
+    <link rel="apple-touch-icon" href="/static/images/edunexus_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EDUNEXUS Exam System</title>
@@ -73,6 +79,9 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
         }
 
         .mobile-hamburger {
@@ -88,6 +97,7 @@
             cursor: pointer;
             border-radius: 8px;
             transition: background 0.2s;
+            flex-shrink: 0;
         }
 
         .mobile-hamburger:active {
@@ -118,12 +128,17 @@
             font-weight: 800;
             color: var(--text-dark);
             letter-spacing: -0.3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
         }
 
         .mobile-topbar-right {
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-shrink: 0;
         }
 
         .mobile-avatar {
@@ -138,6 +153,7 @@
             font-weight: 800;
             font-size: 14px;
             font-family: 'Montserrat', sans-serif;
+            flex-shrink: 0;
         }
 
         .mobile-logout-btn {
@@ -154,6 +170,7 @@
             cursor: pointer;
             transition: all 0.2s;
             text-decoration: none;
+            flex-shrink: 0;
         }
 
         .mobile-logout-btn:active {
@@ -423,6 +440,40 @@
 
         /* ===== MOBILE RESPONSIVE ===== */
         @media (max-width: 768px) {
+
+            /* ── GLOBAL OVERFLOW SAFETY NET ──
+               Catches anything in page content not covered by the
+               specific class lists below, so stray fixed widths or
+               unlisted components can't push the page wider than
+               the viewport. Wide data tables are exempted (handled
+               separately further down with controlled horizontal
+               scroll inside their wrapper). */
+            .main-content {
+                overflow-x: hidden;
+            }
+
+            .main-content img,
+            .main-content svg,
+            .main-content video,
+            .main-content iframe,
+            .main-content canvas {
+                max-width: 100%;
+                height: auto;
+            }
+
+            .main-content pre,
+            .main-content code {
+                white-space: pre-wrap;
+                word-break: break-word;
+            }
+
+            /* Generic tables not explicitly part of the "wide data
+               table" set should shrink to fit instead of overflowing */
+            .main-content table:not(.data-table):not(.reports-table):not(.table-analysis):not(.register-table):not(.review-table):not(.capture-table):not(.matrix-table):not(.streams-table):not(.summary-table):not(.marks-table) {
+                width: 100% !important;
+                table-layout: auto;
+            }
+
             /* Hide old hamburger, show mobile topbar */
             .hamburger-btn {
                 display: none !important;
@@ -512,13 +563,14 @@
             .admin-register-page,
             .exam-control-page,
             .review-page,
-            .locks-page {
+            .locks-page,
+            .learner-page {
                 width: 100% !important;
                 max-width: 100% !important;
                 margin-left: 0 !important;
                 margin-right: 0 !important;
                 padding: 12px !important;
-                overflow-x: auto;
+                overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
             }
 
@@ -535,7 +587,8 @@
             .form-grid-3,
             .cards-grid,
             .context-grid,
-            .readonly-grid {
+            .readonly-grid,
+            .main-grid {
                 display: grid !important;
                 grid-template-columns: 1fr !important;
                 gap: 12px !important;
@@ -572,7 +625,10 @@
             .table-wrap,
             .exam-group-card,
             .official-results-hero,
-            .exam-groups-wrapper {
+            .exam-groups-wrapper,
+            .learner-hero,
+            .profile-card,
+            .history-card {
                 width: 100% !important;
                 max-width: 100% !important;
                 min-width: 0 !important;
@@ -688,6 +744,75 @@
 
             .brand-subtext {
                 font-size: 0.55rem;
+            }
+        }
+
+        /* ===== SMALL PHONE TIER (very narrow screens) ===== */
+        @media (max-width: 420px) {
+            .container,
+            .container-fluid,
+            .dashboard-shell,
+            .dashboard-page,
+            .directory-page,
+            .analysis-container,
+            .reports-page,
+            .profile-page,
+            .teacher-dashboard,
+            .capture-page,
+            .capture-shell,
+            .admin-shell,
+            .registration-shell,
+            .reports-shell,
+            .results-shell,
+            .faculty-matrix-page,
+            .admin-register-page,
+            .exam-control-page,
+            .review-page,
+            .locks-page,
+            .learner-page {
+                padding: 8px !important;
+            }
+
+            .hero-card,
+            .page-top,
+            .capture-header,
+            .admin-hero,
+            .directory-hero,
+            .official-results-hero,
+            .reports-hero,
+            .profile-hero,
+            .dashboard-card,
+            .summary-card,
+            .metric-card,
+            .card,
+            .panel,
+            .capture-card,
+            .upload-card,
+            .dashboard-panel,
+            .quick-action-card,
+            .population-card,
+            .learner-hero,
+            .profile-card,
+            .history-card {
+                padding: 12px !important;
+                border-radius: 10px !important;
+            }
+
+            .nav-link-card {
+                font-size: 0.8rem;
+                min-height: 42px;
+            }
+
+            .mobile-topbar-brand {
+                font-size: 0.75rem;
+            }
+
+            h1 {
+                font-size: clamp(1.15rem, 6.5vw, 1.5rem) !important;
+            }
+
+            h2 {
+                font-size: clamp(1rem, 5.5vw, 1.25rem) !important;
             }
         }
 
@@ -1043,7 +1168,7 @@
                 <span></span>
             </button>
             <span class="mobile-topbar-brand">{% if request.school %}{{ request.school.name }}{% else %}EDUNEXUS{% endif %}</span>
-            <span style="font-size: 9px; font-weight: 800; color: #fff; background: #0f172a; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">{{ request.session.workspace_section|default:"PRIMARY" }}</span>
+            <span style="font-size: 9px; font-weight: 800; color: #fff; background: #0f172a; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;">{{ request.session.workspace_section|default:"PRIMARY" }}</span>
         </div>
         <div class="mobile-topbar-right">
             <div class="mobile-avatar" id="mobileAvatar">
@@ -1342,6 +1467,12 @@
             document.addEventListener('click', function() {
                 topbarUser.classList.remove('open');
             });
+        }
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js').catch(function() {});
         }
     </script>
 

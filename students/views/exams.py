@@ -40,6 +40,7 @@ from ..models import (
     Mark,
     MarkSubmission,
     Student,
+    Subject,
     SubjectAssignment,
     Teacher,
 )
@@ -53,6 +54,18 @@ from ..security import (
     user_has_main_school_admin_override,
 )
 from ..security.roles import user_can_mutate_marks
+
+
+def _resolve_opposite_religion_subject(school, assignment):
+    """Resolve OPPOSITE_RELIGION_SUBJECT code string to a Subject FK instance."""
+    opposite_code = OPPOSITE_RELIGION_SUBJECT.get(assignment.subject.code)
+    if not opposite_code:
+        return None
+    return Subject.objects.filter(
+        school=school, code=opposite_code,
+        school_section=assignment.school_section,
+        grade=assignment.class_name,
+    ).first()
 
 
 @login_required(login_url='login')
@@ -80,8 +93,8 @@ def select_exam(request):
     assignments = (
         SubjectAssignment.objects
         .filter(school=school, teacher_profile=teacher)
-        .select_related('teacher_profile__user')
-        .order_by('class_name', 'stream', 'subject_code')
+        .select_related('teacher_profile__user', 'subject')
+        .order_by('class_name', 'stream', 'subject__code')
     )
 
     active_exams = Exam.objects.filter(school=school, status='active').order_by('-year', 'term', 'name')
@@ -121,7 +134,7 @@ def select_exam(request):
         submission = MarkSubmission.objects.filter(
             school=school,
             teacher=teacher,
-            subject_code=selected_assignment.subject_code,
+            subject=selected_assignment.subject,
             class_name=selected_assignment.class_name,
             stream=selected_assignment.stream,
             exam_name=selected_exam.name,
@@ -138,7 +151,7 @@ def select_exam(request):
 
         existing_mark_for_max = Mark.objects.filter(
             school=school,
-            subject=selected_assignment.subject_code,
+            subject=selected_assignment.subject,
             term=selected_exam.term,
             exam_type=selected_exam.name,
             year=selected_exam.year,
@@ -157,13 +170,13 @@ def select_exam(request):
         students = get_subject_students(
             selected_assignment.class_name,
             selected_assignment.stream,
-            selected_assignment.subject_code,
+            selected_assignment.subject,
         )
 
         for student in students:
             existing = Mark.objects.filter(
                 student=student,
-                subject=selected_assignment.subject_code,
+                subject=selected_assignment.subject,
                 term=selected_exam.term,
                 exam_type=selected_exam.name,
                 year=selected_exam.year,
@@ -216,22 +229,24 @@ def select_exam(request):
                     continue
 
                 if value.upper() == "AB":
-                    if selected_assignment.subject_code in RELIGION_SUBJECTS:
-                        religion_tag = dict(Mark.KJSEA_SUBJECTS).get(selected_assignment.subject_code, '')
+                    if selected_assignment.subject.code in RELIGION_SUBJECTS:
+                        religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
                         Student.objects.filter(id=student.id).update(religion=religion_tag)
-                        Mark.objects.filter(
-                            school=school,
-                            student=student,
-                            subject=OPPOSITE_RELIGION_SUBJECT[selected_assignment.subject_code],
-                            term=selected_exam.term,
-                            exam_type=selected_exam.name,
-                            year=selected_exam.year,
-                        ).delete()
+                        opposite = _resolve_opposite_religion_subject(school, selected_assignment)
+                        if opposite:
+                            Mark.objects.filter(
+                                school=school,
+                                student=student,
+                                subject=opposite,
+                                term=selected_exam.term,
+                                exam_type=selected_exam.name,
+                                year=selected_exam.year,
+                            ).delete()
 
                     Mark.objects.update_or_create(
                         school=school,
                         student=student,
-                        subject=selected_assignment.subject_code,
+                        subject=selected_assignment.subject,
                         term=selected_exam.term,
                         exam_type=selected_exam.name,
                         year=selected_exam.year,
@@ -263,7 +278,7 @@ def select_exam(request):
                 Mark.objects.update_or_create(
                     school=school,
                     student=student,
-                    subject=selected_assignment.subject_code,
+                    subject=selected_assignment.subject,
                     term=selected_exam.term,
                     exam_type=selected_exam.name,
                     year=selected_exam.year,
@@ -280,22 +295,24 @@ def select_exam(request):
                 # ================================================================
                 # CHANGE 2 — Auto-tag student with religion on first score entry
                 # ================================================================
-                if selected_assignment.subject_code in RELIGION_SUBJECTS:
-                    religion_tag = dict(Mark.KJSEA_SUBJECTS).get(selected_assignment.subject_code, '')
+                if selected_assignment.subject.code in RELIGION_SUBJECTS:
+                    religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
                     Student.objects.filter(id=student.id).update(religion=religion_tag)
-                    Mark.objects.filter(
-                        school=school,
-                        student=student,
-                        subject=OPPOSITE_RELIGION_SUBJECT[selected_assignment.subject_code],
-                        term=selected_exam.term,
-                        exam_type=selected_exam.name,
-                        year=selected_exam.year,
-                    ).delete()
+                    opposite = _resolve_opposite_religion_subject(school, selected_assignment)
+                    if opposite:
+                        Mark.objects.filter(
+                            school=school,
+                            student=student,
+                            subject=opposite,
+                            term=selected_exam.term,
+                            exam_type=selected_exam.name,
+                            year=selected_exam.year,
+                        ).delete()
 
             # ================================================================
             # CHANGE 3 — Skip must-fill check for IRE/CRE/HRE subjects
             # ================================================================
-            if missing_students and selected_assignment.subject_code not in RELIGION_SUBJECTS:
+            if missing_students and selected_assignment.subject.code not in RELIGION_SUBJECTS:
                 messages.error(request, "Please enter a score or AB for every learner before submitting.")
                 return redirect(
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
@@ -304,7 +321,7 @@ def select_exam(request):
             MarkSubmission.objects.update_or_create(
                 school=school,
                 teacher=teacher,
-                subject_code=selected_assignment.subject_code,
+                subject=selected_assignment.subject,
                 class_name=selected_assignment.class_name,
                 stream=selected_assignment.stream,
                 exam_name=selected_exam.name,
@@ -329,13 +346,13 @@ def select_exam(request):
             total_students = get_religion_aware_student_count(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
             )
 
             uploaded_marks = get_subject_marks(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
                 exam.term,
                 exam.name,
                 exam.year,
@@ -345,7 +362,7 @@ def select_exam(request):
 
             row_submission = MarkSubmission.objects.filter(
                 teacher=teacher,
-                subject_code=assignment.subject_code,
+                subject=assignment.subject,
                 class_name=assignment.class_name,
                 stream=assignment.stream,
                 exam_name=exam.name,
@@ -519,7 +536,7 @@ def manage_exams(request):
             SubjectAssignment.objects
             .filter(school=school)
             .select_related("teacher_profile", "teacher_profile__user")
-            .order_by("class_name", "stream", "subject_code")
+            .order_by("class_name", "stream", "subject__code")
         )
         if section in ('PRIMARY', 'JSS'):
             assignments = assignments.filter(school_section=section)
@@ -528,13 +545,13 @@ def manage_exams(request):
             total_students = get_religion_aware_student_count(
             assignment.class_name,
             assignment.stream,
-            assignment.subject_code,
+            assignment.subject,
             )
 
             marks_qs = get_subject_marks(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
                 selected_exam.term,
                 selected_exam.name,
                 selected_exam.year,
@@ -546,7 +563,7 @@ def manage_exams(request):
 
             submission = MarkSubmission.objects.filter(
                 teacher=assignment.teacher_profile,
-                subject_code=assignment.subject_code,
+                subject=assignment.subject,
                 class_name=assignment.class_name,
                 stream=assignment.stream,
                 exam_name=selected_exam.name,
@@ -602,8 +619,8 @@ def manage_exams(request):
             grouped_streams[group_key]["rows"].append({
                 "assignment_id": assignment.id,
                 "exam_id": selected_exam.id,
-                "subject_code": assignment.subject_code,
-                "subject_name": assignment.get_subject_code_display(),
+                "subject_code": assignment.subject,
+                "subject_name": assignment.subject.name,
                 "teacher_name": assignment.teacher_profile.get_full_title(),
                 "captured_count": captured_count,
                 "total_students": total_students,
@@ -828,7 +845,7 @@ def review_submission(request):
     submission = MarkSubmission.objects.filter(
         school=get_request_school(request),
         teacher=assignment.teacher_profile,
-        subject_code=assignment.subject_code,
+        subject=assignment.subject,
         class_name=assignment.class_name,
         stream=assignment.stream,
         exam_name=exam.name,
@@ -869,7 +886,7 @@ def review_submission(request):
             students_for_sheet = get_subject_students(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
             )
 
             school = get_request_school(request)
@@ -879,23 +896,25 @@ def review_submission(request):
                 if not value:
                     continue
 
-                if assignment.subject_code in RELIGION_SUBJECTS:
-                    religion_tag = dict(Mark.KJSEA_SUBJECTS).get(assignment.subject_code, "")
+                if assignment.subject.code in RELIGION_SUBJECTS:
+                    religion_tag = RELIGION_TAG.get(assignment.subject.code, "")
                     Student.objects.filter(id=student.id).update(religion=religion_tag)
-                    Mark.objects.filter(
-                        school=school,
-                        student=student,
-                        subject=OPPOSITE_RELIGION_SUBJECT[assignment.subject_code],
-                        term=exam.term,
-                        exam_type=exam.name,
-                        year=exam.year,
-                    ).delete()
+                    opposite = _resolve_opposite_religion_subject(school, assignment)
+                    if opposite:
+                        Mark.objects.filter(
+                            school=school,
+                            student=student,
+                            subject=opposite,
+                            term=exam.term,
+                            exam_type=exam.name,
+                            year=exam.year,
+                        ).delete()
 
                 if value.upper() == "AB":
                     Mark.objects.update_or_create(
                         school=school,
                         student=student,
-                        subject=assignment.subject_code,
+                        subject=assignment.subject,
                         term=exam.term,
                         exam_type=exam.name,
                         year=exam.year,
@@ -927,7 +946,7 @@ def review_submission(request):
                 Mark.objects.update_or_create(
                     school=school,
                     student=student,
-                    subject=assignment.subject_code,
+                    subject=assignment.subject,
                     term=exam.term,
                     exam_type=exam.name,
                     year=exam.year,
@@ -961,13 +980,13 @@ def review_submission(request):
             total_students = get_religion_aware_student_count(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
             )
 
             captured_count = get_subject_marks(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
                 exam.term,
                 exam.name,
                 exam.year,
@@ -995,13 +1014,13 @@ def review_submission(request):
             total_students = get_religion_aware_student_count(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
             )
 
             captured_count = get_subject_marks(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
                 exam.term,
                 exam.name,
                 exam.year,
@@ -1035,13 +1054,13 @@ def review_submission(request):
     students = get_subject_students(
         assignment.class_name,
         assignment.stream,
-        assignment.subject_code,
+        assignment.subject,
     )
 
     marks_qs = get_subject_marks(
         assignment.class_name,
         assignment.stream,
-        assignment.subject_code,
+        assignment.subject,
         exam.term,
         exam.name,
         exam.year,
@@ -1115,7 +1134,7 @@ def review_submission(request):
         "assignment": assignment,
         "exam": exam,
         "teacher": assignment.teacher_profile,
-        "subject_name": assignment.get_subject_code_display(),
+        "subject_name": assignment.subject.name,
         "learner_rows": learner_rows,
         "total_students": total_students,
         "captured_count": captured_count,
@@ -1254,7 +1273,7 @@ def select_exam_primary(request):
         SubjectAssignment.objects
         .filter(school=school, teacher_profile=teacher, school_section='PRIMARY')
         .select_related('teacher_profile__user')
-        .order_by('class_name', 'stream', 'subject_code')
+        .order_by('class_name', 'stream', 'subject__code')
     )
 
     active_exams = Exam.objects.filter(
@@ -1296,7 +1315,7 @@ def select_exam_primary(request):
         submission = MarkSubmission.objects.filter(
             school=school,
             teacher=teacher,
-            subject_code=selected_assignment.subject_code,
+            subject=selected_assignment.subject,
             class_name=selected_assignment.class_name,
             stream=selected_assignment.stream,
             exam_name=selected_exam.name,
@@ -1313,7 +1332,7 @@ def select_exam_primary(request):
 
         existing_mark_for_max = Mark.objects.filter(
             school=school,
-            subject=selected_assignment.subject_code,
+            subject=selected_assignment.subject,
             term=selected_exam.term,
             exam_type=selected_exam.name,
             year=selected_exam.year,
@@ -1327,13 +1346,13 @@ def select_exam_primary(request):
         students = get_subject_students(
             selected_assignment.class_name,
             selected_assignment.stream,
-            selected_assignment.subject_code,
+            selected_assignment.subject,
         )
 
         for student in students:
             existing = Mark.objects.filter(
                 student=student,
-                subject=selected_assignment.subject_code,
+                subject=selected_assignment.subject,
                 term=selected_exam.term,
                 exam_type=selected_exam.name,
                 year=selected_exam.year,
@@ -1391,23 +1410,25 @@ def select_exam_primary(request):
 
                 if value.upper() == "AB":
                     # Auto-tag student religion on CRE/IRE for primary
-                    if selected_assignment.subject_code in RELIGION_SUBJECTS:
-                        religion_tag = RELIGION_TAG.get(selected_assignment.subject_code, '')
+                    if selected_assignment.subject.code in RELIGION_SUBJECTS:
+                        religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
                         Student.objects.filter(id=student.id).update(religion=religion_tag)
-                        Mark.objects.filter(
-                            school=school,
-                            student=student,
-                            subject=OPPOSITE_RELIGION_SUBJECT.get(selected_assignment.subject_code, ''),
-                            term=selected_exam.term,
-                            exam_type=selected_exam.name,
-                            year=selected_exam.year,
-                            school_section='PRIMARY',
-                        ).delete()
+                        opposite = _resolve_opposite_religion_subject(school, selected_assignment)
+                        if opposite:
+                            Mark.objects.filter(
+                                school=school,
+                                student=student,
+                                subject=opposite,
+                                term=selected_exam.term,
+                                exam_type=selected_exam.name,
+                                year=selected_exam.year,
+                                school_section='PRIMARY',
+                            ).delete()
 
                     Mark.objects.update_or_create(
                         school=school,
                         student=student,
-                        subject=selected_assignment.subject_code,
+                        subject=selected_assignment.subject,
                         term=selected_exam.term,
                         exam_type=selected_exam.name,
                         year=selected_exam.year,
@@ -1445,7 +1466,7 @@ def select_exam_primary(request):
                 Mark.objects.update_or_create(
                     school=school,
                     student=student,
-                    subject=selected_assignment.subject_code,
+                    subject=selected_assignment.subject,
                     term=selected_exam.term,
                     exam_type=selected_exam.name,
                     year=selected_exam.year,
@@ -1463,20 +1484,22 @@ def select_exam_primary(request):
                 saved_count += 1
 
                 # Auto-tag student religion on CRE/IRE for primary
-                if selected_assignment.subject_code in RELIGION_SUBJECTS:
-                    religion_tag = RELIGION_TAG.get(selected_assignment.subject_code, '')
+                if selected_assignment.subject.code in RELIGION_SUBJECTS:
+                    religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
                     Student.objects.filter(id=student.id).update(religion=religion_tag)
-                    Mark.objects.filter(
-                        school=school,
-                        student=student,
-                        subject=OPPOSITE_RELIGION_SUBJECT.get(selected_assignment.subject_code, ''),
-                        term=selected_exam.term,
-                        exam_type=selected_exam.name,
-                        year=selected_exam.year,
-                        school_section='PRIMARY',
-                    ).delete()
+                    opposite = _resolve_opposite_religion_subject(school, selected_assignment)
+                    if opposite:
+                        Mark.objects.filter(
+                            school=school,
+                            student=student,
+                            subject=opposite,
+                            term=selected_exam.term,
+                            exam_type=selected_exam.name,
+                            year=selected_exam.year,
+                            school_section='PRIMARY',
+                        ).delete()
 
-            if missing_students and selected_assignment.subject_code not in RELIGION_SUBJECTS:
+            if missing_students and selected_assignment.subject.code not in RELIGION_SUBJECTS:
                 messages.error(request, "Please enter a score or AB for every learner before submitting.")
                 return redirect(
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
@@ -1485,7 +1508,7 @@ def select_exam_primary(request):
             MarkSubmission.objects.update_or_create(
                 school=school,
                 teacher=teacher,
-                subject_code=selected_assignment.subject_code,
+                subject=selected_assignment.subject,
                 class_name=selected_assignment.class_name,
                 stream=selected_assignment.stream,
                 exam_name=selected_exam.name,
@@ -1510,13 +1533,13 @@ def select_exam_primary(request):
             total_students = get_religion_aware_student_count(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
             )
 
             uploaded_marks = get_subject_marks(
                 assignment.class_name,
                 assignment.stream,
-                assignment.subject_code,
+                assignment.subject,
                 exam.term,
                 exam.name,
                 exam.year,
@@ -1526,7 +1549,7 @@ def select_exam_primary(request):
 
             row_submission = MarkSubmission.objects.filter(
                 teacher=teacher,
-                subject_code=assignment.subject_code,
+                subject=assignment.subject,
                 class_name=assignment.class_name,
                 stream=assignment.stream,
                 exam_name=exam.name,

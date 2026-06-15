@@ -375,7 +375,7 @@
             <div class="allocation-grid">
                 {% for assignment in assignments %}
                     <div class="allocation-card">
-                        <strong>{{ assignment.get_subject_code_display }}</strong>
+                        <strong>{{ assignment.subject.name }}</strong>
                         <span>{{ assignment.class_name }} {{ assignment.stream }}</span>
                     </div>
                 {% empty %}

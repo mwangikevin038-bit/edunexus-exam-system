@@ -9,7 +9,7 @@ import re
 from django import forms
 from django.contrib.auth.forms import PasswordChangeForm
 
-from .models import Mark, Student
+from .models import Mark, Student, Subject
 from .security.sanitization import SecureFormMixin
 
 # Import canonical choices from models
@@ -23,13 +23,19 @@ import datetime
 YEAR_CHOICES = [(r, str(r)) for r in range(2024, datetime.date.today().year + 1)]
 
 
-def get_stream_choices(school=None):
-    """Return stream choices dynamically from the Stream model for a school."""
-    from .models import Stream
+def get_stream_choices(school=None, grade_name=None):
+    """Return stream choices dynamically from the Stream model for a school, optionally filtered by grade."""
+    from .models import Stream, Grade
+    qs = Stream.all_objects
     if school:
-        streams = Stream.all_objects.filter(school=school).values_list("name", flat=True).distinct().order_by("name")
-    else:
-        streams = Stream.all_objects.values_list("name", flat=True).distinct().order_by("name")
+        qs = qs.filter(school=school)
+    if grade_name:
+        try:
+            grade = Grade.all_objects.get(school=school, name=grade_name)
+            qs = qs.filter(grade=grade)
+        except Grade.DoesNotExist:
+            pass
+    streams = qs.values_list("name", flat=True).distinct().order_by("name")
     return [(s, s) for s in streams]
 
 
@@ -108,7 +114,12 @@ class StudentEditForm(SecureFormMixin, forms.ModelForm):
 
     def __init__(self, *args, school=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['stream'].choices = get_stream_choices(school)
+        grade_name = None
+        if self.instance and self.instance.pk:
+            grade_name = self.instance.class_name
+        if self.data and 'class_name' in self.data:
+            grade_name = self.data['class_name']
+        self.fields['stream'].choices = get_stream_choices(school, grade_name)
 
 
 # 2. Form for Single Mark Entry
@@ -130,12 +141,14 @@ class MarkFilterForm(SecureFormMixin, forms.Form):
     year = forms.ChoiceField(choices=YEAR_CHOICES, widget=forms.Select(attrs={'class': 'form-control'}))
     grade = forms.ChoiceField(choices=GRADE_CHOICES, widget=forms.Select(attrs={'class': 'form-control'}))
     stream = forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class': 'form-control'}))
-    subject = forms.ChoiceField(choices=Mark.KJSEA_SUBJECTS, widget=forms.Select(attrs={'class': 'form-control'}))
+    subject = forms.ModelChoiceField(queryset=Subject.objects.none(), widget=forms.Select(attrs={'class': 'form-control'}))
     term = forms.ChoiceField(choices=TERM_CHOICES, widget=forms.Select(attrs={'class': 'form-control'}))
 
     def __init__(self, *args, school=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['stream'].choices = get_stream_choices(school)
+        if school:
+            self.fields['subject'].queryset = Subject.objects.filter(school=school, is_active=True).order_by('grade', 'code')
 
 
 class StrongPasswordChangeForm(PasswordChangeForm):

@@ -112,17 +112,19 @@ def download_broadsheet_pdf(request):
     if year and term and grade and stream and exam_type:
         published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type)
         published_subject_count = len(published_subject_codes)
+        from ..models import Subject
+        published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
 
         # Always show ALL subjects as columns (even without marks yet)
         published_subjects = [
-            (code, subject_map[code])
-            for code in subject_codes
+            (s.code, subject_map.get(s.code, s.code))
+            for s in published_subjects_qs
         ]
 
         for a in SubjectAssignment.objects.filter(
             school=school, class_name=grade, stream=stream
-        ).select_related('teacher_profile__user'):
-            short = subject_map.get(a.subject_code)
+        ).select_related('teacher_profile__user', 'subject'):
+            short = a.subject.code if a.subject else None
             if short:
                 analysis_data[short]['teacher_name'] = a.teacher_profile.get_full_title()
 
@@ -131,7 +133,7 @@ def download_broadsheet_pdf(request):
             queryset=Mark.objects.filter(
                 school=school,
                 year=year, term=term, exam_type=exam_type,
-                subject__in=published_subject_codes,
+                subject__in=published_subjects_qs,
             ).order_by('subject', '-date_recorded', '-id'),
             to_attr='cached_marks',
         )
@@ -141,7 +143,7 @@ def download_broadsheet_pdf(request):
         for student in students:
             marks_dict   = {}
             for mark in student.cached_marks:
-                marks_dict.setdefault(mark.subject, mark)
+                marks_dict.setdefault(mark.subject.code, mark)
             row_scores   = []
             total_marks  = 0
             total_points = 0

@@ -5,10 +5,19 @@ Provides a single source of truth for subject choices, grade/stream/term lists,
 performance scales, and assessment mappings used throughout the system.
 """
 
-from students.models import Mark, Student
+from students.models import Student, Subject
 
-# ── Subject Choices (canonical source: Mark.KJSEA_SUBJECTS) ─────────────────
-SUBJECT_CHOICES = Mark.KJSEA_SUBJECTS
+# ── Subject Choices (from Subject model) ─────────────────
+def get_subject_choices(school=None, section=None):
+    """Return subject choices from Subject model."""
+    qs = Subject.objects.all()
+    if school:
+        qs = qs.filter(school=school)
+    if section:
+        qs = qs.filter(school_section=section)
+    return [(s.code, s.name) for s in qs.order_by('grade', 'code')]
+
+SUBJECT_CHOICES = []  # Populated dynamically via get_subject_choices()
 
 SUBJECT_SHORT_MAP = {
     '901': 'ENG', '902': 'KIS', '903': 'MAT', '905': 'SCI',

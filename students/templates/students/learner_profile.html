@@ -472,7 +472,16 @@
     var streamSelect = document.getElementById('id_stream');
     if (!classSelect || !streamSelect) return;
 
-    var savedStream = streamSelect.value;
+    // Use the value rendered server-side from the database, NOT the live DOM.
+    // Reading streamSelect.value before the dropdown is repopulated by JS can
+    // return whatever the first <option> happens to be (e.g. "East"),
+    // which then gets re-selected after loadStreams() rebuilds the list
+    // and posted on save instead of the learner's real saved stream.
+    var savedStream = "{{ student.stream|escapejs }}";
+
+    function normalize(val) {
+        return (val || '').trim().toLowerCase();
+    }
 
     function loadStreams(grade, selectVal) {
         if (!grade) return;
@@ -481,15 +490,25 @@
             .then(function(data) {
                 var streams = data.streams || [];
                 if (streams.length === 0) return;
+
                 streamSelect.innerHTML = '<option value="" disabled>Select stream</option>';
+
+                var matched = false;
                 streams.forEach(function(name) {
                     var opt = document.createElement('option');
                     opt.value = name;
                     opt.textContent = name;
-                    if (name === selectVal) opt.selected = true;
+                    if (normalize(name) === normalize(selectVal)) {
+                        opt.selected = true;
+                        matched = true;
+                    }
                     streamSelect.appendChild(opt);
                 });
-                if (selectVal && streams.indexOf(selectVal) === -1) {
+
+                // If the learner's saved stream isn't in this grade's stream
+                // list (e.g. stale data or grade change), keep it visible
+                // and selected rather than silently defaulting to the first option.
+                if (selectVal && !matched) {
                     var opt = document.createElement('option');
                     opt.value = selectVal;
                     opt.textContent = selectVal + ' (current)';
@@ -499,12 +518,15 @@
             });
     }
 
+    // Initial load: always use the learner's actual saved stream from the DB.
     if (classSelect.value) {
         loadStreams(classSelect.value, savedStream);
     }
 
+    // When the admin manually changes the class, try to keep whatever is
+    // currently selected in the stream dropdown (not the original savedStream).
     classSelect.addEventListener('change', function() {
-        loadStreams(this.value, '');
+        loadStreams(this.value, streamSelect.value);
     });
 })();
 </script>

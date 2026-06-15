@@ -118,17 +118,15 @@ def results_list(request):
         published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type)
         published_subject_count = len(published_subject_codes)
 
-        # For primary: always show ALL 8 subjects as columns (even without marks)
-        # For JSS: show all subjects from the subject map
-        published_subjects = [
-            (code, subject_map[code])
-            for code in subject_codes
-        ]
+        # Get Subject objects for published subjects
+        from ..models import Subject
+        published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
+        published_subjects = [(s.code, s.code) for s in published_subjects_qs]  # (code, short)
 
         # Map assigned teachers for this grade/stream
         teacher_map = {}
-        for a in SubjectAssignment.objects.filter(school=school, class_name=grade, stream=stream).select_related('teacher_profile__user'):
-            short = subject_map.get(a.subject_code)
+        for a in SubjectAssignment.objects.filter(school=school, class_name=grade, stream=stream).select_related('teacher_profile__user', 'subject'):
+            short = a.subject.code if a.subject else None
             if short:
                 teacher_map[short] = a.teacher_profile.get_full_title()
         for short in analysis_data:
@@ -142,7 +140,7 @@ def results_list(request):
                 year=year,
                 term=term,
                 exam_type=exam_type,
-                subject__in=published_subject_codes,
+                subject__in=published_subjects_qs,
             ).order_by('subject', '-date_recorded', '-id'),
             to_attr='cached_marks',
         )
@@ -157,7 +155,7 @@ def results_list(request):
         for student in students:
             marks_dict  = {}
             for mark in student.cached_marks:
-                marks_dict.setdefault(mark.subject, mark)
+                marks_dict.setdefault(mark.subject.code, mark)
             row_scores  = []
             total_marks = 0
             total_points = 0
@@ -273,7 +271,7 @@ def report_card_select(request):
     school = get_request_school(request)
 
     total_required_subjects = SubjectAssignment.objects.filter(school=school, class_name=grade, stream=stream).values(
-        "subject_code"
+        "subject__code"
     ).distinct().count() if selected_context else 0
 
     # Use Primary template when in Primary workspace
@@ -332,6 +330,8 @@ def individual_report(request, student_id):
         term,
         db_assessment,
     )
+    from ..models import Subject
+    published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
 
     # Fetch marks for this student
     marks        = Mark.objects.filter(
@@ -340,9 +340,9 @@ def individual_report(request, student_id):
         year=year,
         term=term,
         exam_type=db_assessment,
-        subject__in=published_subject_codes,
+        subject__in=published_subjects_qs,
         school_section=student.school_section,
-    ).order_by('subject')
+    ).order_by('subject__code')
     total_marks  = sum(m.score  for m in marks if m.score)
     total_points = sum(m.points for m in marks if m.points)
 
@@ -352,7 +352,7 @@ def individual_report(request, student_id):
             school=school,
             student__class_name=student.class_name, student__stream=student.stream,
             year=year, term=term, exam_type=db_assessment,
-            subject__in=published_subject_codes,
+            subject__in=published_subjects_qs,
         )
         .values('student_id').annotate(total_score=Sum('score')).order_by('-total_score')
     )
@@ -365,18 +365,19 @@ def individual_report(request, student_id):
 
     # Attach subject name and teacher to each mark
     is_primary = student.school_section == 'PRIMARY'
-    subject_mapping = PRIMARY_SUBJECT_NAMES if is_primary else dict(Mark.KJSEA_SUBJECTS)
+    subject_mapping = PRIMARY_SUBJECT_NAMES if is_primary else {s.code: s.name for s in published_subjects_qs}
     teacher_map = {
-        a.subject_code: a.teacher_profile.get_full_title()
+        a.subject.code: a.teacher_profile.get_full_title()
         for a in SubjectAssignment.objects.filter(
             school=school,
             class_name=student.class_name, stream=student.stream
-        ).select_related('teacher_profile__user')
+        ).select_related('teacher_profile__user', 'subject')
+        if a.subject
     }
     marks_list = list(marks)
     for mark in marks_list:
-        mark.subject_name = subject_mapping.get(mark.subject, mark.subject)
-        mark.teacher_name = teacher_map.get(mark.subject, '—')
+        mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
+        mark.teacher_name = teacher_map.get(mark.subject.code, '—')
         if is_primary and not mark.is_absent:
             pct = mark.score or 0
             mark.performance_level, mark.points = _get_primary_performance(pct)
@@ -497,7 +498,6 @@ def bulk_report_cards(request):
     assessment    = request.GET.get('assessment', 'opener')
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
 
-    subject_mapping = dict(Mark.KJSEA_SUBJECTS)
     selected_students_base = Student.objects.filter(id__in=student_ids, school=school)
     sample = selected_students_base.first()
     if sample and not user_can_access_class_stream(request.user, sample.class_name, sample.stream, require_class_teacher=True):
@@ -510,7 +510,7 @@ def bulk_report_cards(request):
         )
 
     is_primary = sample.school_section == 'PRIMARY' if sample else False
-    subject_mapping = PRIMARY_SUBJECT_NAMES if is_primary else dict(Mark.KJSEA_SUBJECTS)
+    from ..models import Subject
 
     published_subject_codes = set()
     if sample:
@@ -521,6 +521,8 @@ def bulk_report_cards(request):
             term,
             db_assessment,
         )
+    published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
+    subject_mapping = PRIMARY_SUBJECT_NAMES if is_primary else {s.code: s.name for s in published_subjects_qs}
 
     marks_prefetch = Prefetch(
         'marks',
@@ -529,9 +531,9 @@ def bulk_report_cards(request):
             year=year,
             term=term,
             exam_type=db_assessment,
-            subject__in=published_subject_codes,
+            subject__in=published_subjects_qs,
             school_section=sample.school_section,
-        ).order_by('subject'),
+        ).order_by('subject__code'),
         to_attr='cached_marks',
     )
     selected_students = selected_students_base.prefetch_related(marks_prefetch)
@@ -545,7 +547,7 @@ def bulk_report_cards(request):
             school=school,
             student__class_name=sample.class_name, student__stream=sample.stream,
             year=year, term=term, exam_type=db_assessment,
-            subject__in=published_subject_codes,
+            subject__in=published_subjects_qs,
         )
         .values('student_id').annotate(total_score=Sum('score')).order_by('-total_score')
     )
@@ -554,7 +556,7 @@ def bulk_report_cards(request):
 
     # Teacher map for this class
     teacher_map = {
-        a.subject_code: a.teacher_profile.get_full_title()
+        a.subject.code: a.teacher_profile.get_full_title()
         for a in SubjectAssignment.objects.filter(
             school=school,
             class_name=sample.class_name, stream=sample.stream
@@ -583,8 +585,8 @@ def bulk_report_cards(request):
         total_points = sum(m.points for m in marks if m.points)
 
         for mark in marks:
-            mark.subject_name = subject_mapping.get(mark.subject, mark.subject)
-            mark.teacher_name = teacher_map.get(mark.subject, '—')
+            mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
+            mark.teacher_name = teacher_map.get(mark.subject.code, '—')
             if is_primary and not mark.is_absent:
                 pct = mark.score or 0
                 mark.performance_level, mark.points = _get_primary_performance(pct)

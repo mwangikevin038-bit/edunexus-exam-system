@@ -328,7 +328,12 @@ class Mark(SchoolScopedModel):
     ]
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='marks')
-    subject = models.CharField(max_length=3, choices=KJSEA_SUBJECTS)
+    subject = models.ForeignKey(
+        'Subject',
+        on_delete=models.PROTECT,
+        related_name='marks',
+        help_text="Subject for this mark"
+    )
     school_section = models.CharField(
         max_length=10,
         choices=SECTION_CHOICES,
@@ -381,7 +386,7 @@ class Mark(SchoolScopedModel):
     integrity_checksum = models.CharField(max_length=64, editable=False, blank=True, default="")
 
     def clean(self):
-        """Validate primary assessment fields."""
+        """Validate primary assessment fields and subject-grade consistency."""
         super().clean()
         if self.school_section == 'PRIMARY':
             raw = (self.primary_raw_score or '').strip()
@@ -400,6 +405,16 @@ class Mark(SchoolScopedModel):
             if desc and desc not in ('EE', 'ME', 'AE', 'BE', 'AB'):
                 raise ValidationError({
                     'primary_descriptor': 'Must be EE, ME, AE, BE, or AB.'
+                })
+
+        if self.subject_id and self.student_id:
+            if self.subject.grade != self.student.class_name:
+                raise ValidationError({
+                    'subject': f"Subject {self.subject.code} is for {self.subject.grade}, but student is in {self.student.class_name}."
+                })
+            if self.subject.school_section != self.school_section:
+                raise ValidationError({
+                    'subject': f"Subject {self.subject.code} belongs to {self.subject.get_school_section_display()}, but mark is for {self.get_school_section_display()}."
                 })
 
     def save(self, *args, **kwargs):
@@ -613,7 +628,12 @@ class SubjectAssignment(SchoolScopedModel):
         ('JSS', 'Junior Secondary'),
     ]
     teacher_profile = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='assignments')
-    subject_code = models.CharField(max_length=3, choices=Mark.KJSEA_SUBJECTS)
+    subject = models.ForeignKey(
+        'Subject',
+        on_delete=models.PROTECT,
+        related_name='assignments',
+        help_text="Subject assigned to this teacher"
+    )
     class_name = models.CharField(max_length=20, choices=Student.CLASS_CHOICES)
     stream = models.CharField(max_length=20)
     school_section = models.CharField(
@@ -624,10 +644,22 @@ class SubjectAssignment(SchoolScopedModel):
     )
 
     class Meta:
-        unique_together = ('school', 'subject_code', 'class_name', 'stream')
+        unique_together = ('school', 'subject', 'class_name', 'stream')
 
     def __str__(self):
-        return f"{self.teacher_profile.user.get_full_name() or self.teacher_profile.user.username} -> {self.get_subject_code_display()} ({self.class_name} {self.stream})"
+        return f"{self.teacher_profile.user.get_full_name() or self.teacher_profile.user.username} -> {self.subject.name} ({self.class_name} {self.stream})"
+
+    def clean(self):
+        super().clean()
+        if self.subject_id:
+            if self.subject.grade != self.class_name:
+                raise ValidationError({
+                    'subject': f"Subject {self.subject.code} is for {self.subject.grade}, but assignment is for {self.class_name}."
+                })
+            if self.subject.school_section != self.school_section:
+                raise ValidationError({
+                    'subject': f"Subject {self.subject.code} belongs to {self.subject.get_school_section_display()}, but assignment is for {self.get_school_section_display()}."
+                })
 
 #------------------------------MARK SUBMISSION-------------------------------------#
 class MarkSubmission(SchoolScopedModel):
@@ -643,7 +675,12 @@ class MarkSubmission(SchoolScopedModel):
     ]
 
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
-    subject_code = models.CharField(max_length=10, choices=Mark.KJSEA_SUBJECTS)
+    subject = models.ForeignKey(
+        'Subject',
+        on_delete=models.PROTECT,
+        related_name='submissions',
+        help_text="Subject for this submission"
+    )
     school_section = models.CharField(
         max_length=10,
         choices=SECTION_CHOICES,
@@ -667,7 +704,7 @@ class MarkSubmission(SchoolScopedModel):
         unique_together = (
             'school',
             'teacher',
-            'subject_code',
+            'subject',
             'class_name',
             'stream',
             'exam_name',
@@ -678,7 +715,7 @@ class MarkSubmission(SchoolScopedModel):
 
     def __str__(self):
         return (
-            f"{self.teacher} - {self.subject_code} - "
+            f"{self.teacher} - {self.subject.code} - "
             f"{self.class_name} {self.stream} - {self.exam_name} {self.term} {self.year}"
         )
 # -------------------- Class Teacher Master Comments Model --------------------

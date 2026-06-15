@@ -53,6 +53,7 @@ from ..models import (
     Mark,
     SchoolHeadteacherComment,
     Student,
+    Subject,
     SubjectAssignment,
     Teacher,
 )
@@ -334,25 +335,31 @@ def manage_faculty_matrix(request):
             school = get_request_school(request)
             teacher_id = request.POST.get('teacher_id')
             section = get_request_school_section(request)
-            SubjectAssignment.objects.update_or_create(
-                school=school,
-                class_name=request.POST.get('grade'),
-                stream=request.POST.get('stream'),
-                subject_code=request.POST.get('subject_code'),
-                defaults={
-                    'teacher_profile_id': teacher_id,
-                    'school_section': section or 'JSS',
-                }
-            )
-            try:
-                target = Teacher.objects.get(id=teacher_id, school=school)
-                all_a  = target.assignments.all()
-                target.subjects_taught = ", ".join(set(a.get_subject_code_display() for a in all_a))
-                target.classes         = ", ".join(set(f"{a.class_name} {a.stream}" for a in all_a))
-                target.save()
-            except Teacher.DoesNotExist:
-                pass
-            messages.success(request, "Subject assignment updated successfully.")
+            subject_id = request.POST.get('subject_code')
+            from ..models import Subject
+            subject = Subject.objects.filter(id=subject_id, school=school).first()
+            if subject:
+                SubjectAssignment.objects.update_or_create(
+                    school=school,
+                    class_name=request.POST.get('grade'),
+                    stream=request.POST.get('stream'),
+                    subject=subject,
+                    defaults={
+                        'teacher_profile_id': teacher_id,
+                        'school_section': section or 'JSS',
+                    }
+                )
+                try:
+                    target = Teacher.objects.get(id=teacher_id, school=school)
+                    all_a  = target.assignments.select_related('subject').all()
+                    target.subjects_taught = ", ".join(set(a.subject.name for a in all_a))
+                    target.classes         = ", ".join(set(f"{a.class_name} {a.stream}" for a in all_a))
+                    target.save()
+                except Teacher.DoesNotExist:
+                    pass
+                messages.success(request, "Subject assignment updated successfully.")
+            else:
+                messages.error(request, "Invalid subject selected.")
             return redirect('manage_faculty_matrix')
 
     school = get_request_school(request)
@@ -371,7 +378,7 @@ def manage_faculty_matrix(request):
         assignments = assignments.filter(school_section__in=[section, 'BOTH'])
 
     # Pull grades from DB (school's actual class structure)
-    from ..models import Grade, Stream
+    from ..models import Grade, Stream, Subject
     db_grades = Grade.all_objects.filter(school=school, school_section=section).order_by('order')
     grades_for_section = [g.name for g in db_grades]
 
@@ -379,11 +386,8 @@ def manage_faculty_matrix(request):
     db_streams = Stream.all_objects.filter(school=school, school_section=section).select_related('grade').order_by('grade__order', 'name')
     streams_for_section = list(dict.fromkeys(s.name for s in db_streams))
 
-    # Subjects: hardcoded national curriculum (same for every school in Kenya)
-    if section == 'PRIMARY':
-        subjects_for_section = PRIMARY_SUBJECT_CHOICES
-    else:
-        subjects_for_section = SUBJECT_CHOICES
+    # Subjects: from school's Subject table
+    subjects_for_section = Subject.objects.filter(school=school, school_section=section, is_active=True).order_by('grade', 'code')
 
     return render(request, 'students/manage_faculty.html', {
         'assignments': assignments,
@@ -401,7 +405,10 @@ def learner_profile(request, student_id):
     Longitudinal learner account: shows a learner's assessment history, subject
     trends, performance levels, and graph-ready analytics across years.
     """
+    import logging
+    logger = logging.getLogger(__name__)
     student = get_school_object_or_403(Student, request, id=student_id)
+    logger.warning(f"GET request - Student stream from DB: {student.stream}, id: {student.id}")
     if not user_can_view_learner_profile(request.user, student):
         messages.error(request, "You are not allowed to view this learner profile.")
         return redirect('class_lists')
@@ -414,10 +421,20 @@ def learner_profile(request, student_id):
             messages.error(request, "You are not allowed to edit this learner profile.")
             return redirect('learner_profile', student_id=student.id)
 
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"POST data: {dict(request.POST)}")
+        
         previous_religion = student.religion
         form = StudentEditForm(request.POST, instance=student, school=student.school)
+        logger.warning(f"Form stream choices: {form.fields['stream'].choices}")
+        logger.warning(f"Form is_valid: {form.is_valid()}")
+        if not form.is_valid():
+            logger.warning(f"Form errors: {form.errors}")
         if form.is_valid():
+            logger.warning(f"Cleaned data: {form.cleaned_data}")
             updated_student = form.save(commit=False)
+            logger.warning(f"Updated student stream before save: {updated_student.stream}")
 
             if is_school_admin:
                 guardian_phone = form.cleaned_data["guardian_phone"].strip()
@@ -434,13 +451,25 @@ def learner_profile(request, student_id):
                 updated_student.guardian = guardian_obj
 
             updated_student.save()
+            logger.warning(f"Updated student stream AFTER save: {updated_student.stream}")
+            # Refresh from DB
+            updated_student.refresh_from_db()
+            logger.warning(f"Updated student stream AFTER refresh: {updated_student.stream}")
 
             if previous_religion != updated_student.religion and updated_student.religion in ["CRE", "IRE"]:
-                Mark.objects.filter(
-                    school=student.school,
-                    student=updated_student,
-                    subject=OPPOSITE_RELIGION_SUBJECT["908" if updated_student.religion == "CRE" else "909"],
-                ).delete()
+                opposite_code = OPPOSITE_RELIGION_SUBJECT.get(updated_student.religion)
+                if opposite_code:
+                    opposite = Subject.objects.filter(
+                        school=student.school, code=opposite_code,
+                        school_section=student.school_section,
+                        grade=student.class_name,
+                    ).first()
+                    if opposite:
+                        Mark.objects.filter(
+                            school=student.school,
+                            student=updated_student,
+                            subject=opposite,
+                        ).delete()
 
             messages.success(request, "Learner account details updated successfully.")
             return redirect('learner_profile', student_id=updated_student.id)
@@ -461,7 +490,7 @@ def learner_profile(request, student_id):
         .order_by('year', 'term', 'exam_type', 'subject')
     )
     is_primary = student.school_section == 'PRIMARY'
-    subject_mapping = PRIMARY_SUBJECT_NAMES if is_primary else dict(Mark.KJSEA_SUBJECTS)
+    subject_mapping = PRIMARY_SUBJECT_NAMES if is_primary else {s.code: s.name for s in Subject.objects.filter(school=student.school)}
     short_mapping = PRIMARY_SUBJECT_SHORT_MAP if is_primary else SUBJECT_SHORT_MAP
     exam_groups = {}
     subject_trends = {}
@@ -487,8 +516,8 @@ def learner_profile(request, student_id):
         else:
             level_value, points_value = get_performance_level(mark.score)
         exam_groups[key]["marks"].append({
-            "subject": subject_mapping.get(mark.subject, mark.subject),
-            "short": short_mapping.get(mark.subject, mark.subject),
+            "subject": subject_mapping.get(mark.subject.code, mark.subject.name),
+            "short": short_mapping.get(mark.subject.code, mark.subject.code),
             "score": "AB" if mark.is_absent else mark.score,
             "level": level_value,
             "points": "-" if mark.is_absent else points_value,
@@ -497,7 +526,7 @@ def learner_profile(request, student_id):
         exam_groups[key]["points"] += points_value
         exam_groups[key]["subjects"] += 1
 
-        short = short_mapping.get(mark.subject, mark.subject)
+        short = short_mapping.get(mark.subject.code, mark.subject.code)
         subject_trends.setdefault(short, []).append({
             "label": f"{mark.exam_type} {mark.term} {mark.year}",
             "score": score_value,

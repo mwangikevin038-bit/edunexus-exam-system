@@ -31,20 +31,26 @@ PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
 
 @login_required(login_url='login')
 def api_streams_for_grade(request):
-    """JSON endpoint: returns streams for a given grade name."""
-    from ..models import Grade
+    """JSON endpoint: returns streams for a specific grade in the school."""
+    from ..models import Stream, Grade
     school = get_request_school(request)
-    grade_name = request.GET.get('grade', '').strip()
-    if not school or not grade_name:
+    if not school:
         return JsonResponse({'streams': []})
 
-    section = get_request_school_section(request)
-    grade = Grade.all_objects.filter(school=school, name=grade_name, school_section=section).first()
-    if not grade:
+    grade_name = request.GET.get('grade', '').strip()
+    if not grade_name:
+        return JsonResponse({'streams': []})
+
+    try:
+        grade = Grade.all_objects.get(school=school, name=grade_name)
+    except Grade.DoesNotExist:
         return JsonResponse({'streams': []})
 
     stream_names = list(
-        grade.streams.values_list('name', flat=True).order_by('name')
+        Stream.all_objects.filter(school=school, grade=grade)
+        .values_list('name', flat=True)
+        .distinct()
+        .order_by('name')
     )
     return JsonResponse({'streams': stream_names})
 

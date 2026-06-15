@@ -451,6 +451,121 @@
   .email-notice-text strong {
     color: #15803d;
   }
+
+  /* ===================== MOBILE RESPONSIVE ===================== */
+  @media (max-width: 768px) {
+    .matrix-card {
+      padding: 14px;
+      border-radius: 12px;
+      border-left-width: 5px;
+      max-width: 100%;
+      width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
+    }
+
+    .matrix-grid,
+    .setup-box,
+    .filter-bar,
+    .table-holder {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .matrix-select,
+    .search-input,
+    .form-input-field {
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+
+    /* Stack the allocation form above the table instead of side-by-side */
+    .matrix-grid {
+      grid-template-columns: 1fr !important;
+      gap: 18px;
+      margin-top: 16px;
+    }
+
+    .setup-box {
+      position: static;
+      padding: 16px;
+    }
+
+    .filter-bar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .btn-create-faculty {
+      width: 100%;
+      justify-content: center;
+      text-align: center;
+    }
+
+    /* Let the assignment table scroll horizontally inside its own box
+       instead of pushing the whole page wider */
+    .table-holder {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .assignment-table {
+      min-width: 600px;
+    }
+
+    .modal-container-box {
+      max-width: 100%;
+    }
+
+    .modal-body-content {
+      padding: 18px;
+    }
+
+    .modal-header-row {
+      padding: 18px 18px 14px;
+    }
+
+    .modal-footer-row {
+      padding: 14px 18px 18px;
+      flex-direction: column-reverse;
+    }
+
+    .modal-footer-row button {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .form-row-grid {
+      grid-template-columns: 1fr !important;
+      gap: 12px;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .matrix-card {
+      padding: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .setup-box {
+      padding: 12px;
+    }
+
+    .matrix-select,
+    .search-input {
+      font-size: 13px;
+      padding: 9px 10px;
+    }
+
+    .assignment-table th,
+    .assignment-table td {
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+  }
 </style>
 
 <div class="matrix-card">
@@ -492,8 +607,8 @@
         <label class="matrix-label">Subject Parameter:</label>
         <select name="subject_code" class="matrix-select" required>
           <option value="" selected disabled>Choose Subject Assignment</option>
-          {% for code, name in subjects %}
-            <option value="{{ code }}">{{ name }}</option>
+          {% for subject in subjects %}
+            <option value="{{ subject.id }}">{{ subject.name }} ({{ subject.code }})</option>
           {% endfor %}
         </select>
 
@@ -576,7 +691,7 @@
                     {% if teacher.assignments.all %}
                       {% for assignment in teacher.assignments.all %}
                         <span class="badge-allocation">
-                          📚 {{ assignment.get_subject_code_display }}: {{ assignment.class_name }} ({{ assignment.stream }})
+                          📚 {{ assignment.subject.name }}: {{ assignment.class_name }} ({{ assignment.stream }})
                         </span>
                       {% endfor %}
                     {% else %}

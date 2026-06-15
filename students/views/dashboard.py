@@ -36,7 +36,7 @@ def profile_view(request):
     except Teacher.DoesNotExist:
         teacher = None
     assignments = SubjectAssignment.objects.filter(teacher_profile=teacher).order_by(
-        'class_name', 'stream', 'subject_code'
+        'class_name', 'stream', 'subject__code'
     ) if teacher else SubjectAssignment.objects.none()
     section = get_request_school_section(request)
     submissions = MarkSubmission.objects.filter(teacher=teacher)
@@ -67,7 +67,7 @@ def dashboard(request):
         return redirect('school_admin_dashboard')
 
     assignments = SubjectAssignment.objects.filter(school=school, teacher_profile=teacher).order_by(
-        'class_name', 'stream', 'subject_code'
+        'class_name', 'stream', 'subject__code'
     ) if teacher and school else SubjectAssignment.objects.none()
     active_exams = Exam.objects.filter(school=school, status='active').order_by('-year', 'term', 'name') if school else Exam.objects.none()
     submissions = MarkSubmission.objects.filter(school=school, teacher=teacher) if teacher and school else MarkSubmission.objects.none()
@@ -160,14 +160,14 @@ def school_admin_dashboard(request):
             class_stats[cls]['total'] += cnt
 
     # --- Missing marks tracer ---
-    all_assignments      = assignment_qs.select_related('teacher_profile__user').all()
+    all_assignments      = assignment_qs.select_related('teacher_profile__user', 'subject').all()
     missing_entries_feed = []
     for assignment in all_assignments:
         submission = None
         if active_exam:
             submission = submission_qs.filter(
                 teacher=assignment.teacher_profile,
-                subject_code=assignment.subject_code,
+                subject=assignment.subject,
                 class_name=assignment.class_name,
                 stream=assignment.stream,
                 exam_name=active_exam.name,
@@ -178,7 +178,7 @@ def school_admin_dashboard(request):
         if not submission or submission.status in ["returned"]:
             missing_entries_feed.append({
                 'teacher_name': assignment.teacher_profile.get_full_title(),
-                'subject_name': assignment.get_subject_code_display(),
+                'subject_name': assignment.subject.name if assignment.subject else '—',
                 'target_class': f"{assignment.class_name} {assignment.stream}",
                 'phone':        assignment.teacher_profile.phone_number,
                 'status':       submission.get_status_display() if submission else "Not Started",
@@ -206,7 +206,7 @@ def school_admin_dashboard(request):
             published_mark_filter |= Q(
                 student__class_name=submission.class_name,
                 student__stream=submission.stream,
-                subject=submission.subject_code,
+                subject=submission.subject,
                 exam_type=active_exam.name,
                 term=active_exam.term,
                 year=active_exam.year,

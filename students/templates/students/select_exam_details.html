@@ -1164,7 +1164,7 @@
 
                     <div class="upload-card">
                         <h2 class="upload-title">
-                            {{ selected_assignment.class_name }} {{ selected_assignment.stream }} - {{ selected_assignment.get_subject_code_display }}
+                            {{ selected_assignment.class_name }} {{ selected_assignment.stream }} - {{ selected_assignment.subject.name }}
                         </h2>
 
                         <div class="upload-subtitle">
@@ -1313,7 +1313,7 @@
                                 <div class="assessment-card-top">
                                     <div class="assessment-card-info">
                                         <span class="assessment-card-exam">{{ row.exam.name }}</span>
-                                        <span class="assessment-card-subject">{{ row.assignment.get_subject_code_display }}</span>
+                                        <span class="assessment-card-subject">{{ row.assignment.subject.name }}</span>
                                     </div>
                                     <span class="status-pill status-{{ row.status_key }}">
                                         {{ row.status_label }}

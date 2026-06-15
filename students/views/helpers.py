@@ -49,7 +49,7 @@ def get_published_subject_codes(class_name, stream, year, term, exam_name):
     if section in ('PRIMARY', 'JSS'):
         filters['school_section'] = section
     return set(
-        MarkSubmission.objects.filter(**filters).values_list("subject_code", flat=True)
+        MarkSubmission.objects.filter(**filters).values_list("subject__code", flat=True)
     )
 
 
@@ -76,7 +76,7 @@ def get_published_contexts_for_user(user, require_class_teacher=False):
 
     contexts = list(
         qs.values("year", "term", "exam_name", "class_name", "stream")
-        .annotate(subject_count=Count("subject_code", distinct=True))
+        .annotate(subject_count=Count("subject", distinct=True))
         .order_by("-year", "term", "class_name", "stream", "exam_name")
     )
     for item in contexts:
@@ -101,8 +101,8 @@ def get_stream_submission_summary(class_name, stream, exam):
 
     assignments = (
         SubjectAssignment.objects.filter(**assignment_filters)
-        .select_related("teacher_profile", "teacher_profile__user")
-        .order_by("subject_code")
+        .select_related("teacher_profile", "teacher_profile__user", "subject")
+        .order_by("subject__code")
     )
     rows = []
     totals = {
@@ -120,9 +120,9 @@ def get_stream_submission_summary(class_name, stream, exam):
 
     for assignment in assignments:
         # submission_filters is built here, inside the loop, so
-        # assignment.subject_code is always defined when accessed.
+        # assignment.subject is always defined when accessed.
         submission_filters = dict(
-            subject_code=assignment.subject_code,
+            subject=assignment.subject,
             class_name=class_name,
             stream=stream,
             exam_name=exam.name,
@@ -136,12 +136,12 @@ def get_stream_submission_summary(class_name, stream, exam):
         expected_count = get_religion_aware_student_count(
             class_name,
             stream,
-            assignment.subject_code,
+            assignment.subject,
         )
         marks_qs = get_subject_marks(
             class_name,
             stream,
-            assignment.subject_code,
+            assignment.subject,
             exam.term,
             exam.name,
             exam.year,
@@ -177,7 +177,7 @@ def get_stream_submission_summary(class_name, stream, exam):
 
         rows.append({
             "assignment": assignment,
-            "subject_name": assignment.get_subject_code_display(),
+            "subject_name": assignment.subject.name,
             "teacher_name": assignment.teacher_profile.get_full_title(),
             "captured_count": captured_count,
             "total_students": expected_count,
@@ -427,11 +427,13 @@ def get_students_ordered(grade, stream):
     )
 
 
-def get_subject_students(grade, stream, subject_code):
+def get_subject_students(grade, stream, subject):
     """
     Return the learner queryset expected for a subject.
     CRE/IRE become religion-aware after learners have been tagged once.
+    Accepts either Subject instance or subject code string.
     """
+    subject_code = subject.code if hasattr(subject, 'code') else subject
     students = get_students_ordered(grade, stream)
     if subject_code in RELIGION_SUBJECTS:
         religion_tag = RELIGION_TAG.get(subject_code, '')
@@ -441,16 +443,18 @@ def get_subject_students(grade, stream, subject_code):
     return students
 
 
-def get_subject_marks(class_name, stream, subject_code, term, exam_type, year):
+def get_subject_marks(class_name, stream, subject, term, exam_type, year):
     """
     Return marks for a subject using the same learner pool used for score entry.
     This prevents impossible counts such as 52/35 on CRE/IRE sheets.
+    Accepts either Subject instance or subject code string.
     """
+    subject_code = subject.code if hasattr(subject, 'code') else subject
     school = get_current_school()
     marks = Mark.objects.filter(
         student__class_name=class_name,
         student__stream=stream,
-        subject=subject_code,
+        subject=subject,
         term=term,
         exam_type=exam_type,
         year=year,
@@ -467,6 +471,7 @@ def get_subject_marks(class_name, stream, subject_code, term, exam_type, year):
     return marks
 
 
-def get_religion_aware_student_count(class_name, stream, subject_code):
+def get_religion_aware_student_count(class_name, stream, subject):
     """Return the count of students eligible for the given subject."""
+    subject_code = subject.code if hasattr(subject, 'code') else subject
     return get_subject_students(class_name, stream, subject_code).count()
