@@ -2,457 +2,493 @@
 
 {% block content %}
 <style>
-    .teacher-dashboard {
-        min-height: 100vh;
-        background: #f6f8fb;
-        padding: 38px 42px;
-        font-family: 'Inter', sans-serif;
+    .dashboard-page {
+        animation: fadeIn var(--duration-slow) var(--ease-out) both;
     }
 
-    .page-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 24px;
-        margin-bottom: 26px;
+    /* ── Greeting ─────────────────────────────────────────────── */
+    .greeting {
+        margin-bottom: var(--space-6);
+    }
+    .greeting h1 {
+        font-size: clamp(1.5rem, 5vw, var(--text-2xl));
+        font-weight: var(--weight-extrabold);
+        color: var(--en-text);
+        margin-bottom: var(--space-1);
+    }
+    .greeting h1 span { color: var(--en-green); }
+    .greeting p {
+        font-size: var(--text-sm);
+        color: var(--en-text-muted);
     }
 
-    .page-title h1 {
-        font-family: 'Montserrat', sans-serif;
-        font-size: 34px;
-        line-height: 1.05;
-        font-weight: 900;
-        color: #0f172a;
-        margin: 0 0 8px;
-        letter-spacing: -0.4px;
-    }
-
-    .page-title p {
-        margin: 0;
-        color: #64748b;
-        font-size: 15px;
-        font-weight: 700;
-    }
-
-    .faculty-card {
-        min-width: 245px;
-        background: #ffffff;
-        border: 1px solid #dbe3ee;
-        border-left: 7px solid var(--oraimo-green, #9be816);
-        border-radius: 14px;
-        padding: 18px 20px;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
-    }
-
-    .faculty-card span,
-    .section-kicker,
-    .metric-card span,
-    .table-head {
-        display: block;
-        color: #64748b;
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-    }
-
-    .faculty-card strong {
-        display: block;
-        color: #0f172a;
-        font-size: 20px;
-        font-weight: 900;
-        margin-top: 4px;
-    }
-
-    .metrics-grid {
+    /* ── Quick Actions Grid ───────────────────────────────────── */
+    .quick-actions {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-3);
+        margin-bottom: var(--space-6);
     }
 
-    .metric-card,
-    .workspace-card,
-    .side-panel {
-        background: #ffffff;
-        border: 1px solid #dbe3ee;
-        border-radius: 16px;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+    /* ── Metrics Strip ────────────────────────────────────────── */
+    .metrics-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-3);
+        margin-bottom: var(--space-6);
     }
-
-    .metric-card {
-        padding: 20px;
+    .metric-pill {
+        background: var(--en-bg-elevated);
+        border: 1px solid var(--en-border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-3) var(--space-4);
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
     }
-
-    .metric-card strong {
-        display: block;
-        color: #0f172a;
-        font-size: 30px;
-        font-weight: 900;
-        margin-top: 6px;
+    .metric-pill-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+    .metric-pill-value {
+        font-size: var(--text-xl);
+        font-weight: var(--weight-extrabold);
+        color: var(--en-text);
         line-height: 1;
     }
-
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 360px;
-        gap: 22px;
-        align-items: start;
-    }
-
-    .workspace-card {
-        overflow: hidden;
-    }
-
-    .workspace-head {
-        background: #0f172a;
-        color: #ffffff;
-        padding: 24px 28px;
-        border-left: 8px solid var(--oraimo-green, #9be816);
-    }
-
-    .workspace-head h2 {
-        font-family: 'Montserrat', sans-serif;
-        font-size: 24px;
-        font-weight: 900;
-        margin: 0 0 6px;
-    }
-
-    .workspace-head p {
-        margin: 0;
-        color: #dbeafe;
-        font-weight: 700;
-        font-size: 14px;
-    }
-
-    .workspace-body {
-        padding: 24px 28px 28px;
-    }
-
-    .assignment-list {
-        display: grid;
-        gap: 12px;
-    }
-
-    .assignment-row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 14px;
-        align-items: center;
-        padding: 16px;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        background: #f8fafc;
-    }
-
-    .assignment-row h3 {
-        margin: 0 0 5px;
-        font-size: 16px;
-        font-weight: 900;
-        color: #0f172a;
-    }
-
-    .assignment-row p {
-        margin: 0;
-        color: #64748b;
-        font-size: 13px;
-        font-weight: 800;
-    }
-
-    .btn-primary-action,
-    .btn-soft-action {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 44px;
-        border-radius: 10px;
-        padding: 0 18px;
-        text-decoration: none;
-        font-weight: 900;
-        white-space: nowrap;
-    }
-
-    .btn-primary-action {
-        background: #0f172a;
-        color: #ffffff;
-    }
-
-    .btn-primary-action:hover {
-        background: var(--oraimo-green, #9be816);
-        color: #0f172a;
-    }
-
-    .btn-soft-action {
-        background: #ecfccb;
-        color: #365314;
-        border: 1px solid #bef264;
-    }
-
-    .side-panel {
-        padding: 22px;
-        margin-bottom: 18px;
-    }
-
-    .side-panel h2 {
-        margin: 0 0 14px;
-        color: #0f172a;
-        font-size: 18px;
-        font-weight: 900;
-        font-family: 'Montserrat', sans-serif;
-    }
-
-    .status-list {
-        display: grid;
-        gap: 10px;
-    }
-
-    .status-item {
-        display: flex;
-        justify-content: space-between;
-        gap: 14px;
-        border-bottom: 1px solid #e2e8f0;
-        padding-bottom: 10px;
-        color: #334155;
-        font-weight: 800;
-        font-size: 13px;
-    }
-
-    .status-item:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .status-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        padding: 7px 12px;
-        background: #eef2f7;
-        color: #334155;
+    .metric-pill-label {
         font-size: 11px;
-        font-weight: 900;
+        font-weight: var(--weight-semibold);
+        color: var(--en-text-muted);
         text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
-    .empty-state {
-        border: 1px dashed #cbd5e1;
-        border-radius: 14px;
-        padding: 28px;
-        text-align: center;
-        color: #64748b;
-        font-weight: 750;
-        background: #f8fafc;
+    /* ── Section Header ───────────────────────────────────────── */
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-4);
+    }
+    .section-title {
+        font-size: var(--text-lg);
+        font-weight: var(--weight-bold);
+        color: var(--en-text);
+    }
+    .section-link {
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semibold);
+        color: var(--en-green);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 4px;
     }
 
-    @media (max-width: 1100px) {
-        .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .dashboard-grid { grid-template-columns: 1fr; }
+    /* ── Class Cards ──────────────────────────────────────────── */
+    .class-cards {
+        display: grid;
+        gap: var(--space-3);
+        margin-bottom: var(--space-6);
     }
 
-    @media (max-width: 700px) {
-        .teacher-dashboard { padding: 14px; }
+    .class-card {
+        background: var(--en-bg-elevated);
+        border: 1px solid var(--en-border);
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+        box-shadow: var(--shadow-card);
+        transition: all var(--duration-normal) var(--ease-out);
+    }
 
-        .page-top {
-            flex-direction: column;
-            gap: 14px;
+    .class-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-4) var(--space-5);
+        border-bottom: 1px solid var(--en-border-light);
+    }
+
+    .class-card-title {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+    }
+
+    .class-card-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-lg);
+        background: var(--en-green-light);
+        color: var(--en-navy);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: var(--weight-bold);
+    }
+
+    .class-card-name {
+        font-size: var(--text-md);
+        font-weight: var(--weight-bold);
+        color: var(--en-text);
+    }
+
+    .class-card-stream {
+        font-size: var(--text-xs);
+        color: var(--en-text-muted);
+        font-weight: var(--weight-medium);
+    }
+
+    .class-card-subjects {
+        padding: var(--space-3) var(--space-5);
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+
+    .subject-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: var(--en-surface);
+        border-radius: var(--radius-full);
+        font-size: 12px;
+        font-weight: var(--weight-semibold);
+        color: var(--en-text-secondary);
+        border: 1px solid var(--en-border);
+        transition: all var(--duration-fast) var(--ease-out);
+    }
+
+    .subject-chip-status {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .subject-chip-status.submitted { background: var(--en-info); }
+    .subject-chip-status.published { background: var(--en-success); }
+    .subject-chip-status.returned { background: var(--en-warning); }
+    .subject-chip-status.pending   { background: var(--en-text-muted); }
+
+    .class-card-footer {
+        padding: var(--space-3) var(--space-5);
+        border-top: 1px solid var(--en-border-light);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--en-surface);
+    }
+
+    .class-card-stats {
+        display: flex;
+        gap: var(--space-4);
+    }
+
+    .class-stat {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: var(--weight-semibold);
+    }
+
+    .class-stat i {
+        font-size: 12px;
+    }
+
+    .stat-submitted { color: var(--en-info); }
+    .stat-published { color: var(--en-success); }
+    .stat-pending   { color: var(--en-text-muted); }
+
+    /* ── Recent Activity ──────────────────────────────────────── */
+    .activity-list {
+        display: grid;
+        gap: var(--space-2);
+    }
+
+    .activity-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-4);
+        background: var(--en-bg-elevated);
+        border: 1px solid var(--en-border);
+        border-radius: var(--radius-lg);
+        transition: background var(--duration-fast) var(--ease-out);
+    }
+
+    .activity-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .activity-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .activity-title {
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semibold);
+        color: var(--en-text);
+    }
+
+    .activity-time {
+        font-size: 11px;
+        color: var(--en-text-muted);
+    }
+
+    /* ── Published Results ────────────────────────────────────── */
+    .results-list {
+        display: grid;
+        gap: var(--space-2);
+    }
+
+    .result-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-3) var(--space-4);
+        background: var(--en-bg-elevated);
+        border: 1px solid var(--en-border);
+        border-radius: var(--radius-lg);
+        text-decoration: none;
+        color: var(--en-text);
+        transition: all var(--duration-fast) var(--ease-out);
+    }
+
+    .result-item:active { transform: scale(0.98); }
+
+    .result-info {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+    }
+
+    .result-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-md);
+        background: var(--en-success-bg);
+        color: var(--en-success);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 768px) {
+        .quick-actions {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-3);
         }
 
-        .page-title h1 {
-            font-size: 24px;
+        .metrics-strip {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-2);
         }
 
-        .page-title p {
-            font-size: 12px;
+        .metric-pill {
+            padding: var(--space-3);
+            gap: var(--space-2);
         }
 
-        .faculty-card {
-            min-width: auto;
-            width: 100%;
-            padding: 14px 16px;
-            border-radius: 10px;
-        }
-
-        .faculty-card span {
-            font-size: 10px;
-        }
-
-        .faculty-card strong {
-            font-size: 17px;
-        }
-
-        .metrics-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .metric-card {
-            padding: 14px;
-            border-radius: 12px;
-        }
-
-        .metric-card span {
-            font-size: 10px;
-        }
-
-        .metric-card strong {
-            font-size: 24px;
-        }
-
-        .dashboard-grid {
-            gap: 14px;
-        }
-
-        .workspace-head {
-            padding: 16px 18px;
-        }
-
-        .workspace-head h2 {
-            font-size: 18px;
-        }
-
-        .workspace-head p {
-            font-size: 12px;
-        }
-
-        .workspace-body {
-            padding: 16px 18px;
-        }
-
-        .assignment-row {
-            grid-template-columns: 1fr;
-            gap: 10px;
-            padding: 14px;
-        }
-
-        .assignment-row h3 {
+        .metric-pill-icon {
+            width: 32px;
+            height: 32px;
             font-size: 14px;
         }
 
-        .assignment-row p {
-            font-size: 12px;
+        .class-card-header {
+            padding: var(--space-3) var(--space-4);
         }
 
-        .btn-primary-action,
-        .btn-soft-action {
-            width: 100%;
-            justify-content: center;
-            min-height: 42px;
-            font-size: 13px;
+        .class-card-subjects {
+            padding: var(--space-2) var(--space-4);
         }
 
-        .side-panel {
-            padding: 16px;
-            border-radius: 12px;
+        .class-card-footer {
+            padding: var(--space-2) var(--space-4);
+            flex-direction: column;
+            gap: var(--space-2);
+            align-items: flex-start;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .quick-actions {
+            grid-template-columns: 1fr 1fr;
         }
 
-        .side-panel h2 {
-            font-size: 16px;
-        }
-
-        .status-item {
-            font-size: 12px;
-        }
-
-        .empty-state {
-            padding: 20px;
-            font-size: 13px;
+        .metrics-strip {
+            grid-template-columns: 1fr 1fr;
         }
     }
 </style>
 
-<div class="teacher-dashboard">
-    <div class="page-top">
-        <div class="page-title">
-            <h1>Faculty Dashboard</h1>
-            <p>Track assigned assessments, submitted score sheets, and published class results from one workspace.</p>
-        </div>
-        <div class="faculty-card">
-            <span>Faculty Account</span>
-            <strong>{% if teacher %}{{ teacher.get_full_title }}{% else %}{{ request.user.username }}{% endif %}</strong>
-        </div>
+<div class="dashboard-page">
+    <!-- GREETING -->
+    <div class="greeting">
+        <h1>Welcome back, <span>{{ request.user.first_name|default:"Teacher" }}</span></h1>
+        <p>{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if request.session.workspace_section %}{{ request.session.workspace_section }}{% else %}PRIMARY{% endif %} Section</p>
     </div>
 
-    <div class="metrics-grid">
-        <div class="metric-card">
-            <span>Subject Allocations</span>
-            <strong>{{ assignment_count }}</strong>
-        </div>
-        <div class="metric-card">
-            <span>Active Exams</span>
-            <strong>{{ active_exam_count }}</strong>
-        </div>
-        <div class="metric-card">
-            <span>Submitted Sheets</span>
-            <strong>{{ submitted_count }}</strong>
-        </div>
-        <div class="metric-card">
-            <span>Published Sheets</span>
-            <strong>{{ published_count }}</strong>
-        </div>
+    <!-- QUICK ACTION CARDS -->
+    <div class="quick-actions stagger-children">
+        {% with ws=request.session.workspace_section sec=request.session.school_section %}
+        {% if ws == 'PRIMARY' or sec == 'PRIMARY' %}
+            <a class="action-card" href="{% url 'select_exam_primary' %}">
+                <div class="action-card-icon"><i class="bi bi-input-cursor-text"></i></div>
+                <div class="action-card-title">Score Capture</div>
+                <div class="action-card-desc">Enter marks for your classes</div>
+            </a>
+        {% else %}
+            <a class="action-card" href="{% url 'select_exam' %}">
+                <div class="action-card-icon"><i class="bi bi-input-cursor-text"></i></div>
+                <div class="action-card-title">Score Capture</div>
+                <div class="action-card-desc">Enter marks for your classes</div>
+            </a>
+        {% endif %}
+        {% endwith %}
+
+        <a class="action-card" href="{% url 'results_list' %}">
+            <div class="action-card-icon"><i class="bi bi-graph-up-arrow"></i></div>
+            <div class="action-card-title">Results</div>
+            <div class="action-card-desc">View published results</div>
+        </a>
+
+        <a class="action-card" href="{% url 'class_lists' %}">
+            <div class="action-card-icon"><i class="bi bi-people"></i></div>
+            <div class="action-card-title">Class Lists</div>
+            <div class="action-card-desc">View learner directories</div>
+        </a>
+
+        <a class="action-card" href="{% url 'home_alt' %}">
+            <div class="action-card-icon"><i class="bi bi-person-badge"></i></div>
+            <div class="action-card-title">Profile</div>
+            <div class="action-card-desc">View your faculty profile</div>
+        </a>
     </div>
 
-    <div class="dashboard-grid">
-        <section class="workspace-card">
-            <div class="workspace-head">
-                <h2>Assessment Workspace</h2>
-                <p>Open your assigned score sheets and continue where you left off.</p>
+    <!-- METRICS STRIP -->
+    <div class="metrics-strip stagger-children">
+        <div class="metric-pill">
+            <div class="metric-pill-icon card-icon-green"><i class="bi bi-book"></i></div>
+            <div>
+                <div class="metric-pill-value">{{ assignment_count }}</div>
+                <div class="metric-pill-label">Allocations</div>
             </div>
-            <div class="workspace-body">
-                <div class="assignment-list">
-                    {% for assignment in assignments %}
-                        <div class="assignment-row">
-                            <div>
-                                <h3>{{ assignment.subject.name }}</h3>
-                                <p>{{ assignment.class_name }} {{ assignment.stream }}</p>
-                            </div>
-                            <a class="btn-primary-action" href="{% url 'select_exam' %}">Open Sheets</a>
+        </div>
+        <div class="metric-pill">
+            <div class="metric-pill-icon" style="background:var(--en-info-bg); color:var(--en-info);"><i class="bi bi-journal-check"></i></div>
+            <div>
+                <div class="metric-pill-value">{{ active_exam_count }}</div>
+                <div class="metric-pill-label">Active Exams</div>
+            </div>
+        </div>
+        <div class="metric-pill">
+            <div class="metric-pill-icon" style="background:var(--en-success-bg); color:var(--en-success);"><i class="bi bi-check-circle"></i></div>
+            <div>
+                <div class="metric-pill-value">{{ submitted_count }}</div>
+                <div class="metric-pill-label">Submitted</div>
+            </div>
+        </div>
+        <div class="metric-pill">
+            <div class="metric-pill-icon" style="background:var(--en-warning-bg); color:var(--en-warning);"><i class="bi bi-arrow-return-left"></i></div>
+            <div>
+                <div class="metric-pill-value">{{ returned_count }}</div>
+                <div class="metric-pill-label">Returned</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MY CLASS CARDS -->
+    <div class="section-header">
+        <h2 class="section-title">My Classes</h2>
+    </div>
+    <div class="class-cards stagger-children">
+        {% for assignment in assignments %}
+            <div class="class-card">
+                <div class="class-card-header">
+                    <div class="class-card-title">
+                        <div class="class-card-icon">
+                            <i class="bi bi-book-half"></i>
                         </div>
-                    {% empty %}
-                        <div class="empty-state">
-                            No subject allocations are linked to this faculty account yet.
+                        <div>
+                            <div class="class-card-name">{{ assignment.subject.name }}</div>
+                            <div class="class-card-stream">{{ assignment.class_name }} {{ assignment.stream }}</div>
                         </div>
-                    {% endfor %}
+                    </div>
+                    <span class="badge badge-green badge-dot">Active</span>
+                </div>
+                <div class="class-card-footer">
+                    <div class="class-card-stats">
+                        <div class="class-stat stat-pending">
+                            <i class="bi bi-clock"></i>
+                            Pending entry
+                        </div>
+                    </div>
+                    <a class="btn btn-sm btn-primary" href="{% url 'select_exam' %}">Capture Marks</a>
                 </div>
             </div>
-        </section>
-
-        <aside>
-            <div class="side-panel">
-                <h2>Current Status</h2>
-                <div class="status-list">
-                    <div class="status-item"><span>In Progress</span><strong>{{ in_progress_count }}</strong></div>
-                    <div class="status-item"><span>Returned for correction</span><strong>{{ returned_count }}</strong></div>
-                    <div class="status-item"><span>Ready for reports</span><strong>{{ published_count }}</strong></div>
-                    {% if class_teacher_scope %}
-                        <div class="status-item"><span>Class Teacher</span><strong>{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</strong></div>
-                    {% endif %}
-                </div>
+        {% empty %}
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="bi bi-inbox"></i></div>
+                <div class="empty-state-title">No assignments yet</div>
+                <div class="empty-state-desc">Subject allocations will appear here once assigned by your admin.</div>
             </div>
-
-            <div class="side-panel">
-                <h2>Official Results</h2>
-                <div class="status-list">
-                    {% for item in published_contexts %}
-                        <a class="status-item" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}" style="text-decoration: none;">
-                            <span>{{ item.class_name }} {{ item.stream }}</span>
-                            <span class="status-pill">{{ item.term }} {{ item.year }}</span>
-                        </a>
-                    {% empty %}
-                        <div class="empty-state">Published results will appear here after admin approval.</div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="side-panel">
-                <h2>Quick Actions</h2>
-                <div class="status-list">
-                    <a class="btn-soft-action" href="{% url 'select_exam' %}">Go to Score Capture</a>
-                    <a class="btn-soft-action" href="{% url 'home_alt' %}">View Faculty Profile</a>
-                    <a class="btn-soft-action" href="{% url 'class_lists' %}">Open Learner Lists</a>
-                </div>
-            </div>
-        </aside>
+        {% endfor %}
     </div>
+
+    <!-- PUBLISHED RESULTS -->
+    {% if published_contexts %}
+    <div class="section-header" style="margin-top:var(--space-4);">
+        <h2 class="section-title">Published Results</h2>
+        <a class="section-link" href="{% url 'results_list' %}">View all <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="results-list stagger-children">
+        {% for item in published_contexts %}
+            <a class="result-item" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}">
+                <div class="result-info">
+                    <div class="result-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                    <div>
+                        <div style="font-weight:var(--weight-bold); font-size:var(--text-sm);">{{ item.class_name }} {{ item.stream }}</div>
+                        <div style="font-size:11px; color:var(--en-text-muted);">{{ item.term }} {{ item.year }}</div>
+                    </div>
+                </div>
+                <i class="bi bi-chevron-right" style="color:var(--en-text-muted); font-size:14px;"></i>
+            </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- CLASS TEACHER SCOPE -->
+    {% if class_teacher_scope %}
+    <div class="card" style="margin-top:var(--space-4);">
+        <div class="card-header">
+            <span class="card-title">Class Teacher</span>
+            <i class="bi bi-person-badge" style="color:var(--en-green);"></i>
+        </div>
+        <div style="font-size:var(--text-md); font-weight:var(--weight-bold); color:var(--en-text);">
+            {{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
