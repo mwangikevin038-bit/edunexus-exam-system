@@ -1,0 +1,159 @@
+/* ═══════════════════════════════════════════════════════════════
+   EDUNEXUS - Animations & Transitions
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Page Load Fade In ──────────────────────────────────────── */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn var(--duration-slow) var(--ease-out) both;
+}
+
+.fade-in-delay-1 { animation-delay: 50ms; }
+.fade-in-delay-2 { animation-delay: 100ms; }
+.fade-in-delay-3 { animation-delay: 150ms; }
+.fade-in-delay-4 { animation-delay: 200ms; }
+.fade-in-delay-5 { animation-delay: 250ms; }
+.fade-in-delay-6 { animation-delay: 300ms; }
+
+/* ── Stagger Children ───────────────────────────────────────── */
+.stagger-children > * {
+    opacity: 0;
+    animation: fadeIn var(--duration-slow) var(--ease-out) both;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 40ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 80ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 160ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 280ms; }
+
+/* ── Scale In ───────────────────────────────────────────────── */
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.scale-in {
+    animation: scaleIn var(--duration-normal) var(--ease-spring) both;
+}
+
+/* ── Slide Up ───────────────────────────────────────────────── */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+    animation: slideUp var(--duration-slow) var(--ease-out) both;
+}
+
+/* ── Slide In From Left ─────────────────────────────────────── */
+@keyframes slideInLeft {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(0); }
+}
+
+.slide-in-left {
+    animation: slideInLeft var(--duration-slow) var(--ease-out) both;
+}
+
+/* ── Pulse (for notifications/badges) ───────────────────────── */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.pulse {
+    animation: pulse 2s var(--ease-in-out) infinite;
+}
+
+/* ── Spin (for loading) ─────────────────────────────────────── */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+/* ── Loading Bar ────────────────────────────────────────────── */
+@keyframes loadingBar {
+    0%   { width: 0%; }
+    50%  { width: 70%; }
+    100% { width: 100%; }
+}
+
+.loading-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: var(--en-green);
+    z-index: 9999;
+    animation: loadingBar 0.8s var(--ease-out) both;
+    border-radius: 0 2px 2px 0;
+}
+
+/* ── Toast Slide In ─────────────────────────────────────────── */
+@keyframes toastIn {
+    from { transform: translateY(-100%) translateX(-50%); opacity: 0; }
+    to   { transform: translateY(0) translateX(-50%); opacity: 1; }
+}
+
+@keyframes toastOut {
+    from { transform: translateY(0) translateX(-50%); opacity: 1; }
+    to   { transform: translateY(-100%) translateX(-50%); opacity: 0; }
+}
+
+/* ── Hover Lift Effect ──────────────────────────────────────── */
+.hover-lift {
+    transition: transform var(--duration-normal) var(--ease-out),
+                box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* ── Tap Feedback ───────────────────────────────────────────── */
+.tap-feedback {
+    -webkit-tap-highlight-color: transparent;
+    transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.tap-feedback:active {
+    transform: scale(0.97);
+}
+
+/* ── Number Count Up (JS-driven) ────────────────────────────── */
+.count-up {
+    display: inline-block;
+    transition: all var(--duration-slow) var(--ease-out);
+}
+
+/* ── Shimmer Loading ────────────────────────────────────────── */
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.shimmer {
+    background: linear-gradient(90deg, var(--en-surface) 25%, var(--en-surface-hover) 50%, var(--en-surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Progress Ring ──────────────────────────────────────────── */
+@keyframes progressRing {
+    from { stroke-dashoffset: 100; }
+    to   { stroke-dashoffset: 0; }
+}
