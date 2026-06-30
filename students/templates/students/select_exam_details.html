@@ -77,6 +77,8 @@
     .cap-submit-btn:active{transform:scale(.97);opacity:.9}
     .cap-submit-btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
     .cap-submit-btn i{font-size:16px}
+    .cap-bottom-bar-returned{background:rgba(240,253,244,.95);border-top:1px solid #bbf7d0}
+    .cap-return-btn{background:#fff;color:#15803d;border:1.5px solid #bbf7d0}
 
     .cap-group{margin-bottom:20px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;overflow:hidden}
     .cap-group-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fafafa;border-bottom:1px solid #f0f0f0}
@@ -280,6 +282,16 @@
                 <div class="cap-progress"><span id="scoredCount">0</span>/{{ students|length }} <span>Students Scored</span></div>
                 <button type="submit" form="marksForm" class="cap-submit-btn">
                     <i class="ph ph-cloud-arrow-up"></i> Submit Marks
+                </button>
+            </div>
+        {% elif is_submitted and not is_locked %}
+            <div class="cap-bottom-bar cap-bottom-bar-returned">
+                <div class="cap-progress">
+                    <i class="ph ph-check-circle" style="color:#16a34a;font-size:16px"></i>
+                    <span>Submitted — awaiting admin review</span>
+                </div>
+                <button type="button" class="cap-submit-btn cap-return-btn" onclick="returnForEdits()">
+                    <i class="ph ph-arrow-u-up-left"></i> Return for Edits
                 </button>
             </div>
         {% endif %}
@@ -519,6 +531,28 @@
     };
 
     document.addEventListener('DOMContentLoaded', recalculateAll);
+
+    window.returnForEdits = function() {
+        var assignmentId = document.querySelector('input[name="assignment_id"]');
+        var examId = document.querySelector('input[name="exam_id"]');
+        if (!assignmentId || !examId) return;
+
+        var fd = new FormData();
+        fd.append('assignment_id', assignmentId.value);
+        fd.append('exam_id', examId.value);
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+        fetch('{% url "return_mark_sheet" %}', {
+            method: 'POST',
+            body: fd
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.ok) {
+                location.reload();
+            } else {
+                alert(data.error || 'Could not return sheet');
+            }
+        }).catch(function() { alert('Network error'); });
+    };
 })();
 </script>
 {% endblock %}

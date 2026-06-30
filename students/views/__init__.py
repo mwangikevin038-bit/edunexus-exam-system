@@ -55,6 +55,7 @@ from .exams import (  # noqa: F401
     select_exam_primary,
     clear_mark,
     save_mark,
+    return_mark_sheet,
     manage_exams,
     review_stream_submission,
     manage_assessment_locks,

@@ -1846,3 +1846,61 @@ def save_mark(request):
             ).delete()
 
     return JsonResponse({'ok': True, 'saved': True})
+
+
+@login_required(login_url='login')
+@tenant_read_only_required
+def return_mark_sheet(request):
+    """
+    AJAX endpoint: teacher returns their own submitted sheet to editable state.
+    POST: assignment_id, exam_id
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    if not user_can_mutate_marks(request.user):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    try:
+        teacher = get_school_object_or_403(Teacher, request, user=request.user)
+    except (PermissionDenied, Http404):
+        return JsonResponse({'error': 'No teacher profile'}, status=403)
+
+    assignment_id = request.POST.get('assignment_id')
+    exam_id = request.POST.get('exam_id')
+
+    if not all([assignment_id, exam_id]):
+        return JsonResponse({'error': 'Missing parameters'}, status=400)
+
+    school = get_request_school(request)
+
+    try:
+        assignment = SubjectAssignment.objects.get(id=assignment_id, school=school, teacher_profile=teacher)
+    except SubjectAssignment.DoesNotExist:
+        return JsonResponse({'error': 'Assignment not found'}, status=404)
+
+    try:
+        exam = Exam.objects.get(id=exam_id, school=school, status='active')
+    except Exam.DoesNotExist:
+        return JsonResponse({'error': 'Exam not found'}, status=404)
+
+    submission = MarkSubmission.objects.filter(
+        school=school, teacher=teacher, subject=assignment.subject,
+        class_name=assignment.class_name, stream=assignment.stream,
+        exam_name=exam.name, term=exam.term, year=exam.year,
+        school_section=assignment.school_section,
+    ).first()
+
+    if not submission:
+        return JsonResponse({'error': 'No submission found'}, status=404)
+
+    if submission.status in ('approved', 'published'):
+        return JsonResponse({'error': 'Already reviewed by admin — cannot return'}, status=403)
+
+    submission.status = 'returned'
+    submission.admin_note = 'Returned by teacher for editing'
+    submission.reviewed_at = None
+    submission.published_at = None
+    submission.save()
+
+    return JsonResponse({'ok': True})
