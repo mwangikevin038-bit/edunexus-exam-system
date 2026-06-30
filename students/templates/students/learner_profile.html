@@ -282,20 +282,145 @@
         .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
     }
 
+    @media (max-width: 768px) {
+        .learner-page {
+            padding: 14px;
+        }
+
+        .learner-hero {
+            flex-direction: column;
+            gap: 12px;
+            padding: 18px 16px;
+            border-radius: 12px;
+        }
+
+        .learner-hero h1 {
+            font-size: 22px;
+        }
+
+        .learner-hero p {
+            font-size: 12px;
+        }
+
+        .hero-pill {
+            font-size: 10px;
+            padding: 6px 12px;
+            align-self: flex-start;
+        }
+
+        .metrics-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px;
+        }
+
+        .metric-card {
+            padding: 14px;
+            border-radius: 10px;
+        }
+
+        .metric-card span {
+            font-size: 10px;
+        }
+
+        .metric-card strong {
+            font-size: 20px;
+        }
+
+        .main-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px;
+        }
+
+        .profile-card {
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .profile-card h2,
+        .history-card h2 {
+            font-size: 18px;
+        }
+
+        .edit-form input,
+        .edit-form select {
+            min-height: 44px;
+            font-size: 16px;
+        }
+
+        .save-btn {
+            min-height: 48px;
+            font-size: 15px;
+        }
+
+        .chart-box {
+            height: 200px;
+            padding: 14px;
+        }
+
+        .bar {
+            width: 28px;
+        }
+
+        .bar-wrap {
+            min-width: 56px;
+        }
+
+        .history-card {
+            padding: 16px;
+            border-radius: 12px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .exam-head {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .exam-head h3 {
+            font-size: 16px;
+        }
+
+        .exam-head p {
+            font-size: 12px;
+        }
+
+        .plv-pill {
+            font-size: 11px;
+            padding: 6px 12px;
+            align-self: flex-start;
+        }
+
+        .marks-table {
+            min-width: 400px;
+        }
+
+        .marks-table th,
+        .marks-table td {
+            padding: 10px 12px;
+            font-size: 12px;
+        }
+
+        .empty-state {
+            padding: 28px 16px;
+            font-size: 13px;
+        }
+    }
+
     @media (max-width: 640px) {
-        .learner-page { padding: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .learner-hero { flex-direction: column; gap: 12px; padding: 18px 16px; }
-        .learner-hero h1 { font-size: 22px; }
-        .learner-hero p { font-size: 12px; }
-        .hero-pill { font-size: 10px; padding: 6px 12px; }
-        .metrics-grid { grid-template-columns: 1fr !important; gap: 10px; }
-        .metrics-card { padding: 14px; border-radius: 10px; }
-        .metrics-card span { font-size: 10px; }
-        .metrics-card strong { font-size: 18px; }
-        .profile-card { padding: 16px; border-radius: 12px; }
-        .history-card { padding: 14px; border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .marks-table { min-width: 450px; }
-        .marks-table th, .marks-table td { padding: 10px 12px; font-size: 11px; }
+        .learner-page { padding: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .learner-hero { flex-direction: column; gap: 12px; padding: 16px 14px; }
+        .learner-hero h1 { font-size: 20px; }
+        .learner-hero p { font-size: 11px; }
+        .hero-pill { font-size: 10px; padding: 6px 10px; }
+        .metrics-grid { grid-template-columns: 1fr !important; gap: 8px; }
+        .metric-card { padding: 12px; border-radius: 10px; }
+        .metric-card span { font-size: 9px; }
+        .metric-card strong { font-size: 18px; }
+        .profile-card { padding: 14px; border-radius: 10px; }
+        .history-card { padding: 12px; border-radius: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .marks-table { min-width: 380px; }
+        .marks-table th, .marks-table td { padding: 8px 10px; font-size: 11px; }
     }
 </style>
 

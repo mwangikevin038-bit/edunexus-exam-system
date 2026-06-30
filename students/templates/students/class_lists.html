@@ -507,9 +507,154 @@
         }
     }
 
+    @media (max-width: 768px) {
+        .directory-page {
+            padding: 14px;
+        }
+
+        .directory-hero {
+            padding: 18px 16px;
+            border-radius: 12px;
+            border-left-width: 5px;
+        }
+
+        .hero-title h1 {
+            font-size: 22px;
+        }
+
+        .hero-title p {
+            font-size: 13px;
+        }
+
+        .access-pill {
+            font-size: 10px;
+            padding: 8px 12px;
+        }
+
+        .context-strip {
+            margin-top: 14px;
+            gap: 8px;
+        }
+
+        .context-chip,
+        .mode-link,
+        .btn-print {
+            min-height: 44px;
+            padding: 0 14px;
+            font-size: 12px;
+        }
+
+        .context-chip.active,
+        .mode-link.active {
+            background: #9be816;
+            color: #0f172a;
+            border-color: #9be816;
+        }
+
+        .summary-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .directory-card {
+            padding: 14px;
+            border-radius: 12px;
+        }
+
+        .directory-card span {
+            font-size: 10px;
+        }
+
+        .directory-card strong {
+            font-size: 20px;
+        }
+
+        .mode-tabs {
+            gap: 8px !important;
+        }
+
+        .mode-link {
+            min-height: 44px;
+            font-size: 13px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .toolbar {
+            flex-direction: column !important;
+            gap: 10px !important;
+        }
+
+        .search-box {
+            min-width: 0 !important;
+            width: 100%;
+            min-height: 48px;
+            font-size: 16px;
+        }
+
+        .btn-print {
+            width: 100%;
+            min-height: 48px;
+            font-size: 14px;
+            justify-content: center;
+        }
+
+        .register-sheet {
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .sheet-heading h2 {
+            font-size: 18px;
+        }
+
+        .sheet-letterhead {
+            flex-direction: column;
+            gap: 12px;
+            text-align: center;
+        }
+
+        .sheet-logo {
+            width: 80px;
+            height: 80px;
+        }
+
+        .school-letterhead {
+            flex-direction: column;
+            gap: 12px;
+            text-align: center;
+        }
+
+        .school-letterhead-logo {
+            width: 80px;
+            height: 80px;
+        }
+
+        .school-letterhead-meta {
+            justify-content: center;
+        }
+
+        .sheet-title-badge {
+            font-size: 10px;
+            padding: 6px 14px;
+        }
+
+        .register-table th,
+        .register-table td {
+            padding: 10px 12px;
+            font-size: 11pt;
+        }
+
+        .empty-state {
+            padding: 28px 16px;
+            font-size: 13px;
+        }
+    }
+
     @media (max-width: 640px) {
         .directory-page {
-            padding: 14px !important;
+            padding: 12px !important;
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch;
         }

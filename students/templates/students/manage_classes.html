@@ -207,8 +207,130 @@
     .rename-form.active { display: flex; }
 
     @media (max-width: 768px) {
-        .classes-shell { padding: 16px !important; }
-        .grade-card-header { flex-direction: column; align-items: flex-start; }
+        :root {
+            --green: #9be816;
+            --dark: #0f172a;
+        }
+
+        .classes-shell {
+            padding: 14px !important;
+        }
+
+        .page-hero {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 16px;
+            border-radius: 10px;
+        }
+
+        .page-hero h1 {
+            font-size: 18px !important;
+        }
+
+        .page-hero p {
+            font-size: 12px !important;
+        }
+
+        .panel {
+            padding: 16px;
+            border-radius: 10px;
+        }
+
+        .panel-title {
+            font-size: 13px;
+        }
+
+        .panel-sub {
+            font-size: 12px;
+            margin-bottom: 14px;
+        }
+
+        .grade-card {
+            padding: 14px;
+            border-radius: 10px;
+        }
+
+        .grade-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .grade-title {
+            font-size: 14px;
+        }
+
+        .stream-chip {
+            padding: 8px 12px;
+            font-size: 12px;
+            min-height: 44px;
+        }
+
+        .btn-icon {
+            min-width: 44px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-green {
+            width: 100%;
+            min-height: 48px;
+            font-size: 14px;
+            justify-content: center;
+        }
+
+        .btn-danger {
+            width: 100%;
+            min-height: 44px;
+            font-size: 13px;
+            justify-content: center;
+        }
+
+        .add-stream-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .add-stream-form .input-field {
+            width: 100% !important;
+            min-height: 44px;
+            box-sizing: border-box;
+        }
+
+        .input-field {
+            min-height: 44px;
+            font-size: 16px;
+        }
+
+        select.input-field {
+            min-width: 0 !important;
+            width: 100%;
+        }
+
+        .rename-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .rename-form .input-field {
+            width: 100% !important;
+        }
+
+        .rename-form .btn-green,
+        .rename-form .btn-danger {
+            width: 100%;
+        }
+
+        .available-badge {
+            font-size: 10px;
+            padding: 6px 12px;
+        }
+
+        .empty-state {
+            padding: 24px 16px;
+            font-size: 13px;
+        }
     }
 </style>
 

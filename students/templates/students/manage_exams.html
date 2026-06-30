@@ -457,6 +457,145 @@
             min-width: 850px;
         }
     }
+
+    @media (max-width: 768px) {
+        :root {
+            --oraimo-green: #9be816;
+            --deep-navy: #0f172a;
+        }
+
+        .exam-admin-page {
+            padding: 14px;
+        }
+
+        .exam-admin-header h1 {
+            font-size: 22px;
+        }
+
+        .exam-admin-header p {
+            font-size: 13px;
+        }
+
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px;
+        }
+
+        .summary-card {
+            padding: 14px;
+            border-radius: 10px;
+        }
+
+        .summary-card span {
+            font-size: 10px;
+        }
+
+        .summary-card strong {
+            font-size: 22px;
+        }
+
+        .exam-card-head,
+        .monitor-card-head {
+            padding: 16px;
+        }
+
+        .exam-card-head h2,
+        .monitor-card-head h2 {
+            font-size: 16px;
+        }
+
+        .exam-card-body,
+        .monitor-card-body {
+            padding: 16px;
+        }
+
+        .admin-input {
+            height: 44px;
+            font-size: 16px;
+        }
+
+        .btn-oraimo {
+            height: 48px;
+            font-size: 14px;
+        }
+
+        .exam-table-wrap {
+            border-radius: 10px;
+        }
+
+        .exam-table th,
+        .monitor-table th {
+            padding: 10px 12px;
+            font-size: 10px;
+        }
+
+        .exam-table td,
+        .monitor-table td {
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        .status-pill {
+            padding: 6px 10px;
+            font-size: 10px;
+            min-width: 90px;
+        }
+
+        .mini-btn,
+        .review-btn {
+            min-height: 44px;
+            padding: 10px 14px;
+            font-size: 13px;
+        }
+
+        .action-row {
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .action-row .mini-btn,
+        .action-row form {
+            width: 100%;
+        }
+
+        .action-row .mini-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .monitor-toolbar {
+            grid-template-columns: 1fr !important;
+            gap: 12px;
+        }
+
+        .stream-box-head {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px;
+        }
+
+        .stream-head-actions {
+            width: 100%;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stream-progress {
+            min-width: 0;
+            width: 100%;
+        }
+
+        .review-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .message-alert {
+            font-size: 13px;
+            padding: 12px 14px;
+        }
+    }
 </style>
 
 <div class="exam-admin-page">

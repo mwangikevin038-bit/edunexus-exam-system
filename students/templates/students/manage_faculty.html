@@ -478,9 +478,10 @@
     .form-input-field {
       box-sizing: border-box;
       max-width: 100%;
+      min-height: 44px;
+      font-size: 16px;
     }
 
-    /* Stack the allocation form above the table instead of side-by-side */
     .matrix-grid {
       grid-template-columns: 1fr !important;
       gap: 18px;
@@ -492,20 +493,33 @@
       padding: 16px;
     }
 
+    .matrix-label {
+      font-size: 11px;
+    }
+
+    .btn-matrix-submit {
+      min-height: 48px;
+      font-size: 14px;
+      width: 100%;
+    }
+
     .filter-bar {
       flex-direction: column;
       align-items: stretch;
       gap: 10px;
     }
 
+    .search-input {
+      min-height: 44px;
+    }
+
     .btn-create-faculty {
       width: 100%;
       justify-content: center;
       text-align: center;
+      min-height: 44px;
     }
 
-    /* Let the assignment table scroll horizontally inside its own box
-       instead of pushing the whole page wider */
     .table-holder {
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
@@ -515,8 +529,33 @@
       min-width: 600px;
     }
 
+    .assignment-table th,
+    .assignment-table td {
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+
+    .badge-allocation {
+      font-size: 12px;
+      padding: 8px 10px;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .edit-btn {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 8px 12px;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .modal-container-box {
       max-width: 100%;
+      border-radius: 16px;
     }
 
     .modal-body-content {
@@ -525,6 +564,11 @@
 
     .modal-header-row {
       padding: 18px 18px 14px;
+      border-radius: 16px 16px 0 0;
+    }
+
+    .modal-header-row h3 {
+      font-size: 16px;
     }
 
     .modal-footer-row {
@@ -535,11 +579,26 @@
     .modal-footer-row button {
       width: 100%;
       justify-content: center;
+      min-height: 48px;
+      font-size: 14px;
     }
 
     .form-row-grid {
       grid-template-columns: 1fr !important;
       gap: 12px;
+    }
+
+    .form-input-field {
+      min-height: 44px;
+    }
+
+    .email-notice {
+      padding: 12px;
+      margin-top: 14px;
+    }
+
+    .email-notice-text {
+      font-size: 11px;
     }
   }
 
@@ -556,14 +615,19 @@
 
     .matrix-select,
     .search-input {
-      font-size: 13px;
-      padding: 9px 10px;
+      font-size: 15px;
+      padding: 10px 12px;
     }
 
     .assignment-table th,
     .assignment-table td {
       padding: 10px 12px;
       font-size: 12px;
+    }
+
+    .badge-allocation {
+      font-size: 11px;
+      padding: 6px 8px;
     }
   }
 </style>
