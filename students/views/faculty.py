@@ -189,7 +189,7 @@ def _get_grade_streams(school, section):
     """Return list of 'Class Teacher Grade X Stream' role options for the current section."""
     from ..models import Grade
     grades = Grade.all_objects.filter(school=school).prefetch_related('streams').order_by('order')
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         grades = grades.filter(school_section=section)
     options = []
     for grade in grades:
@@ -373,7 +373,7 @@ def manage_faculty_matrix(request):
     teachers = Teacher.objects.filter(school=school).select_related('user').filter(is_active=True)
     assignments = SubjectAssignment.objects.filter(school=school).select_related('teacher_profile__user').all()
 
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         teachers = teachers.filter(school_section__in=[section, 'BOTH'])
         assignments = assignments.filter(school_section__in=[section, 'BOTH'])
 

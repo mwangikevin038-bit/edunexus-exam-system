@@ -40,7 +40,7 @@ def profile_view(request):
     ) if teacher else SubjectAssignment.objects.none()
     section = get_request_school_section(request)
     submissions = MarkSubmission.objects.filter(teacher=teacher)
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         submissions = submissions.filter(school_section=section)
     if not teacher:
         submissions = MarkSubmission.objects.none()
@@ -72,7 +72,7 @@ def dashboard(request):
     active_exams = Exam.objects.filter(school=school, status='active').order_by('-year', 'term', 'name') if school else Exam.objects.none()
     submissions = MarkSubmission.objects.filter(school=school, teacher=teacher) if teacher and school else MarkSubmission.objects.none()
     section = get_request_school_section(request)
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         submissions = submissions.filter(school_section=section)
     class_scope = get_class_teacher_scope(teacher)
 
@@ -131,7 +131,7 @@ def school_admin_dashboard(request):
     submission_qs = MarkSubmission.objects.filter(school=school)
     mark_qs = Mark.objects.filter(school=school)
 
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         student_qs = student_qs.filter(school_section=section)
         teacher_qs = teacher_qs.filter(school_section=section)
         exam_qs = exam_qs.filter(school_section=section)

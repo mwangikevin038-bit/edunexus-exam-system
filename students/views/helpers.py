@@ -46,7 +46,7 @@ def get_published_subject_codes(class_name, stream, year, term, exam_name):
     )
     if school:
         filters['school'] = school
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         filters['school_section'] = section
     return set(
         MarkSubmission.objects.filter(**filters).values_list("subject__code", flat=True)
@@ -64,7 +64,7 @@ def get_published_contexts_for_user(user, require_class_teacher=False):
     qs = MarkSubmission.objects.filter(status="published")
     if school:
         qs = qs.filter(school=school)
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         qs = qs.filter(school_section=section)
     teacher = get_teacher_for_user(user)
     class_scope = get_class_teacher_scope(teacher)
@@ -231,7 +231,7 @@ def get_learner_contexts_for_user(user):
     elif class_teacher_scope:
         # Section-scoped SubjectAssignment
         assignment_qs = SubjectAssignment.objects.all()
-        if section in ('PRIMARY', 'JSS'):
+        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
             assignment_qs = assignment_qs.filter(school_section=section)
         assignment_pairs = list(
             assignment_qs.filter(teacher_profile=teacher)
@@ -244,7 +244,7 @@ def get_learner_contexts_for_user(user):
         qs = student_qs.filter(filters).values("class_name", "stream").annotate(learner_count=Count("id"))
     else:
         assignment_qs = SubjectAssignment.objects.all()
-        if section in ('PRIMARY', 'JSS'):
+        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
             assignment_qs = assignment_qs.filter(school_section=section)
         assignments = assignment_qs.filter(teacher_profile=teacher)
         allowed_pairs = assignments.values("class_name", "stream").distinct()

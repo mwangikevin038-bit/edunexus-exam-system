@@ -27,6 +27,7 @@ from ..models import Guardian, Student
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
 
 PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
+LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
 
 @login_required(login_url='login')
@@ -95,7 +96,7 @@ def add_student(request):
         form = StudentForm(school=school, school_section=school_section, initial={'admission_no': next_admission_no})
 
     section = get_request_school_section(request) or 'JSS'
-    grades_for_section = PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
+    grades_for_section = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
 
     return render(request, 'students/add_student.html', {
         'form':             form,
@@ -200,7 +201,7 @@ def admin_add_student(request):
     # GET — Build query and context
     # --------------------------------------------------------------------------
     section = get_request_school_section(request)
-    grades_for_section = PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
+    grades_for_section = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
 
     base_query = (
         Student.objects.filter(school=school)
@@ -290,7 +291,7 @@ def class_lists(request):
         )
 
     section = get_request_school_section(request)
-    grades_for_section = PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
+    grades_for_section = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
 
     return render(request, 'students/class_lists.html', {
         'students':         students,

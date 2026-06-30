@@ -495,7 +495,7 @@ def manage_exams(request):
     # -----------------------------
     section = get_request_school_section(request)
     exams = Exam.objects.filter(school=school)
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         exams = exams.filter(school_section=section)
     exams = exams.order_by("-year", "term", "name")
 
@@ -504,12 +504,12 @@ def manage_exams(request):
 
     if selected_exam_id:
         selected_exam = Exam.objects.filter(school=school, id=selected_exam_id).first()
-        if selected_exam and section in ('PRIMARY', 'JSS') and selected_exam.school_section != section:
+        if selected_exam and section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS') and selected_exam.school_section != section:
             selected_exam = None
 
     if not selected_exam:
         selected_exam = Exam.objects.filter(school=school, status="active")
-        if section in ('PRIMARY', 'JSS'):
+        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
             selected_exam = selected_exam.filter(school_section=section)
         selected_exam = selected_exam.order_by("-year", "term", "name").first()
 
@@ -538,7 +538,7 @@ def manage_exams(request):
             .select_related("teacher_profile", "teacher_profile__user")
             .order_by("class_name", "stream", "subject__code")
         )
-        if section in ('PRIMARY', 'JSS'):
+        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
             assignments = assignments.filter(school_section=section)
 
         for assignment in assignments:
@@ -684,16 +684,16 @@ def review_stream_submission(request):
     section = get_request_school_section(request)
 
     exam = Exam.objects.filter(school=school, id=exam_id).first() if exam_id else None
-    if exam and section in ('PRIMARY', 'JSS') and exam.school_section != section:
+    if exam and section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS') and exam.school_section != section:
         exam = None
     if not exam:
         exam_q = Exam.objects.filter(school=school, status="active")
-        if section in ('PRIMARY', 'JSS'):
+        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
             exam_q = exam_q.filter(school_section=section)
         exam = exam_q.order_by("-year", "term", "name").first()
     if not exam:
         exam_q = Exam.objects.filter(school=school)
-        if section in ('PRIMARY', 'JSS'):
+        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
             exam_q = exam_q.filter(school_section=section)
         exam = exam_q.order_by("-year", "term", "name").first()
     if not exam:
@@ -713,7 +713,7 @@ def review_stream_submission(request):
             .order_by("class_name", "stream")
         )
         section = get_request_school_section(request)
-        if section in ('PRIMARY', 'JSS'):
+        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
             exams = exams.filter(school_section=section)
             pairs = pairs.filter(school_section=section)
         for pair in pairs:
@@ -1182,7 +1182,7 @@ def manage_assessment_locks(request):
 
             # Validate grade belongs to the current section
             section = get_request_school_section(request)
-            allowed_grades = PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else JSS_GRADE_CHOICES
+            allowed_grades = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else JSS_GRADE_CHOICES
             if data.get('grade') not in allowed_grades:
                 return JsonResponse({'status': 'error', 'message': 'Invalid grade for current section.'}, status=403)
 
@@ -1199,7 +1199,7 @@ def manage_assessment_locks(request):
 
     # --- Build lock state grid ---
     section = get_request_school_section(request)
-    grade_choices = PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else JSS_GRADE_CHOICES
+    grade_choices = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else JSS_GRADE_CHOICES
     
     lock_map = {
         (l.grade, l.exam_type): l.is_locked
@@ -1236,6 +1236,7 @@ PRIMARY_PERFORMANCE_SCALE = [
 ]
 
 PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
+LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
 
 def _get_primary_performance(percentage):
@@ -1268,16 +1269,23 @@ def select_exam_primary(request):
     exam_id = request.GET.get('exam_id') or request.POST.get('exam_id')
 
     school = get_request_school(request)
+    section = get_request_school_section(request)
+
+    # Determine which section to use for this view
+    if section == 'LOWER_PRIMARY':
+        exam_section = 'LOWER_PRIMARY'
+    else:
+        exam_section = 'PRIMARY'
 
     assignments = (
         SubjectAssignment.objects
-        .filter(school=school, teacher_profile=teacher, school_section='PRIMARY')
+        .filter(school=school, teacher_profile=teacher, school_section=exam_section)
         .select_related('teacher_profile__user')
         .order_by('class_name', 'stream', 'subject__code')
     )
 
     active_exams = Exam.objects.filter(
-        school=school, status='active', school_section='PRIMARY'
+        school=school, status='active', school_section=exam_section
     ).order_by('-year', 'term', 'name')
 
     selected_assignment = None
@@ -1422,7 +1430,7 @@ def select_exam_primary(request):
                                 term=selected_exam.term,
                                 exam_type=selected_exam.name,
                                 year=selected_exam.year,
-                                school_section='PRIMARY',
+                                school_section=exam_section,
                             ).delete()
 
                     Mark.objects.update_or_create(
@@ -1433,7 +1441,7 @@ def select_exam_primary(request):
                         exam_type=selected_exam.name,
                         year=selected_exam.year,
                         defaults={
-                            'school_section': 'PRIMARY',
+                            'school_section': exam_section,
                             'raw_score': None,
                             'maximum_marks': maximum_marks,
                             'score': 0,
@@ -1471,7 +1479,7 @@ def select_exam_primary(request):
                     exam_type=selected_exam.name,
                     year=selected_exam.year,
                     defaults={
-                        'school_section': 'PRIMARY',
+                        'school_section': exam_section,
                         'raw_score': raw_score,
                         'maximum_marks': maximum_marks,
                         'score': percentage,
@@ -1496,7 +1504,7 @@ def select_exam_primary(request):
                             term=selected_exam.term,
                             exam_type=selected_exam.name,
                             year=selected_exam.year,
-                            school_section='PRIMARY',
+                            school_section=exam_section,
                         ).delete()
 
             if missing_students and selected_assignment.subject.code not in RELIGION_SUBJECTS:
@@ -1514,7 +1522,7 @@ def select_exam_primary(request):
                 exam_name=selected_exam.name,
                 term=selected_exam.term,
                 year=selected_exam.year,
-                school_section="PRIMARY",
+                school_section=exam_section,
                 defaults={
                     "status": "submitted",
                     "admin_note": "",
