@@ -109,6 +109,212 @@
     }
 
     .report-card, #reportCardsContainer, div[class*="card"] { border: none !important; border-image: none !important; outline: none !important; box-shadow: none !important; -webkit-box-shadow: none !important; -moz-box-shadow: none !important; }
+
+    /* ===== MOBILE REPORT CARD - SUMMARY VIEW ===== */
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding: var(--space-3);
+            padding-top: calc(var(--mobile-topbar) + var(--space-3));
+            padding-bottom: calc(var(--bottomnav-height) + var(--space-3));
+        }
+
+        .premium-header-banner {
+            flex-direction: column;
+            gap: var(--space-3);
+            padding: var(--space-4) !important;
+            border-radius: var(--radius-lg) !important;
+        }
+
+        .premium-header-banner h2 {
+            font-size: var(--text-xl) !important;
+        }
+
+        /* Hide A4 report card on mobile, show summary */
+        .report-card {
+            display: none !important;
+        }
+
+        /* Mobile summary card */
+        .mobile-report-summary {
+            display: block !important;
+            background: var(--en-bg-elevated);
+            border: 1px solid var(--en-border);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            margin-bottom: var(--space-4);
+        }
+
+        .mobile-report-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            padding: var(--space-5);
+            text-align: center;
+        }
+
+        .mobile-report-school {
+            font-size: var(--text-lg);
+            font-weight: var(--weight-extrabold);
+            margin-bottom: var(--space-1);
+        }
+
+        .mobile-report-title {
+            font-size: var(--text-xs);
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: var(--weight-bold);
+        }
+
+        .mobile-report-student {
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--en-border-light);
+        }
+
+        .mobile-report-student-name {
+            font-size: var(--text-xl);
+            font-weight: var(--weight-extrabold);
+            color: var(--en-text);
+            margin-bottom: var(--space-2);
+        }
+
+        .mobile-report-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-2);
+        }
+
+        .mobile-report-meta-item {
+            font-size: var(--text-xs);
+            color: var(--en-text-muted);
+        }
+
+        .mobile-report-meta-item strong {
+            display: block;
+            font-size: var(--text-sm);
+            color: var(--en-text);
+        }
+
+        .mobile-report-scores {
+            padding: var(--space-4);
+        }
+
+        .mobile-report-scores h3 {
+            font-size: var(--text-sm);
+            font-weight: var(--weight-bold);
+            color: var(--en-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-3);
+        }
+
+        .mobile-score-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-2) 0;
+            border-bottom: 1px solid var(--en-border-light);
+        }
+
+        .mobile-score-row:last-child {
+            border-bottom: none;
+        }
+
+        .mobile-score-subject {
+            font-size: var(--text-sm);
+            font-weight: var(--weight-semibold);
+            color: var(--en-text);
+        }
+
+        .mobile-score-value {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .mobile-score-mark {
+            font-size: var(--text-sm);
+            font-weight: var(--weight-bold);
+            color: var(--en-text);
+        }
+
+        .mobile-score-level {
+            font-size: 10px;
+            font-weight: var(--weight-bold);
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            background: var(--en-surface);
+            color: var(--en-text-muted);
+        }
+
+        .mobile-report-summary-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-2);
+            padding: var(--space-4);
+            background: var(--en-surface);
+        }
+
+        .mobile-stat {
+            text-align: center;
+        }
+
+        .mobile-stat-value {
+            font-size: var(--text-xl);
+            font-weight: var(--weight-extrabold);
+            color: var(--en-text);
+        }
+
+        .mobile-stat-label {
+            font-size: 10px;
+            font-weight: var(--weight-bold);
+            color: var(--en-text-muted);
+            text-transform: uppercase;
+        }
+
+        .mobile-report-remarks {
+            padding: var(--space-4);
+            border-top: 1px solid var(--en-border);
+        }
+
+        .mobile-remark {
+            margin-bottom: var(--space-3);
+        }
+
+        .mobile-remark-label {
+            font-size: 10px;
+            font-weight: var(--weight-bold);
+            color: var(--en-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-1);
+        }
+
+        .mobile-remark-text {
+            font-size: var(--text-sm);
+            color: var(--en-text);
+            line-height: var(--leading-relaxed);
+            background: var(--en-surface);
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+        }
+
+        .mobile-report-actions {
+            padding: var(--space-4);
+            display: flex;
+            gap: var(--space-3);
+        }
+
+        .mobile-report-actions .btn {
+            flex: 1;
+        }
+    }
+
+    /* Hide mobile summary on desktop */
+    @media (min-width: 769px) {
+        .mobile-report-summary {
+            display: none !important;
+        }
+    }
 </style>
 
 <div class="container-fluid">
@@ -131,8 +337,94 @@
             Download PDF
         </button>
     </div>
-    
-    <!-- REPORT CARDS -->
+
+    <!-- MOBILE SUMMARY VIEW (hidden on desktop) -->
+    <div class="mobile-report-summary" style="display:none;">
+        {% for student_data in student_marks_list %}
+        <div class="mobile-report-header">
+            <div class="mobile-report-school">{{ request.school.name }}</div>
+            <div class="mobile-report-title">{{ selected_exam_name }} &middot; {{ selected_term }} {{ selected_year }}</div>
+        </div>
+
+        <div class="mobile-report-student">
+            <div class="mobile-report-student-name">{{ student_data.student.name }}</div>
+            <div class="mobile-report-meta">
+                <div class="mobile-report-meta-item">
+                    <span>Admission No</span>
+                    <strong>{{ student_data.student.admission_no }}</strong>
+                </div>
+                <div class="mobile-report-meta-item">
+                    <span>Class</span>
+                    <strong>{{ student_data.student.class_name }} {{ student_data.student.stream }}</strong>
+                </div>
+                <div class="mobile-report-meta-item">
+                    <span>Position</span>
+                    <strong>{{ student_data.position|default:"-" }}</strong>
+                </div>
+                <div class="mobile-report-meta-item">
+                    <span>Performance Level</span>
+                    <strong>{{ student_data.plv|default:"-" }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="mobile-report-scores">
+            <h3>Subject Scores</h3>
+            {% for entry in student_data.marks %}
+            <div class="mobile-score-row">
+                <div class="mobile-score-subject">{{ entry.subject_name }}</div>
+                <div class="mobile-score-value">
+                    <span class="mobile-score-mark">{{ entry.score }}</span>
+                    <span class="mobile-score-level">{{ entry.performance_level }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="mobile-report-summary-stats">
+            <div class="mobile-stat">
+                <div class="mobile-stat-value">{{ student_data.total_marks|default:"-" }}</div>
+                <div class="mobile-stat-label">Total</div>
+            </div>
+            <div class="mobile-stat">
+                <div class="mobile-stat-value">{{ student_data.plv|default:"-" }}</div>
+                <div class="mobile-stat-label">PLV</div>
+            </div>
+            <div class="mobile-stat">
+                <div class="mobile-stat-value">{{ student_data.position|default:"-" }}</div>
+                <div class="mobile-stat-label">Position</div>
+            </div>
+        </div>
+
+        {% if student_data.class_teacher_comment or student_data.headteacher_comment %}
+        <div class="mobile-report-remarks">
+            {% if student_data.class_teacher_comment %}
+            <div class="mobile-remark">
+                <div class="mobile-remark-label">Class Teacher Remark</div>
+                <div class="mobile-remark-text">{{ student_data.class_teacher_comment }}</div>
+            </div>
+            {% endif %}
+            {% if student_data.headteacher_comment %}
+            <div class="mobile-remark">
+                <div class="mobile-remark-label">Headteacher Remark</div>
+                <div class="mobile-remark-text">{{ student_data.headteacher_comment }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <div class="mobile-report-actions">
+            <button onclick="downloadPDF()" class="btn btn-primary btn-full">
+                <i class="bi bi-download"></i> Download PDF
+            </button>
+            <button onclick="window.print()" class="btn btn-outline btn-full">
+                <i class="bi bi-printer"></i> Print
+            </button>
+        </div>
+    </div>
+
+    <!-- REPORT CARDS (A4 - hidden on mobile via CSS) -->
     <div id="reportCardsContainer">
         {% for student_data in student_marks_list %}
         <div class="report-card">

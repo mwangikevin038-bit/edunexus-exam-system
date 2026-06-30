@@ -283,6 +283,72 @@
             min-width: 700px;
         }
     }
+
+    /* ===== MOBILE REPORT CARDS ===== */
+    @media (max-width: 768px) {
+        .reports-page {
+            padding: var(--space-3);
+            padding-top: calc(var(--mobile-topbar) + var(--space-3));
+            padding-bottom: calc(var(--bottomnav-height) + var(--space-3));
+        }
+
+        .reports-hero {
+            padding: var(--space-4);
+            border-left-width: 4px;
+            border-radius: var(--radius-lg);
+        }
+
+        .hero-title h1 {
+            font-size: var(--text-xl);
+        }
+
+        .hero-row {
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: var(--space-2);
+        }
+
+        .summary-card {
+            padding: var(--space-3);
+            border-radius: var(--radius-lg);
+        }
+
+        .reports-table-card {
+            min-width: 0;
+            border-radius: var(--radius-lg);
+        }
+
+        /* Transform student list into cards */
+        .student-report-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .student-report-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            background: var(--en-bg-elevated);
+            border: 1px solid var(--en-border);
+            border-radius: var(--radius-lg);
+            align-items: center;
+        }
+
+        .student-report-row td {
+            border: none;
+            padding: 0;
+        }
+
+        .student-report-actions {
+            display: flex;
+            gap: var(--space-2);
+        }
     }
 </style>
 
