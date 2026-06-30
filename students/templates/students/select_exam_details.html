@@ -257,10 +257,10 @@
                                    onkeydown="nextOnEnter(event, this)"
                                    placeholder="—"
                                    {% if student.current_score %}data-had-value="1"{% endif %}
-                                   {% if is_locked or is_submitted %}readonly{% endif %}>
+                                   {% if is_locked %}readonly{% endif %}>
                             <button type="button" class="cap-absent"
                                     onclick="markAB(this)" tabindex="-1"
-                                    {% if is_locked or is_submitted %}disabled{% endif %}>AB</button>
+                                    {% if is_locked %}disabled{% endif %}>AB</button>
                             <div class="cap-student-status">
                                 <span class="cap-level" data-level="{{ forloop.counter }}">Awaiting</span>
                                 <div class="cap-dash"></div>
@@ -416,6 +416,11 @@
         var assignmentId = document.querySelector('input[name="assignment_id"]');
         var examId = document.querySelector('input[name="exam_id"]');
         if (!studentId || !assignmentId || !examId) return;
+
+        if (saveTimers[studentId]) {
+            clearTimeout(saveTimers[studentId]);
+            delete saveTimers[studentId];
+        }
 
         var fd = new FormData();
         fd.append('student_id', studentId);

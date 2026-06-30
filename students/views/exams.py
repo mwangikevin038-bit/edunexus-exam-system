@@ -201,8 +201,8 @@ def select_exam(request):
                 student.current_percentage = ""
 
         if request.method == 'POST':
-            if is_locked or is_submitted:
-                messages.error(request, "This assessment sheet has already been submitted or locked.")
+            if is_locked:
+                messages.error(request, "This assessment sheet is locked by admin.")
                 return redirect(
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
@@ -1420,8 +1420,8 @@ def select_exam_primary(request):
                 student.current_percentage = ""
 
         if request.method == 'POST':
-            if is_locked or is_submitted:
-                messages.error(request, "This assessment sheet has already been submitted or locked.")
+            if is_locked:
+                messages.error(request, "This assessment sheet is locked by admin.")
                 return redirect(
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
