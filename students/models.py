@@ -174,7 +174,7 @@ class Subject(SchoolScopedModel):
     code = models.CharField(max_length=10, help_text="Unique subject code, e.g. ENG, MAT")
     name = models.CharField(max_length=100, help_text="Official subject / learning area name")
     school_section = models.CharField(
-        max_length=15,
+        max_length=20,
         choices=SECTION_CHOICES,
         help_text="Which section this subject belongs to"
     )
