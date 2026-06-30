@@ -519,7 +519,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   CAPTURE PAGE — Score Entry (Mobile-First, Zero H-Scroll)
+   CAPTURE PAGE — Score Entry (Premium SaaS, Mobile-First)
    ═══════════════════════════════════════════════════════════════ */
 
 .capture-page {
@@ -531,7 +531,7 @@
 }
 
 .capture-shell {
-    max-width: 800px;
+    max-width: 600px;
     margin: 0 auto;
 }
 
@@ -657,12 +657,36 @@
     color: var(--en-text);
 }
 
+/* ── Class Header (Mark Entry) ──────────────────────────────── */
+.capture-class-header {
+    margin-bottom: var(--space-5);
+}
+
+.capture-class-name {
+    font-size: var(--text-md);
+    font-weight: var(--weight-extrabold);
+    color: var(--en-text);
+    margin: 0 0 var(--space-1);
+    letter-spacing: var(--tracking-tight);
+}
+
+.capture-class-meta {
+    font-size: var(--text-sm);
+    color: var(--en-text-muted);
+}
+
 /* ── Exam Info Grid ─────────────────────────────────────────── */
 .capture-meta-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-3);
     margin-bottom: var(--space-5);
+}
+
+.capture-meta-item {
+    background: var(--en-surface);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
 }
 
 .capture-meta-label {
@@ -675,13 +699,6 @@
 }
 
 .capture-meta-value {
-    height: 40px;
-    display: flex;
-    align-items: center;
-    padding: 0 var(--space-3);
-    background: var(--en-surface);
-    border: 1px solid var(--en-border);
-    border-radius: var(--radius-md);
     font-size: var(--text-sm);
     font-weight: var(--weight-bold);
     color: var(--en-text);
@@ -689,7 +706,7 @@
 
 .capture-meta-input {
     width: 100%;
-    height: 40px;
+    height: 36px;
     padding: 0 var(--space-3);
     background: var(--en-white);
     border: 1.5px solid var(--en-border);
@@ -715,6 +732,9 @@
 
 /* ── Section Label ──────────────────────────────────────────── */
 .capture-section-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
     text-transform: uppercase;
@@ -722,15 +742,27 @@
     color: var(--en-text-secondary);
     margin: 0 0 var(--space-3);
     padding-bottom: var(--space-2);
-    border-bottom: 1px solid var(--en-border-light);
+    border-bottom: 2px solid var(--en-green);
 }
 
-/* ── Student Row (Compact Single-Line) ──────────────────────── */
+.capture-section-count {
+    font-weight: var(--weight-extrabold);
+    color: var(--en-green);
+    background: var(--en-green-light);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+}
+
+/* ── Student Row (Premium Compact) ──────────────────────────── */
 .capture-student-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: 2px;
     margin-bottom: var(--space-5);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--en-border);
 }
 
 .capture-student-row {
@@ -739,17 +771,17 @@
     grid-template-rows: auto auto;
     gap: var(--space-1) var(--space-3);
     align-items: center;
-    padding: var(--space-3);
+    padding: var(--space-3) var(--space-4);
     background: var(--en-bg-elevated);
-    border: 1px solid var(--en-border);
-    border-radius: var(--radius-lg);
-    transition: border-color var(--duration-fast) var(--ease-out),
-                box-shadow var(--duration-fast) var(--ease-out);
+    transition: background var(--duration-fast) var(--ease-out);
+}
+
+.capture-student-row:nth-child(even) {
+    background: var(--en-surface);
 }
 
 .capture-student-row:focus-within {
-    border-color: var(--en-green);
-    box-shadow: 0 0 0 2px var(--en-green-light);
+    background: var(--en-green-subtle);
 }
 
 /* Row 1: Name spans full width */
@@ -779,24 +811,24 @@
 }
 
 .capture-score-input {
-    width: 64px;
+    width: 60px;
     height: 40px;
-    border: 1.5px solid var(--en-border);
+    border: 2px solid var(--en-border);
     border-radius: var(--radius-md);
     text-align: center;
-    font-size: var(--text-base);
+    font-size: var(--text-md);
     font-weight: var(--weight-extrabold);
     color: var(--en-text);
     background: var(--en-white);
     -webkit-appearance: none;
-    transition: border-color var(--duration-fast) var(--ease-out),
-                box-shadow var(--duration-fast) var(--ease-out);
+    transition: all var(--duration-fast) var(--ease-out);
 }
 
 .capture-score-input:focus {
     outline: none;
     border-color: var(--en-green);
     box-shadow: 0 0 0 3px var(--en-green-light);
+    transform: scale(1.05);
 }
 
 .capture-score-input[readonly] {
@@ -808,7 +840,7 @@
 .capture-absent-btn {
     width: 40px;
     height: 40px;
-    border: 1.5px solid #fecaca;
+    border: 2px solid #fecaca;
     border-radius: var(--radius-md);
     background: #fff1f2;
     color: #991b1b;
@@ -824,15 +856,12 @@
 }
 
 .capture-absent-btn:active {
-    transform: scale(0.92);
-}
-
-.capture-absent-btn.selected {
-    border-color: #ef4444;
+    transform: scale(0.9);
     background: #fecaca;
+    border-color: #ef4444;
 }
 
-/* Row 3: Performance level + points (tiny muted, auto-width) */
+/* Row 3: Performance level + points */
 .capture-student-level {
     grid-column: 1 / -1;
     display: flex;
@@ -840,6 +869,7 @@
     gap: var(--space-2);
     min-height: 0;
     overflow: hidden;
+    padding-top: 2px;
 }
 
 .capture-level-badge {
@@ -875,18 +905,21 @@
     font-size: var(--text-sm);
     padding: var(--space-8) var(--space-4);
     font-style: italic;
+    background: var(--en-bg-elevated);
 }
 
 /* ── Submit Button ──────────────────────────────────────────── */
 .capture-submit {
     width: 100%;
-    height: 48px;
+    height: 52px;
     margin-top: var(--space-4);
+    font-size: var(--text-base);
+    border-radius: var(--radius-lg);
 }
 
 /* ── Subject Group (Assessment Selection) ───────────────────── */
 .capture-subject-group {
-    margin-bottom: var(--space-5);
+    margin-bottom: var(--space-6);
 }
 
 .capture-subject-group:last-child {
@@ -897,17 +930,19 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2) 0;
+    padding: var(--space-3) var(--space-4);
     margin-bottom: var(--space-3);
     font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-    color: var(--en-text);
-    border-bottom: 2px solid var(--en-green);
+    font-weight: var(--weight-extrabold);
+    color: var(--en-navy);
+    background: var(--en-green-light);
+    border-radius: var(--radius-lg);
+    border-left: 4px solid var(--en-green);
 }
 
 .capture-subject-header i {
     color: var(--en-green);
-    font-size: 14px;
+    font-size: 16px;
 }
 
 .capture-assessment-list {
@@ -916,7 +951,7 @@
     gap: var(--space-3);
 }
 
-/* ── Assessment Item (Selection Card) ───────────────────────── */
+/* ── Assessment Item (Premium Card) ─────────────────────────── */
 .capture-assessment-item {
     display: flex;
     align-items: center;
@@ -925,12 +960,14 @@
     background: var(--en-bg-elevated);
     border: 1px solid var(--en-border);
     border-radius: var(--radius-lg);
-    transition: all var(--duration-fast) var(--ease-out);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--duration-normal) var(--ease-out);
     -webkit-tap-highlight-color: transparent;
 }
 
 .capture-assessment-item:active {
     transform: scale(0.98);
+    box-shadow: var(--shadow-xs);
 }
 
 /* Status accent strip */
@@ -949,7 +986,7 @@
 
 .capture-assessment-exam {
     font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-extrabold);
     color: var(--en-text);
     margin-bottom: 2px;
     overflow: hidden;
@@ -972,15 +1009,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-md);
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-lg);
     background: var(--en-navy);
     color: var(--en-text-inverse);
-    font-size: 16px;
+    font-size: 18px;
     text-decoration: none;
     transition: all var(--duration-fast) var(--ease-out);
     -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--shadow-sm);
 }
 
 .capture-assessment-action:active {

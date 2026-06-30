@@ -23,7 +23,7 @@
         <div class="capture-card">
             <div class="capture-card-head">
                 <h2>{% if selected_assignment and selected_exam %}Score Capture{% else %}Assessment Sheets{% endif %}</h2>
-                <small>{% if selected_assignment and selected_exam %}Enter raw scores or AB. {% if grading_mode == 'jss' %}KJSEA 8-level grading (EE1–BE2).{% else %}Primary 4-level grading (EE/ME/AE/BE).{% endif %}{% else %}Published assessments matched to your assigned class streams and subjects.{% endif %}</small>
+                <small>{% if selected_assignment and selected_exam %}Enter raw scores or AB. {% if grading_mode == 'jss' %}KJSEA 8-level grading (EE1–BE2).{% else %}Primary 4-level grading (EE/ME/AE/BE).{% endif %}{% else %}Tap an assessment to begin entering learner scores.{% endif %}</small>
             </div>
 
             <div class="capture-card-body">
@@ -63,12 +63,10 @@
                         </div>
                     {% endif %}
 
-                    <h3 style="font-size:var(--text-base);font-weight:var(--weight-extrabold);color:var(--en-text);margin:0 0 var(--space-1);">
-                        {{ selected_assignment.class_name }} {{ selected_assignment.stream }} — {{ selected_assignment.subject.name }}
-                    </h3>
-                    <p style="font-size:var(--text-sm);color:var(--en-text-muted);margin:0 0 var(--space-5);">
-                        {{ selected_exam.name }} · {{ selected_exam.term }} · {{ selected_exam.year }}
-                    </p>
+                    <div class="capture-class-header">
+                        <div class="capture-class-name">{{ selected_assignment.class_name }} {{ selected_assignment.stream }} — {{ selected_assignment.subject.name }}</div>
+                        <div class="capture-class-meta">{{ selected_exam.name }} · {{ selected_exam.term }} · {{ selected_exam.year }}</div>
+                    </div>
 
                     <form method="POST" id="marksForm">
                         {% csrf_token %}
@@ -76,11 +74,11 @@
                         <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
 
                         <div class="capture-meta-grid">
-                            <div>
+                            <div class="capture-meta-item">
                                 <div class="capture-meta-label">Assessment</div>
                                 <div class="capture-meta-value">{{ selected_exam.name }}</div>
                             </div>
-                            <div>
+                            <div class="capture-meta-item">
                                 <div class="capture-meta-label">Total Marks</div>
                                 <input
                                     type="number"
@@ -94,17 +92,20 @@
                                     {% if is_locked or is_submitted %}readonly{% endif %}
                                 >
                             </div>
-                            <div>
+                            <div class="capture-meta-item">
                                 <div class="capture-meta-label">Term</div>
                                 <div class="capture-meta-value">{{ selected_exam.term }}</div>
                             </div>
-                            <div>
+                            <div class="capture-meta-item">
                                 <div class="capture-meta-label">Year</div>
                                 <div class="capture-meta-value">{{ selected_exam.year }}</div>
                             </div>
                         </div>
 
-                        <h3 class="capture-section-label">Learner Scores ({{ students|length }})</h3>
+                        <div class="capture-section-label">
+                            <span>Learner Scores</span>
+                            <span class="capture-section-count">{{ students|length }}</span>
+                        </div>
 
                         <div class="capture-student-list">
                             {% for student in students %}
@@ -123,8 +124,8 @@
                                             enterkeyhint="next"
                                             oninput="calcScore(this)"
                                             onkeydown="nextOnEnter(event, this)"
-                                            onfocus="this.parentElement.parentElement.classList.add('focused')"
-                                            onblur="this.parentElement.parentElement.classList.remove('focused')"
+                                            onfocus="this.closest('.capture-student-row').style.background='var(--en-green-subtle)'"
+                                            onblur="this.closest('.capture-student-row').style.background=''"
                                             placeholder="—"
                                             {% if is_locked or is_submitted %}readonly{% endif %}
                                         >
