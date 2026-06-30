@@ -44,6 +44,8 @@ LOCAL_ALLOWED_HOSTS = [
     '10.161.194.230',
     '192.168.112.230',
     '192.168.1.101',
+    '192.168.1.104',
+    'edunexus.local',
 ]
 
 ALLOWED_HOSTS = env_csv('ALLOWED_HOSTS', ','.join(LOCAL_ALLOWED_HOSTS) if DEBUG else '')

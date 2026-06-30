@@ -1,0 +1,131 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .notif-body { padding: var(--space-4); max-width: 800px; margin: 0 auto; }
+
+    .notif-header { margin-bottom: var(--space-4); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+    .notif-title { font-size: var(--text-2xl); font-weight: 800; color: var(--ink); }
+    .notif-mark-read {
+        display: inline-flex; align-items: center; gap: var(--space-1);
+        padding: var(--space-2) var(--space-3); border-radius: var(--radius-full);
+        background: var(--green-pale); border: 1px solid var(--green-light);
+        font-size: var(--text-xs); font-weight: 700; color: var(--green-dark);
+        cursor: pointer; white-space: nowrap; transition: all var(--duration-normal) var(--ease-out);
+        text-decoration: none;
+    }
+    .notif-mark-read:hover { background: var(--green); color: var(--white); }
+
+    .notif-filters { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); overflow-x: auto; scrollbar-width: none; }
+    .notif-filters::-webkit-scrollbar { display: none; }
+
+    .notif-list { display: flex; flex-direction: column; gap: var(--space-2); }
+
+    .notif-item {
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: var(--space-4);
+        display: flex; gap: var(--space-3); align-items: flex-start;
+        transition: transform var(--duration-fast) var(--ease-out);
+    }
+    .notif-item:active { transform: scale(0.99); }
+    .notif-item.unread { border-left: 3px solid var(--green); background: var(--green-pale); }
+
+    .notif-icon {
+        width: 40px; height: 40px; border-radius: var(--radius);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .notif-icon i { width: 18px; height: 18px; }
+    .notif-icon.type-exam { background: var(--blue-pale); color: var(--blue); }
+    .notif-icon.type-sms { background: var(--green-pale); color: var(--green-dark); }
+    .notif-icon.type-system { background: var(--amber-pale); color: #92400e; }
+    .notif-icon.type-alert { background: var(--rose-pale); color: var(--rose); }
+
+    .notif-content { flex: 1; min-width: 0; }
+    .notif-text { font-size: var(--text-base); font-weight: 700; color: var(--ink); line-height: 1.4; }
+    .notif-time { font-size: var(--text-xs); color: var(--ink-5); font-weight: 500; margin-top: var(--space-1); }
+    .notif-link {
+        display: inline-block; margin-top: var(--space-2); font-size: var(--text-xs); font-weight: 700;
+        color: var(--green-dark); text-decoration: none;
+    }
+    .notif-link:hover { text-decoration: underline; }
+
+    .notif-empty { text-align: center; padding: var(--space-12) var(--space-4); }
+
+    @media (min-width: 769px) {
+        .notif-body { padding: var(--space-6) var(--space-8) var(--space-12); }
+        .notif-title { font-size: var(--text-3xl); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="notif-body">
+        <div class="notif-header">
+            <h1 class="notif-title">Notifications</h1>
+            {% if unread_count > 0 %}
+            <a href="?mark_all_read=1" class="notif-mark-read">
+                <i data-lucide="check-circle"></i> Mark all read ({{ unread_count }})
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="filter-row" role="tablist">
+            <a href="?" class="filter-chip {% if not type_filter and not read_filter %}active{% endif %}">
+                <i data-lucide="inbox"></i> All
+            </a>
+            <a href="?type=exam" class="filter-chip {% if type_filter == 'exam' %}active{% endif %}">
+                <i data-lucide="clipboard-check"></i> Exams
+            </a>
+            <a href="?type=sms" class="filter-chip {% if type_filter == 'sms' %}active{% endif %}">
+                <i data-lucide="message-circle"></i> SMS
+            </a>
+            <a href="?type=system" class="filter-chip {% if type_filter == 'system' %}active{% endif %}">
+                <i data-lucide="settings"></i> System
+            </a>
+            <a href="?type=alert" class="filter-chip {% if type_filter == 'alert' %}active{% endif %}">
+                <i data-lucide="alert-triangle"></i> Alerts
+            </a>
+            <a href="?read=unread" class="filter-chip {% if read_filter == 'unread' %}active{% endif %}">
+                <i data-lucide="mail"></i> Unread
+            </a>
+        </div>
+
+        <div class="notif-list" id="notifList">
+            {% for notif in notifications %}
+            <div class="notif-item {% if not notif.is_read %}unread{% endif %}" data-type="{{ notif.notification_type }}">
+                <div class="notif-icon type-{{ notif.notification_type }}">
+                    {% if notif.notification_type == 'exam' %}
+                        <i data-lucide="clipboard-check"></i>
+                    {% elif notif.notification_type == 'sms' %}
+                        <i data-lucide="message-circle"></i>
+                    {% elif notif.notification_type == 'alert' %}
+                        <i data-lucide="alert-triangle"></i>
+                    {% else %}
+                        <i data-lucide="settings"></i>
+                    {% endif %}
+                </div>
+                <div class="notif-content">
+                    <div class="notif-text">{{ notif.title }}</div>
+                    <div class="notif-time">{{ notif.created_at|timesince }} ago</div>
+                    {% if notif.link %}
+                        <a href="{{ notif.link }}" class="notif-link">View Details <i data-lucide="arrow-right" style="width:12px;height:12px;"></i></a>
+                    {% endif %}
+                    {% if not notif.is_read %}
+                        <a href="?mark_read={{ notif.id }}" class="notif-link" style="margin-left: 8px; color: var(--ink-5);">Mark read</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state" id="notifEmpty">
+                <div class="empty-state-icon"><i data-lucide="bell-off"></i></div>
+                <h4 class="empty-state-title">No Notifications</h4>
+                <p class="empty-state-text">You're all caught up! Notifications about exams, SMS delivery, and system updates will appear here.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

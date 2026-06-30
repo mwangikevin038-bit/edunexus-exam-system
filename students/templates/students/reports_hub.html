@@ -1,0 +1,186 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-content">
+    <div class="page-container">
+        <!-- HEADER -->
+        <div class="mb-4">
+            <div class="text-sm font-semibold text-ink-4 flex items-center gap-2">
+                <a href="{% url 'dashboard_alt' %}" style="color:inherit;text-decoration:none;">Dashboard</a>
+                <span class="text-ink-6">/</span>
+                <span>Reports</span>
+            </div>
+            <h1 class="font-extrabold text-2xl text-ink mt-1" style="letter-spacing:-0.3px;">Results &amp; Reports</h1>
+        </div>
+
+        <!-- STATS -->
+        <div class="grid grid-3 gap-3 mb-5" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+            <div class="metric-card mc-green">
+                <div class="metric-card-top">
+                    <div class="metric-icon"><i data-lucide="trophy"></i></div>
+                </div>
+                <div class="metric-value">{{ total_results }}</div>
+                <div class="metric-label">Published Results</div>
+            </div>
+            <div class="metric-card mc-blue">
+                <div class="metric-card-top">
+                    <div class="metric-icon"><i data-lucide="file-text"></i></div>
+                </div>
+                <div class="metric-value">{{ total_report_cards }}</div>
+                <div class="metric-label">Report Cards</div>
+            </div>
+            <div class="metric-card mc-amber">
+                <div class="metric-card-top">
+                    <div class="metric-icon"><i data-lucide="clock"></i></div>
+                </div>
+                <div class="metric-value">{{ pending_submissions }}</div>
+                <div class="metric-label">Pending</div>
+            </div>
+        </div>
+
+        <!-- TAB BAR -->
+        <div class="card mb-5 overflow-hidden">
+            <div class="flex gap-1 p-1">
+                <button class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold text-sm cursor-pointer border-none transition-all {% if active_tab == 'results' %}bg-ink text-white{% else %}bg-transparent text-ink-4{% endif %}" onclick="switchTab('results', this)" style="border-radius:var(--radius);">
+                    <i data-lucide="trophy"></i> Results
+                    <span class="text-xs font-extrabold px-2 py-0.5 rounded-full {% if active_tab == 'results' %}bg-white bg-opacity-15{% else %}bg-surface-2 text-ink-5{% endif %}">{{ total_results }}</span>
+                </button>
+                <button class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold text-sm cursor-pointer border-none transition-all {% if active_tab == 'cards' %}bg-ink text-white{% else %}bg-transparent text-ink-4{% endif %}" onclick="switchTab('cards', this)" style="border-radius:var(--radius);">
+                    <i data-lucide="file-text"></i> Report Cards
+                    <span class="text-xs font-extrabold px-2 py-0.5 rounded-full {% if active_tab == 'cards' %}bg-white bg-opacity-15{% else %}bg-surface-2 text-ink-5{% endif %}">{{ total_report_cards }}</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══════ RESULTS TAB ═══════ -->
+        <div class="rh-panel {% if active_tab == 'results' %}active{% endif %}" id="panel-results">
+
+            {% if results_by_exam %}
+                {% for exam_key, exam_group in results_by_exam.items %}
+                <div class="mb-6">
+                    <div class="flex items-center gap-3 mb-3 pb-2 border-b">
+                        <div class="avatar" style="width:36px;height:36px;border-radius:var(--radius-sm);background:var(--blue-pale);color:var(--blue);">
+                            <i data-lucide="graduation-cap"></i>
+                        </div>
+                        <div>
+                            <div class="font-extrabold text-md text-ink">{{ exam_group.exam_name }}</div>
+                            <div class="text-xs text-ink-5 font-medium">{{ exam_group.contexts|length }} class{{ exam_group.contexts|length|pluralize }}</div>
+                        </div>
+                    </div>
+                    <div class="grid gap-3" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));">
+                        {% for ctx in exam_group.contexts %}
+                        <a href="{% url 'results_list' %}?context={{ ctx.context_key|urlencode }}" class="card card-hover overflow-hidden" style="text-decoration:none;color:inherit;position:relative;">
+                            <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--green),var(--blue));"></div>
+                            <div class="flex items-start justify-between p-4 pb-2">
+                                <div>
+                                    <div class="font-extrabold text-md text-ink">{{ ctx.class_name }} {{ ctx.stream }}</div>
+                                    <div class="text-xs text-ink-5 font-semibold mt-0.5">{{ ctx.term }} {{ ctx.year }}</div>
+                                </div>
+                                {% if ctx.is_preview_only %}
+                                    <span class="badge badge-amber">Preview</span>
+                                {% else %}
+                                    <span class="badge badge-green">Published</span>
+                                {% endif %}
+                            </div>
+                            <div class="flex gap-3 px-4 pb-3">
+                                <div class="flex items-center gap-1 text-xs text-ink-4 font-semibold">
+                                    <i data-lucide="users" style="font-size:12px;color:var(--ink-5);"></i>
+                                    <strong class="text-ink">{{ ctx.student_count }}</strong> students
+                                </div>
+                                <div class="flex items-center gap-1 text-xs text-ink-4 font-semibold">
+                                    <i data-lucide="book-open" style="font-size:12px;color:var(--ink-5);"></i>
+                                    <strong class="text-ink">{{ ctx.subject_count }}</strong> subjects
+                                </div>
+                                <div class="flex items-center gap-1 text-xs text-ink-4 font-semibold">
+                                    <i data-lucide="bar-chart-3" style="font-size:12px;color:var(--ink-5);"></i>
+                                    <strong class="text-ink">{{ ctx.class_mean }}%</strong> mean
+                                </div>
+                            </div>
+                            {% if ctx.top_students %}
+                            <div class="px-4 py-2 border-t" style="background:var(--surface);">
+                                <div class="text-xs font-bold text-ink-5 uppercase tracking-wider mb-1">Top Performers</div>
+                                <div class="flex flex-col gap-0.5">
+                                    {% for s in ctx.top_students %}
+                                    <div class="flex items-center justify-between text-xs font-semibold">
+                                        <span class="text-ink-4">{{ forloop.counter }}. {{ s.name }}</span>
+                                        <span class="text-green-dark font-extrabold">{{ s.avg }}%</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            <div class="flex items-center justify-center py-3 border-t gap-2" style="text-decoration:none;">
+                                <span class="text-sm font-bold" style="background:linear-gradient(135deg,var(--blue),var(--indigo));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">View Results</span>
+                                <i data-lucide="arrow-right" style="font-size:13px;color:var(--blue);"></i>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i data-lucide="trophy"></i>
+                    </div>
+                    <div class="empty-state-title">No Published Results</div>
+                    <div class="empty-state-text">Published assessment results will appear here once the school administrator releases them.</div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ═══════ REPORT CARDS TAB ═══════ -->
+        <div class="rh-panel {% if active_tab == 'cards' %}active{% endif %}" id="panel-cards">
+
+            {% if report_card_contexts %}
+                <div class="grid gap-3" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));">
+                    {% for ctx in report_card_contexts %}
+                    <a href="{% url 'report_card_select' %}?context={{ ctx.context_key|urlencode }}" class="card card-hover overflow-hidden" style="text-decoration:none;color:inherit;position:relative;">
+                        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rose),var(--indigo));"></div>
+                        <div class="flex items-start justify-between p-4 pb-2">
+                            <div>
+                                <div class="font-extrabold text-md text-ink">{{ ctx.class_name }} {{ ctx.stream }}</div>
+                                <div class="text-xs text-ink-5 font-semibold mt-0.5">{{ ctx.exam_name }} &bull; {{ ctx.term }} {{ ctx.year }}</div>
+                            </div>
+                            <span class="badge badge-blue">{{ ctx.subject_count }} subj</span>
+                        </div>
+                        <div class="flex gap-3 px-4 pb-3">
+                            <div class="flex items-center gap-1 text-xs text-ink-4 font-semibold">
+                                <i data-lucide="book-open" style="font-size:12px;color:var(--ink-5);"></i>
+                                <strong class="text-ink">{{ ctx.subject_count }}</strong> published
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center py-3 border-t gap-2">
+                            <span class="text-sm font-bold" style="background:linear-gradient(135deg,var(--rose),var(--indigo));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Open Report Cards</span>
+                            <i data-lucide="arrow-right" style="font-size:13px;color:var(--rose);"></i>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i data-lucide="file-text"></i>
+                    </div>
+                    <div class="empty-state-title">No Report Cards Yet</div>
+                    <div class="empty-state-text">Report cards will appear here once results are published for your class stream.</div>
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<script>
+function switchTab(tab, btn) {
+    document.querySelectorAll('.rh-tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.rh-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('panel-' + tab).classList.add('active');
+}
+document.addEventListener('DOMContentLoaded', function() {
+    lucide.createIcons();
+});
+</script>
+{% endblock %}

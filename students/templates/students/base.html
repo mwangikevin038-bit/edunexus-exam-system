@@ -483,6 +483,10 @@
                 display: flex;
             }
 
+            .bottom-nav {
+                display: flex;
+            }
+
             /* Sidebar becomes overlay on mobile */
             .sidebar {
                 width: 75%;
@@ -517,6 +521,7 @@
                 width: 100vw;
                 max-width: 100vw;
                 padding-top: 56px;
+                padding-bottom: 72px;
                 overflow-x: hidden;
             }
 
@@ -745,6 +750,104 @@
             .brand-subtext {
                 font-size: 0.55rem;
             }
+        }
+
+        /* ===== BOTTOM NAV BAR (Mobile Only) ===== */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: #ffffff;
+            border-top: 1px solid var(--border-light);
+            z-index: 1003;
+            padding: 0 6px;
+            align-items: center;
+            justify-content: space-around;
+            box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            padding: 6px 4px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            min-width: 52px;
+            flex: 1;
+            max-width: 72px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .bottom-nav-item i {
+            font-size: 20px;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+
+        .bottom-nav-item.active {
+            color: var(--oraimo-green);
+        }
+
+        .bottom-nav-item.active i {
+            transform: scale(1.1);
+        }
+
+        .bottom-nav-item:active {
+            transform: scale(0.92);
+        }
+
+        .bottom-nav-item span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            text-align: center;
+        }
+
+        /* Center item (Score Capture) gets special treatment */
+        .bottom-nav-item.nav-capture {
+            position: relative;
+        }
+
+        .bottom-nav-item.nav-capture .nav-capture-ring {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--oraimo-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -20px;
+            box-shadow: 0 4px 14px rgba(164, 230, 29, 0.4);
+            transition: all 0.2s;
+        }
+
+        .bottom-nav-item.nav-capture .nav-capture-ring i {
+            font-size: 22px;
+            color: var(--text-dark);
+        }
+
+        .bottom-nav-item.nav-capture:active .nav-capture-ring {
+            transform: scale(0.9);
+        }
+
+        .bottom-nav-item.nav-capture.active .nav-capture-ring {
+            background: var(--dark-green);
+        }
+
+        .bottom-nav-item.nav-capture.active .nav-capture-ring i {
+            color: var(--oraimo-green);
         }
 
         /* ===== SMALL PHONE TIER (very narrow screens) ===== */
@@ -1391,6 +1494,68 @@
         {% block content %}
         {% endblock %}
     </div>
+
+    <!-- BOTTOM NAV BAR (Mobile) -->
+    <nav class="bottom-nav" id="bottomNav">
+        {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'school_admin_dashboard' %}active{% endif %}" href="{% url 'school_admin_dashboard' %}">
+                <i class="bi bi-grid-1x2-fill"></i>
+                <span>Home</span>
+            </a>
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'class_lists' %}active{% endif %}" href="{% url 'admin_add_student' %}">
+                <i class="bi bi-people-fill"></i>
+                <span>Students</span>
+            </a>
+            <a class="bottom-nav-item nav-capture {% if request.resolver_match.url_name == 'manage_exams' %}active{% endif %}" href="{% url 'manage_exams' %}">
+                <div class="nav-capture-ring">
+                    <i class="bi bi-journal-check"></i>
+                </div>
+                <span>Exams</span>
+            </a>
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'report_card_select' %}active{% endif %}" href="{% url 'results_list' %}">
+                <i class="bi bi-graph-up-arrow"></i>
+                <span>Results</span>
+            </a>
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active{% endif %}" href="{% url 'manage_faculty_matrix' %}">
+                <i class="bi bi-diagram-3-fill"></i>
+                <span>Faculty</span>
+            </a>
+        {% else %}
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard_alt' %}">
+                <i class="bi bi-grid-1x2-fill"></i>
+                <span>Home</span>
+            </a>
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home_alt' %}">
+                <i class="bi bi-person-badge"></i>
+                <span>Profile</span>
+            </a>
+            {% with ws=request.session.workspace_section sec=request.session.school_section %}
+            {% if ws == 'PRIMARY' or sec == 'PRIMARY' %}
+                <a class="bottom-nav-item nav-capture {% if request.resolver_match.url_name == 'select_exam_primary' %}active{% endif %}" href="{% url 'select_exam_primary' %}">
+                    <div class="nav-capture-ring">
+                        <i class="bi bi-input-cursor-text"></i>
+                    </div>
+                    <span>Capture</span>
+                </a>
+            {% else %}
+                <a class="bottom-nav-item nav-capture {% if request.resolver_match.url_name == 'select_exam' %}active{% endif %}" href="{% url 'select_exam' %}">
+                    <div class="nav-capture-ring">
+                        <i class="bi bi-input-cursor-text"></i>
+                    </div>
+                    <span>Capture</span>
+                </a>
+            {% endif %}
+            {% endwith %}
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'results_list' %}active{% endif %}" href="{% url 'results_list' %}">
+                <i class="bi bi-graph-up-arrow"></i>
+                <span>Results</span>
+            </a>
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'class_lists' %}active{% endif %}" href="{% url 'class_lists' %}">
+                <i class="bi bi-people"></i>
+                <span>Lists</span>
+            </a>
+        {% endif %}
+    </nav>
 
     <script>
         // ── Mobile Menu Toggle ────────────────────────────────────────

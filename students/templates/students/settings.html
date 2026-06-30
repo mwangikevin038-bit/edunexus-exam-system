@@ -1,0 +1,100 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-content">
+    <div class="page-container" style="max-width:600px;margin:0 auto;">
+        <!-- Header -->
+        <div class="mb-6">
+            <h1 class="font-extrabold text-2xl text-ink">Settings</h1>
+        </div>
+
+        <!-- Profile Card -->
+        <div class="card mb-5 text-center">
+            <div class="card-body">
+                <div class="avatar avatar-xl mx-auto mb-3">
+                    {{ request.user.first_name|first|default:"U" }}
+                </div>
+                <div class="font-extrabold text-lg text-ink">{{ request.user.get_full_name|default:request.user.username }}</div>
+                <div class="text-sm text-ink-5 font-semibold mt-1">
+                    {% if request.user.is_staff or request.user.is_superuser or request.user.school_admin_profile %}
+                        School Administrator
+                    {% elif request.user.teacher_profile %}
+                        {{ request.user.teacher_profile.assigned_task|default:"Teacher" }}
+                    {% else %}
+                        Staff
+                    {% endif %}
+                </div>
+                {% if request.school %}
+                <div class="text-xs text-ink-5 font-medium mt-2">{{ request.school.name }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Account Section -->
+        <div class="mb-4">
+            <div class="section-label">
+                <span class="section-label-text">Account</span>
+            </div>
+            <div class="card overflow-hidden">
+                <a href="{% url 'home_alt' %}" class="flex items-center gap-3 px-4 py-3 border-b cursor-pointer" style="text-decoration:none;color:var(--ink);transition:background 0.12s;">
+                    <i data-lucide="user" style="font-size:18px;color:var(--ink-5);width:20px;text-align:center;flex-shrink:0;"></i>
+                    <div class="flex-1">
+                        <div class="font-semibold text-md text-ink">My Profile</div>
+                        <div class="text-xs text-ink-5 font-medium">View and edit your profile</div>
+                    </div>
+                    <i data-lucide="chevron-right" style="font-size:14px;color:var(--ink-5);"></i>
+                </a>
+                <a href="{% url 'password_change' %}" class="flex items-center gap-3 px-4 py-3 cursor-pointer" style="text-decoration:none;color:var(--ink);transition:background 0.12s;">
+                    <i data-lucide="lock" style="font-size:18px;color:var(--ink-5);width:20px;text-align:center;flex-shrink:0;"></i>
+                    <div class="flex-1">
+                        <div class="font-semibold text-md text-ink">Change Password</div>
+                        <div class="text-xs text-ink-5 font-medium">Update your account password</div>
+                    </div>
+                    <i data-lucide="chevron-right" style="font-size:14px;color:var(--ink-5);"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Support Section -->
+        <div class="mb-4">
+            <div class="section-label">
+                <span class="section-label-text">Support</span>
+            </div>
+            <div class="card overflow-hidden">
+                <a href="#" class="flex items-center gap-3 px-4 py-3 cursor-pointer" onclick="openSupportModal();return false;" style="text-decoration:none;color:var(--ink);transition:background 0.12s;">
+                    <i data-lucide="help-circle" style="font-size:18px;color:var(--ink-5);width:20px;text-align:center;flex-shrink:0;"></i>
+                    <div class="flex-1">
+                        <div class="font-semibold text-md text-ink">Help & Support</div>
+                        <div class="text-xs text-ink-5 font-medium">Contact us via email, phone, or WhatsApp</div>
+                    </div>
+                    <i data-lucide="chevron-right" style="font-size:14px;color:var(--ink-5);"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Session Section -->
+        <div class="mb-4">
+            <div class="section-label">
+                <span class="section-label-text">Session</span>
+            </div>
+            <div class="card overflow-hidden">
+                <a href="{% url 'logout' %}" class="flex items-center gap-3 px-4 py-3 cursor-pointer" style="text-decoration:none;color:var(--rose);transition:background 0.12s;">
+                    <i data-lucide="log-out" style="font-size:18px;color:var(--rose);width:20px;text-align:center;flex-shrink:0;"></i>
+                    <div class="flex-1">
+                        <div class="font-semibold text-md" style="color:var(--rose);">Sign Out</div>
+                        <div class="text-xs font-medium" style="color:var(--rose);opacity:0.7;">Log out of your account</div>
+                    </div>
+                    <i data-lucide="chevron-right" style="font-size:14px;color:var(--rose);"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    lucide.createIcons();
+});
+</script>
+{% endblock %}

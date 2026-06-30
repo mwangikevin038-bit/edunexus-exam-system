@@ -1,0 +1,24 @@
+{
+    "name": "EduNexus Exam System",
+    "short_name": "EduNexus",
+    "description": "School exam management system for Primary and JSS sections",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0f172a",
+    "theme_color": "#0f172a",
+    "icons": [
+        {
+            "src": "/static/images/edunexus_logo_192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/images/edunexus_logo_512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

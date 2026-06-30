@@ -1,0 +1,148 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-content">
+    <div class="page-container" style="max-width:800px;margin:0 auto;">
+        <!-- Title -->
+        <h1 class="font-extrabold text-2xl text-ink mb-4">Work</h1>
+
+        <!-- Smart Overview Banner -->
+        <div class="card mb-4">
+            <div class="card-body flex items-center gap-3">
+                <div class="flex items-center gap-2 font-bold text-sm text-ink">
+                    <span class="badge badge-amber badge-dot">Pending</span>
+                    <span>{{ active_exam_count }}</span>
+                </div>
+                <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+                <div class="flex items-center gap-2 font-bold text-sm text-ink">
+                    <span class="badge badge-green badge-dot">Completed</span>
+                    <span>{{ submitted_count }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segmented Toggle -->
+        <div class="flex mb-5 rounded-lg overflow-hidden" style="background:var(--surface);border:1px solid var(--border);padding:4px;">
+            <button class="work-toggle-btn flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold text-sm border-none cursor-pointer transition-all active" onclick="showWorkTab('todo', this)" style="border-radius:var(--radius-sm);background:var(--white);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+                <i data-lucide="clock"></i> To Do
+                <span class="text-xs font-extrabold px-2 py-0.5 rounded-full" style="background:var(--green-pale);color:var(--green-dark);">{{ active_exam_count }}</span>
+            </button>
+            <button class="work-toggle-btn flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold text-sm border-none cursor-pointer transition-all" onclick="showWorkTab('done', this)" style="border-radius:var(--radius-sm);background:transparent;color:var(--ink-4);">
+                <i data-lucide="check-circle"></i> Done
+                <span class="text-xs font-extrabold px-2 py-0.5 rounded-full" style="background:var(--surface-2);color:var(--ink-5);">{{ published_count|add:submitted_count }}</span>
+            </button>
+        </div>
+
+        <!-- ═══════ TO DO PANEL ═══════ -->
+        <div class="work-panel active" id="panel-todo">
+            {% if active_exams %}
+            {% for exam in active_exams %}
+            {% with exam_submitted=0 exam_total=0 %}
+                {% for item in assignments %}
+                    {% if forloop.counter <= forloop.parentloop.parentloop.counter %}
+                        {% if item.status == 'submitted' or item.status == 'approved' or item.status == 'published' %}
+                            {% widthratio 1 1 1 as dummy %}
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+
+                <a class="card card-hover mb-3 flex items-center gap-4 p-4" href="{% with ws=request.session.workspace_section sec=request.session.school_section %}{% if ws == 'PRIMARY' or sec == 'PRIMARY' %}{% url 'select_exam_primary' %}{% else %}{% url 'select_exam' %}{% endif %}{% endwith %}" style="text-decoration:none;color:inherit;">
+                    <!-- Progress Ring -->
+                    <div class="flex-shrink-0" style="width:48px;height:48px;position:relative;">
+                        <svg style="transform:rotate(-90deg);width:48px;height:48px;" viewBox="0 0 48 48">
+                            <circle cx="24" cy="24" r="20" fill="none" stroke="var(--surface-2)" stroke-width="4"/>
+                            <circle cx="24" cy="24" r="20" fill="none" stroke="var(--green)" stroke-width="4" stroke-linecap="round"
+                                stroke-dasharray="125.66"
+                                stroke-dashoffset="{% widthratio submitted_count 1 126 %}"/>
+                        </svg>
+                        <span class="absolute inset-0 flex items-center justify-center text-xs font-extrabold text-ink">{{ submitted_count }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-extrabold text-md text-ink truncate">{{ exam.name }}</div>
+                        <div class="text-sm text-ink-5 font-medium mt-0.5 flex items-center gap-2">
+                            {{ exam.term }} &middot; {{ exam.year }}
+                            <span class="font-bold text-green-dark">{{ submitted_count }}/{{ assignment_count }}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center" style="width:32px;height:32px;border-radius:var(--radius-sm);background:var(--surface);color:var(--ink-4);flex-shrink:0;">
+                        <i data-lucide="chevron-right" style="font-size:14px;"></i>
+                    </div>
+                </a>
+            {% endwith %}
+            {% endfor %}
+
+            <div class="mt-2 mb-5">
+                {% with ws=request.session.workspace_section sec=request.session.school_section %}
+                {% if ws == 'PRIMARY' or sec == 'PRIMARY' %}
+                <a class="btn btn-primary btn-block btn-lg" href="{% url 'select_exam_primary' %}">
+                    <i data-lucide="pen-line"></i> Enter Marks
+                </a>
+                {% else %}
+                <a class="btn btn-primary btn-block btn-lg" href="{% url 'select_exam' %}">
+                    <i data-lucide="pen-line"></i> Enter Marks
+                </a>
+                {% endif %}
+                {% endwith %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i data-lucide="check-circle"></i>
+                </div>
+                <div class="empty-state-title">All Caught Up</div>
+                <div class="empty-state-text">No pending exams to enter marks for. Great work!</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ═══════ DONE PANEL ═══════ -->
+        <div class="work-panel" id="panel-done">
+            {% if published_contexts %}
+            {% for ctx in published_contexts %}
+            <a class="card card-hover mb-3 flex items-center gap-4 p-4" href="{% url 'results_list' %}?context={{ ctx.context_key|urlencode }}" style="text-decoration:none;color:inherit;">
+                <div class="flex items-center justify-center flex-shrink-0" style="width:40px;height:40px;border-radius:var(--radius-sm);background:var(--green-pale);color:var(--green-dark);">
+                    <i data-lucide="check-circle"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-extrabold text-md text-ink truncate">{{ ctx.exam_name }}</div>
+                    <div class="text-sm text-ink-5 font-medium mt-0.5">{{ ctx.class_name }} {{ ctx.stream }} &middot; {{ ctx.term }} {{ ctx.year }}</div>
+                </div>
+                <div class="flex items-center justify-center" style="width:32px;height:32px;border-radius:var(--radius-sm);background:var(--surface);color:var(--ink-4);flex-shrink:0;">
+                    <i data-lucide="chevron-right" style="font-size:14px;"></i>
+                </div>
+            </a>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i data-lucide="folder-open"></i>
+                </div>
+                <div class="empty-state-title">No Completed Work</div>
+                <div class="empty-state-text">Published results and submitted exams will appear here.</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function showWorkTab(tab, btn) {
+    document.querySelectorAll('.work-toggle-btn').forEach(function(t) {
+        t.classList.remove('active');
+        t.style.background = 'transparent';
+        t.style.color = 'var(--ink-4)';
+    });
+    btn.classList.add('active');
+    btn.style.background = 'var(--white)';
+    btn.style.color = 'var(--ink)';
+    btn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)';
+    document.querySelectorAll('.work-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('panel-' + tab).classList.add('active');
+    lucide.createIcons();
+}
+document.addEventListener('DOMContentLoaded', function() {
+    lucide.createIcons();
+});
+</script>
+{% endblock %}

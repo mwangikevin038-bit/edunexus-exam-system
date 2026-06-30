@@ -1,0 +1,476 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+    .hub-body { padding: 16px; max-width: 1400px; margin: 0 auto; }
+
+    .hub-header { margin-bottom: 16px; }
+    .hub-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ink-5); text-decoration: none; margin-bottom: 8px; }
+    .hub-back:active { color: var(--ink); }
+    .hub-title { font-family: 'Inter', sans-serif; font-size: 20px; font-weight: 800; color: var(--ink); }
+    .hub-subtitle { font-size: 12px; color: var(--ink-5); font-weight: 500; margin-top: 2px; }
+
+    .hub-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .hub-stat {
+        background: var(--white); border: 1px solid rgba(0,0,0,0.04);
+        border-radius: 14px; padding: 14px; text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+    }
+    .hub-stat-value { font-size: 24px; font-weight: 800; color: var(--ink); }
+    .hub-stat-label { font-size: 11px; font-weight: 600; color: var(--ink-5); margin-top: 2px; }
+
+    .hub-tabs { display: flex; gap: 4px; margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+    .hub-tabs::-webkit-scrollbar { display: none; }
+    .hub-tab {
+        display: flex; align-items: center; gap: 6px;
+        padding: 8px 14px; border-radius: 20px;
+        background: var(--white); border: 1px solid var(--border);
+        font-size: 12px; font-weight: 600; color: var(--ink-4);
+        cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    }
+    .hub-tab:active { transform: scale(0.96); }
+    .hub-tab.active { background: var(--ink); color: var(--white); border-color: var(--ink); }
+    .hub-tab i { font-size: 14px; }
+
+    .hub-panel { display: none; }
+    .hub-panel.active { display: block; }
+
+    .tracker-card {
+        background: var(--white); border: 1px solid rgba(0,0,0,0.04);
+        border-radius: 14px; overflow: hidden; margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+    }
+    .tracker-header {
+        padding: 12px 14px; border-bottom: 1px solid rgba(0,0,0,0.04);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .tracker-header h3 { font-size: 13px; font-weight: 800; color: var(--ink); }
+
+    .tracker-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 14px; border-bottom: 1px solid rgba(0,0,0,0.03); gap: 10px;
+    }
+    .tracker-row:last-child { border-bottom: none; }
+    .tracker-subject { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .tracker-teacher { font-size: 11px; color: var(--ink-5); font-weight: 500; margin-top: 1px; }
+    .tracker-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .tracker-avg { font-size: 12px; font-weight: 800; }
+    .tracker-actions { display: flex; gap: 4px; }
+    .tracker-btn {
+        width: 32px; height: 32px; border-radius: 8px;
+        border: none; display: flex; align-items: center; justify-content: center;
+        font-size: 14px; cursor: pointer; transition: transform 0.15s;
+        text-decoration: none;
+    }
+    .tracker-btn:active { transform: scale(0.9); }
+    .tracker-btn.call { background: var(--green-pale); color: var(--green-dark); }
+    .tracker-btn.sms { background: var(--blue-pale); color: var(--blue); }
+
+    /* ── Chart Panels (Gradient Accent) ── */
+    .hub-chart-panel {
+        background: var(--white); border: 1px solid rgba(0,0,0,0.04);
+        border-radius: 14px; padding: 16px; margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+        position: relative; overflow: hidden;
+        opacity: 0; transform: translateY(12px);
+        animation: hubChartFadeIn 0.5s ease forwards;
+    }
+    .hub-chart-panel:nth-child(2) { animation-delay: 0.1s; }
+    @keyframes hubChartFadeIn { to { opacity: 1; transform: translateY(0); } }
+    .hub-chart-panel::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6);
+        border-radius: 14px 14px 0 0;
+    }
+    .hub-chart-panel h3 {
+        font-size: 13px; font-weight: 800; color: var(--ink);
+        display: flex; align-items: center; gap: 6px;
+    }
+    .hub-chart-panel h3 .chart-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: linear-gradient(135deg, #10b981, #3b82f6);
+        display: inline-block; flex-shrink: 0;
+    }
+    .hub-chart-panel p { font-size: 11px; color: var(--ink-5); font-weight: 500; margin-top: 2px; }
+    .hub-chart-wrap { position: relative; height: 220px; margin-top: 12px; }
+    .hub-doughnut-wrap { height: 180px; display: flex; align-items: center; justify-content: center; margin-top: 12px; }
+    .hub-doughnut-legend { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+    .hub-doughnut-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--ink-4); }
+    .hub-doughnut-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .status-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 10px; border-radius: 20px;
+        font-size: 10px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.3px; white-space: nowrap;
+    }
+    .status-published { background: #dcfce7; color: #166534; }
+    .status-submitted { background: #dbeafe; color: #1e40af; }
+    .status-returned { background: #fef2f2; color: #991b1b; }
+    .status-progress { background: #fef9c3; color: #854d0e; }
+    .status-notstarted { background: #f1f5f9; color: #64748b; }
+
+    .student-card {
+        background: var(--white); border: 1px solid rgba(0,0,0,0.04);
+        border-radius: 14px; padding: 12px 14px;
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+    }
+    .student-info { flex: 1; min-width: 0; }
+    .student-name { font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .student-meta { font-size: 11px; color: var(--ink-5); font-weight: 500; }
+    .student-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+    .empty-hub { text-align: center; padding: 40px 16px; }
+    .empty-hub-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+    .empty-hub-icon i { font-size: 28px; color: var(--ink-5); }
+    .empty-hub h4 { font-size: 14px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+    .empty-hub p { font-size: 12px; color: var(--ink-5); }
+
+    @media (min-width: 769px) {
+        .hub-body { padding: 24px 32px 48px; }
+        .hub-title { font-size: 24px; }
+        .hub-stats { grid-template-columns: repeat(4, 1fr); }
+        .hub-stat-value { font-size: 28px; }
+        .hub-chart-panel { padding: 18px 20px; border-radius: 16px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hub-body">
+    <div class="hub-header">
+        <a href="{% url 'dashboard_alt' %}" class="hub-back"><i data-lucide="arrow-left"></i> Back to Dashboard</a>
+        <h1 class="hub-title">Class Teacher Hub</h1>
+        <p class="hub-subtitle">{{ class_name }} {{ stream }} &bull; {% if active_exam %}{{ active_exam.name }} &mdash; {{ active_exam.term }} {{ active_exam.year }}{% else %}No active exam{% endif %}</p>
+    </div>
+
+    <div class="hub-stats">
+        <div class="hub-stat">
+            <div class="hub-stat-value">{{ student_count }}</div>
+            <div class="hub-stat-label">Students</div>
+        </div>
+        <div class="hub-stat">
+            <div class="hub-stat-value">{{ class_avg }}%</div>
+            <div class="hub-stat-label">Class Average</div>
+        </div>
+        <div class="hub-stat">
+            <div class="hub-stat-value">{{ submission_tracker|length }}</div>
+            <div class="hub-stat-label">Subjects</div>
+        </div>
+        <div class="hub-stat">
+            <div class="hub-stat-value">{% if active_exam %}{{ active_exam.name }}{% else %}--{% endif %}</div>
+            <div class="hub-stat-label">Current Exam</div>
+        </div>
+    </div>
+
+    <div class="hub-tabs" role="tablist">
+        <button class="hub-tab active" onclick="showHubTab('tracker', this)" role="tab"><i data-lucide="clipboard-check"></i> Exam Tracker</button>
+        <button class="hub-tab" onclick="showHubTab('performance', this)" role="tab"><i data-lucide="bar-chart"></i> Performance</button>
+        <button class="hub-tab" onclick="showHubTab('students', this)" role="tab"><i data-lucide="users"></i> Students</button>
+        <button class="hub-tab" onclick="showHubTab('contacts', this)" role="tab"><i data-lucide="phone"></i> Parent Contacts</button>
+    </div>
+
+    <!-- EXAM TRACKER PANEL -->
+    <div class="hub-panel active" id="panel-tracker">
+        {% if submission_tracker %}
+        <div class="tracker-card">
+            <div class="tracker-header">
+                <h3>Marks Submission Status</h3>
+                <span style="font-size:11px;font-weight:700;color:var(--ink-5);">{{ submission_tracker|length }} subjects</span>
+            </div>
+            {% for item in submission_tracker %}
+            <div class="tracker-row">
+                <div>
+                    <div class="tracker-subject">{{ item.subject.name }}</div>
+                    <div class="tracker-teacher">{{ item.teacher.get_full_title|default:"Unassigned" }}</div>
+                </div>
+                <div class="tracker-right">
+                    <span class="status-badge badge-fade
+                        {% if item.status == 'published' %}status-published
+                        {% elif item.status == 'submitted' or item.status == 'approved' %}status-submitted
+                        {% elif item.status == 'returned' %}status-returned
+                        {% elif item.status == 'in_progress' %}status-progress
+                        {% else %}status-notstarted{% endif %}">
+                        {% if item.status == 'published' %}Published
+                        {% elif item.status == 'submitted' or item.status == 'approved' %}Submitted
+                        {% elif item.status == 'returned' %}Returned
+                        {% elif item.status == 'in_progress' %}In Progress
+                        {% else %}Not Started{% endif %}
+                    </span>
+                    {% if item.avg_score is not None %}
+                    <span class="tracker-avg" style="{% if item.avg_score >= 60 %}color:var(--green-dark){% elif item.avg_score >= 40 %}color:var(--amber){% else %}color:var(--rose){% endif %}">{{ item.avg_score }}%</span>
+                    {% endif %}
+                    <div class="tracker-actions">
+                        {% if item.phone %}
+                        <a href="tel:{{ item.phone }}" class="tracker-btn call btn-press" title="Call teacher"><i data-lucide="phone"></i></a>
+                        <a href="sms:{{ item.phone }}" class="tracker-btn sms btn-press" title="SMS teacher"><i data-lucide="message-square"></i></a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-hub">
+            <div class="empty-hub-icon"><i data-lucide="clipboard-list"></i></div>
+            <h4>No Subjects Found</h4>
+            <p>Subject assignments for this class will appear here.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- PERFORMANCE PANEL -->
+    <div class="hub-panel" id="panel-performance">
+        {% if subject_performance %}
+        <div class="hub-chart-panel">
+            <h3><span class="chart-dot"></span> Subject Performance</h3>
+            <p>Average score per subject for {{ class_name }} {{ stream }}</p>
+            <div class="hub-chart-wrap"><canvas id="chartHubSubject"></canvas></div>
+        </div>
+        <div class="hub-chart-panel">
+            <h3><span class="chart-dot"></span> Submission Overview</h3>
+            <p>Marks submission status across all subjects</p>
+            <div class="hub-doughnut-wrap"><canvas id="chartHubStatus"></canvas></div>
+            <div class="hub-doughnut-legend" id="hubDoughnutLegend"></div>
+        </div>
+        {% else %}
+        <div class="empty-hub">
+            <div class="empty-hub-icon"><i data-lucide="bar-chart"></i></div>
+            <h4>No Performance Data</h4>
+            <p>Subject averages will appear once marks are published.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- STUDENTS PANEL -->
+    <div class="hub-panel" id="panel-students">
+        {% if students %}
+        {% for student in students %}
+        <div class="student-card">
+            <div class="student-info">
+                <div class="student-name">{{ student.name }}</div>
+                <div class="student-meta">{{ student.admission_no }} &bull; {{ student.gender|default:"--" }}</div>
+            </div>
+            <div class="student-actions">
+                {% if student.guardian %}
+                <a href="tel:{{ student.guardian.phone }}" class="tracker-btn call btn-press" title="Call parent"><i data-lucide="phone"></i></a>
+                <a href="sms:{{ student.guardian.phone }}" class="tracker-btn sms btn-press" title="SMS parent"><i data-lucide="message-square"></i></a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-hub">
+            <div class="empty-hub-icon"><i data-lucide="users"></i></div>
+            <h4>No Students</h4>
+            <p>Student list will appear once enrolled.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- PARENT CONTACTS PANEL -->
+    <div class="hub-panel" id="panel-contacts">
+        {% if students %}
+        <div class="tracker-card">
+            <div class="tracker-header">
+                <h3>Parent Directory</h3>
+                <span style="font-size:11px;font-weight:700;color:var(--ink-5);">{{ students|length }} parents</span>
+            </div>
+            {% for student in students %}
+            {% if student.guardian %}
+            <div class="tracker-row">
+                <div>
+                    <div class="tracker-subject">{{ student.guardian.name }}</div>
+                    <div class="tracker-teacher">{{ student.name }} ({{ student.admission_no }})</div>
+                </div>
+                <div class="tracker-actions">
+                    <a href="tel:{{ student.guardian.phone }}" class="tracker-btn call btn-press" title="Call"><i data-lucide="phone"></i></a>
+                    <a href="sms:{{ student.guardian.phone }}" class="tracker-btn sms btn-press" title="SMS"><i data-lucide="message-square"></i></a>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-hub">
+            <div class="empty-hub-icon"><i data-lucide="users"></i></div>
+            <h4>No Contacts</h4>
+            <p>Parent contact information will appear here.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{{ subject_performance|json_script:"hub-subj-data" }}
+{{ tracker_json|json_script:"hub-tracker-data" }}
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+lucide.createIcons();
+function showHubTab(tab, btn) {
+    document.querySelectorAll('.hub-tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.hub-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('panel-' + tab).classList.add('active');
+
+    if (tab === 'performance') { initHubCharts(); }
+}
+
+var hubChartsInitialized = false;
+function initHubCharts() {
+    if (hubChartsInitialized) return;
+    hubChartsInitialized = true;
+
+    Chart.defaults.font.family = 'Inter';
+    var isMobile = window.innerWidth < 769;
+    var C = { muted:'#94a3b8', line:'rgba(0,0,0,0.04)' };
+    var tt = {
+        backgroundColor:'rgba(15,23,42,0.92)', titleColor:'#f8fafc', bodyColor:'#94a3b8',
+        padding:12, cornerRadius:10, titleFont:{size:11,weight:'700'}, bodyFont:{size:11},
+        displayColors:true, boxPadding:4
+    };
+
+    /* ── Horizontal Bar: Subject Performance ── */
+    var subjData = JSON.parse(document.getElementById('hub-subj-data').textContent);
+    var ctxS = document.getElementById('chartHubSubject');
+    if (ctxS && subjData.length) {
+        var contextS = ctxS.getContext('2d');
+        var barColors = subjData.map(function(d) {
+            if (d.avg >= 60) return 'rgba(16,185,129,0.85)';
+            if (d.avg >= 40) return 'rgba(245,158,11,0.85)';
+            return 'rgba(239,68,68,0.85)';
+        });
+        var barBorders = subjData.map(function(d) {
+            if (d.avg >= 60) return '#10b981';
+            if (d.avg >= 40) return '#f59e0b';
+            return '#ef4444';
+        });
+
+        new Chart(ctxS, {
+            type: 'bar',
+            data: {
+                labels: subjData.map(function(d){ return d.code; }),
+                datasets: [{
+                    data: subjData.map(function(d){ return d.avg; }),
+                    backgroundColor: barColors,
+                    borderColor: barBorders,
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    barThickness: isMobile ? 18 : 24,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true, maintainAspectRatio: false,
+                animation: { duration: 800, easing: 'easeOutQuart' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: Object.assign({}, tt, {
+                        callbacks: {
+                            title: function(items) {
+                                var idx = items[0].dataIndex;
+                                return subjData[idx].subject;
+                            },
+                            label: function(c) { return ' Average: ' + c.parsed.x + '%'; }
+                        }
+                    })
+                },
+                scales: {
+                    x: {
+                        grid:{color:'rgba(0,0,0,0.04)',lineWidth:1}, border:{display:false},
+                        ticks:{color:C.muted,font:{size:isMobile?9:11,weight:'600'}}, min:0, max:100
+                    },
+                    y: {
+                        grid:{display:false}, border:{display:false},
+                        ticks:{color:'#0f172a',font:{size:isMobile?11:12,weight:'700'}}
+                    }
+                }
+            }
+        });
+    } else if (ctxS) {
+        ctxS.parentElement.innerHTML = '<div class="empty-hub" style="padding:20px;"><div class="empty-hub-icon"><i data-lucide="bar-chart"></i></div><h4>No Data Yet</h4></div>';
+    }
+
+    /* ── Doughnut: Submission Status ── */
+    var trackerData = JSON.parse(document.getElementById('hub-tracker-data').textContent);
+    var statusCounts = { published: 0, submitted: 0, returned: 0, in_progress: 0, not_started: 0 };
+    trackerData.forEach(function(item) {
+        if (statusCounts.hasOwnProperty(item.status)) { statusCounts[item.status]++; }
+    });
+
+    var dLabels = ['Published', 'Submitted', 'Returned', 'In Progress', 'Not Started'];
+    var dKeys = ['published', 'submitted', 'returned', 'in_progress', 'not_started'];
+    var dColors = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b', '#94a3b8'];
+    var dValues = dKeys.map(function(k){ return statusCounts[k]; });
+    var dTotal = dValues.reduce(function(a,b){ return a+b; }, 0);
+
+    var ctxD = document.getElementById('chartHubStatus');
+    if (ctxD && dTotal > 0) {
+        new Chart(ctxD, {
+            type: 'doughnut',
+            data: {
+                labels: dLabels,
+                datasets: [{
+                    data: dValues,
+                    backgroundColor: dColors,
+                    borderColor: '#ffffff',
+                    borderWidth: 3,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                cutout: '68%',
+                animation: { animateRotate: true, duration: 900, easing: 'easeOutQuart' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: Object.assign({}, tt, {
+                        callbacks: {
+                            label: function(c) {
+                                var pct = dTotal > 0 ? Math.round((c.parsed / dTotal) * 100) : 0;
+                                return ' ' + c.label + ': ' + c.parsed + ' (' + pct + '%)';
+                            }
+                        }
+                    })
+                }
+            },
+            plugins: [{
+                id: 'hubDoughnutCenter',
+                afterDraw: function(chart) {
+                    var ctx = chart.ctx;
+                    var centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
+                    var centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = '800 ' + (isMobile ? 20 : 24) + 'px Inter';
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillText(dTotal, centerX, centerY - 8);
+                    ctx.font = '600 ' + (isMobile ? 10 : 11) + 'px Inter';
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillText('Subjects', centerX, centerY + 12);
+                    ctx.restore();
+                }
+            }]
+        });
+
+        var legendEl = document.getElementById('hubDoughnutLegend');
+        if (legendEl) {
+            var html = '';
+            dLabels.forEach(function(label, i) {
+                if (dValues[i] > 0) {
+                    html += '<div class="hub-doughnut-legend-item"><span class="hub-doughnut-legend-dot" style="background:' + dColors[i] + '"></span>' + label + ' (' + dValues[i] + ')</div>';
+                }
+            });
+            legendEl.innerHTML = html;
+        }
+    } else if (ctxD) {
+        ctxD.parentElement.innerHTML = '<div class="empty-hub" style="padding:20px;"><div class="empty-hub-icon"><i data-lucide="pie-chart"></i></div><h4>No Submissions Yet</h4></div>';
+    }
+}
+</script>
+{% endblock %}
