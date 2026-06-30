@@ -44,6 +44,27 @@ PRIMARY_SUBJECT_NAMES = {
 
 PRIMARY_PERF_LEVELS = ['EE', 'ME', 'AE', 'BE']
 
+LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
+
+LOWER_PRIMARY_SUBJECT_SHORT_MAP = {
+    'ELA': 'ELA', 'LIT': 'LIT', 'ENV': 'ENV', 'HYG': 'HYG',
+    'CRE': 'CRE', 'IRE': 'IRE', 'HRE': 'HRE', 'MA': 'MA',
+    'KLA': 'KLA', 'CRA': 'CRA',
+}
+
+LOWER_PRIMARY_SUBJECT_NAMES = {
+    'ELA': 'English Language Activities',
+    'LIT': 'Literacy Activities',
+    'ENV': 'Environmental Activities',
+    'HYG': 'Hygiene and Nutrition Activities',
+    'CRE': 'Christian Religious Education Activities',
+    'IRE': 'Islamic Religious Education Activities',
+    'HRE': 'Hindu Religious Education Activities',
+    'MA': 'Mathematical Activities',
+    'KLA': 'Kiswahili Language Activities',
+    'CRA': 'Creative Activities',
+}
+
 # ── Grade/Stream/Term ────────────────────────────────────────────────────────
 # GRADE_CHOICES and TERM_CHOICES are system-wide (same for all tenants).
 # STREAM_CHOICES is no longer hardcoded — use get_streams_for_school() instead.
@@ -55,7 +76,7 @@ def get_streams_for_school(school, section=None):
     """Return dynamic stream names from the Grade/Stream models for a school."""
     from students.models import Stream
     qs = Stream.all_objects.filter(school=school)
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         qs = qs.filter(school_section=section)
     return list(qs.values_list("name", flat=True).distinct().order_by("name"))
 
@@ -64,7 +85,7 @@ def get_grades_for_school(school, section=None):
     """Return dynamic grade names from the Grade model for a school."""
     from students.models import Grade
     qs = Grade.all_objects.filter(school=school)
-    if section in ('PRIMARY', 'JSS'):
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         qs = qs.filter(school_section=section)
     return list(qs.values_list("name", flat=True).distinct().order_by("name"))
 

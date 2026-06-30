@@ -150,14 +150,14 @@ def switch_workspace(request):
         return redirect('school_admin_dashboard')
 
     target = request.POST.get('section', '').strip().upper()
-    if target not in ('PRIMARY', 'JSS'):
+    if target not in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         messages.error(request, "Invalid workspace section.")
         return redirect('school_admin_dashboard')
 
     request.session['workspace_section'] = target
     request.session.modified = True
 
-    label_map = {'PRIMARY': 'Upper Primary', 'JSS': 'Junior Secondary'}
+    label_map = {'LOWER_PRIMARY': 'Lower Primary', 'PRIMARY': 'Upper Primary', 'JSS': 'Junior Secondary'}
     messages.success(request, f"Switched to {label_map[target]} workspace.")
 
     return redirect('school_admin_dashboard')

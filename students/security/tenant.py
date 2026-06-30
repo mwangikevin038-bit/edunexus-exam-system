@@ -39,7 +39,7 @@ def get_request_school_section(request):
         # For BOTH users, always resolve to a specific workspace (never BOTH)
         if section == "BOTH":
             workspace = request.session.get("workspace_section")
-            if workspace in ("PRIMARY", "JSS"):
+            if workspace in ("LOWER_PRIMARY", "PRIMARY", "JSS"):
                 return workspace
             return "PRIMARY"
     if not section:

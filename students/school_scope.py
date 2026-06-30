@@ -177,7 +177,7 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
             # For BOTH users, always resolve to a specific workspace (never BOTH)
             if section == "BOTH":
                 workspace = request.session.get("workspace_section")
-                if workspace in ("PRIMARY", "JSS"):
+                if workspace in ("LOWER_PRIMARY", "PRIMARY", "JSS"):
                     section = workspace
                 else:
                     # Default to PRIMARY for old sessions without workspace_section

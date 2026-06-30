@@ -157,10 +157,11 @@ class Stream(SchoolScopedModel):
 # -------------------- Subject Model (Dictionary Table) --------------------
 class Subject(SchoolScopedModel):
     SECTION_CHOICES = [
+        ('LOWER_PRIMARY', 'Lower Primary'),
         ('PRIMARY', 'Primary'),
         ('JSS', 'Junior Secondary'),
     ]
-    GRADE_CHOICES = [(f'Grade {i}', f'Grade {i}') for i in range(4, 10)]
+    GRADE_CHOICES = [(f'Grade {i}', f'Grade {i}') for i in range(1, 10)]
 
     code = models.CharField(max_length=10, help_text="Unique subject code, e.g. ENG, MAT")
     name = models.CharField(max_length=100, help_text="Official subject / learning area name")
@@ -237,6 +238,9 @@ class Student(SchoolScopedModel):
         help_text="Optional student portal account (read-only access to own records).",
     )
     CLASS_CHOICES = [
+        ('Grade 1', 'Grade 1'),
+        ('Grade 2', 'Grade 2'),
+        ('Grade 3', 'Grade 3'),
         ('Grade 4', 'Grade 4'),
         ('Grade 5', 'Grade 5'),
         ('Grade 6', 'Grade 6'),
@@ -865,7 +869,7 @@ class AssessmentLock(SchoolScopedModel):
     year = models.IntegerField(default=2026)
     term = models.CharField(max_length=20, choices=[('Term 1', 'Term 1'), ('Term 2', 'Term 2'), ('Term 3', 'Term 3')])
     exam_type = models.CharField(max_length=50)
-    grade = models.CharField(max_length=20, choices=[('Grade 4', 'Grade 4'), ('Grade 5', 'Grade 5'), ('Grade 6', 'Grade 6'), ('Grade 7', 'Grade 7'), ('Grade 8', 'Grade 8'), ('Grade 9', 'Grade 9')])
+    grade = models.CharField(max_length=20, choices=[('Grade 1', 'Grade 1'), ('Grade 2', 'Grade 2'), ('Grade 3', 'Grade 3'), ('Grade 4', 'Grade 4'), ('Grade 5', 'Grade 5'), ('Grade 6', 'Grade 6'), ('Grade 7', 'Grade 7'), ('Grade 8', 'Grade 8'), ('Grade 9', 'Grade 9')])
     school_section = models.CharField(
         max_length=10,
         choices=SECTION_CHOICES,
