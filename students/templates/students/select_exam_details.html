@@ -239,7 +239,7 @@
 
             <div class="cap-students">
                 {% for student in students %}
-                    <div class="cap-student">
+                    <div class="cap-student" data-student-id="{{ student.id }}">
                         <div class="cap-student-left">
                             <div class="cap-student-name">{{ student.name }}</div>
                             <div class="cap-student-adm">{{ student.admission_no }}</div>
@@ -254,9 +254,11 @@
                                    oninput="calcScore(this)"
                                    onkeydown="nextOnEnter(event, this)"
                                    placeholder="—"
+                                   {% if student.current_score %}data-had-value="1"{% endif %}
                                    {% if is_locked or is_submitted %}readonly{% endif %}>
                             <button type="button" class="cap-absent"
-                                    onclick="markAB(this)" tabindex="-1">AB</button>
+                                    onclick="markAB(this)" tabindex="-1"
+                                    {% if is_locked or is_submitted %}disabled{% endif %}>AB</button>
                             <div class="cap-student-status">
                                 <span class="cap-level" data-level="{{ forloop.counter }}">Awaiting</span>
                                 <div class="cap-dash"></div>
@@ -359,6 +361,67 @@
         return { text: 'BE2', pts: 1, color: '#991b1b', bg: '#fee2e2' };
     }
 
+    function getCookie(name) {
+        var v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return v ? v.pop() : '';
+    }
+
+    var saveTimers = {};
+
+    function autoSaveMark(input) {
+        var row = input.closest('.cap-student');
+        if (!row || input.readOnly) return;
+        var studentId = row.getAttribute('data-student-id');
+        var assignmentId = document.querySelector('input[name="assignment_id"]');
+        var examId = document.querySelector('input[name="exam_id"]');
+        if (!studentId || !assignmentId || !examId) return;
+
+        if (saveTimers[studentId]) clearTimeout(saveTimers[studentId]);
+
+        saveTimers[studentId] = setTimeout(function() {
+            var fd = new FormData();
+            fd.append('student_id', studentId);
+            fd.append('assignment_id', assignmentId.value);
+            fd.append('exam_id', examId.value);
+            fd.append('score', input.value.trim());
+            fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+            fetch('{% url "save_mark" %}', {
+                method: 'POST',
+                body: fd
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (!data.ok && data.error) {
+                    console.warn('Auto-save failed:', data.error);
+                }
+            }).catch(function() {});
+        }, 600);
+    }
+
+    function autoDeleteMark(input) {
+        var row = input.closest('.cap-student');
+        if (!row || input.readOnly) return;
+        var studentId = row.getAttribute('data-student-id');
+        var assignmentId = document.querySelector('input[name="assignment_id"]');
+        var examId = document.querySelector('input[name="exam_id"]');
+        if (!studentId || !assignmentId || !examId) return;
+
+        var fd = new FormData();
+        fd.append('student_id', studentId);
+        fd.append('assignment_id', assignmentId.value);
+        fd.append('exam_id', examId.value);
+        fd.append('score', '');
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+        fetch('{% url "clear_mark" %}', {
+            method: 'POST',
+            body: fd
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (!data.ok && data.error) {
+                console.warn('Clear failed:', data.error);
+            }
+        }).catch(function() {});
+    }
+
     function updateProgress() {
         var inputs = document.querySelectorAll('.cap-score');
         var scored = 0;
@@ -384,6 +447,7 @@
             badge.style.borderRadius = '5px';
             badge.classList.add('has-score');
             updateProgress();
+            autoSaveMark(input);
             return;
         }
 
@@ -396,8 +460,14 @@
             badge.style.borderRadius = '';
             badge.classList.remove('has-score');
             updateProgress();
+            if (input.dataset.hadValue === '1') {
+                input.dataset.hadValue = '0';
+                autoDeleteMark(input);
+            }
             return;
         }
+
+        input.dataset.hadValue = '1';
 
         if (score > max) {
             badge.textContent = 'Exceeds max';
@@ -419,6 +489,7 @@
         badge.style.borderRadius = '5px';
         badge.classList.add('has-score');
         updateProgress();
+        autoSaveMark(input);
     };
 
     window.markAB = function(btn) {

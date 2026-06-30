@@ -1648,3 +1648,201 @@ def select_exam_primary(request):
         'grading_mode': 'primary',
         'back_url': 'select_exam_primary',
     })
+
+
+@login_required(login_url='login')
+@tenant_read_only_required
+def clear_mark(request):
+    """
+    AJAX endpoint to delete a single student's mark before final submission.
+    POST: student_id, assignment_id, exam_id
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    if not user_can_mutate_marks(request.user):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    try:
+        teacher = get_school_object_or_403(Teacher, request, user=request.user)
+    except (PermissionDenied, Http404):
+        return JsonResponse({'error': 'No teacher profile'}, status=403)
+
+    student_id = request.POST.get('student_id')
+    assignment_id = request.POST.get('assignment_id')
+    exam_id = request.POST.get('exam_id')
+
+    if not all([student_id, assignment_id, exam_id]):
+        return JsonResponse({'error': 'Missing parameters'}, status=400)
+
+    school = get_request_school(request)
+
+    try:
+        assignment = SubjectAssignment.objects.get(id=assignment_id, school=school, teacher_profile=teacher)
+    except SubjectAssignment.DoesNotExist:
+        return JsonResponse({'error': 'Assignment not found'}, status=404)
+
+    try:
+        exam = Exam.objects.get(id=exam_id, school=school, status='active')
+    except Exam.DoesNotExist:
+        return JsonResponse({'error': 'Exam not found'}, status=404)
+
+    try:
+        student = Student.objects.get(id=student_id, school=school)
+    except Student.DoesNotExist:
+        return JsonResponse({'error': 'Student not found'}, status=404)
+
+    submission = MarkSubmission.objects.filter(
+        school=school,
+        teacher=teacher,
+        subject=assignment.subject,
+        class_name=assignment.class_name,
+        stream=assignment.stream,
+        exam_name=exam.name,
+        term=exam.term,
+        year=exam.year,
+        school_section=assignment.school_section,
+    ).first()
+
+    if submission and submission.status in ('approved', 'published'):
+        return JsonResponse({'error': 'This sheet has been reviewed by admin and cannot be modified.'}, status=403)
+
+    deleted, _ = Mark.objects.filter(
+        school=school,
+        student=student,
+        subject=assignment.subject,
+        term=exam.term,
+        exam_type=exam.name,
+        year=exam.year,
+    ).delete()
+
+    if submission and submission.status == 'submitted' and deleted:
+        remaining = Mark.objects.filter(
+            school=school,
+            subject=assignment.subject,
+            term=exam.term,
+            exam_type=exam.name,
+            year=exam.year,
+        ).count()
+        if remaining == 0:
+            submission.delete()
+
+    return JsonResponse({'ok': True, 'deleted': deleted})
+
+
+@login_required(login_url='login')
+@tenant_read_only_required
+def save_mark(request):
+    """
+    AJAX endpoint to auto-save a single mark without submitting.
+    POST: student_id, assignment_id, exam_id, score (number, 'AB', or empty)
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    if not user_can_mutate_marks(request.user):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    try:
+        teacher = get_school_object_or_403(Teacher, request, user=request.user)
+    except (PermissionDenied, Http404):
+        return JsonResponse({'error': 'No teacher profile'}, status=403)
+
+    student_id = request.POST.get('student_id')
+    assignment_id = request.POST.get('assignment_id')
+    exam_id = request.POST.get('exam_id')
+    score_value = request.POST.get('score', '').strip()
+
+    if not all([student_id, assignment_id, exam_id]):
+        return JsonResponse({'error': 'Missing parameters'}, status=400)
+
+    school = get_request_school(request)
+
+    try:
+        assignment = SubjectAssignment.objects.get(id=assignment_id, school=school, teacher_profile=teacher)
+    except SubjectAssignment.DoesNotExist:
+        return JsonResponse({'error': 'Assignment not found'}, status=404)
+
+    try:
+        exam = Exam.objects.get(id=exam_id, school=school, status='active')
+    except Exam.DoesNotExist:
+        return JsonResponse({'error': 'Exam not found'}, status=404)
+
+    try:
+        student = Student.objects.get(id=student_id, school=school)
+    except Student.DoesNotExist:
+        return JsonResponse({'error': 'Student not found'}, status=404)
+
+    submission = MarkSubmission.objects.filter(
+        school=school, teacher=teacher, subject=assignment.subject,
+        class_name=assignment.class_name, stream=assignment.stream,
+        exam_name=exam.name, term=exam.term, year=exam.year,
+        school_section=assignment.school_section,
+    ).first()
+
+    if submission and submission.status in ('approved', 'published'):
+        return JsonResponse({'error': 'Reviewed by admin — cannot modify'}, status=403)
+
+    try:
+        maximum_marks = int(request.POST.get('maximum_marks') or 100)
+    except ValueError:
+        maximum_marks = 100
+
+    if not score_value:
+        Mark.objects.filter(
+            school=school, student=student, subject=assignment.subject,
+            term=exam.term, exam_type=exam.name, year=exam.year,
+        ).delete()
+        return JsonResponse({'ok': True, 'cleared': True})
+
+    if score_value.upper() == 'AB':
+        if assignment.subject.code in RELIGION_SUBJECTS:
+            religion_tag = RELIGION_TAG.get(assignment.subject.code, '')
+            Student.objects.filter(id=student.id).update(religion=religion_tag)
+            opposite = _resolve_opposite_religion_subject(school, assignment)
+            if opposite:
+                Mark.objects.filter(
+                    school=school, student=student, subject=opposite,
+                    term=exam.term, exam_type=exam.name, year=exam.year,
+                ).delete()
+
+        Mark.objects.update_or_create(
+            school=school, student=student, subject=assignment.subject,
+            term=exam.term, exam_type=exam.name, year=exam.year,
+            defaults={
+                'school_section': 'JSS', 'raw_score': None,
+                'maximum_marks': maximum_marks, 'score': 0, 'is_absent': True,
+            }
+        )
+        return JsonResponse({'ok': True, 'absent': True})
+
+    try:
+        raw_score = int(score_value)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid score'}, status=400)
+
+    if raw_score < 0 or raw_score > maximum_marks:
+        return JsonResponse({'error': 'Score exceeds total marks'}, status=400)
+
+    Mark.objects.update_or_create(
+        school=school, student=student, subject=assignment.subject,
+        term=exam.term, exam_type=exam.name, year=exam.year,
+        defaults={
+            'school_section': 'JSS', 'raw_score': raw_score,
+            'maximum_marks': maximum_marks,
+            'score': round((raw_score / maximum_marks) * 100),
+            'is_absent': False,
+        }
+    )
+
+    if assignment.subject.code in RELIGION_SUBJECTS:
+        religion_tag = RELIGION_TAG.get(assignment.subject.code, '')
+        Student.objects.filter(id=student.id).update(religion=religion_tag)
+        opposite = _resolve_opposite_religion_subject(school, assignment)
+        if opposite:
+            Mark.objects.filter(
+                school=school, student=student, subject=opposite,
+                term=exam.term, exam_type=exam.name, year=exam.year,
+            ).delete()
+
+    return JsonResponse({'ok': True, 'saved': True})

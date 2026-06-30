@@ -53,6 +53,8 @@ from .students_mgmt import (  # noqa: F401
 from .exams import (  # noqa: F401
     select_exam,
     select_exam_primary,
+    clear_mark,
+    save_mark,
     manage_exams,
     review_stream_submission,
     manage_assessment_locks,

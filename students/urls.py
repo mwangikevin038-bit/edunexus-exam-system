@@ -19,6 +19,8 @@ urlpatterns = [
     # ── Marks & exams ─────────────────────────────────────────────────────
     path('select-exam/', views.select_exam, name='select_exam'),
     path('select-exam-primary/', views.select_exam_primary, name='select_exam_primary'),
+    path('api/clear-mark/', views.clear_mark, name='clear_mark'),
+    path('api/save-mark/', views.save_mark, name='save_mark'),
 
     # ── Results & reports ─────────────────────────────────────────────────
     path('results/', views.results_list, name='results_list'),
