@@ -118,10 +118,23 @@ def results_list(request):
         published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type)
         published_subject_count = len(published_subject_codes)
 
-        # Get Subject objects for published subjects
+        # Get Subject objects for published subjects and keep stable display labels.
         from ..models import Subject
         published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
-        published_subjects = [(s.code, s.code) for s in published_subjects_qs]  # (code, short)
+        subject_label_map = {
+            s.code: (subject_map.get(s.code) or s.name or s.code)
+            for s in published_subjects_qs
+        }
+        published_subjects = [
+            (code, subject_label_map.get(code, subject_map.get(code, code)))
+            for code in published_subject_codes
+        ]
+        for _code, short in published_subjects:
+            analysis_data.setdefault(short, {
+                'entries': 0, 'total_score': 0, 'mean_score': 0.0,
+                'distribution': {lvl: 0 for lvl in active_levels},
+                'teacher_name': '—',
+            })
 
         # Map assigned teachers for this grade/stream
         teacher_map = {}
@@ -133,9 +146,9 @@ def results_list(request):
         elif section == 'JSS':
             sa_qs = sa_qs.filter(school_section='JSS')
         for a in sa_qs:
-            short = a.subject.code if a.subject else None
-            if short:
-                teacher_map[short] = a.teacher_profile.get_full_title()
+            code = a.subject.code if a.subject else None
+            if code:
+                teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title()
         for short in analysis_data:
             analysis_data[short]['teacher_name'] = teacher_map.get(short, '—')
 
@@ -182,7 +195,8 @@ def results_list(request):
                     if not m.is_absent:
                         analysis_data[short]['entries']     += 1
                         analysis_data[short]['total_score'] += m.score
-                        analysis_data[short]['distribution'][level] += 1
+                        if level in analysis_data[short]['distribution']:
+                            analysis_data[short]['distribution'][level] += 1
                 else:
                     row_scores.append({'score': '-', 'level': '-'})
 

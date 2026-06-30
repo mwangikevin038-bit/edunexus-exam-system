@@ -144,12 +144,33 @@
     --sidebar-width:      260px;
     --sidebar-collapsed:  72px;
     --topbar-height:      60px;
-    --bottomnav-height:   64px;
+    --bottomnav-height:   72px;
     --mobile-topbar:      56px;
     --content-max:        1280px;
 
     /* ── Container Padding ────────────────────────────────────── */
     --container-padding:  var(--space-6);
+}
+
+/* ── Modern SaaS Palette (Monochrome + Green Accent) ─────── */
+:root {
+    --modern-bg:          #fafafa;
+    --modern-surface:     #ffffff;
+    --modern-border:      #e5e5e5;
+    --modern-border-subtle: #f0f0f0;
+    --modern-text:        #171717;
+    --modern-text-secondary: #525252;
+    --modern-text-muted:  #a3a3a3;
+    --modern-green:       #9be816;
+    --modern-green-hover: #8ad412;
+    --modern-green-light: rgba(155, 232, 22, 0.08);
+    --modern-green-medium: rgba(155, 232, 22, 0.15);
+    --modern-ring-track:  #f0f0f0;
+    --modern-radius:      16px;
+    --modern-radius-sm:   12px;
+    --modern-radius-xs:   8px;
+    --modern-shadow:      0 1px 2px rgba(0,0,0,0.04);
+    --modern-transition:  200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ── Dark Mode Variables (future use) ─────────────────────── */

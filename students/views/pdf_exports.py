@@ -115,17 +115,33 @@ def download_broadsheet_pdf(request):
         from ..models import Subject
         published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
 
-        # Always show ALL subjects as columns (even without marks yet)
-        published_subjects = [
-            (s.code, subject_map.get(s.code, s.code))
+        # Always show ALL subjects as columns (even without marks yet).
+        subject_label_map = {
+            s.code: (subject_map.get(s.code) or s.name or s.code)
             for s in published_subjects_qs
+        }
+        published_subjects = [
+            (code, subject_label_map.get(code, subject_map.get(code, code)))
+            for code in published_subject_codes
         ]
+        for _code, short in published_subjects:
+            analysis_data.setdefault(short, {
+                'entries': 0, 'total_score': 0, 'mean_score': 0.0,
+                'distribution': {lvl: 0 for lvl in active_levels},
+                'teacher_name': '—',
+            })
 
         for a in SubjectAssignment.objects.filter(
             school=school, class_name=grade, stream=stream
         ).select_related('teacher_profile__user', 'subject'):
-            short = a.subject.code if a.subject else None
-            if short:
+            code = a.subject.code if a.subject else None
+            if code:
+                short = subject_label_map.get(code, subject_map.get(code, code))
+                analysis_data.setdefault(short, {
+                    'entries': 0, 'total_score': 0, 'mean_score': 0.0,
+                    'distribution': {lvl: 0 for lvl in active_levels},
+                    'teacher_name': '—',
+                })
                 analysis_data[short]['teacher_name'] = a.teacher_profile.get_full_title()
 
         marks_prefetch = Prefetch(
@@ -163,7 +179,8 @@ def download_broadsheet_pdf(request):
                     if not m.is_absent:
                         analysis_data[short]['entries']     += 1
                         analysis_data[short]['total_score'] += m.score
-                        analysis_data[short]['distribution'][level] += 1
+                        if level in analysis_data[short]['distribution']:
+                            analysis_data[short]['distribution'][level] += 1
                 else:
                     row_scores.append({'score': '-', 'level': '-'})
 

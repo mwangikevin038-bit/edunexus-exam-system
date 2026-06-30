@@ -1,222 +1,316 @@
 {% extends 'students/base.html' %}
 {% block content %}
+<style>
+    .cap{max-width:520px;margin:0 auto;padding-bottom:90px;animation:capIn 350ms cubic-bezier(.16,1,.3,1) both}
+    @keyframes capIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-<div class="capture-page">
-    <div class="capture-shell">
+    .cap-back{display:inline-flex;align-items:center;gap:6px;color:#737373;text-decoration:none;font-size:.8125rem;font-weight:600;margin-bottom:16px;padding:4px 0;-webkit-tap-highlight-color:transparent}
+    .cap-back:active{color:#171717}
+    .cap-back i{font-size:14px}
 
-        <div class="capture-header">
-            <div class="capture-title">
-                <h1>{% if selected_assignment and selected_exam %}Score Entry{% else %}Assessment Workspace{% endif %}</h1>
-                <p>{% if selected_assignment and selected_exam %}Enter raw scores or AB for absent learners.{% else %}Published assessments matched to your assigned classes and subjects.{% endif %}</p>
-            </div>
-        </div>
+    .cap-alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;margin-bottom:16px;font-size:.8125rem;font-weight:600;line-height:1.4}
+    .cap-alert i{font-size:16px;margin-top:1px;flex-shrink:0}
+    .cap-alert-success{background:#f0fdf4;color:#15803d}
+    .cap-alert-info{background:#eff6ff;color:#1d4ed8}
+    .cap-alert-danger{background:#fef2f2;color:#dc2626}
+    .cap-alert-warning{background:#fffbeb;color:#92400e}
+    .cap-alert-warning p{background:#fff;border:1px solid #fed7aa;border-radius:8px;padding:10px;margin-top:8px;font-size:.75rem;color:#171717;font-weight:500}
+
+    .cap-green-card{background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);border-radius:16px;padding:18px;margin-bottom:14px;color:#fff}
+    .cap-green-top{display:flex;align-items:flex-start;gap:12px}
+    .cap-green-icon{width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .cap-green-icon i{font-size:20px;color:#fff}
+    .cap-green-info{flex:1;min-width:0}
+    .cap-green-class{font-size:1rem;font-weight:800;color:#fff;margin-bottom:1px;letter-spacing:-.01em}
+    .cap-green-subject{font-size:.8125rem;color:rgba(255,255,255,.85);font-weight:500}
+    .cap-green-meta{font-size:.6875rem;color:rgba(255,255,255,.6);font-weight:500;margin-top:6px}
+
+    .cap-action-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+    .cap-action-btn{display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border-radius:11px;font-size:.8125rem;font-weight:700;font-family:inherit;cursor:pointer;border:1.5px solid #e5e5e5;background:#fff;color:#171717;transition:transform 150ms;-webkit-tap-highlight-color:transparent}
+    .cap-action-btn:active{transform:scale(.97)}
+    .cap-action-btn i{font-size:15px}
+    .cap-action-btn.primary{background:#171717;color:#fff;border-color:#171717}
+    .cap-action-btn.active{background:#171717;color:#fff;border-color:#171717}
+
+    .cap-meta{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:22px;border:1.5px solid #e5e5e5;border-radius:12px;overflow:hidden}
+    .cap-meta-cell{padding:12px 14px}
+    .cap-meta-cell:nth-child(1),.cap-meta-cell:nth-child(2){border-bottom:1.5px solid #e5e5e5}
+    .cap-meta-cell:nth-child(1){border-right:1.5px solid #e5e5e5}
+    .cap-meta-cell:nth-child(3){border-right:1.5px solid #e5e5e5}
+    .cap-meta-label{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a3a3a3;margin-bottom:4px}
+    .cap-meta-value{font-size:.875rem;font-weight:700;color:#171717}
+    .cap-meta-input{width:100%;height:32px;padding:0 10px;background:#f9f9f9;border:1.5px solid #e5e5e5;border-radius:8px;font-size:.875rem;font-weight:700;color:#171717;font-family:inherit}
+    .cap-meta-input:focus{outline:none;border-color:#171717;background:#fff}
+    .cap-meta-input[readonly]{background:#f5f5f5;color:#a3a3a3;cursor:not-allowed}
+
+    .cap-section{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .cap-section-title{font-size:.75rem;font-weight:700;color:#171717;text-transform:uppercase;letter-spacing:.04em}
+    .cap-section-count{font-size:.75rem;color:#a3a3a3;font-weight:600}
+
+    .cap-students{display:flex;flex-direction:column;margin-bottom:20px}
+    .cap-student{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid #f0f0f0;gap:10px}
+    .cap-student:last-child{border-bottom:none}
+    .cap-student-left{display:flex;flex-direction:column;min-width:0;flex:1}
+    .cap-student-name{font-size:.875rem;font-weight:700;color:#171717;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cap-student-adm{font-size:.6875rem;color:#a3a3a3;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+    .cap-student-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+    .cap-score{width:50px;height:40px;border:1.5px solid #e5e5e5;border-radius:10px;text-align:center;font-size:.9375rem;font-weight:800;color:#171717;background:#fff;-webkit-appearance:none;transition:border-color 150ms,box-shadow 150ms}
+    .cap-score:focus{outline:none;border-color:#171717;box-shadow:0 0 0 3px rgba(23,23,23,.06)}
+    .cap-score[readonly]{background:#f5f5f5;color:#a3a3a3;cursor:not-allowed}
+    .cap-absent{width:40px;height:40px;border:1.5px solid #e5e5e5;border-radius:10px;background:#fafafa;color:#737373;font-size:.6875rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:all 150ms}
+    .cap-absent:active{transform:scale(.92);background:#fee2e2;border-color:#ef4444;color:#991b1b}
+    .cap-student-status{display:flex;align-items:center;gap:6px;min-width:70px;justify-content:flex-end}
+    .cap-level{font-size:.75rem;font-weight:600;color:#a3a3a3;white-space:nowrap}
+    .cap-level.has-score{font-weight:700}
+    .cap-dash{width:18px;height:2px;background:#e5e5e5;border-radius:2px;flex-shrink:0}
+
+    .cap-empty{display:flex;flex-direction:column;align-items:center;padding:48px 20px;text-align:center}
+    .cap-empty-icon{width:56px;height:56px;border-radius:14px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+    .cap-empty-icon i{font-size:24px;color:#a3a3a3}
+    .cap-empty-title{font-size:.875rem;font-weight:700;color:#171717;margin-bottom:4px}
+    .cap-empty-desc{font-size:.75rem;color:#737373;max-width:260px}
+
+    .cap-bottom-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid #f0f0f0;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;z-index:100}
+    .cap-progress{font-size:.8125rem;font-weight:700;color:#171717}
+    .cap-progress span{color:#a3a3a3;font-weight:600}
+    .cap-submit-btn{display:flex;align-items:center;gap:6px;height:42px;padding:0 20px;border:none;border-radius:12px;background:#171717;color:#fff;font-size:.8125rem;font-weight:700;font-family:inherit;cursor:pointer;transition:transform 150ms,opacity 150ms;-webkit-tap-highlight-color:transparent}
+    .cap-submit-btn:active{transform:scale(.97);opacity:.9}
+    .cap-submit-btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+    .cap-submit-btn i{font-size:16px}
+
+    .cap-group{margin-bottom:20px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;overflow:hidden}
+    .cap-group-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fafafa;border-bottom:1px solid #f0f0f0}
+    .cap-group-left{display:flex;align-items:center;gap:10px;min-width:0}
+    .cap-group-icon{width:34px;height:34px;border-radius:9px;background:#171717;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+    .cap-group-name{font-size:.875rem;font-weight:800;color:#171717;letter-spacing:-.01em}
+    .cap-group-count{font-size:.625rem;font-weight:700;color:#a3a3a3;background:#f0f0f0;padding:2px 8px;border-radius:20px}
+    .cap-group-items{padding:0}
+    .cap-assess{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #f5f5f5;gap:10px;text-decoration:none;color:inherit}
+    .cap-assess:last-child{border-bottom:none}
+    .cap-assess-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+    .cap-assess-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .cap-assess-dot.not_started{background:#e5e5e5}
+    .cap-assess-dot.in_progress{background:#f59e0b}
+    .cap-assess-dot.submitted{background:#3b82f6}
+    .cap-assess-dot.returned{background:#ef4444}
+    .cap-assess-dot.approved,.cap-assess-dot.published,.cap-assess-dot.ready{background:#22c55e}
+    .cap-assess-info{min-width:0}
+    .cap-assess-name{font-size:.8125rem;font-weight:700;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cap-assess-detail{font-size:.6875rem;color:#737373;font-weight:500;margin-top:1px}
+    .cap-assess-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+    .cap-assess-status{font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:6px}
+    .cap-assess-status.not_started{background:#f5f5f5;color:#737373}
+    .cap-assess-status.in_progress{background:#fef3c7;color:#92400e}
+    .cap-assess-status.submitted{background:#dbeafe;color:#1d4ed8}
+    .cap-assess-status.returned{background:#fee2e2;color:#991b1b}
+    .cap-assess-status.approved,.cap-assess-status.published{background:#f0fdf4;color:#15803d}
+    .cap-assess-chevron{color:#ccc;font-size:14px}
+
+    .cap-head{margin-bottom:24px}
+    .cap-head h1{font-size:1.5rem;font-weight:800;color:#171717;letter-spacing:-.03em;line-height:1.25;margin:0}
+    .cap-head p{font-size:.8125rem;color:#737373;margin:6px 0 0;font-weight:500}
+
+    @media(max-width:420px){.cap-green-card{padding:16px}.cap-green-class{font-size:1rem}.cap-score{width:48px;height:38px;font-size:.875rem}.cap-absent{width:38px;height:38px}}
+</style>
+
+<div class="cap">
+
+    {% if selected_assignment and selected_exam %}
+
+        <a href="{% url back_url %}" class="cap-back">
+            <i class="ph ph-arrow-left"></i> Back to assessments
+        </a>
 
         {% if messages %}
             {% for message in messages %}
-                <div class="capture-alert {% if message.tags == 'success' %}capture-alert-success{% elif message.tags == 'error' %}capture-alert-danger{% else %}capture-alert-info{% endif %}">
-                    <i class="bi {% if message.tags == 'success' %}bi-check-circle-fill{% elif message.tags == 'error' %}bi-exclamation-circle-fill{% else %}bi-info-circle-fill{% endif %}"></i>
+                <div class="cap-alert {% if message.tags == 'success' %}cap-alert-success{% elif message.tags == 'error' %}cap-alert-danger{% else %}cap-alert-info{% endif %}">
+                    <i class="ph {% if message.tags == 'success' %}ph-check-circle{% elif message.tags == 'error' %}ph-warning-circle{% else %}ph-info{% endif %}"></i>
                     {{ message }}
                 </div>
             {% endfor %}
         {% endif %}
 
-        <div class="capture-card">
-            <div class="capture-card-head">
-                <h2>{% if selected_assignment and selected_exam %}Score Capture{% else %}Assessment Sheets{% endif %}</h2>
-                <small>{% if selected_assignment and selected_exam %}Enter raw scores or AB. {% if grading_mode == 'jss' %}KJSEA 8-level grading (EE1–BE2).{% else %}Primary 4-level grading (EE/ME/AE/BE).{% endif %}{% else %}Tap an assessment to begin entering learner scores.{% endif %}</small>
+        {% if is_locked %}
+            <div class="cap-alert cap-alert-danger">
+                <i class="ph ph-lock"></i>
+                This assessment has been locked by the administrator. Entries are read-only.
             </div>
+        {% endif %}
 
-            <div class="capture-card-body">
+        {% if is_submitted %}
+            <div class="cap-alert cap-alert-info">
+                <i class="ph ph-check-circle"></i>
+                This sheet has been submitted. Entries are now read-only.
+            </div>
+        {% endif %}
 
-                {% if selected_assignment and selected_exam %}
-
-                    {# ── MARK ENTRY VIEW ──────────────────────────────── #}
-
-                    <a href="{% url back_url %}" class="capture-back">
-                        <i class="bi bi-arrow-left"></i> Back to assessments
-                    </a>
-
-                    {% if is_locked %}
-                        <div class="capture-alert capture-alert-danger">
-                            <i class="bi bi-lock-fill"></i>
-                            This assessment has been locked by the administrator. Entries are read-only.
-                        </div>
+        {% if submission and submission.status == "returned" %}
+            <div class="cap-alert cap-alert-warning">
+                <i class="ph ph-arrow-u-up-left"></i>
+                <div>
+                    <strong>Returned for Correction</strong><br>
+                    Please review scores, apply corrections, and submit again.
+                    {% if submission.admin_note %}
+                        <p>{{ submission.admin_note }}</p>
                     {% endif %}
+                </div>
+            </div>
+        {% endif %}
 
-                    {% if is_submitted %}
-                        <div class="capture-alert capture-alert-info">
-                            <i class="bi bi-check-circle-fill"></i>
-                            This sheet has been submitted. Entries are now read-only.
-                        </div>
-                    {% endif %}
-
-                    {% if submission and submission.status == "returned" %}
-                        <div class="capture-alert capture-alert-warning">
-                            <i class="bi bi-arrow-return-left"></i>
-                            <div>
-                                <strong>Returned for Correction</strong>
-                                Please review scores, apply corrections, and submit again.
-                                {% if submission.admin_note %}
-                                    <p>{{ submission.admin_note }}</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endif %}
-
-                    <div class="capture-class-header">
-                        <div class="capture-class-name">{{ selected_assignment.class_name }} {{ selected_assignment.stream }} — {{ selected_assignment.subject.name }}</div>
-                        <div class="capture-class-meta">{{ selected_exam.name }} · {{ selected_exam.term }} · {{ selected_exam.year }}</div>
-                    </div>
-
-                    <form method="POST" id="marksForm">
-                        {% csrf_token %}
-                        <input type="hidden" name="assignment_id" value="{{ selected_assignment.id }}">
-                        <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
-
-                        <div class="capture-meta-grid">
-                            <div class="capture-meta-item">
-                                <div class="capture-meta-label">Assessment</div>
-                                <div class="capture-meta-value">{{ selected_exam.name }}</div>
-                            </div>
-                            <div class="capture-meta-item">
-                                <div class="capture-meta-label">Total Marks</div>
-                                <input
-                                    type="number"
-                                    name="maximum_marks"
-                                    id="maximumMarks"
-                                    class="capture-meta-input"
-                                    value="{{ current_maximum_marks|default:100 }}"
-                                    min="1"
-                                    max="500"
-                                    oninput="recalculateAll()"
-                                    {% if is_locked or is_submitted %}readonly{% endif %}
-                                >
-                            </div>
-                            <div class="capture-meta-item">
-                                <div class="capture-meta-label">Term</div>
-                                <div class="capture-meta-value">{{ selected_exam.term }}</div>
-                            </div>
-                            <div class="capture-meta-item">
-                                <div class="capture-meta-label">Year</div>
-                                <div class="capture-meta-value">{{ selected_exam.year }}</div>
-                            </div>
-                        </div>
-
-                        <div class="capture-section-label">
-                            <span>Learner Scores</span>
-                            <span class="capture-section-count">{{ students|length }}</span>
-                        </div>
-
-                        <div class="capture-student-list">
-                            {% for student in students %}
-                                <div class="capture-student-row">
-                                    <div class="capture-student-name">{{ student.name }}</div>
-
-                                    <div class="capture-student-adm">{{ student.admission_no }}</div>
-
-                                    <div class="capture-student-score">
-                                        <input
-                                            type="text"
-                                            name="score_{{ student.id }}"
-                                            value="{{ student.current_score }}"
-                                            class="capture-score-input"
-                                            inputmode="decimal"
-                                            enterkeyhint="next"
-                                            oninput="calcScore(this)"
-                                            onkeydown="nextOnEnter(event, this)"
-                                            onfocus="this.closest('.capture-student-row').style.background='var(--en-green-subtle)'"
-                                            onblur="this.closest('.capture-student-row').style.background=''"
-                                            placeholder="—"
-                                            {% if is_locked or is_submitted %}readonly{% endif %}
-                                        >
-                                        <button
-                                            type="button"
-                                            class="capture-absent-btn"
-                                            onclick="markAB(this)"
-                                            tabindex="-1"
-                                        >AB</button>
-                                    </div>
-
-                                    <div class="capture-student-level">
-                                        <span class="capture-level-badge" data-level="{{ forloop.counter }}">Awaiting</span>
-                                        <span class="capture-points-badge" data-pts="{{ forloop.counter }}">—</span>
-                                    </div>
-                                </div>
-                            {% empty %}
-                                <div class="capture-empty-row">
-                                    No learners registered in this class stream.
-                                </div>
-                            {% endfor %}
-                        </div>
-
-                        {% if not is_locked and not is_submitted %}
-                            <button type="submit" class="btn btn-primary btn-full capture-submit">
-                                <i class="bi bi-cloud-check-fill"></i> Submit Scores
-                            </button>
-                        {% endif %}
-                    </form>
-
-                {% else %}
-
-                    {# ── ASSESSMENT SELECTION VIEW (Grouped by Subject) ── #}
-
-                    {% regroup exam_rows by assignment.subject as subject_groups %}
-
-                    {% for group in subject_groups %}
-                        <div class="capture-subject-group">
-                            <div class="capture-subject-header">
-                                <i class="bi bi-book"></i>
-                                {{ group.grouper.name }}
-                            </div>
-
-                            <div class="capture-assessment-list">
-                                {% for row in group.list %}
-                                    <div class="capture-assessment-item" data-status="{{ row.status_key }}">
-                                        <div class="capture-assessment-info">
-                                            <div class="capture-assessment-exam">{{ row.exam.name }}</div>
-                                            <div class="capture-assessment-detail">
-                                                {{ row.assignment.class_name }} {{ row.assignment.stream }} · {{ row.exam.term }} {{ row.exam.year }}
-                                            </div>
-                                        </div>
-
-                                        <div class="capture-assessment-status">
-                                            <span class="badge {% if row.status_key == 'returned' %}badge-red{% elif row.status_key == 'in_progress' %}badge-amber{% elif row.status_key == 'submitted' %}badge-blue{% elif row.status_key == 'approved' or row.status_key == 'published' %}badge-green{% else %}badge-muted{% endif %}">
-                                                {{ row.status_label }}
-                                            </span>
-                                        </div>
-
-                                        <a
-                                            class="capture-assessment-action"
-                                            data-status="{{ row.status_key }}"
-                                            href="?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}"
-                                            title="{% if row.status_key == 'returned' %}Correct{% elif row.status_key == 'in_progress' %}Continue{% elif row.status_key == 'submitted' or row.status_key == 'approved' or row.status_key == 'published' %}View{% else %}Open{% endif %}"
-                                        >
-                                            {% if row.status_key == 'returned' %}
-                                                <i class="bi bi-pencil-square"></i>
-                                            {% elif row.status_key == 'in_progress' %}
-                                                <i class="bi bi-play-circle"></i>
-                                            {% elif row.status_key == 'submitted' or row.status_key == 'approved' or row.status_key == 'published' %}
-                                                <i class="bi bi-eye"></i>
-                                            {% else %}
-                                                <i class="bi bi-box-arrow-in-right"></i>
-                                            {% endif %}
-                                        </a>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    {% empty %}
-                        <div class="capture-empty-state">
-                            <i class="bi bi-inbox"></i>
-                            <p>No assessment sheets are currently available for this account.</p>
-                        </div>
-                    {% endfor %}
-
-                {% endif %}
-
+        <div class="cap-green-card">
+            <div class="cap-green-top">
+                <div class="cap-green-icon">
+                    <i class="ph ph-book-open"></i>
+                </div>
+                <div class="cap-green-info">
+                    <div class="cap-green-class">{{ selected_assignment.class_name }} {{ selected_assignment.stream }}</div>
+                    <div class="cap-green-subject">{{ selected_assignment.subject.name }}</div>
+                    <div class="cap-green-meta">{{ selected_exam.name }} · {{ selected_exam.term }} · {{ selected_exam.year }}</div>
+                </div>
             </div>
         </div>
-    </div>
+
+        <div class="cap-action-btns">
+            <button type="button" class="cap-action-btn" onclick="alert('CSV import coming soon')">
+                <i class="ph ph-upload-simple"></i> Import
+            </button>
+            <button type="button" class="cap-action-btn primary active">
+                <i class="ph ph-keyboard"></i> Key In
+            </button>
+        </div>
+
+        <form method="POST" id="marksForm">
+            {% csrf_token %}
+            <input type="hidden" name="assignment_id" value="{{ selected_assignment.id }}">
+            <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
+
+            <div class="cap-meta">
+                <div class="cap-meta-cell">
+                    <div class="cap-meta-label">Assessment</div>
+                    <div class="cap-meta-value">{{ selected_exam.name }}</div>
+                </div>
+                <div class="cap-meta-cell">
+                    <div class="cap-meta-label">Total Marks</div>
+                    <input type="number" name="maximum_marks" id="maximumMarks"
+                           class="cap-meta-input"
+                           value="{{ current_maximum_marks|default:100 }}"
+                           min="1" max="500"
+                           oninput="recalculateAll()"
+                           {% if is_locked or is_submitted %}readonly{% endif %}>
+                </div>
+                <div class="cap-meta-cell">
+                    <div class="cap-meta-label">Term</div>
+                    <div class="cap-meta-value">{{ selected_exam.term }}</div>
+                </div>
+                <div class="cap-meta-cell">
+                    <div class="cap-meta-label">Year</div>
+                    <div class="cap-meta-value">{{ selected_exam.year }}</div>
+                </div>
+            </div>
+
+            <div class="cap-section">
+                <span class="cap-section-title">LEARNER SCORES ({{ students|length }})</span>
+            </div>
+
+            <div class="cap-students">
+                {% for student in students %}
+                    <div class="cap-student">
+                        <div class="cap-student-left">
+                            <div class="cap-student-name">{{ student.name }}</div>
+                            <div class="cap-student-adm">{{ student.admission_no }}</div>
+                        </div>
+                        <div class="cap-student-right">
+                            <input type="text"
+                                   name="score_{{ student.id }}"
+                                   value="{{ student.current_score }}"
+                                   class="cap-score"
+                                   inputmode="decimal"
+                                   enterkeyhint="next"
+                                   oninput="calcScore(this)"
+                                   onkeydown="nextOnEnter(event, this)"
+                                   placeholder="—"
+                                   {% if is_locked or is_submitted %}readonly{% endif %}>
+                            <button type="button" class="cap-absent"
+                                    onclick="markAB(this)" tabindex="-1">AB</button>
+                            <div class="cap-student-status">
+                                <span class="cap-level" data-level="{{ forloop.counter }}">Awaiting</span>
+                                <div class="cap-dash"></div>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="cap-empty">
+                        <div class="cap-empty-icon"><i class="ph ph-users"></i></div>
+                        <div class="cap-empty-title">No learners found</div>
+                        <div class="cap-empty-desc">No learners registered in this class stream.</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </form>
+
+        {% if not is_locked and not is_submitted %}
+            <div class="cap-bottom-bar">
+                <div class="cap-progress"><span id="scoredCount">0</span>/{{ students|length }} <span>Students Scored</span></div>
+                <button type="submit" form="marksForm" class="cap-submit-btn">
+                    <i class="ph ph-cloud-arrow-up"></i> Submit Marks
+                </button>
+            </div>
+        {% endif %}
+
+    {% else %}
+
+        <div class="cap-head">
+            <h1>Assessment Workspace</h1>
+            <p>Tap an assessment to begin entering learner scores.</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="cap-alert {% if message.tags == 'success' %}cap-alert-success{% elif message.tags == 'error' %}cap-alert-danger{% else %}cap-alert-info{% endif %}">
+                    <i class="ph {% if message.tags == 'success' %}ph-check-circle{% elif message.tags == 'error' %}ph-warning-circle{% else %}ph-info{% endif %}"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% regroup exam_rows by assignment.class_name as class_groups %}
+
+        {% for group in class_groups %}
+            <div class="cap-group">
+                <div class="cap-group-head">
+                    <div class="cap-group-left">
+                        <div class="cap-group-icon"><i class="ph ph-chalkboard-teacher"></i></div>
+                        <div class="cap-group-name">{{ group.grouper }}</div>
+                    </div>
+                    <span class="cap-group-count">{{ group.list|length }}</span>
+                </div>
+                <div class="cap-group-items">
+                    {% for row in group.list %}
+                        <a class="cap-assess" href="?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}">
+                            <div class="cap-assess-left">
+                                <div class="cap-assess-dot {{ row.status_key }}"></div>
+                                <div class="cap-assess-info">
+                                    <div class="cap-assess-name">{{ row.assignment.subject.name }}</div>
+                                    <div class="cap-assess-detail">{{ row.assignment.stream }} · {{ row.exam.name }} · {{ row.exam.term }} {{ row.exam.year }}</div>
+                                </div>
+                            </div>
+                            <div class="cap-assess-right">
+                                <span class="cap-assess-status {{ row.status_key }}">{{ row.status_label }}</span>
+                                <i class="ph ph-caret-right cap-assess-chevron"></i>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% empty %}
+            <div class="cap-empty">
+                <div class="cap-empty-icon"><i class="ph ph-inbox"></i></div>
+                <div class="cap-empty-title">No assessments available</div>
+                <div class="cap-empty-desc">Assessment sheets will appear here once published for your classes.</div>
+            </div>
+        {% endfor %}
+
+    {% endif %}
 </div>
 
 <script>
@@ -225,68 +319,86 @@
 
     function getLevel(pct) {
         if (MODE === 'primary') {
-            if (pct >= 75) return { text: 'EE', label: 'Exceeding Expectations', pts: 4, bg: '#0f3d22', fg: '#fff' };
-            if (pct >= 50) return { text: 'ME', label: 'Meeting Expectations', pts: 3, bg: 'var(--en-green)', fg: 'var(--en-navy)' };
-            if (pct >= 25) return { text: 'AE', label: 'Approaching Expectations', pts: 2, bg: '#f59e0b', fg: '#111827' };
-            return { text: 'BE', label: 'Below Expectations', pts: 1, bg: '#ef4444', fg: '#fff' };
+            if (pct >= 75) return { text: 'EE', pts: 4, color: '#15803d', bg: '#f0fdf4' };
+            if (pct >= 50) return { text: 'ME', pts: 3, color: '#16a34a', bg: '#f0fdf4' };
+            if (pct >= 25) return { text: 'AE', pts: 2, color: '#d97706', bg: '#fef3c7' };
+            return { text: 'BE', pts: 1, color: '#dc2626', bg: '#fee2e2' };
         }
-        if (pct >= 90) return { text: 'EE1', label: 'Exceeding Expectations', pts: 8, bg: '#0f3d22', fg: '#fff' };
-        if (pct >= 75) return { text: 'EE2', label: 'Exceeding Expectations', pts: 7, bg: '#166534', fg: '#fff' };
-        if (pct >= 58) return { text: 'ME1', label: 'Meeting Expectations', pts: 6, bg: 'var(--en-green)', fg: 'var(--en-navy)' };
-        if (pct >= 41) return { text: 'ME2', label: 'Meeting Expectations', pts: 5, bg: '#d9f99d', fg: '#365314' };
-        if (pct >= 31) return { text: 'AE1', label: 'Approaching Expectations', pts: 4, bg: '#f59e0b', fg: '#111827' };
-        if (pct >= 21) return { text: 'AE2', label: 'Approaching Expectations', pts: 3, bg: '#fde68a', fg: '#92400e' };
-        if (pct >= 11) return { text: 'BE1', label: 'Below Expectations', pts: 2, bg: '#ef4444', fg: '#fff' };
-        return { text: 'BE2', label: 'Below Expectations', pts: 1, bg: '#7f1d1d', fg: '#fff' };
+        if (pct >= 90) return { text: 'EE1', pts: 8, color: '#14532d', bg: '#dcfce7' };
+        if (pct >= 75) return { text: 'EE2', pts: 7, color: '#15803d', bg: '#f0fdf4' };
+        if (pct >= 58) return { text: 'ME1', pts: 6, color: '#16a34a', bg: '#f0fdf4' };
+        if (pct >= 41) return { text: 'ME2', pts: 5, color: '#65a30d', bg: '#ecfccb' };
+        if (pct >= 31) return { text: 'AE1', pts: 4, color: '#d97706', bg: '#fef3c7' };
+        if (pct >= 21) return { text: 'AE2', pts: 3, color: '#ea580c', bg: '#ffedd5' };
+        if (pct >= 11) return { text: 'BE1', pts: 2, color: '#dc2626', bg: '#fee2e2' };
+        return { text: 'BE2', pts: 1, color: '#991b1b', bg: '#fee2e2' };
+    }
+
+    function updateProgress() {
+        var inputs = document.querySelectorAll('.cap-score');
+        var scored = 0;
+        inputs.forEach(function(inp) {
+            var v = inp.value.trim().toUpperCase();
+            if (v && !isNaN(parseFloat(v)) || v === 'AB') scored++;
+        });
+        var el = document.getElementById('scoredCount');
+        if (el) el.textContent = scored;
     }
 
     window.calcScore = function(input) {
         var max = parseFloat(document.getElementById('maximumMarks').value) || 100;
         var val = input.value.trim().toUpperCase();
-        var row = input.closest('.capture-student-row');
-        var badge = row.querySelector('.capture-level-badge');
-        var pts = row.querySelector('.capture-points-badge');
+        var row = input.closest('.cap-student');
+        var badge = row.querySelector('.cap-level');
 
         if (val === 'AB') {
             badge.textContent = 'Absent';
-            badge.style.background = '#e0e7ff';
             badge.style.color = '#3730a3';
+            badge.style.background = '#e0e7ff';
+            badge.style.padding = '2px 8px';
+            badge.style.borderRadius = '5px';
             badge.classList.add('has-score');
-            pts.textContent = '0';
+            updateProgress();
             return;
         }
 
         var score = parseFloat(val);
         if (!val || isNaN(score) || max <= 0) {
             badge.textContent = 'Awaiting';
-            badge.style.background = '';
             badge.style.color = '';
+            badge.style.background = '';
+            badge.style.padding = '';
+            badge.style.borderRadius = '';
             badge.classList.remove('has-score');
-            pts.textContent = '—';
+            updateProgress();
             return;
         }
 
         if (score > max) {
             badge.textContent = 'Exceeds max';
-            badge.style.background = '#fee2e2';
             badge.style.color = '#991b1b';
+            badge.style.background = '#fee2e2';
+            badge.style.padding = '2px 8px';
+            badge.style.borderRadius = '5px';
             badge.classList.add('has-score');
-            pts.textContent = '—';
+            updateProgress();
             return;
         }
 
         var pct = (score / max) * 100;
         var lv = getLevel(pct);
-        badge.textContent = lv.text + ' · ' + pct.toFixed(0) + '%';
+        badge.textContent = lv.text + ' \u00B7 ' + pct.toFixed(0) + '%';
+        badge.style.color = lv.color;
         badge.style.background = lv.bg;
-        badge.style.color = lv.fg;
+        badge.style.padding = '2px 8px';
+        badge.style.borderRadius = '5px';
         badge.classList.add('has-score');
-        pts.textContent = lv.pts;
+        updateProgress();
     };
 
     window.markAB = function(btn) {
-        var row = btn.closest('.capture-student-row');
-        var input = row.querySelector('.capture-score-input');
+        var row = btn.closest('.cap-student');
+        var input = row.querySelector('.cap-score');
         input.value = 'AB';
         calcScore(input);
         input.focus();
@@ -296,7 +408,7 @@
         if (e.key === 'Enter' || e.key === 'Go' || e.key === 'Next') {
             e.preventDefault();
             calcScore(input);
-            var all = Array.from(document.querySelectorAll('.capture-score-input'));
+            var all = Array.from(document.querySelectorAll('.cap-score'));
             var idx = all.indexOf(input);
             var next = all[idx + 1];
             if (next && !next.readOnly) {
@@ -307,11 +419,10 @@
     };
 
     window.recalculateAll = function() {
-        document.querySelectorAll('.capture-score-input').forEach(calcScore);
+        document.querySelectorAll('.cap-score').forEach(calcScore);
     };
 
     document.addEventListener('DOMContentLoaded', recalculateAll);
 })();
 </script>
-
 {% endblock %}

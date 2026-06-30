@@ -405,6 +405,8 @@ def select_exam(request):
                 "submission": row_submission,
             })
 
+    exam_rows.sort(key=lambda r: (r['assignment'].class_name, r['assignment'].stream, r['exam'].name))
+
     return render(request, 'students/select_exam_details.html', {
         'teacher': teacher,
         'exam_rows': exam_rows,
@@ -1630,6 +1632,8 @@ def select_exam_primary(request):
                 "status_key": status_key,
                 "submission": row_submission,
             })
+
+    exam_rows.sort(key=lambda r: (r['assignment'].class_name, r['assignment'].stream, r['exam'].name))
 
     return render(request, 'students/select_exam_details.html', {
         'teacher': teacher,
