@@ -415,6 +415,8 @@ def select_exam(request):
         'is_submitted': is_submitted,
         'submission': submission,
         'current_maximum_marks': current_maximum_marks,
+        'grading_mode': 'jss',
+        'back_url': 'select_exam',
     })
 
 @login_required(login_url='login')
@@ -1629,7 +1631,7 @@ def select_exam_primary(request):
                 "submission": row_submission,
             })
 
-    return render(request, 'students/select_exam_details_primary.html', {
+    return render(request, 'students/select_exam_details.html', {
         'teacher': teacher,
         'exam_rows': exam_rows,
         'selected_assignment': selected_assignment,
@@ -1639,4 +1641,6 @@ def select_exam_primary(request):
         'is_submitted': is_submitted,
         'submission': submission,
         'current_maximum_marks': current_maximum_marks,
+        'grading_mode': 'primary',
+        'back_url': 'select_exam_primary',
     })
