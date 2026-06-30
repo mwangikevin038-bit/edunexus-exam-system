@@ -40,8 +40,12 @@ def profile_view(request):
     ) if teacher else SubjectAssignment.objects.none()
     section = get_request_school_section(request)
     submissions = MarkSubmission.objects.filter(teacher=teacher)
-    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-        submissions = submissions.filter(school_section=section)
+    if section == 'LOWER_PRIMARY':
+        submissions = submissions.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif section == 'PRIMARY':
+        submissions = submissions.filter(school_section='PRIMARY', sub_section='UPPER')
+    elif section == 'JSS':
+        submissions = submissions.filter(school_section='JSS')
     if not teacher:
         submissions = MarkSubmission.objects.none()
     class_scope = get_class_teacher_scope(teacher)
@@ -72,8 +76,12 @@ def dashboard(request):
     active_exams = Exam.objects.filter(school=school, status='active').order_by('-year', 'term', 'name') if school else Exam.objects.none()
     submissions = MarkSubmission.objects.filter(school=school, teacher=teacher) if teacher and school else MarkSubmission.objects.none()
     section = get_request_school_section(request)
-    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-        submissions = submissions.filter(school_section=section)
+    if section == 'LOWER_PRIMARY':
+        submissions = submissions.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif section == 'PRIMARY':
+        submissions = submissions.filter(school_section='PRIMARY', sub_section='UPPER')
+    elif section == 'JSS':
+        submissions = submissions.filter(school_section='JSS')
     class_scope = get_class_teacher_scope(teacher)
 
     active_sheet_count = assignments.count() * active_exams.count()
@@ -120,8 +128,9 @@ def school_admin_dashboard(request):
 
     # Determine workspace section for filtering
     section = get_request_school_section(request)
-    is_primary = section == 'PRIMARY'
-    grade_choices = PRIMARY_GRADE_CHOICES if is_primary else ['Grade 7', 'Grade 8', 'Grade 9']
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
+    grade_choices = LOWER_PRIMARY_GRADE_CHOICES if is_lower_primary else PRIMARY_GRADE_CHOICES if is_primary else ['Grade 7', 'Grade 8', 'Grade 9']
 
     # Base querysets filtered by section
     student_qs = Student.objects.filter(school=school)
@@ -131,13 +140,27 @@ def school_admin_dashboard(request):
     submission_qs = MarkSubmission.objects.filter(school=school)
     mark_qs = Mark.objects.filter(school=school)
 
-    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-        student_qs = student_qs.filter(school_section=section)
-        teacher_qs = teacher_qs.filter(school_section=section)
-        exam_qs = exam_qs.filter(school_section=section)
-        assignment_qs = assignment_qs.filter(school_section=section)
-        submission_qs = submission_qs.filter(school_section=section)
-        mark_qs = mark_qs.filter(school_section=section)
+    if section == 'LOWER_PRIMARY':
+        student_qs = student_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+        teacher_qs = teacher_qs.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', None])
+        exam_qs = exam_qs.filter(school_section='PRIMARY')
+        assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+        submission_qs = submission_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+        mark_qs = mark_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif section == 'PRIMARY':
+        student_qs = student_qs.filter(school_section='PRIMARY', sub_section='UPPER')
+        teacher_qs = teacher_qs.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['UPPER', None])
+        exam_qs = exam_qs.filter(school_section='PRIMARY')
+        assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='UPPER')
+        submission_qs = submission_qs.filter(school_section='PRIMARY', sub_section='UPPER')
+        mark_qs = mark_qs.filter(school_section='PRIMARY', sub_section='UPPER')
+    elif section == 'JSS':
+        student_qs = student_qs.filter(school_section='JSS')
+        teacher_qs = teacher_qs.filter(school_section__in=['JSS', 'BOTH'])
+        exam_qs = exam_qs.filter(school_section='JSS')
+        assignment_qs = assignment_qs.filter(school_section='JSS')
+        submission_qs = submission_qs.filter(school_section='JSS')
+        mark_qs = mark_qs.filter(school_section='JSS')
 
     active_exam = exam_qs.filter(status="active").order_by("-year", "term", "name").first()
 

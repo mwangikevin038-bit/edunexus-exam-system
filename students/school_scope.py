@@ -55,8 +55,11 @@ class SchoolScopedManager(models.Manager):
     When no tenant is bound, returns an empty queryset to prevent cross-school leaks.
     Use all_objects for platform admin and migration tasks.
 
-    When a school_section context is set (PRIMARY or JSS), queries are
-    automatically filtered to that section only. 'BOTH' or unset = no section filter.
+    Section isolation:
+      - 'JSS'         -> school_section='JSS'
+      - 'PRIMARY'     -> school_section='PRIMARY', sub_section='UPPER' (if field exists)
+      - 'LOWER_PRIMARY' -> school_section='PRIMARY', sub_section='LOWER' (if field exists)
+      - 'BOTH'/unset  -> no section filter (admin superpower)
     """
 
     def get_queryset(self):
@@ -67,10 +70,31 @@ class SchoolScopedManager(models.Manager):
         qs = qs.filter(school=school)
 
         section = get_current_school_section()
-        if section in ('PRIMARY', 'JSS'):
-            qs = qs.filter(school_section=section)
+
+        if section == 'JSS':
+            qs = qs.filter(school_section='JSS')
+        elif section == 'PRIMARY':
+            # Upper Primary workspace: school_section=PRIMARY
+            # If the model has sub_section, also restrict to UPPER
+            if self._has_sub_section():
+                qs = qs.filter(school_section='PRIMARY', sub_section='UPPER')
+            else:
+                qs = qs.filter(school_section='PRIMARY')
+        elif section == 'LOWER_PRIMARY':
+            # Lower Primary workspace: school_section=PRIMARY, sub_section=LOWER
+            if self._has_sub_section():
+                qs = qs.filter(school_section='PRIMARY', sub_section='LOWER')
+            else:
+                qs = qs.filter(school_section='PRIMARY')
 
         return qs
+
+    def _has_sub_section(self):
+        """Check if this model has a sub_section field."""
+        try:
+            return 'sub_section' in [f.name for f in self.model._meta.get_fields()]
+        except Exception:
+            return False
 
     def get_for_school(self, school, **kwargs):
         return self.using(self._db).filter(school=school, **kwargs)

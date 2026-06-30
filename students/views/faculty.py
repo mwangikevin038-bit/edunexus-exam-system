@@ -189,8 +189,12 @@ def _get_grade_streams(school, section):
     """Return list of 'Class Teacher Grade X Stream' role options for the current section."""
     from ..models import Grade
     grades = Grade.all_objects.filter(school=school).prefetch_related('streams').order_by('order')
-    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-        grades = grades.filter(school_section=section)
+    if section == 'LOWER_PRIMARY':
+        grades = grades.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif section == 'PRIMARY':
+        grades = grades.filter(school_section='PRIMARY', sub_section='UPPER')
+    elif section == 'JSS':
+        grades = grades.filter(school_section='JSS')
     options = []
     for grade in grades:
         for stream in grade.streams.all():
@@ -339,6 +343,13 @@ def manage_faculty_matrix(request):
             from ..models import Subject
             subject = Subject.objects.filter(id=subject_id, school=school).first()
             if subject:
+                # Determine sub_section from workspace
+                sub_section = None
+                if section == 'LOWER_PRIMARY':
+                    sub_section = 'LOWER'
+                elif section == 'PRIMARY':
+                    sub_section = 'UPPER'
+
                 SubjectAssignment.objects.update_or_create(
                     school=school,
                     class_name=request.POST.get('grade'),
@@ -346,7 +357,8 @@ def manage_faculty_matrix(request):
                     subject=subject,
                     defaults={
                         'teacher_profile_id': teacher_id,
-                        'school_section': section or 'JSS',
+                        'school_section': 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS',
+                        'sub_section': sub_section,
                     }
                 )
                 try:
@@ -373,21 +385,42 @@ def manage_faculty_matrix(request):
     teachers = Teacher.objects.filter(school=school).select_related('user').filter(is_active=True)
     assignments = SubjectAssignment.objects.filter(school=school).select_related('teacher_profile__user').all()
 
-    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-        teachers = teachers.filter(school_section__in=[section, 'BOTH'])
-        assignments = assignments.filter(school_section__in=[section, 'BOTH'])
+    if section == 'LOWER_PRIMARY':
+        teachers = teachers.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', None])
+        assignments = assignments.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif section == 'PRIMARY':
+        teachers = teachers.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['UPPER', None])
+        assignments = assignments.filter(school_section='PRIMARY', sub_section='UPPER')
+    elif section == 'JSS':
+        teachers = teachers.filter(school_section__in=['JSS', 'BOTH'])
+        assignments = assignments.filter(school_section='JSS')
 
     # Pull grades from DB (school's actual class structure)
     from ..models import Grade, Stream, Subject
-    db_grades = Grade.all_objects.filter(school=school, school_section=section).order_by('order')
+
+    if section == 'LOWER_PRIMARY':
+        db_grades = Grade.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').order_by('order')
+    elif section == 'PRIMARY':
+        db_grades = Grade.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').order_by('order')
+    else:
+        db_grades = Grade.all_objects.filter(school=school, school_section=section).order_by('order')
     grades_for_section = [g.name for g in db_grades]
 
     # Pull streams from DB (school's actual streams)
-    db_streams = Stream.all_objects.filter(school=school, school_section=section).select_related('grade').order_by('grade__order', 'name')
+    if section in ('LOWER_PRIMARY', 'PRIMARY'):
+        grade_names = [g.name for g in db_grades]
+        db_streams = Stream.all_objects.filter(school=school, school_section='PRIMARY', grade__name__in=grade_names).select_related('grade').order_by('grade__order', 'name')
+    else:
+        db_streams = Stream.all_objects.filter(school=school, school_section=section).select_related('grade').order_by('grade__order', 'name')
     streams_for_section = list(dict.fromkeys(s.name for s in db_streams))
 
     # Subjects: from school's Subject table
-    subjects_for_section = Subject.objects.filter(school=school, school_section=section, is_active=True).order_by('grade', 'code')
+    if section == 'LOWER_PRIMARY':
+        subjects_for_section = Subject.objects.filter(school=school, school_section='LOWER_PRIMARY', is_active=True).order_by('grade', 'code')
+    elif section == 'PRIMARY':
+        subjects_for_section = Subject.objects.filter(school=school, school_section='PRIMARY', is_active=True).order_by('grade', 'code')
+    else:
+        subjects_for_section = Subject.objects.filter(school=school, school_section=section, is_active=True).order_by('grade', 'code')
 
     return render(request, 'students/manage_faculty.html', {
         'assignments': assignments,

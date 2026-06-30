@@ -125,7 +125,14 @@ def results_list(request):
 
         # Map assigned teachers for this grade/stream
         teacher_map = {}
-        for a in SubjectAssignment.objects.filter(school=school, class_name=grade, stream=stream).select_related('teacher_profile__user', 'subject'):
+        sa_qs = SubjectAssignment.objects.filter(school=school, class_name=grade, stream=stream).select_related('teacher_profile__user', 'subject')
+        if section == 'LOWER_PRIMARY':
+            sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+        elif section == 'PRIMARY':
+            sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='UPPER')
+        elif section == 'JSS':
+            sa_qs = sa_qs.filter(school_section='JSS')
+        for a in sa_qs:
             short = a.subject.code if a.subject else None
             if short:
                 teacher_map[short] = a.teacher_profile.get_full_title()
@@ -245,6 +252,7 @@ def report_card_select(request):
     # Determine workspace section for grade choices and template
     section = get_request_school_section(request)
     is_primary = section == 'PRIMARY'
+    is_lower_primary = section == 'LOWER_PRIMARY'
     grade_choices = PRIMARY_GRADE_CHOICES if is_primary else GRADE_CHOICES
 
     if not is_admin_view and not class_teacher_scope:
@@ -270,7 +278,16 @@ def report_card_select(request):
         students = get_students_ordered(grade, stream)
     school = get_request_school(request)
 
-    total_required_subjects = SubjectAssignment.objects.filter(school=school, class_name=grade, stream=stream).values(
+    sa_filter = dict(school=school, class_name=grade, stream=stream)
+    if is_lower_primary:
+        sa_filter['school_section'] = 'PRIMARY'
+        sa_filter['sub_section'] = 'LOWER'
+    elif is_primary:
+        sa_filter['school_section'] = 'PRIMARY'
+        sa_filter['sub_section'] = 'UPPER'
+    else:
+        sa_filter['school_section'] = 'JSS'
+    total_required_subjects = SubjectAssignment.objects.filter(**sa_filter).values(
         "subject__code"
     ).distinct().count() if selected_context else 0
 

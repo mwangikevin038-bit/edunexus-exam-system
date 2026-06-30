@@ -495,8 +495,12 @@ def manage_exams(request):
     # -----------------------------
     section = get_request_school_section(request)
     exams = Exam.objects.filter(school=school)
-    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-        exams = exams.filter(school_section=section)
+    if section == 'LOWER_PRIMARY':
+        exams = exams.filter(school_section='PRIMARY')
+    elif section == 'PRIMARY':
+        exams = exams.filter(school_section='PRIMARY')
+    elif section == 'JSS':
+        exams = exams.filter(school_section='JSS')
     exams = exams.order_by("-year", "term", "name")
 
     selected_exam_id = request.GET.get("exam_id")
@@ -504,13 +508,22 @@ def manage_exams(request):
 
     if selected_exam_id:
         selected_exam = Exam.objects.filter(school=school, id=selected_exam_id).first()
-        if selected_exam and section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS') and selected_exam.school_section != section:
-            selected_exam = None
+        if selected_exam:
+            if section == 'LOWER_PRIMARY' and selected_exam.school_section != 'PRIMARY':
+                selected_exam = None
+            elif section == 'PRIMARY' and selected_exam.school_section != 'PRIMARY':
+                selected_exam = None
+            elif section == 'JSS' and selected_exam.school_section != 'JSS':
+                selected_exam = None
 
     if not selected_exam:
         selected_exam = Exam.objects.filter(school=school, status="active")
-        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-            selected_exam = selected_exam.filter(school_section=section)
+        if section == 'LOWER_PRIMARY':
+            selected_exam = selected_exam.filter(school_section='PRIMARY')
+        elif section == 'PRIMARY':
+            selected_exam = selected_exam.filter(school_section='PRIMARY')
+        elif section == 'JSS':
+            selected_exam = selected_exam.filter(school_section='JSS')
         selected_exam = selected_exam.order_by("-year", "term", "name").first()
 
     if not selected_exam:
@@ -538,8 +551,12 @@ def manage_exams(request):
             .select_related("teacher_profile", "teacher_profile__user")
             .order_by("class_name", "stream", "subject__code")
         )
-        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-            assignments = assignments.filter(school_section=section)
+        if section == 'LOWER_PRIMARY':
+            assignments = assignments.filter(school_section='PRIMARY', sub_section='LOWER')
+        elif section == 'PRIMARY':
+            assignments = assignments.filter(school_section='PRIMARY', sub_section='UPPER')
+        elif section == 'JSS':
+            assignments = assignments.filter(school_section='JSS')
 
         for assignment in assignments:
             total_students = get_religion_aware_student_count(
@@ -683,19 +700,16 @@ def review_stream_submission(request):
 
     section = get_request_school_section(request)
 
+    # Determine the exam section (Exams don't have LOWER_PRIMARY, they use PRIMARY)
+    exam_section_filter = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
+
     exam = Exam.objects.filter(school=school, id=exam_id).first() if exam_id else None
-    if exam and section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS') and exam.school_section != section:
+    if exam and exam.school_section != exam_section_filter:
         exam = None
     if not exam:
-        exam_q = Exam.objects.filter(school=school, status="active")
-        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-            exam_q = exam_q.filter(school_section=section)
-        exam = exam_q.order_by("-year", "term", "name").first()
+        exam = Exam.objects.filter(school=school, status="active", school_section=exam_section_filter).order_by("-year", "term", "name").first()
     if not exam:
-        exam_q = Exam.objects.filter(school=school)
-        if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-            exam_q = exam_q.filter(school_section=section)
-        exam = exam_q.order_by("-year", "term", "name").first()
+        exam = Exam.objects.filter(school=school, school_section=exam_section_filter).order_by("-year", "term", "name").first()
     if not exam:
         messages.error(request, "Create an assessment first before reviewing stream submissions.")
         return redirect("manage_exams")
@@ -1187,11 +1201,17 @@ def manage_assessment_locks(request):
                 return JsonResponse({'status': 'error', 'message': 'Invalid grade for current section.'}, status=403)
 
             with transaction.atomic():
+                lock_school_section = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
+                lock_sub_section = 'LOWER' if section == 'LOWER_PRIMARY' else ('UPPER' if section == 'PRIMARY' else None)
                 lock_obj, _ = AssessmentLock.objects.update_or_create(
                     school=school,
                     year=current_year, term=payload_term,
                     grade=data.get('grade'), exam_type=data.get('exam_type'),
-                    defaults={'is_locked': data.get('is_locked'), 'school_section': section or 'JSS'}
+                    defaults={
+                        'is_locked': data.get('is_locked'),
+                        'school_section': lock_school_section,
+                        'sub_section': lock_sub_section,
+                    }
                 )
             return JsonResponse({'status': 'success', 'is_locked': lock_obj.is_locked})
         except Exception as e:
@@ -1271,11 +1291,16 @@ def select_exam_primary(request):
     school = get_request_school(request)
     section = get_request_school_section(request)
 
-    # Determine which section to use for this view
+    # Determine which section and sub_section to use for this view
     if section == 'LOWER_PRIMARY':
-        exam_section = 'LOWER_PRIMARY'
-    else:
         exam_section = 'PRIMARY'
+        exam_sub_section = 'LOWER'
+    elif section == 'PRIMARY':
+        exam_section = 'PRIMARY'
+        exam_sub_section = 'UPPER'
+    else:
+        exam_section = 'JSS'
+        exam_sub_section = None
 
     assignments = (
         SubjectAssignment.objects
@@ -1283,6 +1308,8 @@ def select_exam_primary(request):
         .select_related('teacher_profile__user')
         .order_by('class_name', 'stream', 'subject__code')
     )
+    if exam_sub_section:
+        assignments = assignments.filter(sub_section=exam_sub_section)
 
     active_exams = Exam.objects.filter(
         school=school, status='active', school_section=exam_section
@@ -1442,6 +1469,7 @@ def select_exam_primary(request):
                         year=selected_exam.year,
                         defaults={
                             'school_section': exam_section,
+                            'sub_section': exam_sub_section,
                             'raw_score': None,
                             'maximum_marks': maximum_marks,
                             'score': 0,
@@ -1480,6 +1508,7 @@ def select_exam_primary(request):
                     year=selected_exam.year,
                     defaults={
                         'school_section': exam_section,
+                        'sub_section': exam_sub_section,
                         'raw_score': raw_score,
                         'maximum_marks': maximum_marks,
                         'score': percentage,

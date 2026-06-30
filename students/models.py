@@ -669,6 +669,10 @@ class SubjectAssignment(SchoolScopedModel):
         ('PRIMARY', 'Primary'),
         ('JSS', 'Junior Secondary'),
     ]
+    SUB_SECTION_CHOICES = [
+        ('LOWER', 'Lower Primary'),
+        ('UPPER', 'Upper Primary'),
+    ]
     teacher_profile = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='assignments')
     subject = models.ForeignKey(
         'Subject',
@@ -685,6 +689,13 @@ class SubjectAssignment(SchoolScopedModel):
         choices=SECTION_CHOICES,
         default='JSS',
         help_text="Which section this assignment belongs to"
+    )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=SUB_SECTION_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS."
     )
 
     class Meta:
