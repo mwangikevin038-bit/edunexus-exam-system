@@ -346,26 +346,24 @@
     <!-- GREETING -->
     <div class="greeting">
         <h1>Welcome back, <span>{{ request.user.first_name|default:"Teacher" }}</span></h1>
-        <p>{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if request.session.workspace_section %}{{ request.session.workspace_section }}{% else %}PRIMARY{% endif %} Section</p>
+        <p>{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</p>
     </div>
 
     <!-- QUICK ACTION CARDS -->
     <div class="quick-actions stagger-children">
-        {% with ws=request.session.workspace_section sec=request.session.school_section %}
-        {% if ws == 'PRIMARY' or sec == 'PRIMARY' %}
-            <a class="action-card" href="{% url 'select_exam_primary' %}">
-                <div class="action-card-icon"><i class="bi bi-input-cursor-text"></i></div>
-                <div class="action-card-title">Score Capture</div>
-                <div class="action-card-desc">Enter marks for your classes</div>
-            </a>
-        {% else %}
+        {% if section == 'JSS' %}
             <a class="action-card" href="{% url 'select_exam' %}">
                 <div class="action-card-icon"><i class="bi bi-input-cursor-text"></i></div>
                 <div class="action-card-title">Score Capture</div>
                 <div class="action-card-desc">Enter marks for your classes</div>
             </a>
+        {% else %}
+            <a class="action-card" href="{% url 'select_exam_primary' %}">
+                <div class="action-card-icon"><i class="bi bi-input-cursor-text"></i></div>
+                <div class="action-card-title">Score Capture</div>
+                <div class="action-card-desc">Enter marks for your classes</div>
+            </a>
         {% endif %}
-        {% endwith %}
 
         <a class="action-card" href="{% url 'results_list' %}">
             <div class="action-card-icon"><i class="bi bi-graph-up-arrow"></i></div>
@@ -444,7 +442,7 @@
                             Pending entry
                         </div>
                     </div>
-                    <a class="btn btn-sm btn-primary" href="{% url 'select_exam' %}">Capture Marks</a>
+                    <a class="btn btn-sm btn-primary" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">Capture Marks</a>
                 </div>
             </div>
         {% empty %}

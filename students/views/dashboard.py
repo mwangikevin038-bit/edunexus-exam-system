@@ -106,6 +106,7 @@ def dashboard(request):
         'published_contexts': published_contexts[:4],
         'class_teacher_scope': class_scope,
         'current_year': datetime.date.today().year,
+        'section': section,
     })
 
 
