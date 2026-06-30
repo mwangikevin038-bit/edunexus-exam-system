@@ -979,6 +979,196 @@
         }
     }
 
+    /* ===== MOBILE MARK ENTRY - VERTICAL ROSTER ===== */
+    @media (max-width: 768px) {
+        .capture-page {
+            padding: var(--space-3);
+            padding-top: calc(var(--mobile-topbar) + var(--space-3));
+            padding-bottom: calc(var(--bottomnav-height) + var(--space-3));
+        }
+
+        .capture-header {
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+
+        .capture-header .teacher-chip {
+            display: none;
+        }
+
+        .capture-title h1 {
+            font-size: var(--text-xl);
+        }
+
+        /* Transform table into vertical cards */
+        .table-wrap {
+            border: none;
+            border-radius: 0;
+            overflow: visible;
+            margin: 0;
+            width: 100%;
+        }
+
+        .capture-table {
+            min-width: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .capture-table thead {
+            display: none;
+        }
+
+        .capture-table tbody {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .capture-table tr {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            grid-template-rows: auto auto;
+            gap: var(--space-2);
+            padding: var(--space-3);
+            background: var(--en-bg-elevated);
+            border: 1px solid var(--en-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xs);
+        }
+
+        .capture-table td {
+            border: none;
+            padding: 0;
+        }
+
+        /* Row 1: Name spans full width */
+        .capture-table td:nth-child(2) {
+            grid-column: 1 / -1;
+            font-size: var(--text-sm);
+            font-weight: var(--weight-bold);
+            color: var(--en-text);
+        }
+
+        /* Row 2: Adm No (left) */
+        .capture-table td:nth-child(1) {
+            font-size: 11px;
+            color: var(--en-text-muted);
+            font-weight: var(--weight-semibold);
+        }
+
+        /* Row 2: Score entry (right) */
+        .capture-table td:nth-child(3) {
+            grid-column: 2;
+            justify-self: end;
+        }
+
+        .capture-table td:nth-child(4),
+        .capture-table td:nth-child(5) {
+            grid-column: 1 / -1;
+        }
+
+        .marks-input {
+            width: 72px;
+            height: 40px;
+            font-size: var(--text-md);
+            font-weight: var(--weight-bold);
+            border-radius: var(--radius-md);
+        }
+
+        .absent-quick-btn {
+            width: 44px;
+            height: 40px;
+            font-size: 13px;
+        }
+
+        .level-badge {
+            min-width: 0;
+            width: 100%;
+            font-size: 11px;
+            padding: 6px 10px;
+            border-radius: var(--radius-md);
+        }
+
+        .points-badge {
+            width: 36px;
+            height: 30px;
+            font-size: 13px;
+            border-radius: var(--radius-md);
+        }
+
+        .readonly-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-3);
+        }
+
+        .capture-label {
+            font-size: 10px;
+        }
+
+        .readonly-box {
+            height: 40px;
+            font-size: var(--text-sm);
+        }
+
+        .maximum-input {
+            height: 40px;
+            font-size: var(--text-sm);
+        }
+
+        .upload-card {
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+        }
+
+        .capture-card {
+            border-radius: var(--radius-xl);
+            border-left-width: 4px;
+        }
+
+        .capture-card-head {
+            padding: var(--space-4);
+        }
+
+        .capture-card-head h2 {
+            font-size: var(--text-lg);
+        }
+
+        .section-label {
+            font-size: var(--text-sm);
+            margin: var(--space-4) 0 var(--space-3);
+        }
+
+        .btn-oraimo {
+            height: 48px;
+            font-size: var(--text-sm);
+            border-radius: var(--radius-lg);
+        }
+
+        .assessment-card-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-3);
+        }
+
+        .assessment-card {
+            border-radius: var(--radius-lg);
+        }
+
+        .message-alert,
+        .submitted-alert,
+        .locked-alert {
+            border-radius: var(--radius-lg);
+            font-size: var(--text-sm);
+        }
+
+        .returned-alert {
+            border-radius: var(--radius-lg);
+            font-size: var(--text-sm);
+        }
+    }
+
     @media print {
         @page { margin: 0.8cm 0.8cm 1.2cm 0.8cm; }
 
