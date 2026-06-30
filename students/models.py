@@ -3,6 +3,7 @@ import logging
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.conf import settings
 from django.db import models
 
 from .school_scope import SchoolScopedManager, get_current_school
@@ -117,6 +118,13 @@ class Grade(SchoolScopedModel):
         default='JSS',
         help_text="Which section this grade belongs to"
     )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS.',
+        null=True,
+        blank=True,
+    )
     order = models.PositiveIntegerField()
 
     class Meta:
@@ -166,9 +174,16 @@ class Subject(SchoolScopedModel):
     code = models.CharField(max_length=10, help_text="Unique subject code, e.g. ENG, MAT")
     name = models.CharField(max_length=100, help_text="Official subject / learning area name")
     school_section = models.CharField(
-        max_length=10,
+        max_length=15,
         choices=SECTION_CHOICES,
         help_text="Which section this subject belongs to"
+    )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS.',
+        null=True,
+        blank=True,
     )
     grade = models.CharField(
         max_length=20,
@@ -267,6 +282,13 @@ class Student(SchoolScopedModel):
         default='JSS',
         help_text="Which section this student belongs to"
     )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS.',
+        null=True,
+        blank=True,
+    )
     class_name = models.CharField(max_length=20, choices=CLASS_CHOICES)
     stream = models.CharField(max_length=20)
     term = models.CharField(max_length=20, choices=TERM_CHOICES, default='Term 1')
@@ -336,6 +358,8 @@ class Mark(SchoolScopedModel):
         'Subject',
         on_delete=models.PROTECT,
         related_name='marks',
+        null=True,
+        blank=True,
         help_text="Subject for this mark"
     )
     school_section = models.CharField(
@@ -343,6 +367,13 @@ class Mark(SchoolScopedModel):
         choices=SECTION_CHOICES,
         default='JSS',
         help_text="Which section this mark belongs to"
+    )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS.',
+        null=True,
+        blank=True,
     )
 
     score = models.PositiveIntegerField()
@@ -506,6 +537,13 @@ class Teacher(SchoolScopedModel):
         default='BOTH',
         help_text="Which section this teacher belongs to"
     )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS/Both.',
+        null=True,
+        blank=True,
+    )
 
     # ============ PERSONAL INFORMATION ============
     TITLE_CHOICES = [
@@ -636,6 +674,8 @@ class SubjectAssignment(SchoolScopedModel):
         'Subject',
         on_delete=models.PROTECT,
         related_name='assignments',
+        null=True,
+        blank=True,
         help_text="Subject assigned to this teacher"
     )
     class_name = models.CharField(max_length=20, choices=Student.CLASS_CHOICES)
@@ -683,6 +723,8 @@ class MarkSubmission(SchoolScopedModel):
         'Subject',
         on_delete=models.PROTECT,
         related_name='submissions',
+        null=True,
+        blank=True,
         help_text="Subject for this submission"
     )
     school_section = models.CharField(
@@ -690,6 +732,13 @@ class MarkSubmission(SchoolScopedModel):
         choices=SECTION_CHOICES,
         default='JSS',
         help_text="Which section this submission belongs to"
+    )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS.',
+        null=True,
+        blank=True,
     )
     class_name = models.CharField(max_length=50)
     stream = models.CharField(max_length=50)
@@ -830,6 +879,21 @@ class Exam(SchoolScopedModel):
         default='JSS',
         help_text="Which section this exam belongs to"
     )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS.',
+        null=True,
+        blank=True,
+    )
+    exam_report_mode = models.CharField(
+        max_length=20,
+        choices=[
+            ('UNMERGED', 'Unmerged (Individual Subjects)'),
+            ('INTEGRATED_KNEC', 'Integrated KNEC (Merged Papers)'),
+        ],
+        default='UNMERGED',
+    )
     term = models.CharField(max_length=20, choices=Student.TERM_CHOICES)
     year = models.IntegerField(default=current_year)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
@@ -875,6 +939,13 @@ class AssessmentLock(SchoolScopedModel):
         choices=SECTION_CHOICES,
         default='JSS',
         help_text="Which section this lock applies to"
+    )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS.',
+        null=True,
+        blank=True,
     )
     is_locked = models.BooleanField(default=False, help_text="If checked, teachers cannot alter marks for this setting")
 
@@ -984,3 +1055,90 @@ class SecurityAuditLog(models.Model):
             default=str,
         )
         return compute_audit_record_hash(payload)
+
+
+# -------------------- Class Teacher Assignment Model --------------------
+class ClassTeacherAssignment(models.Model):
+    school = models.ForeignKey(
+        School,
+        on_delete=models.PROTECT,
+        related_name="%(class)s_records",
+        null=True,
+        blank=True,
+    )
+    teacher = models.ForeignKey(
+        Teacher,
+        on_delete=models.CASCADE,
+        related_name='class_teacher_assignments',
+    )
+    stream = models.ForeignKey(
+        'Stream',
+        on_delete=models.CASCADE,
+        related_name='class_teacher_assignments',
+    )
+    school_section = models.CharField(
+        max_length=10,
+        choices=[('PRIMARY', 'Primary'), ('JSS', 'Junior Secondary')],
+        default='PRIMARY',
+        help_text='Which section this assignment belongs to',
+    )
+    year = models.IntegerField(default=current_year)
+    term = models.CharField(max_length=20)
+
+    class Meta:
+        ordering = ['-year', 'term']
+        unique_together = ('school', 'stream', 'year', 'term')
+
+    def __str__(self):
+        return f"{self.teacher} - {self.stream} ({self.year} {self.term})"
+
+
+# -------------------- Subject Merge Group Model --------------------
+class SubjectMergeGroup(models.Model):
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+    )
+    merge_group_code = models.CharField(max_length=20)
+    merge_group_name = models.CharField(max_length=100)
+    component_code = models.CharField(max_length=10)
+    component_name = models.CharField(max_length=100)
+    display_order = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ['sub_section', 'merge_group_code', 'display_order']
+        unique_together = ('sub_section', 'merge_group_code', 'component_code')
+
+    def __str__(self):
+        return f"{self.merge_group_name} ({self.component_code})"
+
+
+# -------------------- Notification Model --------------------
+class Notification(models.Model):
+    NOTIFICATION_TYPE_CHOICES = [
+        ('exam', 'Exam'),
+        ('sms', 'SMS'),
+        ('system', 'System'),
+        ('alert', 'Alert'),
+    ]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    notification_type = models.CharField(
+        max_length=10,
+        choices=NOTIFICATION_TYPE_CHOICES,
+        default='system',
+    )
+    is_read = models.BooleanField(default=False)
+    link = models.CharField(max_length=255, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.notification_type})"
