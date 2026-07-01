@@ -539,6 +539,9 @@ def bulk_report_cards(request):
             class_name=sample.class_name,
             stream=sample.stream,
         )
+        if selected_students_base.count() != len(student_ids):
+            messages.error(request, "All selected students must belong to the same class stream.")
+            return redirect('report_card_select')
 
     is_primary = sample.school_section == 'PRIMARY' if sample else False
     from ..models import Subject

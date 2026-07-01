@@ -8,6 +8,7 @@ individual submission reviews, and assessment lock management.
 import datetime
 import json
 
+import bleach
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -92,12 +93,12 @@ def select_exam(request):
 
     assignments = (
         SubjectAssignment.objects
-        .filter(school=school, teacher_profile=teacher)
+        .filter(school=school, teacher_profile=teacher, school_section='JSS')
         .select_related('teacher_profile__user', 'subject')
         .order_by('class_name', 'stream', 'subject__code')
     )
 
-    active_exams = Exam.objects.filter(school=school, status='active').order_by('-year', 'term', 'name')
+    active_exams = Exam.objects.filter(school=school, status='active', school_section='JSS').order_by('-year', 'term', 'name')
 
     selected_assignment = None
     selected_exam = None
@@ -207,16 +208,13 @@ def select_exam(request):
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
 
-            try:
-                maximum_marks = int(request.POST.get('maximum_marks') or 100)
-            except ValueError:
-                maximum_marks = 100
-
-            if maximum_marks <= 0:
-                messages.error(request, "Total marks must be greater than zero.")
+            if is_submitted:
+                messages.error(request, "This sheet has already been submitted and cannot be edited. Ask the admin to return it first.")
                 return redirect(
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
+
+            maximum_marks = current_maximum_marks
 
             missing_students = []
             saved_count = 0
@@ -234,29 +232,32 @@ def select_exam(request):
                         Student.objects.filter(id=student.id).update(religion=religion_tag)
                         opposite = _resolve_opposite_religion_subject(school, selected_assignment)
                         if opposite:
-                            Mark.objects.filter(
+                            Mark.all_objects.filter(
                                 school=school,
                                 student=student,
                                 subject=opposite,
                                 term=selected_exam.term,
                                 exam_type=selected_exam.name,
                                 year=selected_exam.year,
+                                school_section='JSS',
                             ).delete()
 
-                    Mark.objects.update_or_create(
+                    _mark_lookup = dict(
                         school=school,
                         student=student,
                         subject=selected_assignment.subject,
                         term=selected_exam.term,
                         exam_type=selected_exam.name,
                         year=selected_exam.year,
-                        defaults={
-                            'school_section': 'JSS',
-                            'raw_score': None,
-                            'maximum_marks': maximum_marks,
-                            'score': 0,
-                            'is_absent': True,
-                        }
+                    )
+                    Mark.all_objects.filter(**_mark_lookup).delete()
+                    Mark.all_objects.create(
+                        **_mark_lookup,
+                        school_section='JSS',
+                        raw_score=None,
+                        maximum_marks=maximum_marks,
+                        score=0,
+                        is_absent=True,
                     )
                     saved_count += 1
                     continue
@@ -275,20 +276,22 @@ def select_exam(request):
                         f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                     )
 
-                Mark.objects.update_or_create(
+                _mark_lookup = dict(
                     school=school,
                     student=student,
                     subject=selected_assignment.subject,
                     term=selected_exam.term,
                     exam_type=selected_exam.name,
                     year=selected_exam.year,
-                    defaults={
-                        'school_section': 'JSS',
-                        'raw_score': raw_score,
-                        'maximum_marks': maximum_marks,
-                        'score': round((raw_score / maximum_marks) * 100),
-                        'is_absent': False,
-                    }
+                )
+                Mark.all_objects.filter(**_mark_lookup).delete()
+                Mark.all_objects.create(
+                    **_mark_lookup,
+                    school_section='JSS',
+                    raw_score=raw_score,
+                    maximum_marks=maximum_marks,
+                    score=round((raw_score / maximum_marks) * 100),
+                    is_absent=False,
                 )
                 saved_count += 1
 
@@ -300,13 +303,32 @@ def select_exam(request):
                     Student.objects.filter(id=student.id).update(religion=religion_tag)
                     opposite = _resolve_opposite_religion_subject(school, selected_assignment)
                     if opposite:
-                        Mark.objects.filter(
+                        Mark.all_objects.filter(
                             school=school,
                             student=student,
                             subject=opposite,
                             term=selected_exam.term,
                             exam_type=selected_exam.name,
                             year=selected_exam.year,
+                            school_section='JSS',
+                        ).delete()
+
+            # ================================================================
+            # CHANGE 3 — Skip must-fill check for IRE/CRE/HRE subjects
+            # ================================================================
+            if missing_students and selected_assignment.subject.code not in RELIGION_SUBJECTS:
+                    religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
+                    Student.objects.filter(id=student.id).update(religion=religion_tag)
+                    opposite = _resolve_opposite_religion_subject(school, selected_assignment)
+                    if opposite:
+                        Mark.all_objects.filter(
+                            school=school,
+                            student=student,
+                            subject=opposite,
+                            term=selected_exam.term,
+                            exam_type=selected_exam.name,
+                            year=selected_exam.year,
+                            school_section='JSS',
                         ).delete()
 
             # ================================================================
@@ -327,7 +349,7 @@ def select_exam(request):
                 exam_name=selected_exam.name,
                 term=selected_exam.term,
                 year=selected_exam.year,
-                school_section=get_request_school_section(request) or "JSS",
+                school_section='JSS',
                 defaults={
                     "status": "submitted",
                     "admin_note": "",
@@ -462,13 +484,27 @@ def manage_exams(request):
             status = request.POST.get("status", "active")
             section = get_request_school_section(request)
 
+            if section == 'LOWER_PRIMARY':
+                exam_db_section = 'PRIMARY'
+                exam_sub_section = 'LOWER'
+            elif section == 'PRIMARY':
+                exam_db_section = 'PRIMARY'
+                exam_sub_section = 'UPPER'
+            else:
+                exam_db_section = 'JSS'
+                exam_sub_section = None
+
             if exam_name and term and year:
                 Exam.all_objects.update_or_create(
                     school=school,
                     name=exam_name,
                     term=term,
                     year=year,
-                    defaults={"status": status, "school_section": section or "JSS"},
+                    defaults={
+                        "status": status,
+                        "school_section": exam_db_section,
+                        "sub_section": exam_sub_section,
+                    },
                 )
                 messages.success(request, "Assessment has been saved successfully.")
             else:
@@ -732,8 +768,9 @@ def review_stream_submission(request):
         )
         section = get_request_school_section(request)
         if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-            exams = exams.filter(school_section=section)
-            pairs = pairs.filter(school_section=section)
+            exam_db_section = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
+            exams = exams.filter(school_section=exam_db_section)
+            pairs = pairs.filter(school_section=exam_db_section)
         for pair in pairs:
             _, totals = get_stream_submission_summary(pair["class_name"], pair["stream"], exam)
             stream_cards.append({
@@ -760,7 +797,7 @@ def review_stream_submission(request):
 
     if request.method == "POST":
         action_type = request.POST.get("action_type")
-        admin_note = request.POST.get("admin_note", "").strip()
+        admin_note = bleach.clean(request.POST.get("admin_note", "").strip())
         submissions = [
             row["submission"] for row in rows
             if row["submission"] and row["submission"].status in ["submitted", "approved", "published"]
@@ -874,7 +911,7 @@ def review_submission(request):
 
     if request.method == "POST":
         action_type = request.POST.get("action_type")
-        admin_note = request.POST.get("admin_note", "").strip()
+        admin_note = bleach.clean(request.POST.get("admin_note", "").strip())
 
         if not submission:
             messages.error(request, "This marksheet has not been submitted yet.")
@@ -919,30 +956,35 @@ def review_submission(request):
                     Student.objects.filter(id=student.id).update(religion=religion_tag)
                     opposite = _resolve_opposite_religion_subject(school, assignment)
                     if opposite:
-                        Mark.objects.filter(
+                        Mark.all_objects.filter(
                             school=school,
                             student=student,
                             subject=opposite,
                             term=exam.term,
                             exam_type=exam.name,
                             year=exam.year,
+                            school_section=assignment.school_section,
+                            sub_section=assignment.sub_section,
                         ).delete()
 
                 if value.upper() == "AB":
-                    Mark.objects.update_or_create(
+                    _adm_lookup = dict(
                         school=school,
                         student=student,
                         subject=assignment.subject,
                         term=exam.term,
                         exam_type=exam.name,
                         year=exam.year,
-                        defaults={
-                            "school_section": get_request_school_section(request) or 'JSS',
-                            "raw_score": None,
-                            "maximum_marks": maximum_marks,
-                            "score": 0,
-                            "is_absent": True,
-                        },
+                        school_section=assignment.school_section,
+                        sub_section=assignment.sub_section,
+                    )
+                    Mark.all_objects.filter(**_adm_lookup).delete()
+                    Mark.all_objects.create(
+                        **_adm_lookup,
+                        raw_score=None,
+                        maximum_marks=maximum_marks,
+                        score=0,
+                        is_absent=True,
                     )
                     corrected_count += 1
                     continue
@@ -961,20 +1003,23 @@ def review_submission(request):
                         f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
                     )
 
-                Mark.objects.update_or_create(
+                _adm_lookup = dict(
                     school=school,
                     student=student,
                     subject=assignment.subject,
                     term=exam.term,
                     exam_type=exam.name,
                     year=exam.year,
-                    defaults={
-                        "school_section": get_request_school_section(request) or 'JSS',
-                        "raw_score": raw_score,
-                        "maximum_marks": maximum_marks,
-                        "score": round((raw_score / maximum_marks) * 100),
-                        "is_absent": False,
-                    },
+                    school_section=assignment.school_section,
+                    sub_section=assignment.sub_section,
+                )
+                Mark.all_objects.filter(**_adm_lookup).delete()
+                Mark.all_objects.create(
+                    **_adm_lookup,
+                    raw_score=raw_score,
+                    maximum_marks=maximum_marks,
+                    score=round((raw_score / maximum_marks) * 100),
+                    is_absent=False,
                 )
                 corrected_count += 1
 
@@ -1204,6 +1249,10 @@ def manage_assessment_locks(request):
             if data.get('grade') not in allowed_grades:
                 return JsonResponse({'status': 'error', 'message': 'Invalid grade for current section.'}, status=403)
 
+            valid_exam_types = ['Opener Assessment', 'Mid Term Assessment', 'End Term Assessment']
+            if data.get('exam_type') not in valid_exam_types:
+                return JsonResponse({'status': 'error', 'message': 'Invalid assessment type.'}, status=400)
+
             with transaction.atomic():
                 lock_school_section = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
                 lock_sub_section = 'LOWER' if section == 'LOWER_PRIMARY' else ('UPPER' if section == 'PRIMARY' else None)
@@ -1219,7 +1268,10 @@ def manage_assessment_locks(request):
                 )
             return JsonResponse({'status': 'success', 'is_locked': lock_obj.is_locked})
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception("Assessment lock toggle failed")
+            return JsonResponse({'status': 'error', 'message': 'An error occurred. Please try again.'}, status=400)
 
     # --- Build lock state grid ---
     section = get_request_school_section(request)
@@ -1426,16 +1478,13 @@ def select_exam_primary(request):
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
 
-            try:
-                maximum_marks = int(request.POST.get('maximum_marks') or 100)
-            except ValueError:
-                maximum_marks = 100
-
-            if maximum_marks <= 0:
-                messages.error(request, "Total marks must be greater than zero.")
+            if is_submitted:
+                messages.error(request, "This sheet has already been submitted and cannot be edited. Ask the admin to return it first.")
                 return redirect(
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
+
+            maximum_marks = current_maximum_marks
 
             missing_students = []
             saved_count = 0
@@ -1454,7 +1503,7 @@ def select_exam_primary(request):
                         Student.objects.filter(id=student.id).update(religion=religion_tag)
                         opposite = _resolve_opposite_religion_subject(school, selected_assignment)
                         if opposite:
-                            Mark.objects.filter(
+                            Mark.all_objects.filter(
                                 school=school,
                                 student=student,
                                 subject=opposite,
@@ -1462,26 +1511,29 @@ def select_exam_primary(request):
                                 exam_type=selected_exam.name,
                                 year=selected_exam.year,
                                 school_section=exam_section,
+                                sub_section=exam_sub_section,
                             ).delete()
 
-                    Mark.objects.update_or_create(
+                    _mark_lookup = dict(
                         school=school,
                         student=student,
                         subject=selected_assignment.subject,
                         term=selected_exam.term,
                         exam_type=selected_exam.name,
                         year=selected_exam.year,
-                        defaults={
-                            'school_section': exam_section,
-                            'sub_section': exam_sub_section,
-                            'raw_score': None,
-                            'maximum_marks': maximum_marks,
-                            'score': 0,
-                            'is_absent': True,
-                            'primary_raw_score': 'AB',
-                            'primary_performance_point': 'AB',
-                            'primary_descriptor': 'AB',
-                        }
+                    )
+                    Mark.all_objects.filter(**_mark_lookup).delete()
+                    Mark.all_objects.create(
+                        **_mark_lookup,
+                        school_section=exam_section,
+                        sub_section=exam_sub_section,
+                        raw_score=None,
+                        maximum_marks=maximum_marks,
+                        score=0,
+                        is_absent=True,
+                        primary_raw_score='AB',
+                        primary_performance_point='AB',
+                        primary_descriptor='AB',
                     )
                     saved_count += 1
                     continue
@@ -1503,24 +1555,26 @@ def select_exam_primary(request):
                 percentage = round((raw_score / maximum_marks) * 100)
                 descriptor, points = _get_primary_performance(percentage)
 
-                Mark.objects.update_or_create(
+                _mark_lookup = dict(
                     school=school,
                     student=student,
                     subject=selected_assignment.subject,
                     term=selected_exam.term,
                     exam_type=selected_exam.name,
                     year=selected_exam.year,
-                    defaults={
-                        'school_section': exam_section,
-                        'sub_section': exam_sub_section,
-                        'raw_score': raw_score,
-                        'maximum_marks': maximum_marks,
-                        'score': percentage,
-                        'is_absent': False,
-                        'primary_raw_score': str(raw_score),
-                        'primary_performance_point': str(points),
-                        'primary_descriptor': descriptor,
-                    }
+                )
+                Mark.all_objects.filter(**_mark_lookup).delete()
+                Mark.all_objects.create(
+                    **_mark_lookup,
+                    school_section=exam_section,
+                    sub_section=exam_sub_section,
+                    raw_score=raw_score,
+                    maximum_marks=maximum_marks,
+                    score=percentage,
+                    is_absent=False,
+                    primary_raw_score=str(raw_score),
+                    primary_performance_point=str(points),
+                    primary_descriptor=descriptor,
                 )
                 saved_count += 1
 
@@ -1530,7 +1584,7 @@ def select_exam_primary(request):
                     Student.objects.filter(id=student.id).update(religion=religion_tag)
                     opposite = _resolve_opposite_religion_subject(school, selected_assignment)
                     if opposite:
-                        Mark.objects.filter(
+                        Mark.all_objects.filter(
                             school=school,
                             student=student,
                             subject=opposite,
@@ -1538,6 +1592,7 @@ def select_exam_primary(request):
                             exam_type=selected_exam.name,
                             year=selected_exam.year,
                             school_section=exam_section,
+                            sub_section=exam_sub_section,
                         ).delete()
 
             if missing_students and selected_assignment.subject.code not in RELIGION_SUBJECTS:
@@ -1556,6 +1611,7 @@ def select_exam_primary(request):
                 term=selected_exam.term,
                 year=selected_exam.year,
                 school_section=exam_section,
+                sub_section=exam_sub_section,
                 defaults={
                     "status": "submitted",
                     "admin_note": "",
@@ -1704,25 +1760,28 @@ def clear_mark(request):
         school_section=assignment.school_section,
     ).first()
 
-    if submission and submission.status in ('approved', 'published'):
-        return JsonResponse({'error': 'This sheet has been reviewed by admin and cannot be modified.'}, status=403)
+    if submission and submission.status in ('submitted', 'approved', 'published'):
+        return JsonResponse({'error': 'This sheet has been submitted and cannot be modified. Ask the admin to return it first.'}, status=403)
 
-    deleted, _ = Mark.objects.filter(
+    deleted, _ = Mark.all_objects.filter(
         school=school,
         student=student,
         subject=assignment.subject,
         term=exam.term,
         exam_type=exam.name,
         year=exam.year,
+        school_section=assignment.school_section,
+        sub_section=assignment.sub_section,
     ).delete()
 
     if submission and submission.status == 'submitted' and deleted:
-        remaining = Mark.objects.filter(
+        remaining = Mark.all_objects.filter(
             school=school,
             subject=assignment.subject,
             term=exam.term,
             exam_type=exam.name,
             year=exam.year,
+            school_section=assignment.school_section,
         ).count()
         if remaining == 0:
             submission.delete()
@@ -1780,20 +1839,33 @@ def save_mark(request):
         school_section=assignment.school_section,
     ).first()
 
-    if submission and submission.status in ('approved', 'published'):
-        return JsonResponse({'error': 'Reviewed by admin — cannot modify'}, status=403)
+    if submission and submission.status in ('submitted', 'approved', 'published'):
+        return JsonResponse({'error': 'This sheet has been submitted and cannot be modified. Ask the admin to return it first.'}, status=403)
 
-    try:
-        maximum_marks = int(request.POST.get('maximum_marks') or 100)
-    except ValueError:
-        maximum_marks = 100
+    existing_mark = Mark.objects.filter(
+        school=school, student=student, subject=assignment.subject,
+        term=exam.term, exam_type=exam.name, year=exam.year,
+    ).first()
+    maximum_marks = existing_mark.maximum_marks if existing_mark else 100
 
     if not score_value:
-        Mark.objects.filter(
+        Mark.all_objects.filter(
             school=school, student=student, subject=assignment.subject,
             term=exam.term, exam_type=exam.name, year=exam.year,
+            school_section=assignment.school_section,
+            sub_section=assignment.sub_section,
         ).delete()
         return JsonResponse({'ok': True, 'cleared': True})
+
+    # Always delete existing mark first, then create fresh — avoids integrity
+    # checksum collision in update_or_create (save() verifies checksum before
+    # the new field values are applied).
+    _mark_lookup = dict(
+        school=school, student=student, subject=assignment.subject,
+        term=exam.term, exam_type=exam.name, year=exam.year,
+        school_section=assignment.school_section,
+        sub_section=assignment.sub_section,
+    )
 
     if score_value.upper() == 'AB':
         if assignment.subject.code in RELIGION_SUBJECTS:
@@ -1801,18 +1873,20 @@ def save_mark(request):
             Student.objects.filter(id=student.id).update(religion=religion_tag)
             opposite = _resolve_opposite_religion_subject(school, assignment)
             if opposite:
-                Mark.objects.filter(
+                Mark.all_objects.filter(
                     school=school, student=student, subject=opposite,
                     term=exam.term, exam_type=exam.name, year=exam.year,
+                    school_section=assignment.school_section,
+                    sub_section=assignment.sub_section,
                 ).delete()
 
-        Mark.objects.update_or_create(
-            school=school, student=student, subject=assignment.subject,
-            term=exam.term, exam_type=exam.name, year=exam.year,
-            defaults={
-                'school_section': 'JSS', 'raw_score': None,
-                'maximum_marks': maximum_marks, 'score': 0, 'is_absent': True,
-            }
+        Mark.all_objects.filter(**_mark_lookup).delete()
+        Mark.all_objects.create(
+            **_mark_lookup,
+            raw_score=None,
+            maximum_marks=maximum_marks,
+            score=0,
+            is_absent=True,
         )
         return JsonResponse({'ok': True, 'absent': True})
 
@@ -1824,15 +1898,13 @@ def save_mark(request):
     if raw_score < 0 or raw_score > maximum_marks:
         return JsonResponse({'error': 'Score exceeds total marks'}, status=400)
 
-    Mark.objects.update_or_create(
-        school=school, student=student, subject=assignment.subject,
-        term=exam.term, exam_type=exam.name, year=exam.year,
-        defaults={
-            'school_section': 'JSS', 'raw_score': raw_score,
-            'maximum_marks': maximum_marks,
-            'score': round((raw_score / maximum_marks) * 100),
-            'is_absent': False,
-        }
+    Mark.all_objects.filter(**_mark_lookup).delete()
+    Mark.all_objects.create(
+        **_mark_lookup,
+        raw_score=raw_score,
+        maximum_marks=maximum_marks,
+        score=round((raw_score / maximum_marks) * 100),
+        is_absent=False,
     )
 
     if assignment.subject.code in RELIGION_SUBJECTS:
@@ -1840,9 +1912,11 @@ def save_mark(request):
         Student.objects.filter(id=student.id).update(religion=religion_tag)
         opposite = _resolve_opposite_religion_subject(school, assignment)
         if opposite:
-            Mark.objects.filter(
+            Mark.all_objects.filter(
                 school=school, student=student, subject=opposite,
                 term=exam.term, exam_type=exam.name, year=exam.year,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
             ).delete()
 
     return JsonResponse({'ok': True, 'saved': True})

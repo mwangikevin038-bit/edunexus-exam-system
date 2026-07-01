@@ -22,6 +22,15 @@ logger = logging.getLogger("students.csv_tasks")
 CHUNK_SIZE = 100
 
 
+def _derive_sub_section(class_name):
+    """Derive sub_section from class_name. Grade 1-3 → LOWER, Grade 4-6 → UPPER, Grade 7-9 → None."""
+    if class_name in ('Grade 1', 'Grade 2', 'Grade 3'):
+        return 'LOWER'
+    if class_name in ('Grade 4', 'Grade 5', 'Grade 6'):
+        return 'UPPER'
+    return None
+
+
 def _send_progress(upload_id, data):
     """Push a progress event to the WebSocket group."""
     channel_layer = get_channel_layer()
@@ -228,6 +237,7 @@ def _process_chunk(school, chunk, offset, section='JSS'):
                             religion=religion,
                             gender=gender,
                             school_section=section,
+                            sub_section=_derive_sub_section(cls),
                         )
                         created += 1
                 else:
@@ -244,6 +254,7 @@ def _process_chunk(school, chunk, offset, section='JSS'):
                         religion=religion,
                         gender=gender,
                         school_section=section,
+                        sub_section=_derive_sub_section(cls),
                     )
                     created += 1
 

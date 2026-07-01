@@ -167,7 +167,7 @@
         {% if is_submitted %}
             <div class="cap-alert cap-alert-info">
                 <i class="ph ph-check-circle"></i>
-                This sheet has been submitted. Entries are now read-only.
+                This sheet has been submitted. Use "Return for Edits" below to make changes.
             </div>
         {% endif %}
 
@@ -256,7 +256,7 @@
                                    oninput="calcScore(this)"
                                    onkeydown="nextOnEnter(event, this)"
                                    placeholder="—"
-                                   {% if student.current_score %}data-had-value="1"{% endif %}
+                                   data-had-value="{% if student.current_score != '' and student.current_score is not None %}1{% else %}0{% endif %}"
                                    {% if is_locked %}readonly{% endif %}>
                             <button type="button" class="cap-absent"
                                     onclick="markAB(this)" tabindex="-1"
@@ -380,6 +380,21 @@
 
     var saveTimers = {};
 
+    function showToast(msg, type) {
+        var existing = document.querySelector('.cap-toast');
+        if (existing) existing.remove();
+        var t = document.createElement('div');
+        t.className = 'cap-toast';
+        t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:10px;font-size:.8125rem;font-weight:700;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity 300ms;opacity:1;pointer-events:none;';
+        if (type === 'error') { t.style.background='#fef2f2'; t.style.color='#991b1b'; t.style.border='1px solid #fecaca'; }
+        else if (type === 'success') { t.style.background='#f0fdf4'; t.style.color='#15803d'; t.style.border='1px solid #bbf7d0'; }
+        else { t.style.background='#eff6ff'; t.style.color='#1d4ed8'; t.style.border='1px solid #bfdbfe'; }
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(function(){ t.style.opacity='0'; }, 2200);
+        setTimeout(function(){ t.remove(); }, 2500);
+    }
+
     function autoSaveMark(input) {
         var row = input.closest('.cap-student');
         if (!row || input.readOnly) return;
@@ -396,6 +411,7 @@
             fd.append('assignment_id', assignmentId.value);
             fd.append('exam_id', examId.value);
             fd.append('score', input.value.trim());
+            fd.append('maximum_marks', (document.getElementById('maximumMarks').value || '100'));
             fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
 
             fetch('{% url "save_mark" %}', {
@@ -404,8 +420,12 @@
             }).then(function(r) { return r.json(); }).then(function(data) {
                 if (!data.ok && data.error) {
                     console.warn('Auto-save failed:', data.error);
+                    showToast('Save failed: ' + data.error, 'error');
                 }
-            }).catch(function() {});
+            }).catch(function(e) {
+                console.warn('Auto-save network error:', e);
+                showToast('Network error — score not saved', 'error');
+            });
         }, 600);
     }
 
@@ -433,10 +453,18 @@
             method: 'POST',
             body: fd
         }).then(function(r) { return r.json(); }).then(function(data) {
-            if (!data.ok && data.error) {
+            if (data.ok) {
+                updateProgress();
+            } else if (data.error) {
                 console.warn('Clear failed:', data.error);
+                showToast('Clear failed: ' + data.error, 'error');
+                input.dataset.hadValue = '1';
             }
-        }).catch(function() {});
+        }).catch(function(e) {
+            console.warn('Clear network error:', e);
+            showToast('Network error — mark not cleared', 'error');
+            input.dataset.hadValue = '1';
+        });
     }
 
     function updateProgress() {

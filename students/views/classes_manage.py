@@ -13,10 +13,25 @@ from ..security import get_request_school, get_request_school_section, school_ad
 
 
 # Section-to-grade mapping
+LOWER_PRIMARY_GRADES = [f'Grade {i}' for i in range(1, 4)]
 PRIMARY_GRADES = [f'Grade {i}' for i in range(4, 7)]
 JSS_GRADES = [f'Grade {i}' for i in range(7, 10)]
 ALL_GRADES = [f'Grade {i}' for i in range(1, 13)]
 GRADE_ORDER = {f'Grade {i}': i for i in range(1, 13)}
+
+# Grade number → sub_section mapping
+GRADE_SUB_SECTION = {}
+for _i in range(1, 4):
+    GRADE_SUB_SECTION[f'Grade {_i}'] = 'LOWER'
+for _i in range(4, 7):
+    GRADE_SUB_SECTION[f'Grade {_i}'] = 'UPPER'
+
+
+def _resolve_db_section(section):
+    """Map workspace section to the DB school_section value used by Grade/Stream."""
+    if section in ('LOWER_PRIMARY', 'PRIMARY'):
+        return 'PRIMARY'
+    return 'JSS'
 
 
 @login_required(login_url='login')
@@ -38,7 +53,9 @@ def manage_classes(request):
     section = get_request_school_section(request)
 
     # Determine which grades are allowed in this workspace
-    if section == 'PRIMARY':
+    if section == 'LOWER_PRIMARY':
+        allowed_grades = LOWER_PRIMARY_GRADES
+    elif section == 'PRIMARY':
         allowed_grades = PRIMARY_GRADES
     elif section == 'JSS':
         allowed_grades = JSS_GRADES
@@ -66,14 +83,15 @@ def manage_classes(request):
             grade = Grade.all_objects.create(
                 school=school,
                 name=grade_name,
-                school_section=section or 'JSS',
+                school_section=_resolve_db_section(section),
+                sub_section=GRADE_SUB_SECTION.get(grade_name),
                 order=GRADE_ORDER.get(grade_name, 99),
             )
             Stream.all_objects.create(
                 school=school,
                 grade=grade,
                 name='Main',
-                school_section=section or 'JSS',
+                school_section=_resolve_db_section(section),
             )
             messages.success(request, f"{grade_name} created with one stream: Main.")
             return redirect('manage_classes')
@@ -189,7 +207,7 @@ def manage_classes(request):
     # Use all_objects but filter by section to show correct grades
     grades = (
         Grade.all_objects
-        .filter(school=school, school_section=section or 'JSS')
+        .filter(school=school, school_section=_resolve_db_section(section))
         .prefetch_related('streams')
         .order_by('order')
     )

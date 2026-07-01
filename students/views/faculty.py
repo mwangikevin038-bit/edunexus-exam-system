@@ -43,7 +43,9 @@ from .helpers import (
     calculate_primary_plv,
     calculate_report_plv,
     generate_default_password,
+    get_class_teacher_scope,
     get_performance_level,
+    get_teacher_for_user,
     user_can_edit_learner_profile,
     user_can_view_learner_profile,
 )
@@ -91,6 +93,13 @@ def manage_master_comments(request):
 
     section = get_request_school_section(request) or 'JSS'
     is_primary = section == 'PRIMARY'
+
+    if not user_has_main_school_admin_override(request.user):
+        teacher = get_teacher_for_user(request.user)
+        class_scope = get_class_teacher_scope(teacher)
+        if not class_scope or class_scope != (grade, stream):
+            messages.error(request, "You are not the class teacher for this class stream.")
+            return redirect('report_card_select')
 
     comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
         school=school, year=year, term=term, grade=grade, stream=stream, exam_type=db_assessment,
@@ -284,9 +293,12 @@ def manage_faculty_matrix(request):
                 if email_sent:
                     messages.success(request, f"Profile '{title} {full_name}' created successfully. Login credentials have been sent to {email_address}.")
                 else:
-                    messages.warning(request, f"Profile '{title} {full_name}' created. Email could not be sent. Username: {login_username} | Password: {default_password}")
+                    messages.warning(request, f"Profile '{title} {full_name}' created. Email could not be sent. Username: {login_username}. Use 'Reset Password' to set a new password.")
             except Exception as e:
-                messages.error(request, f"Error creating profile: {e}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.exception("Profile creation failed for teacher %s", full_name)
+                messages.error(request, "An error occurred while creating the profile. Please try again.")
             return redirect('manage_faculty_matrix')
 
         # --- Edit existing teacher profile ---
@@ -316,7 +328,10 @@ def manage_faculty_matrix(request):
             except Teacher.DoesNotExist:
                 messages.error(request, "Teacher record not found.")
             except Exception as e:
-                messages.error(request, f"Update failed: {e}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.exception("Profile update failed for teacher_id=%s", request.POST.get('teacher_id'))
+                messages.error(request, "An error occurred while updating the profile. Please try again.")
             return redirect('manage_faculty_matrix')
 
         # --- Delete teacher profile ---
@@ -331,7 +346,10 @@ def manage_faculty_matrix(request):
             except Teacher.DoesNotExist:
                 messages.error(request, "Teacher record not found.")
             except Exception as e:
-                messages.error(request, f"Deletion failed: {e}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.exception("Profile deletion failed for teacher_id=%s", request.POST.get('teacher_id'))
+                messages.error(request, "An error occurred while deleting the profile. Please try again.")
             return redirect('manage_faculty_matrix')
 
         # --- Assign subject to teacher ---
@@ -456,18 +474,12 @@ def learner_profile(request, student_id):
 
         import logging
         logger = logging.getLogger(__name__)
-        logger.warning(f"POST data: {dict(request.POST)}")
+        logger.info("Learner profile update attempt for student_id=%s by user_id=%s", student_id, request.user.id)
         
         previous_religion = student.religion
         form = StudentEditForm(request.POST, instance=student, school=student.school)
-        logger.warning(f"Form stream choices: {form.fields['stream'].choices}")
-        logger.warning(f"Form is_valid: {form.is_valid()}")
-        if not form.is_valid():
-            logger.warning(f"Form errors: {form.errors}")
         if form.is_valid():
-            logger.warning(f"Cleaned data: {form.cleaned_data}")
             updated_student = form.save(commit=False)
-            logger.warning(f"Updated student stream before save: {updated_student.stream}")
 
             if is_school_admin:
                 guardian_phone = form.cleaned_data["guardian_phone"].strip()
@@ -484,10 +496,8 @@ def learner_profile(request, student_id):
                 updated_student.guardian = guardian_obj
 
             updated_student.save()
-            logger.warning(f"Updated student stream AFTER save: {updated_student.stream}")
             # Refresh from DB
             updated_student.refresh_from_db()
-            logger.warning(f"Updated student stream AFTER refresh: {updated_student.stream}")
 
             if previous_religion != updated_student.religion and updated_student.religion in ["CRE", "IRE"]:
                 opposite_code = OPPOSITE_RELIGION_SUBJECT.get(updated_student.religion)
@@ -576,11 +586,25 @@ def learner_profile(request, student_id):
     chart_scores = [item["mean"] for item in reversed(exam_history)]
     chart_history = list(reversed(exam_history))
 
+    subject_averages = []
+    for short, entries in subject_trends.items():
+        scores = [e["score"] for e in entries if e["score"] > 0]
+        avg = round(sum(scores) / len(scores), 1) if scores else 0
+        subject_averages.append({
+            "short": short,
+            "name": entries[0]["label"].split(" ")[0] if entries else short,
+            "average": avg,
+            "exam_count": len(entries),
+            "exams": entries,
+        })
+    subject_averages.sort(key=lambda x: x["average"], reverse=True)
+
     return render(request, "students/learner_profile.html", {
         "student": student,
         "exam_history": exam_history,
         "chart_history": chart_history,
         "subject_trends": subject_trends,
+        "subject_averages": subject_averages,
         "chart_labels": json.dumps(chart_labels),
         "chart_scores": json.dumps(chart_scores),
         "exam_count": len(exam_history),

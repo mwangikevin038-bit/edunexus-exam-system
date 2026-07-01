@@ -72,12 +72,19 @@ GRADE_CHOICES  = [c[0] for c in Student.CLASS_CHOICES]
 TERM_CHOICES   = [c[0] for c in Student.TERM_CHOICES]
 
 
+def _resolve_db_section(section):
+    """Map workspace section to the DB school_section value used by Grade/Stream."""
+    if section in ('LOWER_PRIMARY', 'PRIMARY'):
+        return 'PRIMARY'
+    return 'JSS'
+
+
 def get_streams_for_school(school, section=None):
     """Return dynamic stream names from the Grade/Stream models for a school."""
     from students.models import Stream
     qs = Stream.all_objects.filter(school=school)
     if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-        qs = qs.filter(school_section=section)
+        qs = qs.filter(school_section=_resolve_db_section(section))
     return list(qs.values_list("name", flat=True).distinct().order_by("name"))
 
 
@@ -86,7 +93,7 @@ def get_grades_for_school(school, section=None):
     from students.models import Grade
     qs = Grade.all_objects.filter(school=school)
     if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-        qs = qs.filter(school_section=section)
+        qs = qs.filter(school_section=_resolve_db_section(section))
     return list(qs.values_list("name", flat=True).distinct().order_by("name"))
 
 PERFORMANCE_SCALE = [

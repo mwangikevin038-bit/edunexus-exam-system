@@ -1,11 +1,14 @@
 {% extends 'students/base.html' %}
 {% block content %}
 <style>
+    /* ═══════════════════════════════════════════════════════════════
+       LEARNER PROFILE - DESKTOP (unchanged)
+       ═══════════════════════════════════════════════════════════════ */
     .learner-page {
         min-height: 100vh;
         background: #f6f8fb;
         padding: 38px 42px;
-        font-family: 'Inter', sans-serif;
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     }
 
     .learner-hero,
@@ -19,7 +22,7 @@
     }
 
     .learner-hero {
-        border-left: 8px solid var(--oraimo-green, #9be816);
+        border-left: 8px solid var(--en-green, #9be816);
         padding: 28px 32px;
         margin-bottom: 22px;
         display: flex;
@@ -62,12 +65,10 @@
         margin-bottom: 22px;
     }
 
-    .metric-card {
-        padding: 18px 20px;
-    }
+    .metric-card { padding: 18px 20px; }
 
     .metric-card span,
-    .profile-card span {
+    .profile-card > span {
         display: block;
         color: #64748b;
         font-size: 11px;
@@ -91,9 +92,7 @@
         align-items: start;
     }
 
-    .profile-card {
-        padding: 22px;
-    }
+    .profile-card { padding: 22px; }
 
     .profile-card h2,
     .history-card h2 {
@@ -108,174 +107,93 @@
         border-bottom: 1px solid #eef2f7;
         padding: 12px 0;
     }
+    .profile-row:last-child { border-bottom: none; }
+    .profile-row strong { color: #0f172a; font-weight: 900; }
 
-    .profile-row:last-child {
-        border-bottom: none;
-    }
-
-    .profile-row strong {
-        color: #0f172a;
-        font-weight: 900;
-    }
-
-    .edit-form {
-        margin-top: 18px;
-        padding-top: 18px;
-        border-top: 1px solid #eef2f7;
-    }
-
+    .edit-form { margin-top: 18px; padding-top: 18px; border-top: 1px solid #eef2f7; }
     .edit-form label {
-        display: block;
-        color: #64748b;
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin: 12px 0 7px;
+        display: block; color: #64748b; font-size: 11px; font-weight: 900;
+        text-transform: uppercase; letter-spacing: 0.8px; margin: 12px 0 7px;
     }
-
-    .edit-form input,
-    .edit-form select {
-        width: 100%;
-        border: 2px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 11px 12px;
-        color: #0f172a;
-        font-weight: 800;
+    .edit-form input, .edit-form select {
+        width: 100%; border: 2px solid #e2e8f0; border-radius: 10px;
+        padding: 11px 12px; color: #0f172a; font-weight: 800;
     }
 
     .save-btn {
-        width: 100%;
-        margin-top: 16px;
-        border: 0;
-        border-radius: 10px;
-        background: var(--oraimo-green, #9be816);
-        color: #0f172a;
-        padding: 13px 14px;
-        font-weight: 900;
-        cursor: pointer;
+        width: 100%; margin-top: 16px; border: 0; border-radius: 10px;
+        background: var(--en-green, #9be816); color: #0f172a;
+        padding: 13px 14px; font-weight: 900; cursor: pointer;
     }
 
     .chart-box {
-        height: 260px;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 18px;
-        background: #f8fafc;
-        margin-bottom: 22px;
+        height: 260px; border: 1px solid #e2e8f0; border-radius: 14px;
+        padding: 18px; background: #f8fafc; margin-bottom: 22px;
     }
 
     .bars {
-        height: 100%;
-        display: flex;
-        align-items: end;
-        gap: 12px;
-        border-left: 2px solid #cbd5e1;
-        border-bottom: 2px solid #cbd5e1;
-        padding: 10px 10px 0;
-        overflow-x: auto;
+        height: 100%; display: flex; align-items: end; gap: 12px;
+        border-left: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1;
+        padding: 10px 10px 0; overflow-x: auto;
     }
 
     .bar-wrap {
-        min-width: 72px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-end;
-        height: 100%;
+        min-width: 72px; display: flex; flex-direction: column;
+        align-items: center; justify-content: flex-end; height: 100%;
     }
 
     .bar {
-        width: 38px;
-        border-radius: 9px 9px 0 0;
-        background: linear-gradient(180deg, var(--oraimo-green, #9be816), #65a30d);
+        width: 38px; border-radius: 9px 9px 0 0;
+        background: linear-gradient(180deg, var(--en-green, #9be816), #65a30d);
         min-height: 4px;
     }
 
-    .bar-value {
-        font-size: 11px;
-        font-weight: 900;
-        color: #0f172a;
-        margin-bottom: 5px;
-    }
-
+    .bar-value { font-size: 11px; font-weight: 900; color: #0f172a; margin-bottom: 5px; }
     .bar-label {
-        margin-top: 8px;
-        color: #64748b;
-        font-size: 10px;
-        font-weight: 850;
-        text-align: center;
-        line-height: 1.2;
+        margin-top: 8px; color: #64748b; font-size: 10px; font-weight: 850;
+        text-align: center; line-height: 1.2;
     }
 
-    .history-card {
-        padding: 24px;
-        margin-bottom: 18px;
-    }
+    .history-card { padding: 24px; margin-bottom: 18px; }
 
     .exam-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-        margin-bottom: 14px;
+        display: flex; justify-content: space-between; gap: 16px;
+        flex-wrap: wrap; margin-bottom: 14px;
     }
-
-    .exam-head h3 {
-        margin: 0;
-        color: #0f172a;
-        font-size: 18px;
-        font-weight: 900;
-    }
-
-    .exam-head p {
-        margin: 5px 0 0;
-        color: #64748b;
-        font-weight: 750;
-    }
+    .exam-head h3 { margin: 0; color: #0f172a; font-size: 18px; font-weight: 900; }
+    .exam-head p { margin: 5px 0 0; color: #64748b; font-weight: 750; }
 
     .plv-pill {
-        background: #ecfccb;
-        color: #365314;
-        border-radius: 999px;
-        padding: 8px 14px;
-        font-size: 12px;
-        font-weight: 900;
-        align-self: flex-start;
+        background: #ecfccb; color: #365314; border-radius: 999px;
+        padding: 8px 14px; font-size: 12px; font-weight: 900; align-self: flex-start;
     }
 
-    .marks-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
+    .marks-table { width: 100%; border-collapse: collapse; }
     .marks-table th {
-        background: #f8fafc;
-        color: #334155;
-        font-size: 12px;
-        font-weight: 900;
-        text-transform: uppercase;
-        padding: 13px 14px;
-        text-align: left;
+        background: #f8fafc; color: #334155; font-size: 12px; font-weight: 900;
+        text-transform: uppercase; padding: 13px 14px; text-align: left;
         border-bottom: 1px solid #dbe3ee;
     }
-
     .marks-table td {
-        padding: 13px 14px;
-        border-bottom: 1px solid #eef2f7;
-        color: #0f172a;
-        font-weight: 800;
+        padding: 13px 14px; border-bottom: 1px solid #eef2f7;
+        color: #0f172a; font-weight: 800;
     }
 
     .empty-state {
-        background: #ffffff;
-        border: 1px dashed #cbd5e1;
-        border-radius: 16px;
-        padding: 44px 28px;
-        text-align: center;
-        color: #64748b;
-        font-weight: 750;
+        background: #ffffff; border: 1px dashed #cbd5e1; border-radius: 16px;
+        padding: 44px 28px; text-align: center; color: #64748b; font-weight: 750;
     }
+
+    /* Desktop: hide mobile-only elements */
+    .learner-mobile-topbar,
+    .learner-mobile-hero,
+    .learner-mobile-tabs,
+    .learner-tab-content,
+    .learner-mobile-section,
+    .learner-edit-trigger { display: none !important; }
+
+    /* Desktop: hide mobile bottom sheet overlay (it's only for mobile) */
+    .learner-sheet-overlay { display: none !important; }
 
     @media (max-width: 1000px) {
         .main-grid { grid-template-columns: 1fr !important; }
@@ -283,148 +201,717 @@
     }
 
     @media (max-width: 768px) {
-        .learner-page {
-            padding: 14px;
-        }
-
-        .learner-hero {
-            flex-direction: column;
-            gap: 12px;
-            padding: 18px 16px;
-            border-radius: 12px;
-        }
-
-        .learner-hero h1 {
-            font-size: 22px;
-        }
-
-        .learner-hero p {
-            font-size: 12px;
-        }
-
-        .hero-pill {
-            font-size: 10px;
-            padding: 6px 12px;
-            align-self: flex-start;
-        }
-
-        .metrics-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 10px;
-        }
-
-        .metric-card {
-            padding: 14px;
-            border-radius: 10px;
-        }
-
-        .metric-card span {
-            font-size: 10px;
-        }
-
-        .metric-card strong {
-            font-size: 20px;
-        }
-
-        .main-grid {
-            grid-template-columns: 1fr !important;
-            gap: 16px;
-        }
-
-        .profile-card {
-            padding: 16px;
-            border-radius: 12px;
-        }
-
-        .profile-card h2,
-        .history-card h2 {
-            font-size: 18px;
-        }
-
-        .edit-form input,
-        .edit-form select {
-            min-height: 44px;
-            font-size: 16px;
-        }
-
-        .save-btn {
-            min-height: 48px;
-            font-size: 15px;
-        }
-
-        .chart-box {
-            height: 200px;
-            padding: 14px;
-        }
-
-        .bar {
-            width: 28px;
-        }
-
-        .bar-wrap {
-            min-width: 56px;
-        }
-
-        .history-card {
-            padding: 16px;
-            border-radius: 12px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .exam-head {
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .exam-head h3 {
-            font-size: 16px;
-        }
-
-        .exam-head p {
-            font-size: 12px;
-        }
-
-        .plv-pill {
-            font-size: 11px;
-            padding: 6px 12px;
-            align-self: flex-start;
-        }
-
-        .marks-table {
-            min-width: 400px;
-        }
-
-        .marks-table th,
-        .marks-table td {
-            padding: 10px 12px;
-            font-size: 12px;
-        }
-
-        .empty-state {
-            padding: 28px 16px;
-            font-size: 13px;
-        }
+        .learner-page { padding: 14px; }
+        .learner-hero { flex-direction: column; gap: 12px; padding: 18px 16px; border-radius: 12px; }
+        .learner-hero h1 { font-size: 22px; }
+        .learner-hero p { font-size: 12px; }
+        .hero-pill { font-size: 10px; padding: 6px 12px; }
+        .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+        .metric-card { padding: 14px; border-radius: 10px; }
+        .metric-card span { font-size: 10px; }
+        .metric-card strong { font-size: 20px; }
+        .main-grid { grid-template-columns: 1fr !important; gap: 16px; }
+        .profile-card { padding: 16px; border-radius: 12px; }
+        .profile-card h2, .history-card h2 { font-size: 18px; }
+        .edit-form input, .edit-form select { min-height: 44px; font-size: 16px; }
+        .save-btn { min-height: 48px; font-size: 15px; }
+        .chart-box { height: 200px; padding: 14px; }
+        .bar { width: 28px; }
+        .bar-wrap { min-width: 56px; }
+        .history-card { padding: 16px; border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .exam-head { flex-direction: column; gap: 8px; }
+        .exam-head h3 { font-size: 16px; }
+        .exam-head p { font-size: 12px; }
+        .plv-pill { font-size: 11px; padding: 6px 12px; }
+        .marks-table { min-width: 400px; }
+        .marks-table th, .marks-table td { padding: 10px 12px; font-size: 12px; }
+        .empty-state { padding: 28px 16px; font-size: 13px; }
     }
 
+    /* ═══════════════════════════════════════════════════════════════
+       iOS 17 MOBILE REDESIGN (< 640px)
+       ═══════════════════════════════════════════════════════════════ */
     @media (max-width: 640px) {
-        .learner-page { padding: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .learner-hero { flex-direction: column; gap: 12px; padding: 16px 14px; }
-        .learner-hero h1 { font-size: 20px; }
-        .learner-hero p { font-size: 11px; }
-        .hero-pill { font-size: 10px; padding: 6px 10px; }
-        .metrics-grid { grid-template-columns: 1fr !important; gap: 8px; }
-        .metric-card { padding: 12px; border-radius: 10px; }
-        .metric-card span { font-size: 9px; }
-        .metric-card strong { font-size: 18px; }
-        .profile-card { padding: 14px; border-radius: 10px; }
-        .history-card { padding: 12px; border-radius: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .marks-table { min-width: 380px; }
-        .marks-table th, .marks-table td { padding: 8px 10px; font-size: 11px; }
+        /* Hide desktop layout */
+        .learner-hero, .metrics-grid, .main-grid { display: none !important; }
+
+        /* Show mobile elements */
+        .learner-mobile-topbar, .learner-mobile-hero, .learner-mobile-tabs,
+        .learner-tab-content, .learner-mobile-section,
+        .learner-edit-trigger, .learner-sheet-overlay { display: block !important; }
+
+        .learner-page { padding: 0; background: var(--en-bg); min-height: 100vh; overflow-x: hidden; }
+
+        /* ── Mobile Top Bar ─────────────────────────────────── */
+        .learner-mobile-topbar {
+            position: sticky; top: 0; z-index: 200;
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.82);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 0.5px solid rgba(0,0,0,0.08);
+        }
+
+        .learner-back-btn {
+            width: 36px; height: 36px; border-radius: 50%; border: none;
+            background: rgba(0,0,0,0.04); display: flex; align-items: center;
+            justify-content: center; color: #0f172a; font-size: 18px;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+            transition: background 0.2s; text-decoration: none; flex-shrink: 0;
+        }
+        .learner-back-btn:active { background: rgba(0,0,0,0.08); }
+
+        .learner-mobile-avatar {
+            width:34px; height:34px; border-radius:50%;
+            background:linear-gradient(135deg, #0f172a, #1e293b);
+            color:var(--en-green); display:flex; align-items:center;
+            justify-content:center; font-size:13px; font-weight:800; flex-shrink:0;
+        }
+
+        .learner-topbar-info { flex:1; min-width:0; }
+
+        .learner-topbar-name {
+            font-size:15px; font-weight:700; color:#0f172a;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+            line-height:1.2;
+        }
+
+        .learner-topbar-adm {
+            font-size:11px; font-weight:600; color:#94a3b8; line-height:1.2;
+        }
+
+        .learner-edit-trigger {
+            border:none; background:transparent; color:var(--en-green-active, #16a34a);
+            font-size:15px; font-weight:700; cursor:pointer;
+            -webkit-tap-highlight-color:transparent; padding:6px 2px; flex-shrink:0;
+        }
+        .learner-edit-trigger:active { opacity:0.6; }
+
+        /* ── Mobile Hero Section ────────────────────────────── */
+        .learner-mobile-hero { padding: 20px 16px 0; }
+
+        .learner-hero-avatar {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--en-green); display: flex; align-items: center;
+            justify-content: center; font-size: 28px; font-weight: 800;
+            margin-bottom: 14px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        }
+
+        .learner-hero-title {
+            font-size: 24px; font-weight: 800; color: #0f172a;
+            margin: 0 0 4px; line-height: 1.2;
+        }
+
+        .learner-hero-sub {
+            font-size: 13px; color: #64748b; font-weight: 600; margin: 0 0 16px;
+        }
+
+        .learner-hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+        .learner-hero-stat {
+            background: #ffffff; border: 1px solid #e2e8f0;
+            border-radius: 14px; padding: 14px 10px; text-align: center;
+        }
+
+        .learner-hero-stat-value {
+            font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.1;
+        }
+        .learner-hero-stat-value.green { color: var(--en-green-active, #65a30d); }
+
+        .learner-hero-stat-label {
+            font-size: 10px; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;
+        }
+
+        /* ── Segmented Tabs ─────────────────────────────────── */
+        .learner-mobile-tabs {
+            padding: 16px 16px 0; position: sticky; top: 60px;
+            z-index: 190; background: var(--en-bg);
+        }
+
+        .learner-segmented {
+            display: flex; background: rgba(0,0,0,0.04);
+            border-radius: 12px; padding: 3px; gap: 3px;
+        }
+
+        .learner-seg-btn {
+            flex: 1; border: none; background: transparent; border-radius: 10px;
+            padding: 10px 8px; font-size: 13px; font-weight: 700; color: #64748b;
+            cursor: pointer; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .learner-seg-btn.active {
+            background: #ffffff; color: #0f172a;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+        }
+
+        /* ── Tab Content Panels ─────────────────────────────── */
+        .learner-tab-content {
+            display: none; padding: 16px;
+            animation: learnerFadeIn 0.3s ease;
+        }
+        .learner-tab-content.active { display: block; }
+
+        @keyframes learnerFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Section Cards ──────────────────────────────────── */
+        .learner-mobile-section {
+            background: #ffffff; border: 1px solid #e2e8f0;
+            border-radius: 16px; margin-bottom: 14px; overflow: hidden;
+        }
+
+        .learner-section-header {
+            padding: 16px 16px 0; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8;
+        }
+
+        .learner-info-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 16px; border-bottom: 0.5px solid rgba(0,0,0,0.04);
+        }
+        .learner-info-row:last-child { border-bottom: none; }
+
+        .learner-info-label { font-size: 14px; color: #64748b; font-weight: 600; }
+
+        .learner-info-value {
+            font-size: 14px; font-weight: 700; color: #0f172a;
+            text-align: right; max-width: 55%; word-break: break-word;
+        }
+
+        /* ── Performance Bar Chart (Mobile) ─────────────────── */
+        .learner-chart-scroll {
+            overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 16px;
+        }
+
+        .learner-chart-bars {
+            display: flex; align-items: end; gap: 10px; min-height: 140px;
+            border-left: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0;
+            padding: 8px 8px 0;
+        }
+
+        .learner-chart-bar-wrap {
+            min-width: 54px; display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-end; height: 100%;
+        }
+
+        .learner-chart-bar-value {
+            font-size: 10px; font-weight: 800; color: #0f172a; margin-bottom: 4px;
+        }
+
+        .learner-chart-bar {
+            width: 30px; border-radius: 8px 8px 0 0;
+            background: linear-gradient(180deg, var(--en-green, #9be816), #65a30d);
+            min-height: 4px;
+        }
+
+        .learner-chart-bar-label {
+            margin-top: 6px; font-size: 9px; font-weight: 700; color: #94a3b8;
+            text-align: center; line-height: 1.2;
+        }
+
+        .learner-chart-empty {
+            padding: 32px 16px; text-align: center; color: #94a3b8;
+            font-size: 13px; font-weight: 600;
+        }
+
+        /* ── Exam Cards (Horizontal scroll) ─────────────────── */
+        .learner-exam-cards {
+            overflow-x: auto; -webkit-overflow-scrolling: touch;
+            padding: 0 16px 16px; display: flex; gap: 12px;
+        }
+
+        .learner-exam-card {
+            min-width: 280px; max-width: 300px; background: #ffffff;
+            border: 1px solid #e2e8f0; border-radius: 14px;
+            padding: 16px; flex-shrink: 0;
+        }
+
+        .learner-exam-card-head {
+            display: flex; justify-content: space-between;
+            align-items: flex-start; margin-bottom: 12px;
+        }
+
+        .learner-exam-card-title {
+            font-size: 15px; font-weight: 800; color: #0f172a; margin: 0;
+        }
+
+        .learner-exam-card-meta {
+            font-size: 12px; color: #94a3b8; font-weight: 600; margin-top: 2px;
+        }
+
+        .learner-exam-card-plv {
+            background: #ecfccb; color: #365314; border-radius: 999px;
+            padding: 4px 10px; font-size: 11px; font-weight: 800; flex-shrink: 0;
+        }
+
+        .learner-exam-card-stats { display: flex; gap: 12px; margin-bottom: 12px; }
+
+        .learner-exam-stat { text-align: center; flex: 1; }
+
+        .learner-exam-stat-val { font-size: 18px; font-weight: 800; color: #0f172a; }
+
+        .learner-exam-stat-lbl {
+            font-size: 9px; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 0.3px;
+        }
+
+        .learner-exam-subjects { border-top: 0.5px solid rgba(0,0,0,0.06); padding-top: 10px; }
+
+        .learner-subject-row {
+            display: flex; justify-content: space-between;
+            align-items: center; padding: 6px 0;
+        }
+
+        .learner-subject-name { font-size: 13px; font-weight: 600; color: #334155; }
+
+        .learner-subject-score { display: flex; gap: 10px; font-size: 12px; font-weight: 700; }
+        .learner-subject-score .score { color: #0f172a; min-width: 28px; text-align: right; }
+        .learner-subject-score .level { color: #64748b; min-width: 24px; text-align: center; }
+        .learner-subject-score .points { color: #94a3b8; min-width: 20px; text-align: right; }
+
+        .learner-exam-no-marks {
+            padding: 20px 16px; text-align: center; color: #94a3b8;
+            font-size: 13px; font-weight: 600;
+        }
+
+        /* ── Edit Bottom Sheet (mobile only) ────────────────── */
+        .learner-sheet-overlay {
+            position: fixed; inset: 0; z-index: 800;
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .learner-sheet-overlay.open {
+            pointer-events: all; opacity: 1;
+        }
+
+        .learner-sheet-backdrop {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.4);
+        }
+
+        .learner-sheet-panel {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: #ffffff; border-radius: 20px 20px 0 0;
+            max-height: 85vh; overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            -webkit-overflow-scrolling: touch;
+        }
+        .learner-sheet-overlay.open .learner-sheet-panel { transform: translateY(0); }
+
+        .learner-sheet-handle {
+            width: 36px; height: 5px; background: #e2e8f0;
+            border-radius: 999px; margin: 10px auto 0;
+        }
+
+        .learner-sheet-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 20px 12px; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+        }
+
+        .learner-sheet-title { font-size: 18px; font-weight: 800; color: #0f172a; }
+
+        .learner-sheet-close {
+            width: 32px; height: 32px; border-radius: 50%; border: none;
+            background: rgba(0,0,0,0.04); display: flex; align-items: center;
+            justify-content: center; color: #64748b; font-size: 14px; cursor: pointer;
+        }
+        .learner-sheet-close:active { background: rgba(0,0,0,0.08); }
+
+        .learner-sheet-body { padding: 16px 20px 32px; }
+
+        .learner-sheet-field { margin-bottom: 14px; }
+
+        .learner-sheet-label {
+            display: block; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.6px;
+            color: #94a3b8; margin-bottom: 6px;
+        }
+
+        .learner-sheet-body input[type="text"],
+        .learner-sheet-body input[type="number"],
+        .learner-sheet-body select,
+        .learner-sheet-body textarea {
+            width: 100% !important; border: 1.5px solid #e2e8f0 !important;
+            border-radius: 12px !important; padding: 13px 14px !important;
+            font-size: 15px !important; font-weight: 700 !important;
+            color: #0f172a !important; background: #f8fafc !important;
+            transition: border-color 0.2s; box-sizing: border-box !important;
+            -webkit-appearance: none; min-height: 48px;
+        }
+        .learner-sheet-body input:focus,
+        .learner-sheet-body select:focus {
+            outline: none; border-color: var(--en-green) !important;
+            background: #ffffff !important;
+        }
+
+        .learner-sheet-body .save-btn,
+        .learner-sheet-body button[type="submit"] {
+            width: 100%; margin-top: 8px; border: none !important;
+            border-radius: 14px !important; background: var(--en-green) !important;
+            color: #0f172a !important; padding: 15px !important;
+            font-size: 16px !important; font-weight: 800 !important;
+            cursor: pointer; min-height: 52px;
+        }
+        .learner-sheet-body .save-btn:active,
+        .learner-sheet-body button[type="submit"]:active {
+            background: var(--en-green-hover, #8ad412) !important;
+        }
+
+        .learner-sheet-body label {
+            display: block !important; font-size: 11px !important; font-weight: 800 !important;
+            text-transform: uppercase !important; letter-spacing: 0.6px !important;
+            color: #94a3b8 !important; margin: 12px 0 6px !important;
+        }
+
+        .learner-sheet-body .learner-sheet-readonly-note {
+            font-size: 11px; color: #94a3b8; font-weight: 600; margin-top: 4px;
+        }
+
+        .learner-sheet-error {
+            padding: 10px 14px; border-radius: 10px; margin-bottom: 14px;
+            font-size: 13px; font-weight: 600; background: #fef2f2;
+            color: #991b1b; border: 1px solid #fecaca;
+        }
+
+        /* ── Kenya Grading Colors ────────────────────────────── */
+        .lp-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800; }
+        .lp-badge-ee { background:#dcfce7; color:#166534; }
+        .lp-badge-me { background:#fef9c3; color:#854d0e; }
+        .lp-badge-ae { background:#ffedd5; color:#9a3412; }
+        .lp-badge-be { background:#fee2e2; color:#991b1b; }
+        .lp-badge-ab { background:#f1f5f9; color:#64748b; }
+
+        /* ── Score Row (vertical subject list) ───────────────── */
+        .lp-score-row {
+            display:flex; align-items:center; gap:12px;
+            padding:12px 16px; border-bottom:0.5px solid rgba(0,0,0,0.04);
+        }
+        .lp-score-row:last-child { border-bottom:none; }
+        .lp-score-subject { flex:1; font-size:14px; font-weight:600; color:#334155; }
+        .lp-score-value { font-size:15px; font-weight:800; color:#0f172a; min-width:42px; text-align:right; }
+
+        /* ── Exam Card (vertical list) ───────────────────────── */
+        .lp-exam-card {
+            background:#ffffff; border:1px solid #e2e8f0; border-radius:16px;
+            margin-bottom:12px; overflow:hidden;
+        }
+        .lp-exam-header {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:14px 16px; cursor:pointer;
+            -webkit-tap-highlight-color:transparent;
+        }
+        .lp-exam-header:active { background:#f8fafc; }
+        .lp-exam-title-group { flex:1; min-width:0; }
+        .lp-exam-title { font-size:15px; font-weight:800; color:#0f172a; margin:0; }
+        .lp-exam-meta { font-size:12px; color:#94a3b8; font-weight:600; margin-top:2px; }
+        .lp-exam-chevron { color:#cbd5e1; font-size:14px; transition:transform 0.2s; flex-shrink:0; margin-left:8px; }
+        .lp-exam-card.open .lp-exam-chevron { transform:rotate(90deg); }
+        .lp-exam-summary {
+            display:flex; gap:0; border-top:0.5px solid rgba(0,0,0,0.04);
+        }
+        .lp-exam-summary-cell {
+            flex:1; text-align:center; padding:10px 8px;
+            border-right:0.5px solid rgba(0,0,0,0.04);
+        }
+        .lp-exam-summary-cell:last-child { border-right:none; }
+        .lp-exam-summary-val { font-size:16px; font-weight:800; color:#0f172a; }
+        .lp-exam-summary-lbl { font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.3px; margin-top:2px; }
+        .lp-exam-marks {
+            max-height:0; overflow:hidden; transition:max-height 0.3s ease;
+        }
+        .lp-exam-card.open .lp-exam-marks { max-height:600px; }
+        .lp-exam-marks-inner { border-top:0.5px solid rgba(0,0,0,0.04); }
+
+        /* ── Hero Performance Card ───────────────────────────── */
+        .lp-hero-card {
+            margin:0 16px 14px; background:#ffffff; border:1px solid #e2e8f0;
+            border-radius:16px; overflow:hidden;
+        }
+        .lp-hero-row {
+            display:flex; gap:0;
+        }
+        .lp-hero-cell {
+            flex:1; text-align:center; padding:16px 8px;
+            border-right:0.5px solid rgba(0,0,0,0.04);
+        }
+        .lp-hero-cell:last-child { border-right:none; }
+        .lp-hero-val { font-size:24px; font-weight:800; color:#0f172a; line-height:1; }
+        .lp-hero-val.green { color:#16a34a; }
+        .lp-hero-lbl { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-top:6px; }
+
+        /* ── Recent Exam Strip ───────────────────────────────── */
+        .lp-recent-strip {
+            padding:0 16px 14px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+        }
+        .lp-recent-strip::-webkit-scrollbar { display:none; }
+        .lp-recent-list { display:flex; gap:10px; min-width:min-content; }
+        .lp-recent-chip {
+            min-width:140px; background:#ffffff; border:1px solid #e2e8f0;
+            border-radius:12px; padding:10px 12px; flex-shrink:0;
+        }
+        .lp-recent-chip-name { font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .lp-recent-chip-score { font-size:18px; font-weight:800; color:#0f172a; }
+        .lp-recent-chip-meta { font-size:10px; color:#94a3b8; font-weight:600; margin-top:2px; }
+
+        /* ── Edit Mode ───────────────────────────────────────── */
+        .lp-edit-fields { display:none; }
+        .lp-view-content { display:block; }
+        body.lp-editing .lp-edit-fields { display:block; }
+        body.lp-editing .lp-view-content { display:none; }
+        body.lp-editing .lp-score-row input,
+        body.lp-editing .lp-score-row select {
+            width:100%; border:1.5px solid #e2e8f0; border-radius:10px;
+            padding:10px 12px; font-size:14px; font-weight:700; color:#0f172a;
+            background:#f8fafc; min-height:44px;
+        }
+
+        /* ── Page load stagger animation ─────────────────────── */
+        .learner-animate-in {
+            opacity:0; transform:translateY(16px);
+            animation:learnerSlideUp 0.45s cubic-bezier(0.16,1,0.3,1) forwards;
+        }
+        .learner-animate-in:nth-child(1) { animation-delay:0.05s; }
+        .learner-animate-in:nth-child(2) { animation-delay:0.1s; }
+        .learner-animate-in:nth-child(3) { animation-delay:0.15s; }
+        .learner-animate-in:nth-child(4) { animation-delay:0.2s; }
+        .learner-animate-in:nth-child(5) { animation-delay:0.25s; }
+        .learner-animate-in:nth-child(6) { animation-delay:0.3s; }
+
+        @keyframes learnerSlideUp {
+            to { opacity:1; transform:translateY(0); }
+        }
     }
 </style>
 
 <div class="learner-page">
+    <!-- ═══════════════════════════════════════════════════════════
+         MOBILE LAYOUT (iOS 17 — hidden on desktop)
+         ═══════════════════════════════════════════════════════════ -->
+
+    <!-- ── Top Bar ─────────────────────────────────────────────── -->
+    <div class="learner-mobile-topbar">
+        <a href="javascript:history.back()" class="learner-back-btn" aria-label="Go back">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <div class="learner-mobile-avatar">{{ student.name|first|upper }}</div>
+        <div class="learner-topbar-info">
+            <div class="learner-topbar-name">{{ student.name }}</div>
+            <div class="learner-topbar-adm">{{ student.admission_no }}</div>
+        </div>
+        {% if can_edit_student %}
+        <button class="learner-edit-trigger" id="learnerEditBtn" aria-label="Edit learner">Edit</button>
+        {% endif %}
+    </div>
+
+    <!-- ── Hero: Performance Snapshot ──────────────────────────── -->
+    <div class="lp-hero-card learner-animate-in">
+        <div class="lp-hero-row">
+            <div class="lp-hero-cell">
+                <div class="lp-hero-val green">{% if latest_exam %}{{ latest_exam.mean }}%{% else %}-{% endif %}</div>
+                <div class="lp-hero-lbl">Latest Mean</div>
+            </div>
+            <div class="lp-hero-cell">
+                <div class="lp-hero-val">{% if latest_exam %}{{ latest_exam.plv }}{% else %}-{% endif %}</div>
+                <div class="lp-hero-lbl">Grade / PLV</div>
+            </div>
+            <div class="lp-hero-cell">
+                <div class="lp-hero-val">{{ exam_count }}</div>
+                <div class="lp-hero-lbl">Exams</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Recent Exam: Subject Score Strip ────────────────────── -->
+    {% if latest_exam %}
+    <div class="learner-animate-in">
+        <div style="padding:0 16px 6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:#94a3b8;">
+            Latest Exam &mdash; {{ latest_exam.exam_type }} ({{ latest_exam.term }} {{ latest_exam.year }})
+        </div>
+        <div class="lp-recent-strip">
+            <div class="lp-recent-list">
+                {% for mark in latest_exam.marks %}
+                    <div class="lp-recent-chip">
+                        <div class="lp-recent-chip-name">{{ mark.subject }}</div>
+                        <div class="lp-recent-chip-score">{{ mark.score }}</div>
+                        <div class="lp-recent-chip-meta">{{ mark.level }}{% if mark.points != "-" %} &middot; {{ mark.points }}pts{% endif %}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Segmented Tabs ──────────────────────────────────────── -->
+    <div class="learner-mobile-tabs learner-animate-in">
+        <div class="learner-segmented">
+            <button class="learner-seg-btn active" data-tab="learner-info">Info</button>
+            <button class="learner-seg-btn" data-tab="learner-performance">Performance</button>
+            <button class="learner-seg-btn" data-tab="learner-history">History</button>
+        </div>
+    </div>
+
+    <!-- ═══ TAB: INFO ══════════════════════════════════════════ -->
+    <div class="learner-tab-content active learner-animate-in" id="learner-info">
+        <div class="learner-mobile-section">
+            <div class="learner-section-header">Student Details</div>
+            <div class="learner-info-row">
+                <span class="learner-info-label">Admission No</span>
+                <span class="learner-info-value">{{ student.admission_no }}</span>
+            </div>
+            <div class="learner-info-row">
+                <span class="learner-info-label">Assessment No</span>
+                <span class="learner-info-value">{{ student.assessment_no|default:"-" }}</span>
+            </div>
+            <div class="learner-info-row">
+                <span class="learner-info-label">Class</span>
+                <span class="learner-info-value">{{ student.class_name }} {{ student.stream }}</span>
+            </div>
+            <div class="learner-info-row">
+                <span class="learner-info-label">Gender</span>
+                <span class="learner-info-value">{{ student.gender|default:"Not Specified" }}</span>
+            </div>
+            <div class="learner-info-row">
+                <span class="learner-info-label">Religion Subject</span>
+                <span class="learner-info-value">{{ student.religion|default:"Not Assigned" }}</span>
+            </div>
+        </div>
+
+        <div class="learner-mobile-section">
+            <div class="learner-section-header">Guardian</div>
+            <div class="learner-info-row">
+                <span class="learner-info-label">Name</span>
+                <span class="learner-info-value">{{ student.guardian.name|default:"-" }}</span>
+            </div>
+            <div class="learner-info-row">
+                <span class="learner-info-label">Phone</span>
+                <span class="learner-info-value">{{ student.guardian.phone|default:"-" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TAB: PERFORMANCE ═══════════════════════════════════ -->
+    <div class="learner-tab-content learner-animate-in" id="learner-performance">
+        <!-- Bar Chart -->
+        <div class="learner-mobile-section">
+            <div class="learner-section-header">Performance Trend</div>
+            {% if exam_history %}
+                <div class="learner-chart-scroll">
+                    <div class="learner-chart-bars">
+                        {% for item in chart_history %}
+                            <div class="learner-chart-bar-wrap">
+                                <div class="learner-chart-bar-value">{{ item.mean }}%</div>
+                                <div class="learner-chart-bar" style="height:{{ item.mean }}%;"></div>
+                                <div class="learner-chart-bar-label">{{ item.exam_type }}<br>{{ item.term }} {{ item.year }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="learner-chart-empty">No assessment history captured yet.</div>
+            {% endif %}
+        </div>
+
+        <!-- Subject Breakdown (vertical list, Kenya colors) -->
+        {% if subject_averages %}
+        <div class="learner-mobile-section">
+            <div class="learner-section-header">Subject Breakdown</div>
+            {% for subj in subject_averages %}
+                {% with latest=subj.exams.0 %}
+                    <div class="lp-score-row">
+                        <span class="lp-score-subject">{{ subj.short }}</span>
+                        {% if latest %}
+                            <span class="lp-score-value">{{ latest.score }}%</span>
+                            {% if latest.score >= 80 %}
+                                <span class="lp-badge lp-badge-ee">{{ latest.level }}</span>
+                            {% elif latest.score >= 60 %}
+                                <span class="lp-badge lp-badge-me">{{ latest.level }}</span>
+                            {% elif latest.score >= 40 %}
+                                <span class="lp-badge lp-badge-ae">{{ latest.level }}</span>
+                            {% elif latest.score > 0 %}
+                                <span class="lp-badge lp-badge-be">{{ latest.level }}</span>
+                            {% else %}
+                                <span class="lp-badge lp-badge-ab">AB</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="lp-score-value">-</span>
+                        {% endif %}
+                    </div>
+                {% endwith %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ═══ TAB: HISTORY ═══════════════════════════════════════ -->
+    <div class="learner-tab-content learner-animate-in" id="learner-history">
+        {% if exam_history %}
+            {% for exam in exam_history %}
+                <div class="lp-exam-card" onclick="this.classList.toggle('open')">
+                    <div class="lp-exam-header">
+                        <div class="lp-exam-title-group">
+                            <h3 class="lp-exam-title">{{ exam.exam_type }}</h3>
+                            <div class="lp-exam-meta">{{ exam.term }} {{ exam.year }}</div>
+                        </div>
+                        <span class="lp-exam-summary-cell" style="border:none;padding:0;">
+                            <span class="lp-exam-summary-val" style="font-size:14px;">{{ exam.mean }}%</span>
+                        </span>
+                        <i class="bi bi-chevron-right lp-exam-chevron"></i>
+                    </div>
+                    <div class="lp-exam-marks">
+                        <div class="lp-exam-marks-inner">
+                            {% for mark in exam.marks %}
+                                <div class="lp-score-row">
+                                    <span class="lp-score-subject">{{ mark.subject }}</span>
+                                    <span class="lp-score-value">{{ mark.score }}</span>
+                                    {% if mark.is_absent or mark.score == "AB" %}
+                                        <span class="lp-badge lp-badge-ab">AB</span>
+                                    {% elif mark.score >= 80 %}
+                                        <span class="lp-badge lp-badge-ee">{{ mark.level }}</span>
+                                    {% elif mark.score >= 60 %}
+                                        <span class="lp-badge lp-badge-me">{{ mark.level }}</span>
+                                    {% elif mark.score >= 40 %}
+                                        <span class="lp-badge lp-badge-ae">{{ mark.level }}</span>
+                                    {% else %}
+                                        <span class="lp-badge lp-badge-be">{{ mark.level }}</span>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="learner-exam-no-marks">No assessment history captured yet.</div>
+        {% endif %}
+    </div>
+
+    <!-- ═══ EDIT BOTTOM SHEET ══════════════════════════════════ -->
+    <div class="learner-sheet-overlay" id="learnerSheetOverlay">
+        <div class="learner-sheet-backdrop" id="learnerSheetBackdrop"></div>
+        <div class="learner-sheet-panel" id="learnerSheetPanel">
+            <div class="learner-sheet-handle"></div>
+            <div class="learner-sheet-header">
+                <span class="learner-sheet-title">Edit Learner</span>
+                <button class="learner-sheet-close" id="learnerSheetClose" aria-label="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="learner-sheet-body" id="learnerSheetBody">
+                {# Desktop form moved here by JS #}
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         DESKTOP CONTENT (hidden on mobile via CSS)
+         ═══════════════════════════════════════════════════════════ -->
     {% if messages %}
         {% for message in messages %}
             <div style="padding:10px 16px;border-radius:8px;margin-bottom:12px;font-weight:600;font-size:13px;
@@ -434,12 +921,6 @@
                 {{ message }}
             </div>
         {% endfor %}
-    {% endif %}
-
-    {% if form.non_field_errors %}
-        <div style="padding:10px 16px;border-radius:8px;margin-bottom:12px;font-weight:600;font-size:13px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;">
-            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-        </div>
     {% endif %}
 
     <section class="learner-hero">
@@ -458,7 +939,7 @@
     </div>
 
     <div class="main-grid">
-        <aside class="profile-card">
+        <aside class="profile-card" id="learnerProfileCard">
             <h2>Learner Details</h2>
             <div class="profile-row"><span>Assessment No</span><strong>{{ student.assessment_no|default:"-" }}</strong></div>
             <div class="profile-row"><span>Class Stream</span><strong>{{ student.class_name }} {{ student.stream }}</strong></div>
@@ -468,7 +949,7 @@
             <div class="profile-row"><span>Guardian Phone</span><strong>{{ student.guardian.phone|default:"-" }}</strong></div>
 
             {% if can_edit_student %}
-                <form class="edit-form" method="POST">
+                <form class="edit-form" method="POST" id="learnerEditForm">
                     {% csrf_token %}
                     <h2>Edit Account</h2>
 
@@ -592,16 +1073,12 @@
 </div>
 
 <script>
+/* ── Stream dropdown (single form) ──────────────────────────── */
 (function() {
     var classSelect = document.getElementById('id_class_name');
     var streamSelect = document.getElementById('id_stream');
     if (!classSelect || !streamSelect) return;
 
-    // Use the value rendered server-side from the database, NOT the live DOM.
-    // Reading streamSelect.value before the dropdown is repopulated by JS can
-    // return whatever the first <option> happens to be (e.g. "East"),
-    // which then gets re-selected after loadStreams() rebuilds the list
-    // and posted on save instead of the learner's real saved stream.
     var savedStream = "{{ student.stream|escapejs }}";
 
     function normalize(val) {
@@ -630,9 +1107,6 @@
                     streamSelect.appendChild(opt);
                 });
 
-                // If the learner's saved stream isn't in this grade's stream
-                // list (e.g. stale data or grade change), keep it visible
-                // and selected rather than silently defaulting to the first option.
                 if (selectVal && !matched) {
                     var opt = document.createElement('option');
                     opt.value = selectVal;
@@ -643,15 +1117,78 @@
             });
     }
 
-    // Initial load: always use the learner's actual saved stream from the DB.
     if (classSelect.value) {
         loadStreams(classSelect.value, savedStream);
     }
 
-    // When the admin manually changes the class, try to keep whatever is
-    // currently selected in the stream dropdown (not the original savedStream).
     classSelect.addEventListener('change', function() {
         loadStreams(this.value, streamSelect.value);
+    });
+})();
+
+/* ── Mobile segmented tabs ──────────────────────────────────── */
+document.querySelectorAll('.learner-seg-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.learner-seg-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.learner-tab-content').forEach(function(t) { t.classList.remove('active'); });
+        btn.classList.add('active');
+        var tab = document.getElementById(btn.getAttribute('data-tab'));
+        if (tab) tab.classList.add('active');
+    });
+});
+
+/* ── iOS 17 Edit Mode Toggle ────────────────────────────────── */
+(function() {
+    var editBtn = document.getElementById('learnerEditBtn');
+    var overlay = document.getElementById('learnerSheetOverlay');
+    var backdrop = document.getElementById('learnerSheetBackdrop');
+    var sheetBody = document.getElementById('learnerSheetBody');
+    var closeBtn = document.getElementById('learnerSheetClose');
+    var form = document.getElementById('learnerEditForm');
+    var profileCard = document.getElementById('learnerProfileCard');
+
+    if (!editBtn || !overlay || !form) return;
+
+    var isEditing = false;
+
+    editBtn.addEventListener('click', function() {
+        if (!isEditing) {
+            /* Enter edit mode — open bottom sheet with form */
+            sheetBody.appendChild(form);
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            editBtn.textContent = 'Done';
+            isEditing = true;
+        } else {
+            /* Exit edit mode — close sheet, move form back */
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+            setTimeout(function() {
+                if (profileCard) profileCard.appendChild(form);
+            }, 350);
+            editBtn.textContent = 'Edit';
+            isEditing = false;
+        }
+    });
+
+    if (backdrop) backdrop.addEventListener('click', function() {
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+        setTimeout(function() {
+            if (profileCard) profileCard.appendChild(form);
+        }, 350);
+        editBtn.textContent = 'Edit';
+        isEditing = false;
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', function() {
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+        setTimeout(function() {
+            if (profileCard) profileCard.appendChild(form);
+        }, 350);
+        editBtn.textContent = 'Edit';
+        isEditing = false;
     });
 })();
 </script>

@@ -75,11 +75,25 @@ class StudentForm(SecureFormMixin, forms.ModelForm):
     def __init__(self, *args, school=None, school_section=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['stream'].choices = get_stream_choices(school)
-        if school_section == 'PRIMARY':
+        self._school_section = school_section
+        if school_section in ('PRIMARY', 'LOWER_PRIMARY'):
             self.fields['religion'].required = True
             self.fields['religion'].empty_label = '-- Select Religion (CRE / IRE) --'
         else:
             self.fields['religion'].required = False
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        class_name = instance.class_name
+        if class_name in ('Grade 1', 'Grade 2', 'Grade 3'):
+            instance.sub_section = 'LOWER'
+        elif class_name in ('Grade 4', 'Grade 5', 'Grade 6'):
+            instance.sub_section = 'UPPER'
+        else:
+            instance.sub_section = None
+        if commit:
+            instance.save()
+        return instance
 
 
 class StudentEditForm(SecureFormMixin, forms.ModelForm):

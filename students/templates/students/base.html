@@ -375,16 +375,9 @@
             <div class="workspace-toggle" style="display:flex; flex-direction:column; gap:4px;">
                 <form method="post" action="{% url 'switch_workspace' %}">
                     {% csrf_token %}
-                    <input type="hidden" name="section" value="LOWER_PRIMARY">
-                    <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'LOWER_PRIMARY' %}active{% endif %}" style="width:100%;">
-                        <i class="bi bi-book"></i> Lower Primary
-                    </button>
-                </form>
-                <form method="post" action="{% url 'switch_workspace' %}">
-                    {% csrf_token %}
                     <input type="hidden" name="section" value="PRIMARY">
                     <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}active{% endif %}" style="width:100%;">
-                        <i class="bi bi-book"></i> Upper Primary
+                        <i class="bi bi-book"></i> Primary
                     </button>
                 </form>
                 <form method="post" action="{% url 'switch_workspace' %}">
@@ -428,16 +421,9 @@
                 <div class="workspace-toggle" style="display:flex; gap:4px;">
                     <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
                         {% csrf_token %}
-                        <input type="hidden" name="section" value="LOWER_PRIMARY">
-                        <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'LOWER_PRIMARY' %}active{% endif %}">
-                            <i class="bi bi-book"></i> Lower
-                        </button>
-                    </form>
-                    <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
-                        {% csrf_token %}
                         <input type="hidden" name="section" value="PRIMARY">
                         <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}active{% endif %}">
-                            <i class="bi bi-book"></i> Upper
+                            <i class="bi bi-book"></i> Primary
                         </button>
                     </form>
                     <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
@@ -645,16 +631,9 @@
                     <div class="mobile-menu-section-label">Workspace</div>
                     <form method="post" action="{% url 'switch_workspace' %}">
                         {% csrf_token %}
-                        <input type="hidden" name="section" value="LOWER_PRIMARY">
-                        <button type="submit" class="mobile-menu-link" style="width:100%; border:none; background:transparent; text-align:left;">
-                            <i class="bi bi-book"></i> Lower Primary
-                        </button>
-                    </form>
-                    <form method="post" action="{% url 'switch_workspace' %}">
-                        {% csrf_token %}
                         <input type="hidden" name="section" value="PRIMARY">
                         <button type="submit" class="mobile-menu-link" style="width:100%; border:none; background:transparent; text-align:left;">
-                            <i class="bi bi-book"></i> Upper Primary
+                            <i class="bi bi-book"></i> Primary
                         </button>
                     </form>
                     <form method="post" action="{% url 'switch_workspace' %}">

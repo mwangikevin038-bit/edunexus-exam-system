@@ -42,8 +42,8 @@ def get_user_role(user):
     # ── NEW: Check SchoolAdmin model (admin@schoolcode logins) ───────────────
     if hasattr(user, "school_admin_profile"):
         return Role.SCHOOL_ADMIN
-    # ── Legacy: group/staff check (kept for backwards compatibility) ─────────
-    if user.is_staff or user.groups.filter(name=Role.GROUP_MAP[Role.SCHOOL_ADMIN]).exists():
+    # ── Group check (explicit school admin group membership) ──────────────────
+    if user.groups.filter(name=Role.GROUP_MAP[Role.SCHOOL_ADMIN]).exists():
         return Role.SCHOOL_ADMIN
     if hasattr(user, "teacher_profile"):
         return Role.TEACHER

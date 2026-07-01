@@ -5,6 +5,7 @@ Every object lookup must be scoped to the authenticated user's school AND sectio
 import logging
 
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
+from django.db.models import Q
 from django.http import Http404
 from django.utils.functional import cached_property
 
@@ -110,6 +111,34 @@ def get_school_object_or_403(model, request, *, using="objects", **lookup):
                 raise PermissionDenied("Cross-section access is forbidden.")
             raise Http404
 
+    # ── Sub-section isolation check (LOWER_PRIMARY vs PRIMARY UPPER) ─────
+    if obj is not None and user_section == "LOWER_PRIMARY":
+        obj_sub = getattr(obj, "sub_section", None)
+        if obj_sub is not None and obj_sub != "LOWER":
+            logger.warning(
+                "SUB-SECTION IDOR blocked: model=%s record_sub_section=%s user_section=%s "
+                "user_id=%s path=%s",
+                model.__name__,
+                obj_sub,
+                user_section,
+                getattr(request.user, "pk", None),
+                request.path,
+            )
+            raise PermissionDenied("Cross sub-section access is forbidden.")
+    if obj is not None and user_section == "PRIMARY":
+        obj_sub = getattr(obj, "sub_section", None)
+        if obj_sub is not None and obj_sub != "UPPER":
+            logger.warning(
+                "SUB-SECTION IDOR blocked: model=%s record_sub_section=%s user_section=%s "
+                "user_id=%s path=%s",
+                model.__name__,
+                obj_sub,
+                user_section,
+                getattr(request.user, "pk", None),
+                request.path,
+            )
+            raise PermissionDenied("Cross sub-section access is forbidden.")
+
     if obj is not None:
         return obj
 
@@ -129,7 +158,7 @@ def get_school_object_or_403(model, request, *, using="objects", **lookup):
 
 
 def get_school_queryset(model, request, *, using="objects"):
-    """Return a queryset scoped to the user's school AND section."""
+    """Return a queryset scoped to the user's school AND section AND sub-section."""
     school = get_request_school(request)
     user_section = get_request_school_section(request)
     manager = getattr(model, using, model.objects)
@@ -140,6 +169,11 @@ def get_school_queryset(model, request, *, using="objects"):
     qs = manager.filter(school=school)
     if user_section in ("PRIMARY", "JSS"):
         qs = qs.filter(school_section=user_section)
+    # Sub-section isolation for LOWER_PRIMARY vs PRIMARY UPPER
+    if user_section == "LOWER_PRIMARY":
+        qs = qs.filter(Q(sub_section='LOWER') | Q(sub_section__isnull=True))
+    elif user_section == "PRIMARY":
+        qs = qs.filter(Q(sub_section='UPPER') | Q(sub_section__isnull=True))
     return qs
 
 
@@ -163,6 +197,30 @@ def enforce_section_access(request, obj):
             getattr(request, "path", "unknown"),
         )
         raise PermissionDenied("Cross-section access is forbidden.")
+    # Sub-section isolation (LOWER_PRIMARY vs PRIMARY UPPER)
+    obj_sub = getattr(obj, "sub_section", None)
+    if user_section == "LOWER_PRIMARY" and obj_sub is not None and obj_sub != "LOWER":
+        logger.warning(
+            "SUB-SECTION ENFORCEMENT blocked: model=%s record_sub=%s user_section=%s "
+            "user_id=%s path=%s",
+            type(obj).__name__,
+            obj_sub,
+            user_section,
+            getattr(request.user, "pk", None),
+            getattr(request, "path", "unknown"),
+        )
+        raise PermissionDenied("Cross sub-section access is forbidden.")
+    if user_section == "PRIMARY" and obj_sub is not None and obj_sub != "UPPER":
+        logger.warning(
+            "SUB-SECTION ENFORCEMENT blocked: model=%s record_sub=%s user_section=%s "
+            "user_id=%s path=%s",
+            type(obj).__name__,
+            obj_sub,
+            user_section,
+            getattr(request.user, "pk", None),
+            getattr(request, "path", "unknown"),
+        )
+        raise PermissionDenied("Cross sub-section access is forbidden.")
 
 
 def _client_ip(request):

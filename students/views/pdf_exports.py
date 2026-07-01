@@ -352,7 +352,7 @@ def download_broadsheet_pdf(request):
         e = _playwright_error[0]
         tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
         logger.error('PDF generation failed: %s\n%s', str(e), tb_str)
-        messages.error(request, f"PDF generation failed: {str(e)}")
+        messages.error(request, "PDF generation failed. Please try again.")
         return redirect('results_list')
 
     if 'pdf' not in _playwright_result:
@@ -653,7 +653,7 @@ def download_classlist_pdf(request):
             browser.close()
     except Exception as e:
         logger.error('Class list PDF generation failed: %s\n%s', str(e), traceback.format_exc())
-        messages.error(request, f"PDF generation failed: {str(e)}")
+        messages.error(request, "PDF generation failed. Please try again.")
         return redirect('class_lists')
 
     slug_grade  = slugify(selected_grade  or "class")

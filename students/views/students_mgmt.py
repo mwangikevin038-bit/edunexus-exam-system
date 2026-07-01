@@ -30,6 +30,15 @@ PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
 LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
 
+def _derive_sub_section(class_name):
+    """Derive sub_section from class_name. Grade 1-3 → LOWER, Grade 4-6 → UPPER, Grade 7-9 → None."""
+    if class_name in ('Grade 1', 'Grade 2', 'Grade 3'):
+        return 'LOWER'
+    if class_name in ('Grade 4', 'Grade 5', 'Grade 6'):
+        return 'UPPER'
+    return None
+
+
 @login_required(login_url='login')
 def api_streams_for_grade(request):
     """JSON endpoint: returns streams for a specific grade in the school."""
@@ -76,6 +85,7 @@ def add_student(request):
             student_instance = form.save(commit=False)
             student_instance.school = school
             student_instance.school_section = school_section
+            student_instance.sub_section = _derive_sub_section(student_instance.class_name)
             guardian_obj, _ = Guardian.objects.get_or_create(
                 school=school,
                 phone=form.cleaned_data['guardian_phone'],
@@ -171,11 +181,15 @@ def admin_add_student(request):
                     religion=religion,
                     gender=gender,
                     school_section=section or 'JSS',
+                    sub_section=_derive_sub_section(class_name),
                 )
                 messages.success(request, f"✓ {name} enrolled into {class_name} {stream}. ADM: {adm_no}")
                 return redirect('/school-admin/registration/?tab=directory')
             except Exception as e:
-                messages.error(request, f"⚠️ Admission failed: {e}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.exception("Student admission failed for name=%s", name)
+                messages.error(request, "An error occurred during admission. Please try again.")
                 return redirect('/school-admin/registration/?tab=add_student')
 
 
@@ -183,13 +197,17 @@ def admin_add_student(request):
         elif mode == 'promote':
             source_class = request.POST.get('source_class')
             target_class = request.POST.get('target_class')
+            confirm = request.POST.get('confirm_delete')
             if source_class and target_class:
                 cohort        = Student.objects.filter(school=school, class_name=source_class)
                 affected_count = cohort.count()
                 if affected_count > 0:
                     if target_class == 'Graduate/Exit':
-                        cohort.delete()
-                        messages.success(request, f"🎓 {affected_count} students exited from {source_class}.")
+                        if confirm != 'yes':
+                            messages.warning(request, f"Are you sure you want to graduate/exit {affected_count} students from {source_class}? Submit again with confirmation.")
+                            return redirect('/school-admin/registration/?tab=overview')
+                        cohort.update(is_active=False, class_name='Graduated')
+                        messages.success(request, f"🎓 {affected_count} students graduated from {source_class}.")
                     else:
                         cohort.update(class_name=target_class)
                         messages.success(request, f"🚀 {affected_count} students promoted to {target_class}.")

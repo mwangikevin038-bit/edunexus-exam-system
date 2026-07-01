@@ -7,6 +7,7 @@ various view layers.
 """
 
 import random
+import secrets
 import string
 
 from django.db.models import Count, Q, IntegerField
@@ -25,8 +26,9 @@ from ..security import user_has_main_school_admin_override
 
 
 def generate_default_password():
-    """Generate a random 8-digit numeric password for new teachers."""
-    return ''.join(random.choices(string.digits, k=8))
+    """Generate a random 12-character alphanumeric password for new teachers."""
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(12))
 
 
 def get_published_subject_codes(class_name, stream, year, term, exam_name):
