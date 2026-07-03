@@ -22,6 +22,7 @@ from .constants import (
     SUBJECT_SHORT_MAP,
     TERM_CHOICES,
     get_streams_for_school,
+    sort_subjects,
 )
 from .exams import PRIMARY_GRADE_CHOICES, PRIMARY_PERFORMANCE_SCALE, _get_primary_performance
 from .helpers import (
@@ -125,10 +126,10 @@ def results_list(request):
             s.code: (subject_map.get(s.code) or s.name or s.code)
             for s in published_subjects_qs
         }
-        published_subjects = [
+        published_subjects = sort_subjects([
             (code, subject_label_map.get(code, subject_map.get(code, code)))
             for code in published_subject_codes
-        ]
+        ])
         for _code, short in published_subjects:
             analysis_data.setdefault(short, {
                 'entries': 0, 'total_score': 0, 'mean_score': 0.0,
@@ -214,12 +215,10 @@ def results_list(request):
             if data['entries'] > 0:
                 data['mean_score'] = round(data['total_score'] / data['entries'], 2)
 
-        # Build ordered analysis rows for only published subjects, sorted by mean score desc
-        analysis_rows = sorted(
-            [{'short': short, **analysis_data[short]} for code, short in published_subjects],
-            key=lambda x: x.get('mean_score', 0),
-            reverse=True,
-        )
+        # Build ordered analysis rows for only published subjects, in display order
+        analysis_rows = [
+            {'short': short, **analysis_data[short]} for code, short in published_subjects
+        ]
     else:
         analysis_rows = []
 

@@ -22,6 +22,35 @@
     font-family: 'Inter', sans-serif;
   }
 
+  .segmented-control {
+    display: flex;
+    background: var(--en-surface, #f1f5f9);
+    border-radius: var(--radius-lg, 12px);
+    padding: 3px;
+    position: relative;
+  }
+  .segmented-control input[type="radio"] { display: none; }
+  .segmented-control label {
+    flex: 1;
+    text-align: center;
+    padding: 10px 16px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 1;
+    position: relative;
+  }
+  .segmented-control label i { margin-right: 4px; }
+  .segmented-control input[type="radio"]:checked + label {
+    background: #ffffff;
+    color: #0f172a;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  }
+
   .registry-header {
     display: flex;
     justify-content: space-between;
@@ -441,49 +470,17 @@
     {% endfor %}
   {% endif %}
 
-  <!-- Workspace Section Banner -->
-  {% if request.session.school_section == 'BOTH' %}
-  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; background: #fff; padding: 14px 20px; border-radius: 12px; box-shadow: var(--card-shadow); flex-wrap: wrap;">
-    <span style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Active Workspace:</span>
-    <div style="display: flex; gap: 6px;">
-      <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
-        {% csrf_token %}
-        <input type="hidden" name="section" value="PRIMARY">
-        <button type="submit" style="border: 2px solid {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#fff{% else %}#64748b{% endif %}; padding: 8px 18px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s;">
-          <i class="bi bi-book"></i> Primary
-        </button>
-      </form>
-      <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
-        {% csrf_token %}
-        <input type="hidden" name="section" value="JSS">
-        <button type="submit" style="border: 2px solid {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'JSS' %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'JSS' %}#fff{% else %}#64748b{% endif %}; padding: 8px 18px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s;">
-          <i class="bi bi-mortarboard"></i> JSS
-        </button>
-      </form>
-    </div>
-    <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">
-      Currently viewing: <strong style="color: #0f172a;">{{ request.session.workspace_section|default:"PRIMARY" }}</strong> section
-    </span>
-  </div>
-  {% endif %}
-
-  <!-- Navigation Tab Strip -->
-  <div class="registry-tabs">
-    <a href="?tab=overview" class="registry-tab {% if active_tab == 'overview' or not active_tab %}active{% endif %}">
-      <i class="bi bi-grid-1x2-fill"></i> Overview
-    </a>
-    <a href="?tab=add_student" class="registry-tab {% if active_tab == 'add_student' %}active{% endif %}">
-      <i class="bi bi-person-plus-fill"></i> Add Student
-    </a>
-    <a href="{% url 'premium_csv_upload' %}" class="registry-tab" style="background: linear-gradient(135deg, #eff6ff, #f0fdf4); border-color: #2563eb;">
-      <i class="bi bi-rocket-takeoff-fill"></i> CSV Onboard
-    </a>
-    <a href="?tab=directory" class="registry-tab {% if active_tab == 'directory' %}active{% endif %}">
-      <i class="bi bi-person-lines-fill"></i> Student List
-    </a>
-    <a href="?tab=promotions" class="registry-tab {% if active_tab == 'promotions' %}active{% endif %}">
-      <i class="bi bi-arrow-left-right"></i> Manage Records
-    </a>
+  <!-- iOS 17 Segmented Control Tabs -->
+  <div class="segmented-control" style="margin-bottom: 24px;">
+    <input type="radio" name="tab" value="directory" id="tab_directory"
+           onchange="window.location.href='?tab=directory'" {% if active_tab == 'directory' %}checked{% endif %}>
+    <label for="tab_directory"><i class="ph ph-users"></i> Directory</label>
+    <input type="radio" name="tab" value="add_student" id="tab_register"
+           onchange="window.location.href='?tab=add_student'" {% if active_tab == 'add_student' %}checked{% endif %}>
+    <label for="tab_register"><i class="ph ph-user-plus"></i> Register</label>
+    <input type="radio" name="tab" value="csv" id="tab_csv"
+           onchange="window.location.href='{% url 'premium_csv_upload' %}'" {% if active_tab == 'csv' %}checked{% endif %}>
+    <label for="tab_csv"><i class="ph ph-file-csv"></i> CSV Upload</label>
   </div>
 
   <!-- Overview Tab -->

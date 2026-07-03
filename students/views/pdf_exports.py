@@ -22,7 +22,7 @@ from django.template.loader import render_to_string
 from django.utils.text import slugify
 from playwright.sync_api import sync_playwright
 
-from .constants import GRADE_CHOICES, ORDERED_LEVELS, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_SHORT_MAP, get_streams_for_school
+from .constants import GRADE_CHOICES, ORDERED_LEVELS, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
 from .reports import PRIMARY_ORDERED_LEVELS
 from .exams import PRIMARY_PERFORMANCE_SCALE, _get_primary_performance
 from .helpers import (
@@ -120,10 +120,10 @@ def download_broadsheet_pdf(request):
             s.code: (subject_map.get(s.code) or s.name or s.code)
             for s in published_subjects_qs
         }
-        published_subjects = [
+        published_subjects = sort_subjects([
             (code, subject_label_map.get(code, subject_map.get(code, code)))
             for code in published_subject_codes
-        ]
+        ])
         for _code, short in published_subjects:
             analysis_data.setdefault(short, {
                 'entries': 0, 'total_score': 0, 'mean_score': 0.0,
@@ -198,12 +198,10 @@ def download_broadsheet_pdf(request):
             if data['entries'] > 0:
                 data['mean_score'] = round(data['total_score'] / data['entries'], 2)
 
-        # Build ordered analysis rows for only published subjects, sorted by mean score desc
-        analysis_rows = sorted(
-            [{'short': short, **analysis_data[short]} for code, short in published_subjects],
-            key=lambda x: x.get('mean_score', 0),
-            reverse=True,
-        )
+        # Build ordered analysis rows for only published subjects, in display order
+        analysis_rows = [
+            {'short': short, **analysis_data[short]} for code, short in published_subjects
+        ]
     else:
         analysis_rows = []
 
@@ -422,6 +420,7 @@ def download_classlist_pdf(request):
         students = (
             Student.objects
             .filter(school=school, class_name=selected_grade, stream=selected_stream)
+            .filter(admission_no__regex=r'^[0-9]+$')
             .select_related('guardian')
             .annotate(adm_int=Cast('admission_no', IntegerField()))
             .order_by('adm_int')

@@ -1,0 +1,116 @@
+[2026-07-03 14:55:22,249: WARNING/MainProcess] C:\Users\1030 G3\AppData\Local\Programs\Python\Python313\Lib\site-packages\billiard\pool.py:1022: UserWarning: Soft timeouts are not supported: on this platform: It does not have the SIGUSR1 signal.
+  warnings.warn(UserWarning(
+
+[2026-07-03 14:55:22,292: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 2.00 seconds... (1/100)
+
+[2026-07-03 14:55:23,092: INFO/SpawnPoolWorker-1] child process 9688 calling self.run()
+[2026-07-03 14:55:23,105: INFO/SpawnPoolWorker-2] child process 3408 calling self.run()
+[2026-07-03 14:55:24,311: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 4.00 seconds... (2/100)
+
+[2026-07-03 14:55:28,350: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 6.00 seconds... (3/100)
+
+[2026-07-03 14:55:34,358: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 8.00 seconds... (4/100)
+
+[2026-07-03 14:55:42,391: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 10.00 seconds... (5/100)
+
+[2026-07-03 14:55:52,410: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 12.00 seconds... (6/100)
+
+[2026-07-03 14:56:04,437: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 14.00 seconds... (7/100)
+
+[2026-07-03 14:56:18,464: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 16.00 seconds... (8/100)
+
+[2026-07-03 14:56:34,492: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 18.00 seconds... (9/100)
+
+[2026-07-03 14:56:52,510: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 20.00 seconds... (10/100)
+
+[2026-07-03 14:57:12,534: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 22.00 seconds... (11/100)
+
+[2026-07-03 14:57:34,557: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 24.00 seconds... (12/100)
+
+[2026-07-03 14:57:58,589: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 26.00 seconds... (13/100)
+
+[2026-07-03 14:58:24,615: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 28.00 seconds... (14/100)
+
+[2026-07-03 14:58:52,636: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 30.00 seconds... (15/100)
+
+[2026-07-03 14:59:22,670: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (16/100)
+
+[2026-07-03 14:59:54,704: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (17/100)
+
+[2026-07-03 15:00:26,744: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (18/100)
+
+[2026-07-03 15:00:58,778: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (19/100)
+
+[2026-07-03 15:01:30,792: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (20/100)
+
+[2026-07-03 15:02:02,820: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (21/100)
+
+[2026-07-03 15:02:34,846: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (22/100)
+
+[2026-07-03 15:03:06,933: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (23/100)
+
+[2026-07-03 15:03:38,980: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (24/100)
+
+[2026-07-03 15:04:10,994: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (25/100)
+
+[2026-07-03 15:04:43,007: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (26/100)
+
+[2026-07-03 15:05:15,031: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (27/100)
+
+[2026-07-03 15:05:47,065: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (28/100)
+
+[2026-07-03 15:06:19,085: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (29/100)
+
+[2026-07-03 15:06:51,098: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (30/100)
+
+[2026-07-03 15:07:23,133: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (31/100)
+
+[2026-07-03 15:07:55,168: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (32/100)
+
+[2026-07-03 15:08:27,211: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (33/100)
+
+[2026-07-03 15:08:59,235: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (34/100)
+
+[2026-07-03 15:09:31,261: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (35/100)
+
+[2026-07-03 15:10:03,389: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (36/100)
+
+[2026-07-03 15:10:35,414: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379/0: unknown command 'HELLO'.
+Trying again in 32.00 seconds... (37/100)
+

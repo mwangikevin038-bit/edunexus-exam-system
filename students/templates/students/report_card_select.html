@@ -353,6 +353,16 @@
 </style>
 
 <div class="reports-page">
+    <!-- iOS 17 Segmented Control -->
+    <div class="segmented-control" style="margin-bottom: 24px; background: #f1f5f9; border-radius: 12px; padding: 3px; display: flex;">
+        <a href="{% url 'results_list' %}" style="flex:1; text-align:center; padding:10px 16px; font-size:14px; font-weight:700; color:#64748b; border-radius:10px; text-decoration:none; transition:all 0.2s;">
+            <i class="ph ph-chart-bar" style="margin-right:4px;"></i> Published
+        </a>
+        <a href="{% url 'report_card_select' %}" style="flex:1; text-align:center; padding:10px 16px; font-size:14px; font-weight:700; color:#0f172a; background:#fff; border-radius:10px; text-decoration:none; box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+            <i class="ph ph-file-pdf" style="margin-right:4px;"></i> Report Cards
+        </a>
+    </div>
+
     <section class="reports-hero">
         <div class="hero-row">
             <div class="hero-title">

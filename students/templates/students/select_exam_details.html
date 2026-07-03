@@ -48,21 +48,27 @@
     .cap-section-count{font-size:.75rem;color:#a3a3a3;font-weight:600}
 
     .cap-students{display:flex;flex-direction:column;margin-bottom:20px}
-    .cap-student{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid #f0f0f0;gap:10px}
+    .cap-student{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid #f0f0f0;gap:10px;border-radius:12px;margin-bottom:4px;background:#fff;transition:background 150ms}
     .cap-student:last-child{border-bottom:none}
     .cap-student-left{display:flex;flex-direction:column;min-width:0;flex:1}
     .cap-student-name{font-size:.875rem;font-weight:700;color:#171717;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .cap-student-adm{font-size:.6875rem;color:#a3a3a3;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
-    .cap-student-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
-    .cap-score{width:50px;height:40px;border:1.5px solid #e5e5e5;border-radius:10px;text-align:center;font-size:.9375rem;font-weight:800;color:#171717;background:#fff;-webkit-appearance:none;transition:border-color 150ms,box-shadow 150ms}
+    .cap-student-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+    .cap-score{width:52px;height:42px;border:1.5px solid #e5e5e5;border-radius:10px;text-align:center;font-size:1rem;font-weight:800;color:#171717;background:#fff;-webkit-appearance:none;transition:border-color 150ms,box-shadow 150ms}
     .cap-score:focus{outline:none;border-color:#171717;box-shadow:0 0 0 3px rgba(23,23,23,.06)}
     .cap-score[readonly]{background:#f5f5f5;color:#a3a3a3;cursor:not-allowed}
-    .cap-absent{width:40px;height:40px;border:1.5px solid #e5e5e5;border-radius:10px;background:#fafafa;color:#737373;font-size:.6875rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:all 150ms}
+    .cap-absent{width:42px;height:42px;border:1.5px solid #e5e5e5;border-radius:10px;background:#fafafa;color:#737373;font-size:.6875rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:all 150ms}
     .cap-absent:active{transform:scale(.92);background:#fee2e2;border-color:#ef4444;color:#991b1b}
-    .cap-student-status{display:flex;align-items:center;gap:6px;min-width:70px;justify-content:flex-end}
-    .cap-level{font-size:.75rem;font-weight:600;color:#a3a3a3;white-space:nowrap}
-    .cap-level.has-score{font-weight:700}
-    .cap-dash{width:18px;height:2px;background:#e5e5e5;border-radius:2px;flex-shrink:0}
+    .cap-student-status{display:flex;align-items:center;gap:4px;min-width:0;justify-content:flex-end;flex-wrap:nowrap}
+    .cap-level{font-size:.75rem;font-weight:700;color:#a3a3a3;white-space:nowrap;padding:3px 8px;border-radius:6px;background:#f5f5f5;transition:all 150ms;line-height:1.2}
+    .cap-level.has-score{font-weight:800}
+    .cap-pts{font-size:.6875rem;font-weight:800;color:#a3a3a3;white-space:nowrap;padding:3px 6px;border-radius:6px;background:#f5f5f5;transition:all 150ms;line-height:1.2;display:none}
+    .cap-pts.has-score{display:inline-block}
+    .cap-pct{font-size:.625rem;font-weight:700;color:#a3a3a3;white-space:nowrap;padding:2px 6px;border-radius:6px;background:#f5f5f5;transition:all 150ms;line-height:1.2;display:none}
+    .cap-pct.has-score{display:inline-block}
+
+    @keyframes savedFlash{0%{background:#f0fdf4}100%{background:#fff}}
+    .cap-student.saved-flash{animation:savedFlash 800ms ease}
 
     .cap-empty{display:flex;flex-direction:column;align-items:center;padding:48px 20px;text-align:center}
     .cap-empty-icon{width:56px;height:56px;border-radius:14px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
@@ -112,7 +118,31 @@
     .cap-head h1{font-size:1.5rem;font-weight:800;color:#171717;letter-spacing:-.03em;line-height:1.25;margin:0}
     .cap-head p{font-size:.8125rem;color:#737373;margin:6px 0 0;font-weight:500}
 
-    @media(max-width:420px){.cap-green-card{padding:16px}.cap-green-class{font-size:1rem}.cap-score{width:48px;height:38px;font-size:.875rem}.cap-absent{width:38px;height:38px}}
+    @media(max-width:420px){
+        .cap-green-card{padding:14px;border-radius:14px}
+        .cap-green-class{font-size:.9375rem}
+        .cap-green-icon{width:36px;height:36px;border-radius:10px}
+        .cap-green-icon i{font-size:18px}
+        .cap-student{padding:10px 12px;gap:8px}
+        .cap-student-name{font-size:.8125rem}
+        .cap-student-adm{font-size:.625rem}
+        .cap-score{width:46px;height:38px;font-size:.875rem;border-radius:8px}
+        .cap-absent{width:38px;height:38px;border-radius:8px;font-size:.625rem}
+        .cap-level{font-size:.625rem;padding:2px 6px}
+        .cap-pts{font-size:.5625rem;padding:2px 5px}
+        .cap-pct{font-size:.5rem;padding:2px 5px}
+        .cap-student-status{gap:3px}
+        .cap-meta{border-radius:10px}
+        .cap-meta-cell{padding:10px 12px}
+        .cap-meta-label{font-size:.5625rem}
+        .cap-meta-value{font-size:.8125rem}
+        .cap-meta-input{height:28px;font-size:.8125rem}
+        .cap-action-btns{gap:8px}
+        .cap-action-btn{height:38px;font-size:.75rem;border-radius:10px}
+        .cap-bottom-bar{padding:10px 14px}
+        .cap-submit-btn{height:38px;font-size:.75rem;padding:0 16px}
+        .cap-progress{font-size:.75rem}
+    }
 
     @media(min-width:768px){
         .cap{padding:24px 0 48px}
@@ -130,13 +160,14 @@
         .cap-assess-name{font-size:.875rem}
         .cap-assess-detail{font-size:.75rem}
         .cap-assess-status{font-size:.625rem;padding:4px 10px;border-radius:8px}
-        .cap-student{padding:16px 0}
+        .cap-student{padding:16px 14px}
         .cap-student-name{font-size:.9375rem}
         .cap-score{width:56px;height:44px;font-size:1rem;border-radius:12px}
         .cap-absent{width:44px;height:44px;border-radius:12px}
         .cap-bottom-bar{padding:14px 24px}
         .cap-meta{border-radius:14px}
         .cap-action-btn{height:46px;border-radius:12px;font-size:.875rem}
+        .cap-level{font-size:.8125rem;padding:3px 10px}
     }
 </style>
 
@@ -262,8 +293,9 @@
                                     onclick="markAB(this)" tabindex="-1"
                                     {% if is_locked %}disabled{% endif %}>AB</button>
                             <div class="cap-student-status">
-                                <span class="cap-level" data-level="{{ forloop.counter }}">Awaiting</span>
-                                <div class="cap-dash"></div>
+                                <span class="cap-level" data-level="{{ forloop.counter }}">—</span>
+                                <span class="cap-pts" data-pts="{{ forloop.counter }}"></span>
+                                <span class="cap-pct" data-pct="{{ forloop.counter }}"></span>
                             </div>
                         </div>
                     </div>
@@ -378,7 +410,15 @@
         return v ? v.pop() : '';
     }
 
+    function getCsrfToken() {
+        var token = getCookie('csrftoken');
+        if (token) return token;
+        var input = document.querySelector('#marksForm input[name="csrfmiddlewaretoken"]');
+        return input ? input.value : '';
+    }
+
     var saveTimers = {};
+    var pageLoaded = false;
 
     function showToast(msg, type) {
         var existing = document.querySelector('.cap-toast');
@@ -412,13 +452,30 @@
             fd.append('exam_id', examId.value);
             fd.append('score', input.value.trim());
             fd.append('maximum_marks', (document.getElementById('maximumMarks').value || '100'));
-            fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+            fd.append('csrfmiddlewaretoken', getCsrfToken());
 
             fetch('{% url "save_mark" %}', {
                 method: 'POST',
                 body: fd
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                if (!data.ok && data.error) {
+            }).then(function(r) {
+                var ct = r.headers.get('content-type') || '';
+                if (ct.indexOf('application/json') === -1) {
+                    if (r.status === 403) {
+                        showToast('Save failed: permission denied. Please refresh the page.', 'error');
+                    } else if (r.status === 302 || r.status === 401) {
+                        showToast('Session expired — please refresh', 'error');
+                    } else {
+                        showToast('Save failed (HTTP ' + r.status + '). Please refresh.', 'error');
+                    }
+                    return null;
+                }
+                return r.json();
+            }).then(function(data) {
+                if (!data) return;
+                if (data.ok) {
+                    row.classList.add('saved-flash');
+                    setTimeout(function(){ row.classList.remove('saved-flash'); }, 800);
+                } else if (data.error) {
                     console.warn('Auto-save failed:', data.error);
                     showToast('Save failed: ' + data.error, 'error');
                 }
@@ -447,12 +504,26 @@
         fd.append('assignment_id', assignmentId.value);
         fd.append('exam_id', examId.value);
         fd.append('score', '');
-        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        fd.append('csrfmiddlewaretoken', getCsrfToken());
 
         fetch('{% url "clear_mark" %}', {
             method: 'POST',
             body: fd
-        }).then(function(r) { return r.json(); }).then(function(data) {
+        }).then(function(r) {
+            var ct = r.headers.get('content-type') || '';
+            if (ct.indexOf('application/json') === -1) {
+                if (r.status === 403) {
+                    showToast('Clear failed: permission denied. Please refresh the page.', 'error');
+                } else if (r.status === 302 || r.status === 401) {
+                    showToast('Session expired — please refresh', 'error');
+                } else {
+                    showToast('Clear failed (HTTP ' + r.status + '). Please refresh.', 'error');
+                }
+                return null;
+            }
+            return r.json();
+        }).then(function(data) {
+            if (!data) return;
             if (data.ok) {
                 updateProgress();
             } else if (data.error) {
@@ -478,63 +549,81 @@
         if (el) el.textContent = scored;
     }
 
-    window.calcScore = function(input) {
+    window.calcScore = function(input, skipSave) {
         var max = parseFloat(document.getElementById('maximumMarks').value) || 100;
         var val = input.value.trim().toUpperCase();
         var row = input.closest('.cap-student');
         var badge = row.querySelector('.cap-level');
+        var pts = row.querySelector('.cap-pts');
+        var pct = row.querySelector('.cap-pct');
 
         if (val === 'AB') {
-            badge.textContent = 'Absent';
+            badge.textContent = 'AB';
             badge.style.color = '#3730a3';
             badge.style.background = '#e0e7ff';
-            badge.style.padding = '2px 8px';
-            badge.style.borderRadius = '5px';
             badge.classList.add('has-score');
+            pts.textContent = '';
+            pts.classList.remove('has-score');
+            pct.textContent = '';
+            pct.classList.remove('has-score');
             updateProgress();
-            autoSaveMark(input);
+            if (!skipSave) autoSaveMark(input);
             return;
         }
 
         var score = parseFloat(val);
         if (!val || isNaN(score) || max <= 0) {
-            badge.textContent = 'Awaiting';
+            badge.textContent = '—';
             badge.style.color = '';
             badge.style.background = '';
-            badge.style.padding = '';
-            badge.style.borderRadius = '';
             badge.classList.remove('has-score');
+            pts.textContent = '';
+            pts.classList.remove('has-score');
+            pct.textContent = '';
+            pct.classList.remove('has-score');
             updateProgress();
-            if (input.dataset.hadValue === '1') {
+            if (!skipSave && input.dataset.hadValue === '1') {
                 input.dataset.hadValue = '0';
                 autoDeleteMark(input);
             }
             return;
         }
 
-        input.dataset.hadValue = '1';
+        if (!skipSave) input.dataset.hadValue = '1';
 
         if (score > max) {
-            badge.textContent = 'Exceeds max';
+            badge.textContent = 'Over';
             badge.style.color = '#991b1b';
             badge.style.background = '#fee2e2';
-            badge.style.padding = '2px 8px';
-            badge.style.borderRadius = '5px';
             badge.classList.add('has-score');
+            pts.textContent = '';
+            pts.classList.remove('has-score');
+            pct.textContent = '';
+            pct.classList.remove('has-score');
             updateProgress();
             return;
         }
 
-        var pct = (score / max) * 100;
-        var lv = getLevel(pct);
-        badge.textContent = lv.text + ' \u00B7 ' + pct.toFixed(0) + '%';
+        var pctVal = (score / max) * 100;
+        var lv = getLevel(pctVal);
+
+        badge.textContent = lv.text;
         badge.style.color = lv.color;
         badge.style.background = lv.bg;
-        badge.style.padding = '2px 8px';
-        badge.style.borderRadius = '5px';
         badge.classList.add('has-score');
+
+        pts.textContent = lv.pts + 'pts';
+        pts.style.color = lv.color;
+        pts.style.background = lv.bg;
+        pts.classList.add('has-score');
+
+        pct.textContent = pctVal.toFixed(0) + '%';
+        pct.style.color = lv.color;
+        pct.style.background = lv.bg;
+        pct.classList.add('has-score');
+
         updateProgress();
-        autoSaveMark(input);
+        if (!skipSave) autoSaveMark(input);
     };
 
     window.markAB = function(btn) {
@@ -560,10 +649,15 @@
     };
 
     window.recalculateAll = function() {
-        document.querySelectorAll('.cap-score').forEach(calcScore);
+        document.querySelectorAll('.cap-score').forEach(function(inp) {
+            calcScore(inp, true);
+        });
     };
 
-    document.addEventListener('DOMContentLoaded', recalculateAll);
+    document.addEventListener('DOMContentLoaded', function() {
+        recalculateAll();
+        pageLoaded = true;
+    });
 
     window.returnForEdits = function() {
         var assignmentId = document.querySelector('input[name="assignment_id"]');
@@ -573,12 +667,24 @@
         var fd = new FormData();
         fd.append('assignment_id', assignmentId.value);
         fd.append('exam_id', examId.value);
-        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        fd.append('csrfmiddlewaretoken', getCsrfToken());
 
         fetch('{% url "return_mark_sheet" %}', {
             method: 'POST',
             body: fd
-        }).then(function(r) { return r.json(); }).then(function(data) {
+        }).then(function(r) {
+            var ct = r.headers.get('content-type') || '';
+            if (ct.indexOf('application/json') === -1) {
+                if (r.status === 403) {
+                    alert('Permission denied. Please refresh the page.');
+                } else {
+                    alert('Session expired — please refresh');
+                }
+                return null;
+            }
+            return r.json();
+        }).then(function(data) {
+            if (!data) return;
             if (data.ok) {
                 location.reload();
             } else {

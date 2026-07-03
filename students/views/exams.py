@@ -218,11 +218,24 @@ def select_exam(request):
 
             missing_students = []
             saved_count = 0
+            deleted_count = 0
 
             for student in students:
                 value = request.POST.get(f'score_{student.id}', '').strip()
 
                 if not value:
+                    _del_lookup = dict(
+                        school=school,
+                        student=student,
+                        subject=selected_assignment.subject,
+                        term=selected_exam.term,
+                        exam_type=selected_exam.name,
+                        year=selected_exam.year,
+                        school_section=selected_assignment.school_section,
+                    )
+                    _, del_count = Mark.all_objects.filter(**_del_lookup).delete()
+                    if del_count:
+                        deleted_count += 1
                     missing_students.append(student.name)
                     continue
 
@@ -239,7 +252,7 @@ def select_exam(request):
                                 term=selected_exam.term,
                                 exam_type=selected_exam.name,
                                 year=selected_exam.year,
-                                school_section='JSS',
+                                school_section=selected_assignment.school_section,
                             ).delete()
 
                     _mark_lookup = dict(
@@ -249,11 +262,12 @@ def select_exam(request):
                         term=selected_exam.term,
                         exam_type=selected_exam.name,
                         year=selected_exam.year,
+                        school_section=selected_assignment.school_section,
+                        sub_section=selected_assignment.sub_section,
                     )
                     Mark.all_objects.filter(**_mark_lookup).delete()
                     Mark.all_objects.create(
                         **_mark_lookup,
-                        school_section='JSS',
                         raw_score=None,
                         maximum_marks=maximum_marks,
                         score=0,
@@ -283,11 +297,12 @@ def select_exam(request):
                     term=selected_exam.term,
                     exam_type=selected_exam.name,
                     year=selected_exam.year,
+                    school_section=selected_assignment.school_section,
+                    sub_section=selected_assignment.sub_section,
                 )
                 Mark.all_objects.filter(**_mark_lookup).delete()
                 Mark.all_objects.create(
                     **_mark_lookup,
-                    school_section='JSS',
                     raw_score=raw_score,
                     maximum_marks=maximum_marks,
                     score=round((raw_score / maximum_marks) * 100),
@@ -310,25 +325,7 @@ def select_exam(request):
                             term=selected_exam.term,
                             exam_type=selected_exam.name,
                             year=selected_exam.year,
-                            school_section='JSS',
-                        ).delete()
-
-            # ================================================================
-            # CHANGE 3 — Skip must-fill check for IRE/CRE/HRE subjects
-            # ================================================================
-            if missing_students and selected_assignment.subject.code not in RELIGION_SUBJECTS:
-                    religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
-                    Student.objects.filter(id=student.id).update(religion=religion_tag)
-                    opposite = _resolve_opposite_religion_subject(school, selected_assignment)
-                    if opposite:
-                        Mark.all_objects.filter(
-                            school=school,
-                            student=student,
-                            subject=opposite,
-                            term=selected_exam.term,
-                            exam_type=selected_exam.name,
-                            year=selected_exam.year,
-                            school_section='JSS',
+                            school_section=selected_assignment.school_section,
                         ).delete()
 
             # ================================================================
@@ -349,7 +346,7 @@ def select_exam(request):
                 exam_name=selected_exam.name,
                 term=selected_exam.term,
                 year=selected_exam.year,
-                school_section='JSS',
+                school_section=selected_assignment.school_section,
                 defaults={
                     "status": "submitted",
                     "admin_note": "",
@@ -358,7 +355,7 @@ def select_exam(request):
                 }
             )
 
-            messages.success(request, f"{saved_count} learner records submitted successfully.")
+            messages.success(request, f"{saved_count} learner records submitted successfully." + (f" {deleted_count} mark(s) cleared." if deleted_count else ""))
             return redirect('select_exam')
 
     exam_rows = []
@@ -1316,7 +1313,19 @@ LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
 
 def _get_primary_performance(percentage):
-    """Return (descriptor, points) for a primary percentage score."""
+    """Return (descriptor, points) for a primary percentage score.
+    Uses school-specific GradingConfig if available."""
+    from ..models import GradingConfig
+    from ..school_scope import get_current_school, get_current_school_section
+
+    school = get_current_school()
+    section = get_current_school_section()
+
+    if school and section:
+        config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
+        if config and config.subject_scale:
+            return config.get_subject_level(percentage)
+
     for threshold, descriptor, points in PRIMARY_PERFORMANCE_SCALE:
         if percentage >= threshold:
             return descriptor, points
@@ -1488,11 +1497,25 @@ def select_exam_primary(request):
 
             missing_students = []
             saved_count = 0
+            deleted_count = 0
 
             for student in students:
                 value = request.POST.get(f'score_{student.id}', '').strip()
 
                 if not value:
+                    _del_lookup = dict(
+                        school=school,
+                        student=student,
+                        subject=selected_assignment.subject,
+                        term=selected_exam.term,
+                        exam_type=selected_exam.name,
+                        year=selected_exam.year,
+                        school_section=exam_section,
+                        sub_section=exam_sub_section,
+                    )
+                    _, del_count = Mark.all_objects.filter(**_del_lookup).delete()
+                    if del_count:
+                        deleted_count += 1
                     missing_students.append(student.name)
                     continue
 
@@ -1620,7 +1643,7 @@ def select_exam_primary(request):
                 }
             )
 
-            messages.success(request, f"{saved_count} learner records submitted successfully.")
+            messages.success(request, f"{saved_count} learner records submitted successfully." + (f" {deleted_count} mark(s) cleared." if deleted_count else ""))
             return redirect('select_exam_primary')
 
     exam_rows = []
@@ -1846,7 +1869,10 @@ def save_mark(request):
         school=school, student=student, subject=assignment.subject,
         term=exam.term, exam_type=exam.name, year=exam.year,
     ).first()
-    maximum_marks = existing_mark.maximum_marks if existing_mark else 100
+    try:
+        maximum_marks = int(request.POST.get('maximum_marks', '100'))
+    except (ValueError, TypeError):
+        maximum_marks = existing_mark.maximum_marks if existing_mark else 100
 
     if not score_value:
         Mark.all_objects.filter(

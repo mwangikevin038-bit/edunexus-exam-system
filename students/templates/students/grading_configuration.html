@@ -1,0 +1,477 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    .grading-page {
+        animation: fadeIn var(--duration-slow) var(--ease-out) both;
+    }
+
+    /* ── iOS 17 Segmented Control ───────────────────────────── */
+    .segmented-control {
+        display: flex;
+        background: var(--en-surface);
+        border-radius: var(--radius-lg);
+        padding: 3px;
+        margin-bottom: var(--space-6);
+        position: relative;
+    }
+    .segmented-control input[type="radio"] {
+        display: none;
+    }
+    .segmented-control label {
+        flex: 1;
+        text-align: center;
+        padding: 10px 16px;
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semibold);
+        color: var(--en-text-muted);
+        border-radius: calc(var(--radius-lg) - 2px);
+        cursor: pointer;
+        transition: all var(--duration-fast) var(--ease-out);
+        z-index: 1;
+        position: relative;
+    }
+    .segmented-control input[type="radio"]:checked + label {
+        background: var(--en-bg-elevated);
+        color: var(--en-text);
+        font-weight: var(--weight-bold);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    /* ── Section Header ─────────────────────────────────────── */
+    .page-header {
+        margin-bottom: var(--space-6);
+    }
+    .page-header h1 {
+        font-size: clamp(1.3rem, 5vw, var(--text-2xl));
+        font-weight: var(--weight-extrabold);
+        color: var(--en-text);
+        margin-bottom: var(--space-1);
+    }
+    .page-header h1 span { color: var(--en-green); }
+    .page-header p {
+        font-size: var(--text-sm);
+        color: var(--en-text-muted);
+    }
+
+    /* ── Scale Card ─────────────────────────────────────────── */
+    .scale-section {
+        margin-bottom: var(--space-8);
+    }
+    .scale-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-4);
+    }
+    .scale-section-title {
+        font-size: var(--text-lg);
+        font-weight: var(--weight-bold);
+        color: var(--en-text);
+    }
+    .scale-card {
+        background: var(--en-bg-elevated);
+        border: 1px solid var(--en-border);
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+        box-shadow: var(--shadow-card);
+    }
+    .scale-row {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--en-border-light);
+        transition: background var(--duration-fast) var(--ease-out);
+    }
+    .scale-row:last-child { border-bottom: none; }
+    .scale-row:hover { background: var(--en-surface); }
+
+    .level-badge {
+        min-width: 52px;
+        padding: 6px 12px;
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-weight: var(--weight-bold);
+        text-align: center;
+        color: white;
+    }
+    .level-badge.ee { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .level-badge.me { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .level-badge.ae { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .level-badge.be { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+    .scale-range {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+    .scale-range input {
+        width: 80px;
+        padding: 8px 12px;
+        border: 1px solid var(--en-border);
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semibold);
+        color: var(--en-text);
+        background: var(--en-surface);
+        text-align: center;
+        transition: border-color var(--duration-fast) var(--ease-out);
+    }
+    .scale-range input:focus {
+        outline: none;
+        border-color: var(--en-green);
+        box-shadow: 0 0 0 3px rgba(155, 232, 22, 0.15);
+    }
+    .scale-range-sep {
+        color: var(--en-text-muted);
+        font-weight: var(--weight-semibold);
+    }
+
+    .points-badge {
+        min-width: 44px;
+        padding: 6px 10px;
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-weight: var(--weight-bold);
+        text-align: center;
+        background: var(--en-surface);
+        color: var(--en-text-secondary);
+        border: 1px solid var(--en-border);
+    }
+    .points-badge input {
+        width: 36px;
+        border: none;
+        background: transparent;
+        text-align: center;
+        font-size: var(--text-sm);
+        font-weight: var(--weight-bold);
+        color: var(--en-text-secondary);
+        outline: none;
+    }
+
+    .scale-actions {
+        display: flex;
+        gap: var(--space-2);
+        padding: var(--space-4);
+        border-top: 1px solid var(--en-border-light);
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────── */
+    .btn-save {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: 10px 20px;
+        background: var(--en-green);
+        color: var(--en-navy);
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-weight: var(--weight-bold);
+        cursor: pointer;
+        transition: all var(--duration-fast) var(--ease-out);
+    }
+    .btn-save:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(155, 232, 22, 0.3);
+    }
+    .btn-reset {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: 10px 20px;
+        background: transparent;
+        color: var(--en-text-muted);
+        border: 1px solid var(--en-border);
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semibold);
+        cursor: pointer;
+        transition: all var(--duration-fast) var(--ease-out);
+    }
+    .btn-reset:hover {
+        background: var(--en-surface);
+        color: var(--en-text);
+    }
+    .btn-add {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: 8px 16px;
+        background: var(--en-surface);
+        color: var(--en-text-secondary);
+        border: 1px dashed var(--en-border);
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semibold);
+        cursor: pointer;
+        transition: all var(--duration-fast) var(--ease-out);
+    }
+    .btn-add:hover {
+        border-color: var(--en-green);
+        color: var(--en-green);
+    }
+    .btn-remove {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        color: var(--en-text-muted);
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all var(--duration-fast) var(--ease-out);
+        font-size: 14px;
+    }
+    .btn-remove:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    /* ── Info Note ─────────────────────────────────────────── */
+    .info-note {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        background: var(--en-info-bg);
+        border: 1px solid rgba(59, 130, 246, 0.15);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--space-6);
+    }
+    .info-note i {
+        color: var(--en-info);
+        font-size: 16px;
+        margin-top: 2px;
+    }
+    .info-note p {
+        font-size: var(--text-sm);
+        color: #1e40af;
+        line-height: 1.5;
+    }
+
+    /* ── Responsive ────────────────────────────────────────── */
+    @media (max-width: 640px) {
+        .scale-row {
+            flex-wrap: wrap;
+            gap: var(--space-2);
+        }
+        .scale-range { width: 100%; }
+        .scale-range input { flex: 1; }
+    }
+</style>
+
+<div class="grading-page">
+    <!-- HEADER -->
+    <div class="page-header">
+        <h1>Grading <span>Configuration</span></h1>
+        <p>Define performance level scales for each section</p>
+    </div>
+
+    <!-- INFO NOTE -->
+    <div class="info-note">
+        <i class="bi bi-info-circle-fill"></i>
+        <p>Configure how mark ranges map to performance levels (EE, ME, AE, BE). Each section has independent scales that apply when results are published.</p>
+    </div>
+
+    <!-- SECTION SEGMENTED CONTROL -->
+    <form method="get" id="sectionForm">
+        <div class="segmented-control">
+            {% for section_key in available_sections %}
+            <input type="radio" name="section" value="{{ section_key }}" id="sec_{{ section_key|lower }}"
+                   onchange="this.form.submit()" {% if active_section == section_key %}checked{% endif %}>
+            <label for="sec_{{ section_key|lower }}">{% if section_key == 'LOWER_PRIMARY' %}Lower Primary{% elif section_key == 'PRIMARY' %}Primary{% elif section_key == 'JSS' %}JSS{% endif %}</label>
+            {% endfor %}
+        </div>
+    </form>
+
+    <!-- SUBJECT SCALE -->
+    <div class="scale-section">
+        <div class="scale-section-header">
+            <h3 class="scale-section-title">Individual Subject Scale</h3>
+        </div>
+        <div class="scale-card">
+            <form method="post" id="subjectScaleForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_subject_scale">
+                <input type="hidden" name="section" value="{{ active_section }}">
+                <input type="hidden" name="scale_data" id="subjectScaleData" value="{{ active_config.subject_scale|escape }}">
+
+                <div id="subjectScaleRows">
+                    {% for entry in active_config.subject_scale %}
+                    <div class="scale-row" data-index="{{ forloop.counter0 }}">
+                        <span class="level-badge {% if 'EE' in entry.level %}ee{% elif 'ME' in entry.level %}me{% elif 'AE' in entry.level %}ae{% else %}be{% endif %}">{{ entry.level }}</span>
+                        <div class="scale-range">
+                            <input type="number" class="range-min" value="{{ entry.min_score }}" min="0" max="100" data-field="min_score">
+                            <span class="scale-range-sep">to</span>
+                            <input type="number" class="range-max" value="{{ entry.max_score }}" min="0" max="100" data-field="max_score">
+                            <span class="scale-range-sep">%</span>
+                        </div>
+                        <div class="points-badge">
+                            <input type="number" class="points-input" value="{{ entry.points }}" min="1" max="20" data-field="points">
+                            <span>pts</span>
+                        </div>
+                        <button type="button" class="btn-remove" onclick="removeScaleRow(this, 'subject')" title="Remove">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="scale-actions">
+                    <button type="button" class="btn-add" onclick="addScaleRow('subject')">
+                        <i class="bi bi-plus-lg"></i> Add Level
+                    </button>
+                    <div style="flex:1"></div>
+                    <button type="button" class="btn-reset" onclick="resetScale('subject')">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                    <button type="button" class="btn-save" onclick="saveScale('subject')">
+                        <i class="bi bi-check-lg"></i> Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOTAL SCALE -->
+    <div class="scale-section">
+        <div class="scale-section-header">
+            <h3 class="scale-section-title">Total Marks Scale</h3>
+        </div>
+        <div class="scale-card">
+            <form method="post" id="totalScaleForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_total_scale">
+                <input type="hidden" name="section" value="{{ active_section }}">
+                <input type="hidden" name="scale_data" id="totalScaleData" value="{{ active_config.total_scale|escape }}">
+
+                <div id="totalScaleRows">
+                    {% for entry in active_config.total_scale %}
+                    <div class="scale-row" data-index="{{ forloop.counter0 }}">
+                        <span class="level-badge {% if 'EE' in entry.level %}ee{% elif 'ME' in entry.level %}me{% elif 'AE' in entry.level %}ae{% else %}be{% endif %}">{{ entry.level }}</span>
+                        <div class="scale-range">
+                            <input type="number" class="range-min" value="{{ entry.min_marks }}" min="0" max="1000" data-field="min_marks">
+                            <span class="scale-range-sep">to</span>
+                            <input type="number" class="range-max" value="{{ entry.max_marks }}" min="0" max="1000" data-field="max_marks">
+                            <span class="scale-range-sep">marks</span>
+                        </div>
+                        <div class="points-badge">
+                            <input type="number" class="points-input" value="{{ entry.points }}" min="1" max="20" data-field="points">
+                            <span>pts</span>
+                        </div>
+                        <button type="button" class="btn-remove" onclick="removeScaleRow(this, 'total')" title="Remove">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="scale-actions">
+                    <button type="button" class="btn-add" onclick="addScaleRow('total')">
+                        <i class="bi bi-plus-lg"></i> Add Level
+                    </button>
+                    <div style="flex:1"></div>
+                    <button type="button" class="btn-reset" onclick="resetScale('total')">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                    <button type="button" class="btn-save" onclick="saveScale('total')">
+                        <i class="bi bi-check-lg"></i> Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function collectScaleData(type) {
+    const prefix = type === 'subject' ? 'subject' : 'total';
+    const rows = document.getElementById(prefix + 'ScaleRows').querySelectorAll('.scale-row');
+    const data = [];
+
+    rows.forEach(row => {
+        const level = row.querySelector('.level-badge').textContent.trim();
+        const inputs = row.querySelectorAll('input');
+        const entry = { level: level };
+
+        inputs.forEach(input => {
+            const field = input.dataset.field;
+            if (field) {
+                entry[field] = parseInt(input.value) || 0;
+            }
+        });
+
+        data.push(entry);
+    });
+
+    return data;
+}
+
+function saveScale(type) {
+    const data = collectScaleData(type);
+    const inputId = type === 'subject' ? 'subjectScaleData' : 'totalScaleData';
+    document.getElementById(inputId).value = JSON.stringify(data);
+
+    const formId = type === 'subject' ? 'subjectScaleForm' : 'totalScaleForm';
+    document.getElementById(formId).submit();
+}
+
+function resetScale(type) {
+    if (!confirm('Reset to default values? This will overwrite your current settings.')) return;
+    const formId = type === 'subject' ? 'subjectScaleForm' : 'totalScaleForm';
+    const form = document.getElementById(formId);
+    const actionInput = form.querySelector('input[name="action"]');
+    actionInput.value = 'reset_' + type + '_scale';
+    form.submit();
+}
+
+function addScaleRow(type) {
+    const containerId = type === 'subject' ? 'subjectScaleRows' : 'totalScaleRows';
+    const container = document.getElementById(containerId);
+    const index = container.children.length;
+
+    const isSubject = type === 'subject';
+    const minField = isSubject ? 'min_score' : 'min_marks';
+    const maxField = isSubject ? 'max_score' : 'max_marks';
+    const maxVal = isSubject ? 100 : 1000;
+    const unit = isSubject ? '%' : 'marks';
+
+    const html = `
+        <div class="scale-row" data-index="${index}">
+            <span class="level-badge be">NEW</span>
+            <div class="scale-range">
+                <input type="number" class="range-min" value="0" min="0" max="${maxVal}" data-field="${minField}">
+                <span class="scale-range-sep">to</span>
+                <input type="number" class="range-max" value="${maxVal}" min="0" max="${maxVal}" data-field="${maxField}">
+                <span class="scale-range-sep">${unit}</span>
+            </div>
+            <div class="points-badge">
+                <input type="number" class="points-input" value="1" min="1" max="20" data-field="points">
+                <span>pts</span>
+            </div>
+            <button type="button" class="btn-remove" onclick="removeScaleRow(this, '${type}')" title="Remove">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function removeScaleRow(btn, type) {
+    const row = btn.closest('.scale-row');
+    const container = row.parentElement;
+    if (container.children.length <= 1) {
+        alert('You must have at least one level.');
+        return;
+    }
+    row.remove();
+}
+</script>
+{% endblock %}

@@ -88,6 +88,11 @@ from .classes_manage import (  # noqa: F401
     manage_classes,
 )
 
+# ── Grading configuration ────────────────────────────────────────────────────
+from .grading_config import (  # noqa: F401
+    grading_configuration,
+)
+
 # ── CSV upload views ─────────────────────────────────────────────────────────
 from .csv_upload import (  # noqa: F401
     premium_csv_upload_page,

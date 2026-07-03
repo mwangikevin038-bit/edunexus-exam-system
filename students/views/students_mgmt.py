@@ -128,7 +128,7 @@ def admin_add_student(request):
         return redirect('welcome_page')
 
     current_year      = datetime.date.today().year
-    active_tab        = request.GET.get('tab', 'overview')
+    active_tab        = request.GET.get('tab', 'directory')
     next_admission_no = get_next_admission_no()
     # Store the raw integer for bulk increment calculations
     try:
@@ -223,6 +223,7 @@ def admin_add_student(request):
 
     base_query = (
         Student.objects.filter(school=school)
+        .filter(admission_no__regex=r'^[0-9]+$')
         .select_related('guardian')
         .annotate(adm_int=Cast('admission_no', IntegerField()))
     )
@@ -303,6 +304,7 @@ def class_lists(request):
         students = (
             Student.objects
             .filter(school=school, class_name=selected_grade, stream=selected_stream)
+            .filter(admission_no__regex=r'^[0-9]+$')
             .select_related('guardian')
             .annotate(adm_int=Cast('admission_no', IntegerField()))
             .order_by('adm_int')

@@ -42,6 +42,7 @@ urlpatterns = [
 
     # ── School admin ──────────────────────────────────────────────────────
     path('school-admin/', views.school_admin_dashboard, name='school_admin_dashboard'),
+    path('school-admin/grading-config/', views.grading_configuration, name='grading_configuration'),
     path('school-admin/faculty/', views.manage_faculty_matrix, name='manage_faculty_matrix'),
     path('school-admin/locks/', views.manage_assessment_locks, name='manage_assessment_locks'),
     path('school-admin/registration/', views.admin_add_student, name='admin_add_student'),

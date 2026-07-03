@@ -363,8 +363,21 @@ def user_can_edit_learner_profile(user, student):
 def get_performance_level(score):
     """
     Return (performance_level, points) for a converted 100% score.
+    Uses school-specific GradingConfig if available, otherwise falls back to defaults.
     """
+    from ..models import GradingConfig
+    from ..school_scope import get_current_school, get_current_school_section
+
     score = max(0, min(100, round(score or 0)))
+
+    school = get_current_school()
+    section = get_current_school_section()
+
+    if school and section:
+        config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
+        if config and config.subject_scale:
+            return config.get_subject_level(score)
+
     for threshold, level, points in PERFORMANCE_SCALE:
         if score >= threshold:
             return level, points
@@ -375,9 +388,21 @@ def calculate_report_plv(total_points, total_marks):
     """
     2-tier JSS Performance Level used for report card comment matching.
     Accepts either points or raw marks as a fallback.
+    Uses school-specific GradingConfig if available.
     """
+    from ..models import GradingConfig
+    from ..school_scope import get_current_school, get_current_school_section
+
     pts = total_points or 0
     mks = total_marks  or 0
+
+    school = get_current_school()
+    section = get_current_school_section()
+
+    if school and section:
+        config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
+        if config and config.total_scale:
+            return config.get_total_level(mks)[0] if mks else '-'
 
     if   pts >= 68 or mks >= 810: return 'EE1'
     elif pts >= 59 or mks >= 675: return 'EE2'
@@ -402,11 +427,29 @@ def calculate_broadsheet_plv(total_marks, total_points):
 
 def calculate_primary_plv(total_marks, assessed_subjects):
     """
-    Primary broadsheet PLV based on mean percentage score.
-    EE >= 75, ME >= 50, AE >= 25, BE < 25.
+    Primary broadsheet PLV based on total marks using the saved Total Marks Scale
+    from GradingConfig. Falls back to subject_scale (mean %) if no total_scale.
     """
+    from ..models import GradingConfig
+    from ..school_scope import get_current_school, get_current_school_section
+
     if not assessed_subjects or not total_marks:
         return '-'
+
+    school = get_current_school()
+    section = get_current_school_section()
+
+    if school and section:
+        config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
+        if config:
+            if config.total_scale:
+                level, _ = config.get_total_level(total_marks)
+                return level if level != '-' else 'BE'
+            if config.subject_scale:
+                mean = total_marks / assessed_subjects
+                level, _ = config.get_subject_level(mean)
+                return level
+
     mean = total_marks / assessed_subjects
     if mean >= 75:
         return 'EE'
@@ -420,9 +463,11 @@ def calculate_primary_plv(total_marks, assessed_subjects):
 def get_next_admission_no():
     """
     Compute the next sequential admission number as a zero-padded string.
+    Skips non-numeric admission numbers safely.
     """
     last = (
         Student.objects.all()
+        .filter(admission_no__regex=r'^[0-9]+$')
         .annotate(adm_int=Cast('admission_no', IntegerField()))
         .order_by('adm_int')
         .last()
@@ -438,13 +483,23 @@ def get_next_admission_no():
 def get_students_ordered(grade, stream):
     """
     Return students filtered by grade and stream, ordered by admission number.
+    Non-numeric admission numbers are sorted to the end.
     """
-    return (
+    from django.db.models import Value, CharField
+    numeric = (
         Student.objects
         .filter(class_name=grade, stream=stream)
+        .filter(admission_no__regex=r'^[0-9]+$')
         .annotate(adm_int=Cast('admission_no', IntegerField()))
         .order_by('adm_int')
     )
+    non_numeric = (
+        Student.objects
+        .filter(class_name=grade, stream=stream)
+        .exclude(admission_no__regex=r'^[0-9]+$')
+        .order_by('admission_no')
+    )
+    return list(numeric) + list(non_numeric)
 
 
 def get_subject_students(grade, stream, subject):

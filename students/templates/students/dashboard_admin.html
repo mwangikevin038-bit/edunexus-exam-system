@@ -410,7 +410,7 @@
     <!-- MISSING ENTRIES ALERT -->
     {% if missing_entries_count > 0 %}
     <div class="alert-banner">
-        <div class="alert-banner-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div class="alert-banner-icon"><i class="ph ph-warning-circle"></i></div>
         <div class="alert-banner-text">
             <strong>{{ missing_entries_count }} pending submission{{ missing_entries_count|pluralize }}</strong> need{{ missing_entries_count|pluralize:"s" }} your attention
         </div>
@@ -420,28 +420,28 @@
     <!-- METRICS STRIP -->
     <div class="metrics-strip stagger-children">
         <div class="metric-card">
-            <div class="metric-icon" style="background:var(--en-info-bg); color:var(--en-info);"><i class="bi bi-people-fill"></i></div>
+            <div class="metric-icon" style="background:var(--en-info-bg); color:var(--en-info);"><i class="ph ph-users"></i></div>
             <div>
                 <div class="metric-value">{{ total_students }}</div>
                 <div class="metric-label">Learners</div>
             </div>
         </div>
         <div class="metric-card">
-            <div class="metric-icon" style="background:rgba(236,72,153,0.1); color:#ec4899;"><i class="bi bi-person-workspace"></i></div>
+            <div class="metric-icon" style="background:rgba(236,72,153,0.1); color:#ec4899;"><i class="ph ph-users-three"></i></div>
             <div>
                 <div class="metric-value">{{ total_teachers }}</div>
                 <div class="metric-label">Faculty</div>
             </div>
         </div>
         <div class="metric-card">
-            <div class="metric-icon" style="background:var(--en-green-light); color:var(--en-navy);"><i class="bi bi-building"></i></div>
+            <div class="metric-icon" style="background:var(--en-green-light); color:var(--en-navy);"><i class="ph ph-buildings"></i></div>
             <div>
                 <div class="metric-value">{{ active_classes }}</div>
                 <div class="metric-label">Classes</div>
             </div>
         </div>
         <div class="metric-card">
-            <div class="metric-icon" style="background:var(--en-warning-bg); color:var(--en-warning);"><i class="bi bi-journal-text"></i></div>
+            <div class="metric-icon" style="background:var(--en-warning-bg); color:var(--en-warning);"><i class="ph ph-notebook"></i></div>
             <div>
                 <div class="metric-value">{{ total_exams }}</div>
                 <div class="metric-label">Exams</div>
@@ -455,32 +455,32 @@
     </div>
     <div class="quick-actions stagger-children">
         <a class="action-card" href="{% url 'admin_add_student' %}">
-            <div class="action-card-icon"><i class="bi bi-person-plus-fill"></i></div>
-            <div class="action-card-title">Learners</div>
+            <div class="action-card-icon"><i class="ph ph-student"></i></div>
+            <div class="action-card-title">Students</div>
             <div class="action-card-desc">Register & manage</div>
         </a>
         <a class="action-card" href="{% url 'manage_exams' %}">
-            <div class="action-card-icon"><i class="bi bi-journal-check"></i></div>
+            <div class="action-card-icon"><i class="ph ph-clipboard-text"></i></div>
             <div class="action-card-title">Exams</div>
             <div class="action-card-desc">Assessment control</div>
         </a>
         <a class="action-card" href="{% url 'results_list' %}">
-            <div class="action-card-icon"><i class="bi bi-graph-up-arrow"></i></div>
+            <div class="action-card-icon"><i class="ph ph-chart-bar"></i></div>
             <div class="action-card-title">Results</div>
             <div class="action-card-desc">Broadsheets</div>
         </a>
         <a class="action-card" href="{% url 'report_card_select' %}">
-            <div class="action-card-icon"><i class="bi bi-file-earmark-pdf-fill"></i></div>
+            <div class="action-card-icon"><i class="ph ph-file-pdf"></i></div>
             <div class="action-card-title">Reports</div>
             <div class="action-card-desc">Report cards</div>
         </a>
         <a class="action-card" href="{% url 'manage_classes' %}">
-            <div class="action-card-icon"><i class="bi bi-diagram-3"></i></div>
+            <div class="action-card-icon"><i class="ph ph-layout"></i></div>
             <div class="action-card-title">Classes</div>
             <div class="action-card-desc">Grade & stream</div>
         </a>
         <a class="action-card" href="{% url 'manage_faculty_matrix' %}">
-            <div class="action-card-icon"><i class="bi bi-diagram-3-fill"></i></div>
+            <div class="action-card-icon"><i class="ph ph-users-three"></i></div>
             <div class="action-card-title">Faculty</div>
             <div class="action-card-desc">Allocations</div>
         </a>
@@ -488,7 +488,7 @@
 
     <!-- PERFORMANCE CARD -->
     <div class="perf-card">
-        <div class="perf-header"><i class="bi bi-bar-chart-fill"></i> Latest Exam Performance</div>
+        <div class="perf-header"><i class="ph ph-chart-bar-fill"></i> Latest Exam Performance</div>
         <div class="perf-mean">
             <span class="perf-mean-value">{{ overall_average }}%</span>
             <span class="perf-mean-label">School Mean</span>
@@ -534,14 +534,14 @@
     </div>
     <div class="gender-row stagger-children">
         <div class="gender-card">
-            <div class="gender-icon" style="background:var(--en-info-bg); color:var(--en-info);"><i class="bi bi-gender-male"></i></div>
+            <div class="gender-icon" style="background:var(--en-info-bg); color:var(--en-info);"><i class="ph ph-gender-male"></i></div>
             <div>
                 <div class="metric-value">{{ boys_count }}</div>
                 <div class="metric-label">Male</div>
             </div>
         </div>
         <div class="gender-card">
-            <div class="gender-icon" style="background:rgba(236,72,153,0.1); color:#ec4899;"><i class="bi bi-gender-female"></i></div>
+            <div class="gender-icon" style="background:rgba(236,72,153,0.1); color:#ec4899;"><i class="ph ph-gender-female"></i></div>
             <div>
                 <div class="metric-value">{{ girls_count }}</div>
                 <div class="metric-label">Female</div>
@@ -584,14 +584,14 @@
             </div>
             <span class="missing-class">{{ alert.target_class }}</span>
             <a href="tel:{{ alert.phone }}" class="btn btn-sm btn-dark" style="flex-shrink:0;">
-                <i class="bi bi-telephone-fill"></i> Nudge
+                <i class="ph ph-phone"></i> Nudge
             </a>
         </div>
         {% endfor %}
     </div>
     {% else %}
     <div class="card" style="text-align:center; padding:var(--space-6); margin-bottom:var(--space-6);">
-        <i class="bi bi-check-circle-fill" style="color:var(--en-success); font-size:28px; display:block; margin-bottom:var(--space-2);"></i>
+        <i class="ph ph-check-circle" style="color:var(--en-success); font-size:28px; display:block; margin-bottom:var(--space-2);"></i>
         <div style="font-weight:var(--weight-bold); color:var(--en-text); margin-bottom:var(--space-1);">All submissions complete!</div>
         <div style="font-size:var(--text-sm); color:var(--en-text-muted);">All faculty have submitted their mark sheets.</div>
     </div>
@@ -606,7 +606,7 @@
                 <div style="font-size:var(--text-sm); color:var(--en-text-muted);">Correct published scores when needed.</div>
             </div>
             <a href="{% url 'manage_exams' %}" class="btn btn-sm btn-dark">
-                <i class="bi bi-gear-fill"></i> Open
+                <i class="ph ph-gear"></i> Open
             </a>
         </div>
     </div>

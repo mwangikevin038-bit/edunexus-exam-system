@@ -1,0 +1,9 @@
+[2026-07-03 15:18:03,650: WARNING/MainProcess] C:\Users\1030 G3\AppData\Local\Programs\Python\Python313\Lib\site-packages\billiard\pool.py:1022: UserWarning: Soft timeouts are not supported: on this platform: It does not have the SIGUSR1 signal.
+  warnings.warn(UserWarning(
+
+[2026-07-03 15:18:03,692: INFO/MainProcess] Connected to redis://127.0.0.1:6379/0
+[2026-07-03 15:18:03,699: INFO/MainProcess] mingle: searching for neighbors
+[2026-07-03 15:18:04,426: INFO/SpawnPoolWorker-1] child process 7312 calling self.run()
+[2026-07-03 15:18:04,427: INFO/SpawnPoolWorker-2] child process 13064 calling self.run()
+[2026-07-03 15:18:04,717: INFO/MainProcess] mingle: all alone
+[2026-07-03 15:18:04,743: INFO/MainProcess] celery@Maina ready.

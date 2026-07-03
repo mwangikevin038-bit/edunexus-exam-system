@@ -67,7 +67,8 @@
             white-space: nowrap;
             -webkit-tap-highlight-color: transparent;
         }
-        .nav-link-card i {
+        .nav-link-card i,
+        .nav-link-card [class*="ph-"] {
             font-size: 18px;
             width: 20px;
             text-align: center;
@@ -82,7 +83,8 @@
             color: var(--en-navy);
             font-weight: var(--weight-bold);
         }
-        .nav-link-card.active-section i { color: var(--en-navy); }
+        .nav-link-card.active-section i,
+        .nav-link-card.active-section [class*="ph-"] { color: var(--en-navy); }
 
         .nav-section-label {
             font-size: 10px;
@@ -283,7 +285,7 @@
     <div class="sidebar" id="sidebar">
         <!-- Header -->
         <div class="sidebar-header">
-            <img src="{% static 'images/edunexus_logo.png' %}" alt="EDUNEXUS" class="brand-logo">
+            <img src="{% static 'images/edunexus_logo_512.png' %}" alt="EDUNEXUS" class="brand-logo">
             <h1 class="brand-text">EDU<span class="brand-accent">NEXUS</span></h1>
         </div>
 
@@ -294,102 +296,80 @@
                 <!-- ═══ ADMIN SIDEBAR ═══ -->
                 <div class="nav-section-label">Overview</div>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'school_admin_dashboard' %}active-section{% endif %}" href="{% url 'school_admin_dashboard' %}">
-                    <i class="bi bi-speedometer2"></i> <span>Command Center</span>
+                    <i class="ph ph-house-line"></i> <span>Home</span>
                 </a>
 
-                <div class="nav-section-label">Students & Classes</div>
-                <a class="nav-link-card {% if request.resolver_match.url_name == 'admin_add_student' %}active-section{% endif %}" href="{% url 'admin_add_student' %}">
-                    <i class="bi bi-person-plus-fill"></i> <span>Learner Registry</span>
-                </a>
-                <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_classes' %}active-section{% endif %}" href="{% url 'manage_classes' %}">
-                    <i class="bi bi-diagram-3"></i> <span>Class Structure</span>
+                <div class="nav-section-label">Students</div>
+                <a class="nav-link-card {% if request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'premium_csv_upload' or request.resolver_match.url_name == 'learner_profile' %}active-section{% endif %}" href="{% url 'admin_add_student' %}">
+                    <i class="ph ph-student"></i> <span>Students</span>
                 </a>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'class_lists' %}active-section{% endif %}" href="{% url 'class_lists' %}">
-                    <i class="bi bi-people"></i> <span>Learner Lists</span>
+                    <i class="ph ph-users"></i> <span>Class Lists</span>
+                </a>
+                <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_classes' %}active-section{% endif %}" href="{% url 'manage_classes' %}">
+                    <i class="ph ph-layout"></i> <span>Class Structure</span>
                 </a>
 
-                <div class="nav-section-label">Assessments & Results</div>
-                <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'review_submission' %}active-section{% endif %}" href="{% url 'manage_exams' %}">
-                    <i class="bi bi-journal-check"></i> <span>Assessment Control</span>
+                <div class="nav-section-label">Assessments</div>
+                <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' %}active-section{% endif %}" href="{% url 'manage_exams' %}">
+                    <i class="ph ph-clipboard-text"></i> <span>Assessments & Reviews</span>
                 </a>
-                <a class="nav-link-card {% if request.resolver_match.url_name == 'review_stream_submission' %}active-section{% endif %}" href="{% url 'review_stream_submission' %}">
-                    <i class="bi bi-check2-square"></i> <span>Stream Publishing</span>
-                </a>
-                <a class="nav-link-card {% if request.resolver_match.url_name == 'results_list' %}active-section{% endif %}" href="{% url 'results_list' %}">
-                    <i class="bi bi-graph-up-arrow"></i> <span>Published Results</span>
-                </a>
-                <a class="nav-link-card {% if request.resolver_match.url_name == 'report_card_select' %}active-section{% endif %}" href="{% url 'report_card_select' %}">
-                    <i class="bi bi-file-earmark-pdf-fill"></i> <span>Report Cards</span>
+
+                <div class="nav-section-label">Results</div>
+                <a class="nav-link-card {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' %}active-section{% endif %}" href="{% url 'results_list' %}">
+                    <i class="ph ph-chart-bar"></i> <span>Results</span>
                 </a>
 
                 <div class="nav-section-label">Staff</div>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active-section{% endif %}" href="{% url 'manage_faculty_matrix' %}">
-                    <i class="bi bi-diagram-3-fill"></i> <span>Faculty Allocation</span>
+                    <i class="ph ph-users-three"></i> <span>Faculty</span>
+                </a>
+
+                <div class="nav-section-label">Settings</div>
+                <a class="nav-link-card {% if request.resolver_match.url_name == 'grading_configuration' %}active-section{% endif %}" href="{% url 'grading_configuration' %}">
+                    <i class="ph ph-sliders"></i> <span>Grading Config</span>
                 </a>
 
             {% else %}
                 <!-- ═══ TEACHER SIDEBAR ═══ -->
                 <div class="nav-section-label">Menu</div>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'dashboard' %}active-section{% endif %}" href="{% url 'dashboard_alt' %}">
-                    <i class="bi bi-grid-1x2-fill"></i> <span>Dashboard</span>
+                    <i class="ph ph-grid-1x2"></i> <span>Dashboard</span>
                 </a>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'home' %}active-section{% endif %}" href="{% url 'home_alt' %}">
-                    <i class="bi bi-person-badge"></i> <span>Faculty Profile</span>
+                    <i class="ph ph-identification-badge"></i> <span>Faculty Profile</span>
                 </a>
 
                 {% with ws=request.session.workspace_section sec=request.session.school_section %}
                 {% if ws == 'LOWER_PRIMARY' %}
                     <a class="nav-link-card {% if request.resolver_match.url_name == 'select_exam_primary' %}active-section{% endif %}" href="{% url 'select_exam_primary' %}">
-                        <i class="bi bi-input-cursor-text"></i> <span>Score Capture</span>
+                        <i class="ph ph-keyboard"></i> <span>Score Capture</span>
                     </a>
                 {% elif ws == 'PRIMARY' or sec == 'PRIMARY' %}
                     <a class="nav-link-card {% if request.resolver_match.url_name == 'select_exam_primary' %}active-section{% endif %}" href="{% url 'select_exam_primary' %}">
-                        <i class="bi bi-input-cursor-text"></i> <span>Score Capture</span>
+                        <i class="ph ph-keyboard"></i> <span>Score Capture</span>
                     </a>
                 {% else %}
                     <a class="nav-link-card {% if request.resolver_match.url_name == 'select_exam' %}active-section{% endif %}" href="{% url 'select_exam' %}">
-                        <i class="bi bi-input-cursor-text"></i> <span>Score Capture</span>
+                        <i class="ph ph-keyboard"></i> <span>Score Capture</span>
                     </a>
                 {% endif %}
                 {% endwith %}
 
                 <div class="nav-section-label">Results</div>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'results_list' %}active-section{% endif %}" href="{% url 'results_list' %}">
-                    <i class="bi bi-graph-up-arrow"></i> <span>Published Results</span>
+                    <i class="ph ph-chart-bar"></i> <span>Published Results</span>
                 </a>
                 {% if "Class Teacher" in request.user.teacher_profile.assigned_task %}
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'report_card_select' %}active-section{% endif %}" href="{% url 'report_card_select' %}">
-                    <i class="bi bi-file-earmark-pdf-fill"></i> <span>Report Cards</span>
+                    <i class="ph ph-file-pdf"></i> <span>Report Cards</span>
                 </a>
                 {% endif %}
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'class_lists' %}active-section{% endif %}" href="{% url 'class_lists' %}">
-                    <i class="bi bi-people"></i> <span>Learner Lists</span>
+                    <i class="ph ph-users"></i> <span>Learner Lists</span>
                 </a>
             {% endif %}
         </nav>
-
-        <!-- Workspace Toggle -->
-        {% if request.session.school_section == 'BOTH' %}
-        <div style="padding:var(--space-3); border-top:1px solid var(--en-border-light);">
-            <div style="font-size:10px; font-weight:var(--weight-bold); color:var(--en-text-muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:var(--space-2);">Workspace</div>
-            <div class="workspace-toggle" style="display:flex; flex-direction:column; gap:4px;">
-                <form method="post" action="{% url 'switch_workspace' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="section" value="PRIMARY">
-                    <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}active{% endif %}" style="width:100%;">
-                        <i class="bi bi-book"></i> Primary
-                    </button>
-                </form>
-                <form method="post" action="{% url 'switch_workspace' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="section" value="JSS">
-                    <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'JSS' %}active{% endif %}" style="width:100%;">
-                        <i class="bi bi-mortarboard"></i> JSS
-                    </button>
-                </form>
-            </div>
-        </div>
-        {% endif %}
 
         <!-- User Footer -->
         <div class="sidebar-footer">
@@ -423,14 +403,14 @@
                         {% csrf_token %}
                         <input type="hidden" name="section" value="PRIMARY">
                         <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}active{% endif %}">
-                            <i class="bi bi-book"></i> Primary
+                            <i class="ph ph-book"></i> Primary
                         </button>
                     </form>
                     <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
                         {% csrf_token %}
                         <input type="hidden" name="section" value="JSS">
                         <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'JSS' %}active{% endif %}">
-                            <i class="bi bi-mortarboard"></i> JSS
+                            <i class="ph ph-graduation-cap"></i> JSS
                         </button>
                     </form>
                 </div>
@@ -458,7 +438,7 @@
                         </div>
                         <div class="topbar-dropdown-divider"></div>
                         <a href="{% url 'logout' %}" class="topbar-dropdown-item topbar-logout">
-                            <i class="bi bi-box-arrow-right"></i> Sign Out
+                            <i class="ph ph-sign-out"></i> Sign Out
                         </a>
                     </div>
                 </div>
@@ -477,37 +457,37 @@
             {# ── ADMIN: Home · Students · Exams · Results · Menu ── #}
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'school_admin_dashboard' %}active{% endif %}"
                href="{% url 'school_admin_dashboard' %}"
-               aria-label="Command Center">
-                <i class="bi bi-grid-1x2-fill"></i>
+               aria-label="Home">
+                <i class="ph ph-house-line"></i>
                 <span>Home</span>
             </a>
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'learner_profile' or request.resolver_match.url_name == 'premium_csv_upload' %}active{% endif %}"
                href="{% url 'admin_add_student' %}"
-               aria-label="Learner Registry">
-                <i class="bi bi-people-fill"></i>
+               aria-label="Students">
+                <i class="ph ph-student"></i>
                 <span>Students</span>
             </a>
             <a class="bottom-nav-item nav-center {% if request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' %}active{% endif %}"
                href="{% url 'manage_exams' %}"
-               aria-label="Assessment Control">
+               aria-label="Assessments">
                 <div class="nav-center-ring">
-                    <i class="bi bi-journal-check"></i>
+                    <i class="ph ph-clipboard-text"></i>
                 </div>
                 <span>Exams</span>
             </a>
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' %}active{% endif %}"
                href="{% url 'results_list' %}"
-               aria-label="Published Results">
-                <i class="bi bi-graph-up-arrow"></i>
+               aria-label="Results">
+                <i class="ph ph-chart-bar"></i>
                 <span>Results</span>
             </a>
             <button type="button"
-                    class="bottom-nav-item {% if request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'password_change' %}active{% endif %}"
+                    class="bottom-nav-item {% if request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'password_change' or request.resolver_match.url_name == 'grading_configuration' %}active{% endif %}"
                     id="mobileMenuBtn"
                     aria-label="Open menu"
                     aria-expanded="false"
                     aria-controls="mobileMenuSheet">
-                <i class="bi bi-list-ul"></i>
+                <i class="ph ph-list"></i>
                 <span>Menu</span>
             </button>
         {% else %}
@@ -515,13 +495,13 @@
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
                href="{% url 'dashboard_alt' %}"
                aria-label="Dashboard">
-                <i class="bi bi-grid-1x2-fill"></i>
+                <i class="ph ph-grid-1x2"></i>
                 <span>Home</span>
             </a>
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'learner_profile' %}active{% endif %}"
                href="{% url 'class_lists' %}"
                aria-label="Learner Lists">
-                <i class="bi bi-people"></i>
+                <i class="ph ph-users"></i>
                 <span>Lists</span>
             </a>
             {% with ws=request.session.workspace_section sec=request.session.school_section %}
@@ -530,7 +510,7 @@
                    href="{% url 'select_exam_primary' %}"
                    aria-label="Score Capture">
                     <div class="nav-center-ring">
-                        <i class="bi bi-input-cursor-text"></i>
+                        <i class="ph ph-keyboard"></i>
                     </div>
                     <span>Capture</span>
                 </a>
@@ -539,7 +519,7 @@
                    href="{% url 'select_exam' %}"
                    aria-label="Score Capture">
                     <div class="nav-center-ring">
-                        <i class="bi bi-input-cursor-text"></i>
+                        <i class="ph ph-keyboard"></i>
                     </div>
                     <span>Capture</span>
                 </a>
@@ -548,7 +528,7 @@
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' %}active{% endif %}"
                href="{% url 'results_list' %}"
                aria-label="Published Results">
-                <i class="bi bi-graph-up-arrow"></i>
+                <i class="ph ph-chart-bar"></i>
                 <span>Results</span>
             </a>
             <button type="button"
@@ -557,7 +537,7 @@
                     aria-label="Open menu"
                     aria-expanded="false"
                     aria-controls="mobileMenuSheet">
-                <i class="bi bi-list-ul"></i>
+                <i class="ph ph-list"></i>
                 <span>Menu</span>
             </button>
         {% endif %}
@@ -577,50 +557,32 @@
             <div class="mobile-menu-body">
                 {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
                     <div class="mobile-menu-section">
-                        <div class="mobile-menu-section-label">Students & Classes</div>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'manage_classes' %}active{% endif %}" href="{% url 'manage_classes' %}">
-                            <i class="bi bi-diagram-3"></i> Class Structure
-                        </a>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'class_lists' %}active{% endif %}" href="{% url 'class_lists' %}">
-                            <i class="bi bi-people"></i> Learner Lists
-                        </a>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'premium_csv_upload' %}active{% endif %}" href="{% url 'premium_csv_upload' %}">
-                            <i class="bi bi-cloud-upload"></i> CSV Onboarding
-                        </a>
-                    </div>
-                    <div class="mobile-menu-section">
-                        <div class="mobile-menu-section-label">Assessments</div>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'review_stream_submission' %}active{% endif %}" href="{% url 'review_stream_submission' %}">
-                            <i class="bi bi-check2-square"></i> Stream Publishing
-                        </a>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'report_card_select' %}active{% endif %}" href="{% url 'report_card_select' %}">
-                            <i class="bi bi-file-earmark-pdf-fill"></i> Report Cards
-                        </a>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'manage_assessment_locks' %}active{% endif %}" href="{% url 'manage_assessment_locks' %}">
-                            <i class="bi bi-lock-fill"></i> Assessment Locks
-                        </a>
-                    </div>
-                    <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">Staff</div>
                         <a class="mobile-menu-link {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active{% endif %}" href="{% url 'manage_faculty_matrix' %}">
-                            <i class="bi bi-diagram-3-fill"></i> Faculty Allocation
+                            <i class="ph ph-users-three"></i> Faculty
+                        </a>
+                    </div>
+                    <div class="mobile-menu-section">
+                        <div class="mobile-menu-section-label">Settings</div>
+                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'grading_configuration' %}active{% endif %}" href="{% url 'grading_configuration' %}">
+                            <i class="ph ph-sliders"></i> Grading Config
                         </a>
                     </div>
                 {% else %}
                     <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">My Account</div>
                         <a class="mobile-menu-link {% if request.resolver_match.url_name == 'home_alt' %}active{% endif %}" href="{% url 'home_alt' %}">
-                            <i class="bi bi-person-badge"></i> Faculty Profile
+                            <i class="ph ph-identification-badge"></i> Faculty Profile
                         </a>
                         <a class="mobile-menu-link {% if request.resolver_match.url_name == 'password_change' %}active{% endif %}" href="{% url 'password_change' %}">
-                            <i class="bi bi-shield-lock"></i> Change Password
+                            <i class="ph ph-shield-check"></i> Change Password
                         </a>
                     </div>
                     {% if "Class Teacher" in request.user.teacher_profile.assigned_task %}
                     <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">Class Teacher</div>
                         <a class="mobile-menu-link {% if request.resolver_match.url_name == 'report_card_select' %}active{% endif %}" href="{% url 'report_card_select' %}">
-                            <i class="bi bi-file-earmark-pdf-fill"></i> Report Cards
+                            <i class="ph ph-file-pdf"></i> Report Cards
                         </a>
                     </div>
                     {% endif %}
@@ -633,14 +595,14 @@
                         {% csrf_token %}
                         <input type="hidden" name="section" value="PRIMARY">
                         <button type="submit" class="mobile-menu-link" style="width:100%; border:none; background:transparent; text-align:left;">
-                            <i class="bi bi-book"></i> Primary
+                            <i class="ph ph-book"></i> Primary
                         </button>
                     </form>
                     <form method="post" action="{% url 'switch_workspace' %}">
                         {% csrf_token %}
                         <input type="hidden" name="section" value="JSS">
                         <button type="submit" class="mobile-menu-link" style="width:100%; border:none; background:transparent; text-align:left;">
-                            <i class="bi bi-mortarboard"></i> JSS
+                            <i class="ph ph-graduation-cap"></i> JSS
                         </button>
                     </form>
                 </div>
@@ -648,7 +610,7 @@
 
                 <div class="mobile-menu-section">
                     <a class="mobile-menu-link mobile-menu-link-danger" href="{% url 'logout' %}">
-                        <i class="bi bi-box-arrow-right"></i> Sign Out
+                        <i class="ph ph-sign-out"></i> Sign Out
                     </a>
                 </div>
             </div>

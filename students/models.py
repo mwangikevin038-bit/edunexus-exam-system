@@ -452,6 +452,42 @@ class Mark(SchoolScopedModel):
                     'subject': f"Subject {self.subject.code} belongs to {self.subject.get_school_section_display()}, but mark is for {self.get_school_section_display()}."
                 })
 
+    def _resolve_grading(self, score):
+        """Return (performance_level, points) using GradingConfig or section defaults."""
+        score = max(0, min(100, round(score or 0)))
+
+        if self.school_id and self.school_section:
+            config = GradingConfig.all_objects.filter(
+                school=self.school, school_section=self.school_section
+            ).first()
+            if config and config.subject_scale:
+                return config.get_subject_level(score)
+
+        if self.school_section == 'PRIMARY':
+            if score >= 75:
+                return 'EE', 4
+            elif score >= 50:
+                return 'ME', 3
+            elif score >= 25:
+                return 'AE', 2
+            return 'BE', 1
+
+        if score >= 90:
+            return 'EE1', 8
+        elif score >= 75:
+            return 'EE2', 7
+        elif score >= 58:
+            return 'ME1', 6
+        elif score >= 41:
+            return 'ME2', 5
+        elif score >= 31:
+            return 'AE1', 4
+        elif score >= 21:
+            return 'AE2', 3
+        elif score >= 11:
+            return 'BE1', 2
+        return 'BE2', 1
+
     def save(self, *args, **kwargs):
         if self.pk and self.integrity_checksum and not verify_mark_checksum(self):
             logger.critical(
@@ -475,22 +511,8 @@ class Mark(SchoolScopedModel):
             if max_marks > 0:
                 self.score = round((self.raw_score / max_marks) * 100)
 
-        if self.score >= 90:
-            self.performance_level, self.points = "EE1", 8
-        elif self.score >= 75:
-            self.performance_level, self.points = "EE2", 7
-        elif self.score >= 58:
-            self.performance_level, self.points = "ME1", 6
-        elif self.score >= 41:
-            self.performance_level, self.points = "ME2", 5
-        elif self.score >= 31:
-            self.performance_level, self.points = "AE1", 4
-        elif self.score >= 21:
-            self.performance_level, self.points = "AE2", 3
-        elif self.score >= 11:
-            self.performance_level, self.points = "BE1", 2
-        else:
-            self.performance_level, self.points = "BE2", 1
+        grading_level, grading_points = self._resolve_grading(self.score)
+        self.performance_level, self.points = grading_level, grading_points
 
         self.integrity_checksum = compute_mark_checksum(self)
         super().save(*args, **kwargs)
@@ -1153,3 +1175,110 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.notification_type})"
+
+
+# -------------------- Grading Configuration Model --------------------
+class GradingConfig(SchoolScopedModel):
+    """
+    Stores grading configuration per school and section.
+    Each section (LOWER_PRIMARY, PRIMARY, JSS) has its own independent scale.
+
+    subject_scale: list of dicts defining mark ranges → performance levels
+        [
+            {"level": "EE", "min_score": 75, "max_score": 100, "points": 4},
+            {"level": "ME", "min_score": 50, "max_score": 74,  "points": 3},
+            {"level": "AE", "min_score": 25, "max_score": 49,  "points": 2},
+            {"level": "BE", "min_score": 0,  "max_score": 24,  "points": 1},
+        ]
+
+    total_scale: list of dicts defining total marks → overall performance level
+        [
+            {"level": "EE", "min_marks": 600, "max_marks": 800, "points": 4},
+            {"level": "ME", "min_marks": 400, "max_marks": 599, "points": 3},
+            {"level": "AE", "min_marks": 200, "max_marks": 399, "points": 2},
+            {"level": "BE", "min_marks": 0,   "max_marks": 199, "points": 1},
+        ]
+    """
+    SECTION_CHOICES = [
+        ('LOWER_PRIMARY', 'Lower Primary (Grades 1-3)'),
+        ('PRIMARY', 'Primary (Grades 4-6)'),
+        ('JSS', 'Junior Secondary (Grades 7-9)'),
+    ]
+
+    school_section = models.CharField(max_length=20, choices=SECTION_CHOICES)
+    subject_scale = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Mark ranges for individual subject performance levels",
+    )
+    total_scale = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Mark ranges for overall/aggregated performance levels",
+    )
+
+    class Meta:
+        unique_together = ('school', 'school_section')
+        verbose_name = "Grading Configuration"
+        verbose_name_plural = "Grading Configurations"
+
+    def __str__(self):
+        return f"Grading Config - {self.get_school_section_display()} ({self.school})"
+
+    def get_subject_level(self, score):
+        """Return (level, points) for a given individual subject score (0-100)."""
+        score = max(0, min(100, round(score or 0)))
+        for entry in self.subject_scale:
+            if entry['min_score'] <= score <= entry['max_score']:
+                return entry['level'], entry['points']
+        return '-', 0
+
+    def get_total_level(self, total_marks):
+        """Return (level, points) for a given total/aggregate mark."""
+        total_marks = max(0, round(total_marks or 0))
+        for entry in self.total_scale:
+            if entry['min_marks'] <= total_marks <= entry['max_marks']:
+                return entry['level'], entry['points']
+        return '-', 0
+
+    @classmethod
+    def get_default_subject_scale(cls, section):
+        """Return default subject scale for a section."""
+        if section in ('LOWER_PRIMARY', 'PRIMARY'):
+            return [
+                {"level": "EE", "min_score": 75, "max_score": 100, "points": 4},
+                {"level": "ME", "min_score": 50, "max_score": 74,  "points": 3},
+                {"level": "AE", "min_score": 25, "max_score": 49,  "points": 2},
+                {"level": "BE", "min_score": 0,  "max_score": 24,  "points": 1},
+            ]
+        return [
+            {"level": "EE1", "min_score": 90, "max_score": 100, "points": 8},
+            {"level": "EE2", "min_score": 75, "max_score": 89,  "points": 7},
+            {"level": "ME1", "min_score": 58, "max_score": 74,  "points": 6},
+            {"level": "ME2", "min_score": 41, "max_score": 57,  "points": 5},
+            {"level": "AE1", "min_score": 31, "max_score": 40,  "points": 4},
+            {"level": "AE2", "min_score": 21, "max_score": 30,  "points": 3},
+            {"level": "BE1", "min_score": 11, "max_score": 20,  "points": 2},
+            {"level": "BE2", "min_score": 0,  "max_score": 10,  "points": 1},
+        ]
+
+    @classmethod
+    def get_default_total_scale(cls, section):
+        """Return default total marks scale for a section."""
+        if section in ('LOWER_PRIMARY', 'PRIMARY'):
+            return [
+                {"level": "EE", "min_marks": 300, "max_marks": 400, "points": 4},
+                {"level": "ME", "min_marks": 200, "max_marks": 299, "points": 3},
+                {"level": "AE", "min_marks": 100, "max_marks": 199, "points": 2},
+                {"level": "BE", "min_marks": 0,   "max_marks": 99,  "points": 1},
+            ]
+        return [
+            {"level": "EE1", "min_marks": 720, "max_marks": 800, "points": 8},
+            {"level": "EE2", "min_marks": 600, "max_marks": 719, "points": 7},
+            {"level": "ME1", "min_marks": 464, "max_marks": 599, "points": 6},
+            {"level": "ME2", "min_marks": 328, "max_marks": 463, "points": 5},
+            {"level": "AE1", "min_marks": 248, "max_marks": 327, "points": 4},
+            {"level": "AE2", "min_marks": 168, "max_marks": 247, "points": 3},
+            {"level": "BE1", "min_marks": 88,  "max_marks": 167, "points": 2},
+            {"level": "BE2", "min_marks": 0,   "max_marks": 87,  "points": 1},
+        ]

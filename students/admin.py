@@ -19,6 +19,7 @@ from .models import (
     ClassTeacherMasterComment,
     Guardian,
     Mark,
+    MarkSubmission,
     School,
     SecurityAuditLog,
     Student,
@@ -193,6 +194,15 @@ class MarkAdmin(SchoolScopedAdminMixin, ModelAdmin):
     list_display = ['student', 'exam_type', 'score', 'year']
     list_filter = ['exam_type', 'year']
     search_fields = ['student__name', 'student__admission_no']
+
+
+# -------------------- Mark Submission Admin --------------------
+@admin.register(MarkSubmission)
+class MarkSubmissionAdmin(SchoolScopedAdminMixin, ModelAdmin):
+    list_display = ['teacher', 'subject', 'class_name', 'stream', 'exam_name', 'term', 'year', 'status', 'submitted_at']
+    list_filter = ['status', 'exam_name', 'term', 'year']
+    search_fields = ['teacher__user__first_name', 'teacher__user__last_name', 'subject__name', 'class_name']
+    readonly_fields = ['submitted_at', 'reviewed_at', 'published_at']
 
 
 # -------------------- Class Teacher Master Comment Admin --------------------

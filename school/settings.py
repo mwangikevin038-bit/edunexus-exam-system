@@ -38,6 +38,7 @@ LOCAL_ALLOWED_HOSTS = [
     'localhost',
     '.localhost',
     '127.0.0.1',
+    '192.168.36.186',
     '192.168.52.230',
     '192.168.29.230',
     '192.168.29.91',
@@ -45,6 +46,7 @@ LOCAL_ALLOWED_HOSTS = [
     '192.168.112.230',
     '192.168.1.101',
     '192.168.1.104',
+    '192.168.39.127',
     'edunexus.local',
 ]
 
@@ -123,7 +125,16 @@ CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'edunexus-security-ratelimit',
-    }
+    },
+    'csv_upload': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/1"),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'csv_upload',
+        'TIMEOUT': 600,
+    },
 }
 RATELIMIT_DISABLE = os.environ.get('RATELIMIT_DISABLE', 'False') == 'True'
 
@@ -139,7 +150,7 @@ SESSION_COOKIE_AGE = 60 * 60 * 8     # 8 hours
 # Development: HTTP is fine. Production: set both to True.
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False       # JS must read csrftoken cookie for AJAX CSRF
 
 # ==============================================================================
 # SECURITY HEADERS
@@ -166,11 +177,13 @@ else:
 # ==============================================================================
 CSRF_TRUSTED_ORIGINS = [
     'http://*.localhost:8000',
+    'http://192.168.36.186:8000',
     'http://192.168.29.230:8000',
     'http://192.168.29.91:8000',
     'http://10.161.194.230:8000',
     'http://192.168.112.230:8000',
     'http://192.168.1.101:8000',
+    'http://192.168.39.127:8000',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
@@ -291,8 +304,9 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 # ── Django Channels (WebSocket) ──────────────────────────────────────────
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
             "capacity": 1000,
         },
     },

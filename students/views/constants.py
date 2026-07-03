@@ -120,6 +120,24 @@ ASSESSMENT_MAP = {
 
 ASSESSMENT_SLUG_MAP = {name: slug for slug, name in ASSESSMENT_MAP.items()}
 
+# ── Subject Display Order (broadsheet column order) ──────────────────────────
+# Preferred column order: English, Kiswahili, Maths, Science, Agriculture,
+# Social Studies, CRE, IRE, Creative Arts.
+SUBJECT_DISPLAY_ORDER = {
+    # JSS codes
+    '901': 1, '902': 2, '903': 3, '905': 4, '906': 5,
+    '907': 6, '908': 7, '909': 8, '911': 9, '912': 10,
+    # Primary codes
+    'ENG': 1, 'KIS': 2, 'MAT': 3, 'SCI': 4, 'AGR': 5,
+    'SOC': 6, 'CRE': 7, 'IRE': 8, 'CAS': 9,
+}
+
+
+def sort_subjects(subject_list):
+    """Sort a list of (code, short_name) tuples by SUBJECT_DISPLAY_ORDER."""
+    return sorted(subject_list, key=lambda x: SUBJECT_DISPLAY_ORDER.get(x[0], 99))
+
+
 RELIGION_SUBJECTS = ['908', '909', 'CRE', 'IRE']  # CRE, IRE (JSS + Primary)
 OPPOSITE_RELIGION_SUBJECT = {
     '908': '909', '909': '908',

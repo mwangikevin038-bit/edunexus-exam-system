@@ -14,9 +14,14 @@ Routes:
 from django.contrib import admin
 from django.urls import path, include
 from students import views
+from students.views.password_reset import (
+    RateLimitedPasswordResetView,
+    SecurePasswordResetConfirmView,
+    SecurePasswordResetDoneView,
+    SecurePasswordResetCompleteView,
+)
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     # ── Django admin ──────────────────────────────────────────────────────
@@ -30,27 +35,18 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),      # edunexus.net/login/
     path('logout/', views.logout_view, name='logout'),
 
-    # ── Password reset flow ───────────────────────────────────────────────
+    # ── Password reset flow (with enhanced security) ─────────────────────
     path('forgot-password/',
-         auth_views.PasswordResetView.as_view(
-             template_name='password_reset_form.html',
-             email_template_name='email/password_reset_email.txt',
-             html_email_template_name='email/password_reset_email.html',
-             subject_template_name='email/password_reset_subject.txt',
-             from_email='EDUNEXUS <noreply@edunexus.system>',
-         ),
+         RateLimitedPasswordResetView.as_view(),
          name='password_reset'),
     path('forgot-password/done/',
-         auth_views.PasswordResetDoneView.as_view(
-             template_name='password_reset_done.html'),
+         SecurePasswordResetDoneView.as_view(),
          name='password_reset_done'),
     path('reset/<uidb64>/<token>/',
-         auth_views.PasswordResetConfirmView.as_view(
-             template_name='password_reset_confirm.html'),
+         SecurePasswordResetConfirmView.as_view(),
          name='password_reset_confirm'),
     path('reset/done/',
-         auth_views.PasswordResetCompleteView.as_view(
-             template_name='password_reset_complete.html'),
+         SecurePasswordResetCompleteView.as_view(),
          name='password_reset_complete'),
 
     # ── All app routes (no /students/ prefix anymore) ─────────────────────
