@@ -504,7 +504,7 @@ def get_students_ordered(grade, stream):
 
 def get_subject_students(grade, stream, subject):
     """
-    Return the learner queryset expected for a subject.
+    Return the learner list expected for a subject.
     CRE/IRE become religion-aware after learners have been tagged once.
     Accepts either Subject instance or subject code string.
     """
@@ -512,8 +512,8 @@ def get_subject_students(grade, stream, subject):
     students = get_students_ordered(grade, stream)
     if subject_code in RELIGION_SUBJECTS:
         religion_tag = RELIGION_TAG.get(subject_code, '')
-        tagged_students = students.filter(religion=religion_tag)
-        if tagged_students.exists():
+        tagged_students = [s for s in students if s.religion == religion_tag]
+        if tagged_students:
             return tagged_students
     return students
 
@@ -549,4 +549,4 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
 def get_religion_aware_student_count(class_name, stream, subject):
     """Return the count of students eligible for the given subject."""
     subject_code = subject.code if hasattr(subject, 'code') else subject
-    return get_subject_students(class_name, stream, subject_code).count()
+    return len(get_subject_students(class_name, stream, subject_code))

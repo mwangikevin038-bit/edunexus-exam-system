@@ -1,0 +1,719 @@
+/* ═══════════════════════════════════════════════════════════════
+   iOS 17 MOBILE DASHBOARD — Oraimo Green Premium Theme
+   EduNexus Exam System · Teacher/Admin Mobile View
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Palette ─────────────────────────────────────────────────── */
+:root {
+    --dm-bg:              #F5F7F6;
+    --dm-surface:         #FFFFFF;
+    --dm-green:           #22C55E;
+    --dm-green-dark:      #15803D;
+    --dm-green-glow:      rgba(34, 197, 94, 0.35);
+    --dm-green-subtle:    rgba(34, 197, 94, 0.08);
+    --dm-green-tint:      rgba(34, 197, 94, 0.06);
+    --dm-text:            #1A1A1A;
+    --dm-text-secondary:  #6B7280;
+    --dm-text-muted:      #9CA3AF;
+    --dm-border:          rgba(0, 0, 0, 0.04);
+    --dm-shadow:          0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    --dm-shadow-lg:       0 8px 32px -4px rgba(0, 0, 0, 0.08);
+    --dm-radius:          20px;
+    --dm-radius-md:       14px;
+    --dm-radius-sm:       10px;
+    --dm-font:            'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+    --dm-nav-height:      72px;
+    --dm-topbar-height:   56px;
+    --dm-safe-bottom:     env(safe-area-inset-bottom, 0px);
+    --dm-safe-top:        env(safe-area-inset-top, 0px);
+}
+
+/* ── Reset for dashboard scope ───────────────────────────────── */
+.dash-ios *,
+.dash-ios *::before,
+.dash-ios *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* ── Shell: full-screen flex column ──────────────────────────── */
+.dash-ios {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    height: 100vh;
+    background: var(--dm-bg);
+    font-family: var(--dm-font);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: visible;
+    z-index: 800;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER — Compact greeting + gradient avatar
+   ═══════════════════════════════════════════════════════════════ */
+.dash-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    padding-top: calc(12px + var(--dm-safe-top));
+    background: rgba(245, 247, 246, 0.88);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--dm-border);
+    z-index: 10;
+}
+
+.dash-greeting {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dash-greeting-main {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--dm-text);
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-greeting-sub {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--dm-text-muted);
+    letter-spacing: -0.01em;
+    margin-top: 1px;
+}
+
+/* Gradient Avatar */
+.dash-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #34D399 0%, #15803D 50%, #065F46 100%);
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8125rem;
+    letter-spacing: 0.01em;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(21, 128, 61, 0.3);
+    border: 2.5px solid rgba(255, 255, 255, 0.9);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLLABLE BODY
+   ═══════════════════════════════════════════════════════════════ */
+.dash-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    padding: 16px 20px;
+    padding-bottom: 100px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   QUICK ACTIONS ROW — 3-column horizontal flex
+   ═══════════════════════════════════════════════════════════════ */
+.dash-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.dash-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 8px;
+    background: var(--dm-surface);
+    border-radius: var(--dm-radius);
+    text-decoration: none;
+    box-shadow: var(--dm-shadow);
+    border: 1px solid var(--dm-border);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.dash-action:active {
+    transform: scale(0.95);
+}
+
+.dash-action-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.dash-action-icon.green {
+    background: var(--dm-green-subtle);
+    color: var(--dm-green);
+}
+
+.dash-action-icon.blue {
+    background: rgba(59, 130, 246, 0.08);
+    color: #3B82F6;
+}
+
+.dash-action-icon.purple {
+    background: rgba(139, 92, 246, 0.08);
+    color: #8B5CF6;
+}
+
+.dash-action-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--dm-text);
+    letter-spacing: -0.01em;
+    text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HERO CARD — Score Capture CTA
+   ═══════════════════════════════════════════════════════════════ */
+.dash-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 18px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #15803D 0%, #166534 100%);
+    border-radius: var(--dm-radius);
+    text-decoration: none;
+    box-shadow: 0 6px 24px -4px rgba(21, 128, 61, 0.35);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.dash-hero:active {
+    transform: scale(0.97);
+}
+
+.dash-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.dash-hero-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dash-hero-icon i {
+    font-size: 22px;
+    color: #FFFFFF;
+}
+
+.dash-hero-text h3 {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    margin: 0 0 2px;
+    letter-spacing: -0.01em;
+}
+
+.dash-hero-text p {
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    font-weight: 500;
+}
+
+.dash-hero-arrow {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.dash-hero-arrow i {
+    font-size: 18px;
+    color: #FFFFFF;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   OVERVIEW SECTION — Circular Progress Rings
+   ═══════════════════════════════════════════════════════════════ */
+.dash-section-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--dm-text-muted);
+    margin-bottom: 12px;
+}
+
+.dash-overview {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.dash-metric {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 4px;
+    background: var(--dm-surface);
+    border-radius: var(--dm-radius);
+    box-shadow: var(--dm-shadow);
+    border: 1px solid var(--dm-border);
+}
+
+/* Progress Ring */
+.dash-ring {
+    position: relative;
+    width: 48px;
+    height: 48px;
+}
+
+.dash-ring svg {
+    width: 48px;
+    height: 48px;
+    transform: rotate(-90deg);
+}
+
+.dash-ring-track {
+    fill: none;
+    stroke: #F0F0F0;
+    stroke-width: 3.5;
+}
+
+.dash-ring-fill {
+    fill: none;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 800ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dash-ring-fill.green  { stroke: var(--dm-green); }
+.dash-ring-fill.blue   { stroke: #3B82F6; }
+.dash-ring-fill.amber  { stroke: #F59E0B; }
+.dash-ring-fill.navy   { stroke: var(--dm-text); }
+
+.dash-ring-value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9375rem;
+    font-weight: 800;
+    color: var(--dm-text);
+    letter-spacing: -0.02em;
+}
+
+.dash-metric-label {
+    font-size: 0.5625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--dm-text-secondary);
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MY CLASSES — Horizontal scroll or stacked cards
+   ═══════════════════════════════════════════════════════════════ */
+.dash-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.dash-section-title {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--dm-text);
+    letter-spacing: -0.01em;
+}
+
+.dash-section-link {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--dm-green);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.dash-section-link i {
+    font-size: 12px;
+}
+
+.dash-classes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.dash-class {
+    background: var(--dm-surface);
+    border-radius: var(--dm-radius);
+    box-shadow: var(--dm-shadow);
+    border: 1px solid var(--dm-border);
+    overflow: hidden;
+}
+
+.dash-class-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+}
+
+.dash-class-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.dash-class-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--dm-radius-sm);
+    background: var(--dm-green-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.dash-class-icon i {
+    font-size: 17px;
+    color: var(--dm-green);
+}
+
+.dash-class-name {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--dm-text);
+    letter-spacing: -0.01em;
+}
+
+.dash-class-meta {
+    font-size: 0.6875rem;
+    color: var(--dm-text-muted);
+    font-weight: 500;
+    margin-top: 1px;
+}
+
+.dash-class-badge {
+    font-size: 0.5625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--dm-green-subtle);
+    color: var(--dm-green-dark);
+    flex-shrink: 0;
+}
+
+.dash-class-progress {
+    padding: 0 16px 14px;
+}
+
+.dash-progress-bar {
+    width: 100%;
+    height: 3px;
+    background: #F0F0F0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.dash-progress-fill {
+    height: 100%;
+    background: var(--dm-green);
+    border-radius: 3px;
+    transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dash-class-stats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.dash-class-stat {
+    font-size: 0.6875rem;
+    color: var(--dm-text-muted);
+    font-weight: 600;
+}
+
+.dash-class-stat strong {
+    color: var(--dm-text);
+    font-weight: 700;
+}
+
+.dash-class-capture {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--dm-green);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.dash-class-capture i {
+    font-size: 12px;
+}
+
+.dash-class-capture:active {
+    opacity: 0.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PUBLISHED RESULTS
+   ═══════════════════════════════════════════════════════════════ */
+.dash-results {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.dash-result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    background: var(--dm-surface);
+    border-radius: var(--dm-radius);
+    text-decoration: none;
+    box-shadow: var(--dm-shadow);
+    border: 1px solid var(--dm-border);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.dash-result:active {
+    transform: scale(0.98);
+}
+
+.dash-result-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dash-result-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--dm-radius-sm);
+    background: var(--dm-green-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dash-result-icon i {
+    font-size: 15px;
+    color: var(--dm-green);
+}
+
+.dash-result-name {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--dm-text);
+}
+
+.dash-result-meta {
+    font-size: 0.6875rem;
+    color: var(--dm-text-muted);
+    font-weight: 500;
+}
+
+.dash-result-chevron {
+    color: var(--dm-text-muted);
+    font-size: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════════ */
+.dash-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.dash-empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--dm-green-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+
+.dash-empty-icon i {
+    font-size: 24px;
+    color: var(--dm-green);
+}
+
+.dash-empty-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--dm-text);
+    margin-bottom: 4px;
+}
+
+.dash-empty-desc {
+    font-size: 0.75rem;
+    color: var(--dm-text-muted);
+    max-width: 240px;
+    line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes dashFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.dash-body > * {
+    animation: dashFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.dash-body > *:nth-child(1) { animation-delay: 0ms; }
+.dash-body > *:nth-child(2) { animation-delay: 50ms; }
+.dash-body > *:nth-child(3) { animation-delay: 100ms; }
+.dash-body > *:nth-child(4) { animation-delay: 150ms; }
+.dash-body > *:nth-child(5) { animation-delay: 200ms; }
+.dash-body > *:nth-child(6) { animation-delay: 250ms; }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLLBAR — minimal iOS style
+   ═══════════════════════════════════════════════════════════════ */
+.dash-body::-webkit-scrollbar {
+    width: 0;
+    display: none;
+}
+
+.dash-body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — Small screens
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 380px) {
+    .dash-overview {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dash-actions {
+        gap: 8px;
+    }
+
+    .dash-action {
+        padding: 14px 6px;
+    }
+
+    .dash-action-icon {
+        width: 38px;
+        height: 38px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESKTOP — hide mobile dashboard
+   ═══════════════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+    .dash-ios {
+        display: none;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE — hide old desktop dashboard, show iOS one
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* Hide the old dashboard entirely on mobile */
+    .dash {
+        display: none !important;
+    }
+
+    /* Also hide desktop topbar on mobile */
+    .topbar {
+        display: none !important;
+    }
+
+    /* Hide base template mobile-topbar */
+    .mobile-topbar {
+        display: none !important;
+    }
+
+    .bottom-nav {
+        z-index: 900 !important;
+    }
+
+    /* Ensure main-content doesn't interfere with fixed layout */
+    .main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+    }
+
+    .app-content {
+        overflow: visible !important;
+    }
+}

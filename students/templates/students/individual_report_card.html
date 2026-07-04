@@ -1,29 +1,198 @@
 {% extends 'students/base.html' %}
 {% load static %}
 
-
 {% block content %}
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #f5f5f5; font-family: 'Times New Roman', Times, serif; }
-    .container-fluid { max-width: 1200px !important; margin: 0 auto !important; padding: 20px !important; }
 
-    /* REPORT CARD */
+    /* ═══════════════════════════════════════════════════════════
+       MOBILE SHELL — iOS 17 Premium
+       ═══════════════════════════════════════════════════════════ */
+    .rv-shell {
+        position: fixed;
+        inset: 0;
+        z-index: 800;
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        background: #F5F7F6;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .rv-header {
+        flex-shrink: 0;
+        padding: 12px 16px;
+        padding-top: calc(12px + env(safe-area-inset-top, 0px));
+        background: rgba(245, 247, 246, 0.92);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 10;
+    }
+
+    .rv-header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .rv-back {
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: 10px;
+        background: rgba(36, 229, 94, 0.1);
+        color: #199E41;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .rv-back:active { background: rgba(36, 229, 94, 0.2); }
+
+    .rv-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #1C1C1E;
+        letter-spacing: -0.025em;
+    }
+
+    .rv-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.625rem;
+        font-weight: 700;
+        color: #199E41;
+        background: rgba(36, 229, 94, 0.1);
+        padding: 4px 8px;
+        border-radius: 6px;
+        flex-shrink: 0;
+    }
+
+    /* ── Hero Card ──────────────────────────────────────────── */
+    .rv-hero {
+        margin: 12px 16px 0;
+        padding: 16px;
+        background: linear-gradient(135deg, #0f5a35 0%, #1a7d47 50%, #24E55E 120%);
+        border-radius: 16px;
+        color: #FFFFFF;
+        position: relative;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .rv-hero::before {
+        content: '';
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 100px;
+        height: 100px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+    }
+
+    .rv-hero-name {
+        font-size: 1rem;
+        font-weight: 800;
+        margin-bottom: 2px;
+        position: relative;
+    }
+
+    .rv-hero-sub {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 12px;
+        position: relative;
+    }
+
+    .rv-hero-pills {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        position: relative;
+    }
+
+    .rv-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 9px;
+        border-radius: 7px;
+        font-size: 0.625rem;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.9);
+        border: 0.5px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .rv-pill i { font-size: 10px; }
+
+    /* ── Action Bar ─────────────────────────────────────────── */
+    .rv-actions {
+        display: flex;
+        gap: 8px;
+        padding: 12px 16px 0;
+        flex-shrink: 0;
+    }
+
+    .rv-btn {
+        flex: 1;
+        height: 42px;
+        border: none;
+        border-radius: 12px;
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 0.8125rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.15s;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .rv-btn:active { transform: scale(0.97); }
+
+    .rv-btn-green {
+        background: linear-gradient(135deg, #199E41, #24E55E);
+        color: #FFFFFF;
+        box-shadow: 0 4px 14px rgba(36, 229, 94, 0.3);
+    }
+
+    .rv-btn-ghost {
+        background: rgba(142, 142, 147, 0.08);
+        color: #1C1C1E;
+    }
+
+    .rv-btn i { font-size: 15px; }
+
+    /* ── Report Card Base (all sizes) ─────────────────────────── */
     .report-card {
         background: white;
         width: 7.9in;
-        margin: 20px auto;
         padding: 0.5in;
         position: relative;
         font-family: 'Times New Roman', Times, serif;
         display: flex;
         flex-direction: column;
         border: none;
-        box-shadow: none !important;
+        flex-shrink: 0;
     }
-    .report-content { display: flex; flex-direction: column; flex: 1; }
 
-    /* HEADER */
+    .report-content { display: flex; flex-direction: column; flex: 1; }
     .report-header { display: flex; align-items: center; gap: 30px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 5px solid var(--oraimo-green); }
     .report-logo { width: 140px; height: 140px; object-fit: contain; display: block; margin: 0 auto; border: 3px solid var(--oraimo-green); border-radius: 15px; padding: 8px; background: #fff; flex-shrink: 0; }
     .report-logo-placeholder { width: 140px; height: 140px; min-width: 140px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border: 3px solid var(--oraimo-green); border-radius: 15px; background: linear-gradient(135deg, #1a7d47 0%, #0f5a35 100%); color: #fff; font-family: 'Montserrat', sans-serif; font-size: 48px; font-weight: 900; flex-shrink: 0; }
@@ -33,72 +202,102 @@
     .contact-info { display: flex; gap: 20px; font-size: 12px; color: #444; font-weight: 500; margin-top: 5px; }
     .contact-info i { color: var(--oraimo-green); margin-right: 5px; }
     .report-title-badge { background: var(--oraimo-green); color: #000; display: inline-block; padding: 8px 25px; border-radius: 50px; font-weight: 900; font-size: 14px; margin-top: 15px; text-transform: uppercase; letter-spacing: 1px; }
-
-    /* STUDENT DETAILS */
     .student-details { margin: 10px 0; padding: 5px 0; border-top: 2px solid #000; border-bottom: 1px solid #eee; }
     .detail-row { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 2px; }
     .detail-item { display: grid; grid-template-columns: 140px 1fr; align-items: end; border-bottom: 1px dotted #ccc; padding-bottom: 2px; }
     .detail-label { font-size: 11px; font-weight: bold; color: #444; text-transform: uppercase; font-family: Arial, sans-serif; }
     .detail-value { font-size: 13px; font-weight: bold; color: #000; text-transform: uppercase; }
-
-    /* TABLE */
-    .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table-scroll { width: 100%; overflow-x: auto; }
     .marks-table { width: 100%; border-collapse: collapse; margin: 15px 0; min-width: 480px; }
     .marks-table thead th { background-color: var(--oraimo-green); color: #000; padding: 8px 6px; font-size: 12px; text-transform: uppercase; border: 1px solid #000; white-space: nowrap; }
     .marks-table td { padding: 6px; border: 1px solid #000; font-size: 12px; }
-
-    /* SUMMARY */
-    .summary { margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); border: 2px solid #000; text-align: center; }
-    .summary-grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .summary { margin-top: 20px; display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #000; text-align: center; }
     .summary-item { padding: 10px; border-right: 1px solid #000; }
     .summary-item:last-child { border-right: none; }
     .summary-label { font-size: 11px; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 5px; }
     .summary-value { font-size: 18px; font-weight: bold; }
-
-    /* REMARKS */
     .remarks-container { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
     .remark-row { border-bottom: 1px solid #000; padding-bottom: 10px; }
     .remark-header { font-size: 11px; font-weight: 900; color: var(--oraimo-green); text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
     .remark-text { font-size: 14px; font-style: italic; color: #333; min-height: 30px; }
-
-    /* FOOTER */
     .footer-dates { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; }
-    .sign-box { text-align: center; border-top: 1px solid #000; padding-top: 5px; font-size: 12px; font-weight: bold; }
     .date-box { display: flex; justify-content: flex-start; gap: 30px; font-size: 12px; font-weight: bold; border-bottom: 2px solid var(--oraimo-green); padding-bottom: 3px; }
-    .system-footer { display: block; margin-top: auto; text-align: center; width: 100%; font-size: 10px; color: #bbb; letter-spacing: 5px; text-transform: uppercase; font-weight: bold; z-index: 9999; pointer-events: none; }
+    .system-footer { display: block; margin-top: auto; text-align: center; width: 100%; font-size: 10px; color: #bbb; letter-spacing: 5px; text-transform: uppercase; font-weight: bold; }
 
-    /* ======================= MOBILE ======================= */
-    @media (max-width: 900px) {
-        .container-fluid {
-            padding: 10px !important;
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch;
-        }
-        .premium-header-banner {
-            min-width: 700px;
-        }
-        .report-card {
-            min-width: 7.9in;
-        }
+    /* ── Report Card Scroll Container (mobile) ──────────────── */
+    .rv-scroll {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 12px 16px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 72px);
     }
 
-    @media (max-width: 480px) {
-        .container-fluid {
-            padding: 8px !important;
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch;
-        }
-        .premium-header-banner {
-            min-width: 600px;
-        }
-        .report-card {
-            min-width: 7in;
-        }
+    .rv-card-container {
+        background: #FFFFFF;
+        border-radius: 14px;
+        border: 1px solid #F1F5F9;
+        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+        overflow: hidden;
     }
 
-    /* PRINT */
+    .rv-card-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .rv-card-scroll .report-card {
+        margin: 0;
+        border-radius: 0;
+        min-width: 7.9in;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       DESKTOP
+       ═══════════════════════════════════════════════════════════ */
+    @media (min-width: 769px) {
+        .rv-shell { display: none !important; }
+        body { background: #f5f5f5; font-family: 'Times New Roman', Times, serif; }
+        .container-fluid { max-width: 1200px !important; margin: 0 auto !important; padding: 20px !important; }
+        .report-card { margin: 20px auto; }
+    }
+        .report-logo { width: 140px; height: 140px; object-fit: contain; display: block; margin: 0 auto; border: 3px solid var(--oraimo-green); border-radius: 15px; padding: 8px; background: #fff; flex-shrink: 0; }
+        .report-logo-placeholder { width: 140px; height: 140px; min-width: 140px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border: 3px solid var(--oraimo-green); border-radius: 15px; background: linear-gradient(135deg, #1a7d47 0%, #0f5a35 100%); color: #fff; font-family: 'Montserrat', sans-serif; font-size: 48px; font-weight: 900; flex-shrink: 0; }
+        .school-info { flex: 1; text-align: left; }
+        .school-info h1 { font-family: 'Montserrat', sans-serif; font-size: 28px; font-weight: 900; color: #1a1a1a; text-transform: uppercase; margin: 0; letter-spacing: -1px; }
+        .school-info .location-text { font-size: 14px; color: #666; font-weight: 600; margin-bottom: 10px; }
+        .contact-info { display: flex; gap: 20px; font-size: 12px; color: #444; font-weight: 500; margin-top: 5px; }
+        .contact-info i { color: var(--oraimo-green); margin-right: 5px; }
+        .report-title-badge { background: var(--oraimo-green); color: #000; display: inline-block; padding: 8px 25px; border-radius: 50px; font-weight: 900; font-size: 14px; margin-top: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .student-details { margin: 10px 0; padding: 5px 0; border-top: 2px solid #000; border-bottom: 1px solid #eee; }
+        .detail-row { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 2px; }
+        .detail-item { display: grid; grid-template-columns: 140px 1fr; align-items: end; border-bottom: 1px dotted #ccc; padding-bottom: 2px; }
+        .detail-label { font-size: 11px; font-weight: bold; color: #444; text-transform: uppercase; font-family: Arial, sans-serif; }
+        .detail-value { font-size: 13px; font-weight: bold; color: #000; text-transform: uppercase; }
+        .table-scroll { width: 100%; overflow-x: auto; }
+        .marks-table { width: 100%; border-collapse: collapse; margin: 15px 0; min-width: 480px; }
+        .marks-table thead th { background-color: var(--oraimo-green); color: #000; padding: 8px 6px; font-size: 12px; text-transform: uppercase; border: 1px solid #000; white-space: nowrap; }
+        .marks-table td { padding: 6px; border: 1px solid #000; font-size: 12px; }
+        .summary { margin-top: 20px; display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #000; text-align: center; }
+        .summary-item { padding: 10px; border-right: 1px solid #000; }
+        .summary-item:last-child { border-right: none; }
+        .summary-label { font-size: 11px; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        .summary-value { font-size: 18px; font-weight: bold; }
+        .remarks-container { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .remark-row { border-bottom: 1px solid #000; padding-bottom: 10px; }
+        .remark-header { font-size: 11px; font-weight: 900; color: var(--oraimo-green); text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .remark-text { font-size: 14px; font-style: italic; color: #333; min-height: 30px; }
+        .footer-dates { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; }
+        .sign-box { text-align: center; border-top: 1px solid #000; padding-top: 5px; font-size: 12px; font-weight: bold; }
+        .date-box { display: flex; justify-content: flex-start; gap: 30px; font-size: 12px; font-weight: bold; border-bottom: 2px solid var(--oraimo-green); padding-bottom: 3px; }
+        .system-footer { display: block; margin-top: auto; text-align: center; width: 100%; font-size: 10px; color: #bbb; letter-spacing: 5px; text-transform: uppercase; font-weight: bold; z-index: 9999; pointer-events: none; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       PRINT
+       ═══════════════════════════════════════════════════════════ */
     @media print {
-        .sidebar, .navbar, .left-menu, .control-panel, .btn-print, .green-header-box, nav, .premium-header-banner { display: none !important; }
+        .rv-shell, .sidebar, .navbar, .left-menu, .control-panel, .btn-print, .green-header-box, nav, .premium-header-banner, .bottom-nav, .mobile-topbar, .hamburger-btn { display: none !important; }
         html, body { font-family: "Times New Roman", Times, serif !important; font-size: 12pt !important; height: auto !important; max-height: none !important; overflow: visible !important; visibility: visible !important; background: white !important; margin: 0 !important; padding: 0 !important; }
         .system-footer { display: block !important; position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; height: 12mm !important; padding-top: 2mm !important; text-align: center !important; width: 100% !important; font-family: "Times New Roman", Times, serif !important; font-size: 9pt !important; color: #ccc !important; letter-spacing: 5px !important; text-transform: uppercase !important; font-weight: bold !important; z-index: 9999 !important; }
         #reportCardsContainer { display: block !important; visibility: visible !important; position: relative !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
@@ -108,332 +307,155 @@
         @page { size: portrait; margin: 0mm 0mm 12mm 0mm; }
     }
 
-    .report-card, #reportCardsContainer, div[class*="card"] { border: none !important; border-image: none !important; outline: none !important; box-shadow: none !important; -webkit-box-shadow: none !important; -moz-box-shadow: none !important; }
-
-    /* ===== MOBILE REPORT CARD - SUMMARY VIEW ===== */
-    @media (max-width: 768px) {
-        .container-fluid {
-            padding: var(--space-3);
-            padding-top: calc(var(--mobile-topbar) + var(--space-3));
-            padding-bottom: calc(var(--bottomnav-height) + var(--space-3));
-        }
-
-        .premium-header-banner {
-            flex-direction: column;
-            gap: var(--space-3);
-            padding: var(--space-4) !important;
-            border-radius: var(--radius-lg) !important;
-        }
-
-        .premium-header-banner h2 {
-            font-size: var(--text-xl) !important;
-        }
-
-        /* Hide A4 report card on mobile, show summary */
-        .report-card {
-            display: none !important;
-        }
-
-        /* Mobile summary card */
-        .mobile-report-summary {
-            display: block !important;
-            background: var(--en-bg-elevated);
-            border: 1px solid var(--en-border);
-            border-radius: var(--radius-xl);
-            overflow: hidden;
-            margin-bottom: var(--space-4);
-        }
-
-        .mobile-report-header {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: white;
-            padding: var(--space-5);
-            text-align: center;
-        }
-
-        .mobile-report-school {
-            font-size: var(--text-lg);
-            font-weight: var(--weight-extrabold);
-            margin-bottom: var(--space-1);
-        }
-
-        .mobile-report-title {
-            font-size: var(--text-xs);
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-weight: var(--weight-bold);
-        }
-
-        .mobile-report-student {
-            padding: var(--space-4);
-            border-bottom: 1px solid var(--en-border-light);
-        }
-
-        .mobile-report-student-name {
-            font-size: var(--text-xl);
-            font-weight: var(--weight-extrabold);
-            color: var(--en-text);
-            margin-bottom: var(--space-2);
-        }
-
-        .mobile-report-meta {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-2);
-        }
-
-        .mobile-report-meta-item {
-            font-size: var(--text-xs);
-            color: var(--en-text-muted);
-        }
-
-        .mobile-report-meta-item strong {
-            display: block;
-            font-size: var(--text-sm);
-            color: var(--en-text);
-        }
-
-        .mobile-report-scores {
-            padding: var(--space-4);
-        }
-
-        .mobile-report-scores h3 {
-            font-size: var(--text-sm);
-            font-weight: var(--weight-bold);
-            color: var(--en-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: var(--space-3);
-        }
-
-        .mobile-score-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--space-2) 0;
-            border-bottom: 1px solid var(--en-border-light);
-        }
-
-        .mobile-score-row:last-child {
-            border-bottom: none;
-        }
-
-        .mobile-score-subject {
-            font-size: var(--text-sm);
-            font-weight: var(--weight-semibold);
-            color: var(--en-text);
-        }
-
-        .mobile-score-value {
-            display: flex;
-            align-items: center;
-            gap: var(--space-2);
-        }
-
-        .mobile-score-mark {
-            font-size: var(--text-sm);
-            font-weight: var(--weight-bold);
-            color: var(--en-text);
-        }
-
-        .mobile-score-level {
-            font-size: 10px;
-            font-weight: var(--weight-bold);
-            padding: 2px 8px;
-            border-radius: var(--radius-full);
-            background: var(--en-surface);
-            color: var(--en-text-muted);
-        }
-
-        .mobile-report-summary-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--space-2);
-            padding: var(--space-4);
-            background: var(--en-surface);
-        }
-
-        .mobile-stat {
-            text-align: center;
-        }
-
-        .mobile-stat-value {
-            font-size: var(--text-xl);
-            font-weight: var(--weight-extrabold);
-            color: var(--en-text);
-        }
-
-        .mobile-stat-label {
-            font-size: 10px;
-            font-weight: var(--weight-bold);
-            color: var(--en-text-muted);
-            text-transform: uppercase;
-        }
-
-        .mobile-report-remarks {
-            padding: var(--space-4);
-            border-top: 1px solid var(--en-border);
-        }
-
-        .mobile-remark {
-            margin-bottom: var(--space-3);
-        }
-
-        .mobile-remark-label {
-            font-size: 10px;
-            font-weight: var(--weight-bold);
-            color: var(--en-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: var(--space-1);
-        }
-
-        .mobile-remark-text {
-            font-size: var(--text-sm);
-            color: var(--en-text);
-            line-height: var(--leading-relaxed);
-            background: var(--en-surface);
-            padding: var(--space-3);
-            border-radius: var(--radius-md);
-        }
-
-        .mobile-report-actions {
-            padding: var(--space-4);
-            display: flex;
-            gap: var(--space-3);
-        }
-
-        .mobile-report-actions .btn {
-            flex: 1;
-        }
-    }
-
-    /* Hide mobile summary on desktop */
-    @media (min-width: 769px) {
-        .mobile-report-summary {
-            display: none !important;
-        }
-    }
+    .report-card, #reportCardsContainer, div[class*="card"] { border: none !important; border-image: none !important; outline: none !important; box-shadow: none !important; }
 </style>
 
-<div class="container-fluid">
-    <div class="premium-header-banner" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px 32px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-        <div>
-            <h2 style="font-family: system-ui, -apple-system, sans-serif; font-size: 28px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em;">Report Card Viewer</h2>
-            <p style="font-family: system-ui, -apple-system, sans-serif; font-size: 14px; font-weight: 500; color: #64748b; margin-top: 6px; margin-bottom: 0;">Official school results generated dynamically from master comment configs.</p>
-            <p style="font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: 700; color: #475569; margin-top: 10px; margin-bottom: 0;">
-                Closing: {% if closing_date %}{{ closing_date|date:"d / m / Y" }}{% else %}Not configured{% endif %}
-                &nbsp; | &nbsp;
-                Opening: {% if opening_date %}{{ opening_date|date:"d / m / Y" }}{% else %}Not configured{% endif %}
-            </p>
+{# ═══════════════════════════════════════════════════════════════
+   MOBILE SHELL
+   ═══════════════════════════════════════════════════════════════ #}
+<div class="rv-shell">
+    <div class="rv-header">
+        <div class="rv-header-left">
+            <button class="rv-back" onclick="history.back()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="rv-title">Report Card</span>
         </div>
-    
-        <!-- Right-aligned clean text badge echoing the layout look -->
-        <div style="background: #f0fdf4; border: 1px solid #dcfce7; color: #166534; font-family: system-ui, -apple-system, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 16px; border-radius: 9999px;">
+        <span class="rv-badge">
+            <i class="ph ph-user" style="font-size:10px;"></i>
             Individual View
+        </span>
+    </div>
+
+    <div class="rv-hero">
+        <div class="rv-hero-name">{{ request.school.name }}</div>
+        <div class="rv-hero-sub">{{ request.school.address }}</div>
+        <div class="rv-hero-pills">
+            <span class="rv-pill"><i class="ph ph-calendar-blank"></i> {{ selected_term }} {{ selected_year }}</span>
+            <span class="rv-pill"><i class="ph ph-graduation-cap"></i> {{ selected_assessment|title }}</span>
         </div>
-        <button onclick="downloadPDF()" class="btn-print" style="background:#111827;color:#fff;border:0;padding:10px 16px;border-radius:8px;font-weight:800;text-transform:uppercase;">
-            Download PDF
+    </div>
+
+    <div class="rv-actions">
+        <button class="rv-btn rv-btn-ghost" onclick="window.print()">
+            <i class="ph ph-printer"></i> Print
+        </button>
+        <button class="rv-btn rv-btn-green" onclick="downloadPDF()">
+            <i class="ph ph-file-pdf"></i> Download PDF
         </button>
     </div>
 
-    <!-- MOBILE SUMMARY VIEW (hidden on desktop) -->
-    <div class="mobile-report-summary" style="display:none;">
+    <div class="rv-scroll">
         {% for student_data in student_marks_list %}
-        <div class="mobile-report-header">
-            <div class="mobile-report-school">{{ request.school.name }}</div>
-            <div class="mobile-report-title">{{ selected_exam_name }} &middot; {{ selected_term }} {{ selected_year }}</div>
-        </div>
-
-        <div class="mobile-report-student">
-            <div class="mobile-report-student-name">{{ student_data.student.name }}</div>
-            <div class="mobile-report-meta">
-                <div class="mobile-report-meta-item">
-                    <span>Admission No</span>
-                    <strong>{{ student_data.student.admission_no }}</strong>
+        <div class="rv-card-container">
+            <div class="rv-card-scroll">
+                <div class="report-card">
+                    <div class="report-content">
+                        <div class="report-header">
+                            {% if request.school.logo %}
+                            <img src="{{ request.school.logo.url }}" alt="Logo" class="report-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <div class="report-logo-placeholder" style="display:none;">{{ request.school.name|truncatechars:1 }}</div>
+                            {% else %}
+                            <div class="report-logo-placeholder">{{ request.school.name|truncatechars:1 }}</div>
+                            {% endif %}
+                            <div class="school-info">
+                                <h1>{{ request.school.name|upper }}</h1>
+                                <p class="location-text">{{ request.school.address }}</p>
+                                <div class="contact-info">
+                                    <span><i class="bi bi-envelope-fill"></i> {{ request.school.email }}</span>
+                                    <span><i class="bi bi-telephone-fill"></i> {{ request.school.phone_number }}</span>
+                                </div>
+                                <div class="report-title-badge">Student Assessment Report</div>
+                            </div>
+                        </div>
+                        <div class="student-details">
+                            <div class="detail-row">
+                                <div class="detail-item"><span class="detail-label">STUDENT NAME:</span><span class="detail-value">{{ student_data.student.name }}</span></div>
+                                <div class="detail-item"><span class="detail-label">ADMISSION NO:</span><span class="detail-value">{{ student_data.student.admission_no }}</span></div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-item"><span class="detail-label">CLASS / GRADE:</span><span class="detail-value">{{ student_data.student.class_name }}</span></div>
+                                <div class="detail-item"><span class="detail-label">STREAM:</span><span class="detail-value">{{ student_data.student.stream }}</span></div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-item"><span class="detail-label">TERM:</span><span class="detail-value">{{ selected_term }}</span></div>
+                                <div class="detail-item"><span class="detail-label">ASSESSMENT:</span><span class="detail-value">{{ selected_assessment }}</span></div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-item"><span class="detail-label">YEAR:</span><span class="detail-value">{{ selected_year }}</span></div>
+                                <div class="detail-item" style="border:none;"></div>
+                            </div>
+                        </div>
+                        <div class="table-scroll">
+                        <table class="marks-table">
+                            <thead><tr><th style="text-align:left;">Learning Area</th><th>Marks</th><th>Performance Level</th><th>Points</th><th>Teacher</th></tr></thead>
+                            <tbody>
+                                {% for mark in student_data.marks %}
+                                    {% if mark.score != None and mark.score != "-" %}
+                                    <tr>
+                                        <td style="font-weight:bold;">{{ mark.subject_name }}</td>
+                                        <td style="text-align:center;">{% if mark.is_absent %}AB{% else %}{{ mark.score }}{% endif %}</td>
+                                        <td style="text-align:center;">{{ mark.performance_level|default:"-" }}</td>
+                                        <td style="text-align:center;">{% if mark.is_absent %}-{% else %}{{ mark.points|default:"-" }}{% endif %}</td>
+                                        <td style="text-align:left;padding-left:10px;font-weight:bold;font-style:italic;">{{ mark.teacher_name }}</td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        </div>
+                        <div class="summary">
+                            <div class="summary-item"><span class="summary-label">Total Marks</span><span class="summary-value">{{ student_data.total_marks }}</span></div>
+                            <div class="summary-item"><span class="summary-label">Total Points</span><span class="summary-value">{{ student_data.total_points }}</span></div>
+                            <div class="summary-item"><span class="summary-label" style="color:#000 !important;font-weight:800;">Overall PLV</span><span class="summary-value" style="color:#000 !important;">{{ student_data.overall_plv|default:overall_plv }}</span></div>
+                            <div class="summary-item"><span class="summary-label">Position</span><span class="summary-value">{{ student_data.position }} / {{ class_count }}</span></div>
+                        </div>
+                        <div class="remarks-container">
+                            <div class="remark-row">
+                                <div class="remark-header"><span>Class Teacher's Remarks</span><span>Signature: ____________________</span></div>
+                                <div class="remark-text" style="font-style:italic;font-weight:600;">{{ student_data.class_teacher_remark|default:class_teacher_remark }}</div>
+                            </div>
+                            <div class="remark-row">
+                                <div class="remark-header"><span>Head Teacher's Remarks</span><span>Signature & Stamp: ____________________</span></div>
+                                <div class="remark-text">{{ student_data.headteacher_comment|default:headteacher_comment }}</div>
+                            </div>
+                        </div>
+                        <div class="footer-dates">
+                            <div class="date-box"><span>CLOSING DATE:</span><span>{% if student_data.closing_date %}{{ student_data.closing_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
+                            <div class="date-box"><span>OPENING DATE:</span><span>{% if student_data.opening_date %}{{ student_data.opening_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
+                        </div>
+                        <div class="system-footer">— GENERATED BY EDUNEXUS EXAM MANAGEMENT SYSTEM —</div>
+                    </div>
                 </div>
-                <div class="mobile-report-meta-item">
-                    <span>Class</span>
-                    <strong>{{ student_data.student.class_name }} {{ student_data.student.stream }}</strong>
-                </div>
-                <div class="mobile-report-meta-item">
-                    <span>Position</span>
-                    <strong>{{ student_data.position|default:"-" }}</strong>
-                </div>
-                <div class="mobile-report-meta-item">
-                    <span>Performance Level</span>
-                    <strong>{{ student_data.plv|default:"-" }}</strong>
-                </div>
             </div>
         </div>
-
-        <div class="mobile-report-scores">
-            <h3>Subject Scores</h3>
-            {% for entry in student_data.marks %}
-            <div class="mobile-score-row">
-                <div class="mobile-score-subject">{{ entry.subject_name }}</div>
-                <div class="mobile-score-value">
-                    <span class="mobile-score-mark">{{ entry.score }}</span>
-                    <span class="mobile-score-level">{{ entry.performance_level }}</span>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-
-        <div class="mobile-report-summary-stats">
-            <div class="mobile-stat">
-                <div class="mobile-stat-value">{{ student_data.total_marks|default:"-" }}</div>
-                <div class="mobile-stat-label">Total</div>
-            </div>
-            <div class="mobile-stat">
-                <div class="mobile-stat-value">{{ student_data.plv|default:"-" }}</div>
-                <div class="mobile-stat-label">PLV</div>
-            </div>
-            <div class="mobile-stat">
-                <div class="mobile-stat-value">{{ student_data.position|default:"-" }}</div>
-                <div class="mobile-stat-label">Position</div>
-            </div>
-        </div>
-
-        {% if student_data.class_teacher_comment or student_data.headteacher_comment %}
-        <div class="mobile-report-remarks">
-            {% if student_data.class_teacher_comment %}
-            <div class="mobile-remark">
-                <div class="mobile-remark-label">Class Teacher Remark</div>
-                <div class="mobile-remark-text">{{ student_data.class_teacher_comment }}</div>
-            </div>
-            {% endif %}
-            {% if student_data.headteacher_comment %}
-            <div class="mobile-remark">
-                <div class="mobile-remark-label">Headteacher Remark</div>
-                <div class="mobile-remark-text">{{ student_data.headteacher_comment }}</div>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
         {% endfor %}
+    </div>
+</div>
 
-        <div class="mobile-report-actions">
-            <button onclick="downloadPDF()" class="btn btn-primary btn-full">
-                <i class="bi bi-download"></i> Download PDF
-            </button>
-            <button onclick="window.print()" class="btn btn-outline btn-full">
-                <i class="bi bi-printer"></i> Print
-            </button>
+{# ═══════════════════════════════════════════════════════════════
+   DESKTOP VIEW
+   ═══════════════════════════════════════════════════════════════ #}
+<div class="container-fluid">
+    <div class="premium-header-banner" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:24px 32px;margin-bottom:32px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+        <div>
+            <h2 style="font-family:system-ui,-apple-system,sans-serif;font-size:28px;font-weight:800;color:#0f172a;margin:0;letter-spacing:-0.02em;">Report Card Viewer</h2>
+            <p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;font-weight:500;color:#64748b;margin-top:6px;margin-bottom:0;">Official school results generated dynamically from master comment configs.</p>
+            <p style="font-family:system-ui,-apple-system,sans-serif;font-size:13px;font-weight:700;color:#475569;margin-top:10px;margin-bottom:0;">
+                Closing: {% if closing_date %}{{ closing_date|date:"d / m / Y" }}{% else %}Not configured{% endif %} &nbsp; | &nbsp; Opening: {% if opening_date %}{{ opening_date|date:"d / m / Y" }}{% else %}Not configured{% endif %}
+            </p>
         </div>
+        <div style="background:#f0fdf4;border:1px solid #dcfce7;color:#166534;font-family:system-ui,-apple-system,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:8px 16px;border-radius:9999px;">Individual View</div>
+        <button onclick="downloadPDF()" class="btn-print" style="background:#111827;color:#fff;border:0;padding:10px 16px;border-radius:8px;font-weight:800;text-transform:uppercase;">Download PDF</button>
     </div>
 
-    <!-- REPORT CARDS (A4 - hidden on mobile via CSS) -->
     <div id="reportCardsContainer">
         {% for student_data in student_marks_list %}
         <div class="report-card">
             <div class="report-content">
-                {% load static %}
-                <!-- HEADER -->
                 <div class="report-header">
                     {% if request.school.logo %}
-                    <img src="{{ request.school.logo.url }}" alt="School Logo" class="report-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <img src="{{ request.school.logo.url }}" alt="Logo" class="report-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
                     <div class="report-logo-placeholder" style="display:none;">{{ request.school.name|truncatechars:1 }}</div>
                     {% else %}
                     <div class="report-logo-placeholder">{{ request.school.name|truncatechars:1 }}</div>
@@ -445,151 +467,36 @@
                             <span><i class="bi bi-envelope-fill"></i> {{ request.school.email }}</span>
                             <span><i class="bi bi-telephone-fill"></i> {{ request.school.phone_number }}</span>
                         </div>
-        
-                        <div class="report-title-badge">
-                            Student Assessment Report
-                        </div>
+                        <div class="report-title-badge">Student Assessment Report</div>
                     </div>
                 </div>
-
-
-                <!-- STUDENT DETAILS SECTION -->
                 <div class="student-details">
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">STUDENT NAME:</span>
-                            <span class="detail-value">{{ student_data.student.name }}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">ADMISSION NO:</span>
-                            <span class="detail-value">{{ student_data.student.admission_no }}</span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">CLASS / GRADE:</span>
-                            <span class="detail-value">{{ student_data.student.class_name }}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">STREAM:</span>
-                            <span class="detail-value">{{ student_data.student.stream }}</span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">TERM:</span>
-                            <span class="detail-value">{{ selected_term }}</span>
-                        </div>
-                        <!-- ASSESSMENT MOVED HERE TO SAVE SPACE -->
-                        <div class="detail-item">
-                            <span class="detail-label">ASSESSMENT:</span>
-                            <span class="detail-value">{{ selected_assessment }}</span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">YEAR:</span>
-                            <span class="detail-value">{{ selected_year }}</span>
-                        </div>
-                        <div class="detail-item" style="border: none;"></div> <!-- Empty space to balance grid -->
-                    </div>
+                    <div class="detail-row"><div class="detail-item"><span class="detail-label">STUDENT NAME:</span><span class="detail-value">{{ student_data.student.name }}</span></div><div class="detail-item"><span class="detail-label">ADMISSION NO:</span><span class="detail-value">{{ student_data.student.admission_no }}</span></div></div>
+                    <div class="detail-row"><div class="detail-item"><span class="detail-label">CLASS / GRADE:</span><span class="detail-value">{{ student_data.student.class_name }}</span></div><div class="detail-item"><span class="detail-label">STREAM:</span><span class="detail-value">{{ student_data.student.stream }}</span></div></div>
+                    <div class="detail-row"><div class="detail-item"><span class="detail-label">TERM:</span><span class="detail-value">{{ selected_term }}</span></div><div class="detail-item"><span class="detail-label">ASSESSMENT:</span><span class="detail-value">{{ selected_assessment }}</span></div></div>
+                    <div class="detail-row"><div class="detail-item"><span class="detail-label">YEAR:</span><span class="detail-value">{{ selected_year }}</span></div><div class="detail-item" style="border:none;"></div></div>
                 </div>
-
-
-                <!-- MARKS TABLE -->
                 <div class="table-scroll">
                 <table class="marks-table">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left;">Learning Area</th>
-                            <th>Marks</th>
-                            <th>Performance Level</th>
-                            <th>Points</th>
-                            <th>Teacher</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for mark in student_data.marks %}
-                            {% if mark.score != None and mark.score != "-" %}
-                            <tr>
-                                <td style="font-weight: bold;">{{ mark.subject_name }}</td>
-                                <td style="text-align: center;">{% if mark.is_absent %}AB{% else %}{{ mark.score }}{% endif %}</td>
-                                <td style="text-align: center;">{{ mark.performance_level|default:"-" }}</td>
-                                <td style="text-align: center;">{% if mark.is_absent %}-{% else %}{{ mark.points|default:"-" }}{% endif %}</td>
-                                <td style="text-align: left; padding-left: 10px; font-weight: bold; font-style: italic;">{{ mark.teacher_name }}</td>
-
-                            </tr>
-                            {% endif %}
-                        {% endfor %}
-                    </tbody>
-
+                    <thead><tr><th style="text-align:left;">Learning Area</th><th>Marks</th><th>Performance Level</th><th>Points</th><th>Teacher</th></tr></thead>
+                    <tbody>{% for mark in student_data.marks %}{% if mark.score != None and mark.score != "-" %}<tr><td style="font-weight:bold;">{{ mark.subject_name }}</td><td style="text-align:center;">{% if mark.is_absent %}AB{% else %}{{ mark.score }}{% endif %}</td><td style="text-align:center;">{{ mark.performance_level|default:"-" }}</td><td style="text-align:center;">{% if mark.is_absent %}-{% else %}{{ mark.points|default:"-" }}{% endif %}</td><td style="text-align:left;padding-left:10px;font-weight:bold;font-style:italic;">{{ mark.teacher_name }}</td></tr>{% endif %}{% endfor %}</tbody>
                 </table>
                 </div>
-
-                <!-- SUMMARY SECTION WITH NEW PLV BOX --> 
-                <div class="summary summary-grid-4">
-                    <div class="summary-item"> 
-                        <span class="summary-label">Total Marks</span> 
-                        <span class="summary-value">{{ student_data.total_marks }}</span> 
-                    </div> 
-                    <div class="summary-item"> 
-                        <span class="summary-label">Total Points</span> 
-                        <span class="summary-value">{{ student_data.total_points }}</span> 
-                    </div> 
-                    <!-- ðŸŒŸ NEW OVERALL PLV COLUMN BOX -->
-                    <div class="summary-item"> 
-                        <span class="summary-label" style="color: #000 !important; font-weight: 800;">Overall PLV</span> 
-                        <span class="summary-value" style="color: #000 !important;">{{ student_data.overall_plv|default:overall_plv }}</span> 
-                    </div> 
-                    <div class="summary-item"> 
-                        <span class="summary-label">Position</span> 
-                        <span class="summary-value">{{ student_data.position }} / {{ class_count }}</span> 
-                    </div> 
+                <div class="summary">
+                    <div class="summary-item"><span class="summary-label">Total Marks</span><span class="summary-value">{{ student_data.total_marks }}</span></div>
+                    <div class="summary-item"><span class="summary-label">Total Points</span><span class="summary-value">{{ student_data.total_points }}</span></div>
+                    <div class="summary-item"><span class="summary-label" style="color:#000 !important;font-weight:800;">Overall PLV</span><span class="summary-value" style="color:#000 !important;">{{ student_data.overall_plv|default:overall_plv }}</span></div>
+                    <div class="summary-item"><span class="summary-label">Position</span><span class="summary-value">{{ student_data.position }} / {{ class_count }}</span></div>
                 </div>
-
                 <div class="remarks-container">
-                    <!-- CLASS TEACHER SECTION --> 
-                    <div class="remark-row"> 
-                        <div class="remark-header"> 
-                            <span>Class Teacher's Remarks</span> 
-                            <span>Signature: ____________________</span> 
-                        </div> 
-                        <div class="remark-text" style="font-style: italic; font-weight: 600;"> 
-                            <!-- ðŸŒŸ Connected directly to your master comments system selection -->
-                            {{ student_data.class_teacher_remark|default:class_teacher_remark }} 
-                        </div> 
-                    </div>
-
-
-                    <!-- HEAD TEACHER SECTION -->
-                    <div class="remark-row">
-                        <div class="remark-header">
-                            <span>Head Teacher's Remarks</span>
-                            <span>Signature & Stamp: ____________________</span>
-                        </div>
-                        <div class="remark-text">
-                            {{ student_data.headteacher_comment|default:headteacher_comment }}
-                        </div>
-                    </div>
+                    <div class="remark-row"><div class="remark-header"><span>Class Teacher's Remarks</span><span>Signature: ____________________</span></div><div class="remark-text" style="font-style:italic;font-weight:600;">{{ student_data.class_teacher_remark|default:class_teacher_remark }}</div></div>
+                    <div class="remark-row"><div class="remark-header"><span>Head Teacher's Remarks</span><span>Signature & Stamp: ____________________</span></div><div class="remark-text">{{ student_data.headteacher_comment|default:headteacher_comment }}</div></div>
                 </div>
-
-                <!-- DATES SECTION -->
                 <div class="footer-dates">
-                    <div class="date-box">
-                        <span>CLOSING DATE:</span>
-                        <span>{% if student_data.closing_date %}{{ student_data.closing_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span>
-                    </div>
-                    <div class="date-box">
-                        <span>OPENING DATE:</span>
-                        <span>{% if student_data.opening_date %}{{ student_data.opening_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span>
-                    </div>
+                    <div class="date-box"><span>CLOSING DATE:</span><span>{% if student_data.closing_date %}{{ student_data.closing_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
+                    <div class="date-box"><span>OPENING DATE:</span><span>{% if student_data.opening_date %}{{ student_data.opening_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
                 </div>
-
-
-                <!-- PROFESSIONAL WATERMARK -->
-                <div class="system-footer">
-                    â€” GENERATED BY EDUNEXUS EXAM MANAGEMENT SYSTEM â€”
-                </div>
+                <div class="system-footer">— GENERATED BY EDUNEXUS EXAM MANAGEMENT SYSTEM —</div>
             </div>
         </div>
         {% endfor %}
@@ -597,50 +504,22 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<!-- 2. SCRIPT TAG SECOND (For JavaScript) -->
 <script>
     async function downloadPDF() {
-        console.log("Starting bulk download...");
-        // 1. Find every report card on the page
         const reportCards = document.querySelectorAll('.report-card');
-
-        if (reportCards.length === 0) {
-            alert("âŒ No report cards found to download.");
-            return;
-        }
-
-        // 2. Loop through each card one by one
+        if (reportCards.length === 0) { alert("No report cards found."); return; }
         for (let i = 0; i < reportCards.length; i++) {
             const card = reportCards[i];
-            
-            // 3. Get the student name from the specific card
-            // We assume the first '.detail-value' is the Student Name
             const nameElement = card.querySelector('.detail-value');
             const studentName = nameElement ? nameElement.textContent.trim().replace(/\s+/g, '_') : `Student_${i+1}`;
-
-            card.classList.add('pdf-export-card');
-
-            const opt = {
-                margin:       0,
-                filename:     `${studentName}_Report_Card.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { 
-                    scale: 2, 
-                    useCORS: true, 
-                    letterRendering: true,
-                    scrollX: 0,
-                    scrollY: 0
-                },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-
-            // 4. Download this specific card and WAIT for it to finish
-            await html2pdf().set(opt).from(card).save();
-            card.classList.remove('pdf-export-card');
+            await html2pdf().set({
+                margin: 0,
+                filename: `${studentName}_Report_Card.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            }).from(card).save();
         }
     }
 </script>
-
 {% endblock %}
-
-

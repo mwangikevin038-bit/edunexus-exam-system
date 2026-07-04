@@ -1,4 +1,9 @@
 {% extends 'students/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/rc-mobile.css' %}">
+{% endblock %}
 
 {% block content %}
 <style>
@@ -286,6 +291,8 @@
     }
 </style>
 
+{# ── DESKTOP VIEW (hidden on mobile via rc-mobile.css) ── #}
+<div class="rd-desktop">
 <div class="reports-page">
     <section class="reports-hero">
         <div class="hero-row">
@@ -427,6 +434,226 @@
         </div>
     {% endif %}
 </div>
+</div>{# end .rd-desktop #}
+
+{# ── MOBILE VIEW (hidden on desktop via rc-mobile.css) ── #}
+<div class="rc-shell">
+    <div class="rc-header">
+        <span class="rc-header-title">Report Cards</span>
+        <span class="rc-header-badge">
+            <i class="ph ph-certificate" style="font-size:11px;"></i>
+            {{ access_label }}
+        </span>
+    </div>
+
+    <div class="rc-body">
+        {# ── Segmented Control ── #}
+        <div class="rc-segmented">
+            <a href="{% url 'results_list' %}" class="rc-seg-btn">
+                <i class="ph ph-chart-bar"></i> Published
+            </a>
+            <a href="{% url 'report_card_select' %}" class="rc-seg-btn active">
+                <i class="ph ph-certificate"></i> Report Cards
+            </a>
+        </div>
+
+        {% if selected_grade and selected_stream %}
+            {# ── Hero Card (context selected) ── #}
+            <div class="rc-hero">
+                <div class="rc-hero-label">
+                    <i class="ph ph-graduation-cap"></i> Report Cards
+                </div>
+                <div class="rc-hero-title">{{ selected_exam }} — {{ selected_grade }} {{ selected_stream }}</div>
+                <div class="rc-hero-meta">
+                    <div class="rc-hero-pill">
+                        <span class="rc-hero-pill-label">Term</span>
+                        <span class="rc-hero-pill-value">{{ selected_term }}</span>
+                    </div>
+                    <div class="rc-hero-pill">
+                        <span class="rc-hero-pill-label">Year</span>
+                        <span class="rc-hero-pill-value">{{ selected_year }}</span>
+                    </div>
+                    <div class="rc-hero-pill">
+                        <span class="rc-hero-pill-label">Subjects</span>
+                        <span class="rc-hero-pill-value">{{ published_subject_count }}/{{ total_required_subjects }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {# ── Context Switcher ── #}
+            {% if published_contexts|length > 1 %}
+                <form method="GET" class="rc-switcher">
+                    <label class="rc-switcher-label">Switch View</label>
+                    <select name="context" class="rc-switcher-select" onchange="this.form.submit()">
+                        {% for item in published_contexts %}
+                            <option value="{{ item.context_key }}" {% if item.context_key == selected_context_key %}selected{% endif %}>
+                                {{ item.class_name }} {{ item.stream }} — {{ item.exam_name }} | {{ item.term }} {{ item.year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            {% endif %}
+
+            {# ── Incomplete Notice ── #}
+            {% if published_subject_count < total_required_subjects %}
+                <div class="rc-notice">
+                    <i class="ph ph-warning-circle"></i>
+                    Some subject sheets are not yet published. Reports can still be previewed, but final class reports are strongest after all subjects are published.
+                </div>
+            {% endif %}
+
+            {# ── Action Buttons ── #}
+            <div class="rc-actions">
+                {% if not is_admin_view %}
+                <button type="button" class="rc-action-btn comments" onclick="loadCommentsModal()">
+                    <i class="ph ph-chats-circle"></i> Class Comments
+                </button>
+                {% endif %}
+                {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
+                <button type="button" class="rc-action-btn ht-remarks" onclick="loadHtCommentsModal()">
+                    <i class="ph ph-chat-circle-text"></i> Headteacher
+                </button>
+                {% endif %}
+            </div>
+
+            {# ── Search ── #}
+            <div class="rc-search">
+                <div class="rc-search-wrap">
+                    <i class="ph ph-magnifying-glass rc-search-icon"></i>
+                    <input type="text" id="rcSearch" class="rc-search-input" placeholder="Search learner by name or ADM..." onkeyup="rcSearchStudents()">
+                </div>
+            </div>
+
+            <div id="commentsModalContainer"></div>
+            <div id="htCommentsModalContainer"></div>
+
+            {# ── Student List ── #}
+            <div class="rc-section-header">
+                <span class="rc-section-title">Students</span>
+                <span class="rc-section-count">{{ student_count }} learners</span>
+            </div>
+            <div class="rc-students" id="rcStudentList">
+                {% for student in students %}
+                <div class="rc-student-card" data-name="{{ student.name|lower }}" data-adm="{{ student.admission_no }}">
+                    <div class="rc-student-avatar">{{ student.name|first }}</div>
+                    <div class="rc-student-info">
+                        <div class="rc-student-name">{{ student.name }}</div>
+                        <div class="rc-student-adm">ADM {{ student.admission_no }}</div>
+                    </div>
+                    <div class="rc-student-actions">
+                        <input type="checkbox" class="rc-student-check student-check" value="{{ student.id }}">
+                        <a href="{% url 'individual_report' student.id %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="rc-open-btn">
+                            Open <i class="ph ph-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        {% elif published_contexts %}
+            {# ── Archive Cards (landing — no context selected) ── #}
+            <div class="rc-section-header">
+                <span class="rc-section-title">Available Reports</span>
+            </div>
+            <div class="rc-archive">
+                {% for item in published_contexts %}
+                <a href="?context={{ item.context_key|urlencode }}" class="rc-archive-card">
+                    <div class="rc-archive-icon">
+                        <i class="ph ph-file-text"></i>
+                    </div>
+                    <div class="rc-archive-info">
+                        <div class="rc-archive-name">{{ item.exam_name }} Reports</div>
+                        <div class="rc-archive-meta">
+                            <span class="rc-archive-tag">
+                                <i class="ph ph-calendar"></i> {{ item.term }} {{ item.year }}
+                            </span>
+                            <span class="rc-archive-tag">
+                                <i class="ph ph-chalkboard-teacher"></i> {{ item.class_name }} {{ item.stream }}
+                            </span>
+                            <span class="rc-archive-tag">
+                                <i class="ph ph-books"></i> {{ item.subject_count }} subjects
+                            </span>
+                        </div>
+                    </div>
+                    <span class="rc-archive-chevron">›</span>
+                </a>
+                {% endfor %}
+            </div>
+
+        {% else %}
+            {# ── Empty State ── #}
+            <div class="rc-empty">
+                <div class="rc-empty-icon">
+                    <i class="ph ph-certificate"></i>
+                </div>
+                <div class="rc-empty-title">No Report Cards Yet</div>
+                <div class="rc-empty-text">Report cards will appear here after the assessment administrator publishes results for your class stream.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="commentsModalContainerMobile"></div>
+<div id="htCommentsModalContainerMobile"></div>
+
+{% if messages %}
+<style>
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+    }
+    .toast-msg {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 20px;
+        border-radius: 14px;
+        font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #FFFFFF;
+        background: linear-gradient(135deg, #199E41, #24E55E);
+        box-shadow: 0 8px 32px rgba(36, 229, 94, 0.35);
+        animation: toastIn 0.35s cubic-bezier(0.32,0.72,0,1), toastOut 0.3s ease-in 3s forwards;
+        pointer-events: auto;
+    }
+    .toast-msg .toast-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    @keyframes toastIn {
+        from { transform: translateY(-30px); opacity: 0; }
+        to   { transform: translateY(0);     opacity: 1; }
+    }
+    @keyframes toastOut {
+        from { opacity: 1; }
+        to   { opacity: 0; transform: translateY(-10px); pointer-events: none; }
+    }
+</style>
+<div class="toast-container">
+    {% for msg in messages %}
+    <div class="toast-msg">
+        <span class="toast-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        {{ msg }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 
 <script>
 function loadCommentsModal() {
@@ -443,8 +670,7 @@ function loadCommentsModal() {
 
     var url = '/manage-master-comments/?year=' + encodeURIComponent(year) + '&term=' + encodeURIComponent(term) + '&grade=' + encodeURIComponent(grade) + '&stream=' + encodeURIComponent(stream) + '&assessment=' + encodeURIComponent(assessment);
 
-    var container = document.getElementById('commentsModalContainer');
-    container.innerHTML = '<div style="position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;"><div style="background:#fff;padding:24px 32px;border-radius:12px;font-weight:700;color:#0f172a;">Loading comments...</div></div>';
+    document.body.insertAdjacentHTML('beforeend', '<div id="commentsModalOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;"><div style="background:#fff;padding:24px 32px;border-radius:16px;font-weight:700;color:#1C1C1E;font-family:inherit;">Loading...</div></div>');
 
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(response) {
@@ -452,7 +678,9 @@ function loadCommentsModal() {
             return response.text();
         })
         .then(function(html) {
-            container.innerHTML = html;
+            var existing = document.getElementById('commentsModalOverlay');
+            if (existing) existing.remove();
+            document.body.insertAdjacentHTML('beforeend', html);
             var modal = document.getElementById('commentsModal');
             if (modal) {
                 modal.style.display = 'flex';
@@ -460,7 +688,8 @@ function loadCommentsModal() {
             }
         })
         .catch(function() {
-            container.innerHTML = '';
+            var existing = document.getElementById('commentsModalOverlay');
+            if (existing) existing.remove();
             alert('Unable to load class comments. Please try again.');
         });
 }
@@ -468,9 +697,10 @@ function loadCommentsModal() {
 function closeCommentsModal() {
     var modal = document.getElementById('commentsModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.remove();
         document.body.style.overflow = '';
     }
+}
 }
 
 function loadHtCommentsModal() {
@@ -485,8 +715,7 @@ function loadHtCommentsModal() {
 
     var url = '/manage-headteacher-comments/?year=' + encodeURIComponent(year) + '&term=' + encodeURIComponent(term) + '&assessment=' + encodeURIComponent(assessment) + '&modal=true';
 
-    var container = document.getElementById('htCommentsModalContainer');
-    container.innerHTML = '<div style="position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;"><div style="background:#fff;padding:24px 32px;border-radius:12px;font-weight:700;color:#0f172a;">Loading headteacher remarks...</div></div>';
+    document.body.insertAdjacentHTML('beforeend', '<div id="htCommentsModalOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;"><div style="background:#fff;padding:24px 32px;border-radius:16px;font-weight:700;color:#1C1C1E;font-family:inherit;">Loading...</div></div>');
 
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(response) {
@@ -494,7 +723,9 @@ function loadHtCommentsModal() {
             return response.text();
         })
         .then(function(html) {
-            container.innerHTML = html;
+            var existing = document.getElementById('htCommentsModalOverlay');
+            if (existing) existing.remove();
+            document.body.insertAdjacentHTML('beforeend', html);
             var modal = document.getElementById('htCommentsModal');
             if (modal) {
                 modal.style.display = 'flex';
@@ -502,7 +733,8 @@ function loadHtCommentsModal() {
             }
         })
         .catch(function() {
-            container.innerHTML = '';
+            var existing = document.getElementById('htCommentsModalOverlay');
+            if (existing) existing.remove();
             alert('Unable to load headteacher remarks. Please try again.');
         });
 }
@@ -510,7 +742,7 @@ function loadHtCommentsModal() {
 function closeHtCommentsModal() {
     var modal = document.getElementById('htCommentsModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.remove();
         document.body.style.overflow = '';
     }
 }
@@ -537,6 +769,17 @@ function printSelectedReports() {
         return;
     }
     window.location.href = `{% url 'bulk_report_cards' %}?ids=${selectedIds.join(',')}&year={{ selected_year }}&term={{ selected_term|urlencode }}&assessment={{ selected_assessment }}`;
+}
+
+function rcSearchStudents() {
+    var input = document.getElementById('rcSearch');
+    if (!input) return;
+    var term = input.value.toLowerCase();
+    document.querySelectorAll('.rc-student-card').forEach(function(card) {
+        var name = card.dataset.name || '';
+        var adm = card.dataset.adm || '';
+        card.style.display = (name.indexOf(term) !== -1 || adm.indexOf(term) !== -1) ? '' : 'none';
+    });
 }
 
 document.addEventListener('DOMContentLoaded', function() {

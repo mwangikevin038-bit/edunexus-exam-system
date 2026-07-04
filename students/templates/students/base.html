@@ -362,7 +362,7 @@
                 </a>
                 {% if "Class Teacher" in request.user.teacher_profile.assigned_task %}
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'report_card_select' %}active-section{% endif %}" href="{% url 'report_card_select' %}">
-                    <i class="ph ph-file-pdf"></i> <span>Report Cards</span>
+                    <i class="ph ph-certificate"></i> <span>Report Cards</span>
                 </a>
                 {% endif %}
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'class_lists' %}active-section{% endif %}" href="{% url 'class_lists' %}">
@@ -486,7 +486,8 @@
                     id="mobileMenuBtn"
                     aria-label="Open menu"
                     aria-expanded="false"
-                    aria-controls="mobileMenuSheet">
+                    aria-controls="mobileMenuSheet"
+                    onclick="var s=document.getElementById('mobileMenuSheet');if(s.classList.contains('open')){s.classList.remove('open');s.setAttribute('aria-hidden','true');}else{s.classList.add('open');s.setAttribute('aria-hidden','false');}">
                 <i class="ph ph-list"></i>
                 <span>Menu</span>
             </button>
@@ -495,7 +496,7 @@
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
                href="{% url 'dashboard_alt' %}"
                aria-label="Dashboard">
-                <i class="ph ph-grid-1x2"></i>
+                <i class="ph ph-user-circle"></i>
                 <span>Home</span>
             </a>
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'learner_profile' %}active{% endif %}"
@@ -536,7 +537,8 @@
                     id="mobileMenuBtn"
                     aria-label="Open menu"
                     aria-expanded="false"
-                    aria-controls="mobileMenuSheet">
+                    aria-controls="mobileMenuSheet"
+                    onclick="var s=document.getElementById('mobileMenuSheet');if(s.classList.contains('open')){s.classList.remove('open');s.setAttribute('aria-hidden','true');}else{s.classList.add('open');s.setAttribute('aria-hidden','false');}">
                 <i class="ph ph-list"></i>
                 <span>Menu</span>
             </button>
@@ -582,7 +584,7 @@
                     <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">Class Teacher</div>
                         <a class="mobile-menu-link {% if request.resolver_match.url_name == 'report_card_select' %}active{% endif %}" href="{% url 'report_card_select' %}">
-                            <i class="ph ph-file-pdf"></i> Report Cards
+                            <i class="ph ph-certificate"></i> Report Cards
                         </a>
                     </div>
                     {% endif %}
@@ -635,22 +637,22 @@
         const sidebarOverlay = document.getElementById('sidebarOverlay');
 
         function openMenu() {
-            sidebar.classList.add('open', 'active');
-            sidebarOverlay.classList.add('active', 'visible');
+            if (sidebar) sidebar.classList.add('open', 'active');
+            if (sidebarOverlay) sidebarOverlay.classList.add('active', 'visible');
             if (hamburgerBtn) hamburgerBtn.classList.add('active');
         }
         function closeMenu() {
-            sidebar.classList.remove('open', 'active');
-            sidebarOverlay.classList.remove('active', 'visible');
+            if (sidebar) sidebar.classList.remove('open', 'active');
+            if (sidebarOverlay) sidebarOverlay.classList.remove('active', 'visible');
             if (hamburgerBtn) hamburgerBtn.classList.remove('active');
         }
 
         if (hamburgerBtn) hamburgerBtn.addEventListener('click', () => {
             sidebar.classList.contains('active') ? closeMenu() : openMenu();
         });
-        sidebarOverlay.addEventListener('click', closeMenu);
+        if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeMenu);
 
-        sidebar.querySelectorAll('.nav-link-card').forEach(link => {
+        if (sidebar) sidebar.querySelectorAll('.nav-link-card').forEach(link => {
             link.addEventListener('click', closeMenu);
         });
 
@@ -669,7 +671,6 @@
             mobileMenuSheet.classList.add('open');
             mobileMenuSheet.setAttribute('aria-hidden', 'false');
             if (mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', 'true');
-            document.body.style.overflow = 'hidden';
         }
 
         function closeMobileMenu() {
@@ -677,15 +678,19 @@
             mobileMenuSheet.classList.remove('open');
             mobileMenuSheet.setAttribute('aria-hidden', 'true');
             if (mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', 'false');
-            document.body.style.overflow = '';
         }
 
         if (mobileMenuBtn) {
-            mobileMenuBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                mobileMenuSheet.classList.contains('open') ? closeMobileMenu() : openMobileMenu();
+            mobileMenuBtn.addEventListener('click', function() {
+                if (!mobileMenuSheet) return;
+                if (mobileMenuSheet.classList.contains('open')) {
+                    closeMobileMenu();
+                } else {
+                    openMobileMenu();
+                }
             });
         }
+
         if (mobileMenuBackdrop) mobileMenuBackdrop.addEventListener('click', closeMobileMenu);
         if (mobileMenuClose) mobileMenuClose.addEventListener('click', closeMobileMenu);
 
@@ -706,13 +711,14 @@
 
         showLoader();
         window.addEventListener('load', hideLoader);
+        setTimeout(hideLoader, 3000);
 
         document.querySelectorAll('.nav-link-card, .btn, a[href]').forEach(el => {
             el.addEventListener('click', function() {
                 const href = this.getAttribute('href');
                 if (href && href !== '#' && !href.startsWith('javascript:') && !href.startsWith('mailto:')) {
                     showLoader();
-                    setTimeout(hideLoader, 8000);
+                    setTimeout(hideLoader, 3000);
                 }
             });
         });

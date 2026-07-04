@@ -1,301 +1,432 @@
-<div id="commentsModal" class="remarks-modal">
+<div id="commentsModal" class="rc-modal" style="display:none;">
     <style>
-        .remarks-modal {
+        .rc-modal {
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, 0.58);
-            backdrop-filter: blur(6px);
             z-index: 9999;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 22px;
-            font-family: 'Inter', sans-serif;
+            padding: 16px;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(12px) saturate(150%);
+            -webkit-backdrop-filter: blur(12px) saturate(150%);
+            animation: rcFadeIn 0.25s ease;
         }
 
-        .remarks-shell {
-            width: min(1120px, 100%);
-            max-height: 88vh;
-            background: #ffffff;
-            border: 1px solid #dbe3ee;
-            border-left: 8px solid var(--oraimo-green, #9be816);
-            border-radius: 18px;
-            box-shadow: 0 26px 70px rgba(15, 23, 42, 0.28);
+        @keyframes rcFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        .rc-card {
+            width: 100%;
+            max-width: 420px;
+            max-height: 90dvh;
+            background: #FFFFFF;
+            border-radius: 20px;
+            border: 1px solid #F1F5F9;
+            box-shadow: 0 8px 40px rgba(15, 23, 42, 0.12);
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            animation: rcCardIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .remarks-head {
-            background: #0f172a;
-            color: #ffffff;
-            padding: 22px 26px;
+        @keyframes rcCardIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ── Header ─────────────────────────────────────────────── */
+        .rc-card-head {
+            padding: 24px 24px 0;
             display: flex;
             justify-content: space-between;
-            gap: 18px;
             align-items: flex-start;
-        }
-
-        .remarks-head h2 {
-            margin: 0 0 5px;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 22px;
-            font-weight: 900;
-        }
-
-        .remarks-head p {
-            margin: 0;
-            color: #dbeafe;
-            font-weight: 700;
-            font-size: 13px;
-        }
-
-        .close-btn {
-            width: 38px;
-            height: 38px;
-            border: none;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.12);
-            color: #ffffff;
-            font-size: 24px;
-            cursor: pointer;
-        }
-
-        .remarks-body {
-            padding: 24px 26px;
-            overflow-y: auto;
-        }
-
-        .setup-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 14px;
-            margin-bottom: 22px;
-        }
-
-        .setup-field,
-        .comment-card,
-        .headteacher-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 15px;
-        }
-
-        .setup-field label,
-        .comment-card label,
-        .headteacher-card label {
-            display: block;
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            margin-bottom: 8px;
-        }
-
-        .setup-field input,
-        .comment-card textarea,
-        .headteacher-card textarea {
-            width: 100%;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            background: #ffffff;
-            color: #0f172a;
-            padding: 11px 12px;
-            font-weight: 750;
-            resize: vertical;
-            outline: none;
-        }
-
-        .setup-field input {
-            min-height: 44px;
-        }
-
-        .comment-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
-        }
-
-        .comment-card.ee { border-left: 5px solid #22c55e; }
-        .comment-card.me { border-left: 5px solid #3b82f6; }
-        .comment-card.ae { border-left: 5px solid #f59e0b; }
-        .comment-card.be { border-left: 5px solid #ef4444; }
-
-        .headteacher-card {
-            margin-top: 14px;
-            border-left: 5px solid var(--oraimo-green, #9be816);
-        }
-
-        .remarks-footer {
-            padding: 18px 26px;
-            background: #f8fafc;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: flex-end;
             gap: 12px;
         }
 
-        .footer-btn {
+        .rc-card-title {
+            font-size: 1.125rem;
+            font-weight: 800;
+            color: #0F172A;
+            letter-spacing: -0.025em;
+            line-height: 1.3;
+        }
+
+        .rc-card-tags {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .rc-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.625rem;
+            font-weight: 600;
+            color: #64748B;
+            background: #F1F5F9;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .rc-tag i { font-size: 10px; }
+
+        .rc-close {
+            width: 30px;
+            height: 30px;
             border: none;
-            border-radius: 10px;
-            min-height: 44px;
-            padding: 0 20px;
-            font-weight: 900;
+            border-radius: 50%;
+            background: #F1F5F9;
+            color: #64748B;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.15s;
         }
 
-        .cancel-btn {
-            background: #e2e8f0;
-            color: #334155;
+        .rc-close:active { background: #E2E8F0; }
+
+        /* ── Body ───────────────────────────────────────────────── */
+        .rc-card-body {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px 24px 24px;
         }
 
-        .save-btn {
-            background: var(--oraimo-green, #9be816);
-            color: #0f172a;
+        /* ── Date Card ──────────────────────────────────────────── */
+        .rc-date-card {
+            background: #F8FAFC;
+            border: 1px solid #F1F5F9;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 16px;
         }
 
-        @media (max-width: 820px) {
-            .setup-grid,
-            .comment-grid {
-                grid-template-columns: 1fr !important;
+        .rc-date-label {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            color: #94A3B8;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 10px;
+        }
+
+        .rc-date-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .rc-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .rc-field-label {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: #64748B;
+        }
+
+        .rc-field-input {
+            width: 100%;
+            padding: 9px 11px;
+            background: #FFFFFF;
+            border: 1.5px solid #E2E8F0;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #0F172A;
+            outline: none;
+            -webkit-appearance: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .rc-field-input:focus {
+            border-color: #24E55E;
+            box-shadow: 0 0 0 3px rgba(36, 229, 94, 0.1);
+        }
+
+        /* ── Context Pill ───────────────────────────────────────── */
+        .rc-context {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: #F8FAFC;
+            border: 1px solid #F1F5F9;
+            border-radius: 14px;
+            margin-bottom: 16px;
+        }
+
+        .rc-context-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #24E55E, #199E41);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #FFFFFF;
+            font-size: 15px;
+            box-shadow: 0 2px 8px rgba(36, 229, 94, 0.25);
+        }
+
+        .rc-context-text {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #0F172A;
+        }
+
+        /* ── Section Label ──────────────────────────────────────── */
+        .rc-label {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            color: #94A3B8;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 8px;
+        }
+
+        /* ── Comment Cards ──────────────────────────────────────── */
+        .rc-comments {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .rc-comment {
+            background: #F8FAFC;
+            border: 1px solid #F1F5F9;
+            border-radius: 12px;
+            padding: 12px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .rc-comment:focus-within {
+            border-color: #24E55E;
+            box-shadow: 0 0 0 3px rgba(36, 229, 94, 0.08);
+        }
+
+        .rc-comment-head {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 7px;
+        }
+
+        .rc-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .rc-dot-ee { background: #22C55E; }
+        .rc-dot-me { background: #3B82F6; }
+        .rc-dot-ae { background: #F59E0B; }
+        .rc-dot-be { background: #EF4444; }
+
+        .rc-comment-name {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #1E293B;
+        }
+
+        .rc-comment textarea {
+            width: 100%;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 9px 11px;
+            font-family: inherit;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0F172A;
+            line-height: 1.45;
+            resize: none;
+            min-height: 52px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .rc-comment textarea:focus {
+            border-color: #CBD5E1;
+        }
+
+        .rc-comment textarea::placeholder {
+            color: #CBD5E1;
+        }
+
+        /* ── Footer ─────────────────────────────────────────────── */
+        .rc-card-foot {
+            padding: 16px 24px;
+            padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+            background: #FFFFFF;
+            border-top: 1px solid #F1F5F9;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .rc-btn {
+            flex: 1;
+            height: 48px;
+            border: none;
+            border-radius: 14px;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .rc-btn:active { transform: scale(0.97); }
+
+        .rc-btn-cancel {
+            background: #F1F5F9;
+            color: #475569;
+        }
+
+        .rc-btn-cancel:active { background: #E2E8F0; }
+
+        .rc-btn-save {
+            background: linear-gradient(135deg, #199E41, #24E55E);
+            color: #FFFFFF;
+            box-shadow: 0 4px 14px rgba(36, 229, 94, 0.3);
+        }
+
+        .rc-btn-save:active {
+            box-shadow: 0 2px 8px rgba(36, 229, 94, 0.2);
+        }
+
+        /* ── Desktop ────────────────────────────────────────────── */
+        @media (min-width: 640px) {
+            .rc-card {
+                max-height: 85vh;
             }
         }
 
-        @media (max-width: 640px) {
-            .remarks-modal {
-                padding: 10px;
-            }
-
-            .remarks-shell {
-                border-radius: 14px;
-                max-height: 95vh;
-                border-left-width: 5px;
-            }
-
-            .remarks-head {
-                padding: 16px 18px;
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .remarks-head h2 {
-                font-size: 18px;
-            }
-
-            .remarks-head p {
-                font-size: 11px;
-            }
-
-            .close-btn {
-                align-self: flex-end;
-            }
-
-            .remarks-body {
-                padding: 16px 18px;
-            }
-
-            .setup-grid {
-                grid-template-columns: 1fr !important;
-                gap: 10px;
-            }
-
-            .setup-field {
-                padding: 12px;
-            }
-
-            .setup-field label {
-                font-size: 10px;
-            }
-
-            .comment-grid {
-                grid-template-columns: 1fr !important;
-                gap: 10px;
-            }
-
-            .comment-card {
-                padding: 12px;
-            }
-
-            .comment-card label {
-                font-size: 10px;
-            }
-
-            .comment-card textarea {
-                font-size: 13px;
-                min-height: 60px;
-            }
-
-            .headteacher-card {
-                padding: 12px;
-            }
-
-            .remarks-footer {
-                padding: 14px 18px;
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .footer-btn {
-                width: 100%;
-                justify-content: center;
-                min-height: 42px;
-                font-size: 13px;
-            }
+        /* ── Small phones ───────────────────────────────────────── */
+        @media (max-width: 380px) {
+            .rc-card { border-radius: 16px; }
+            .rc-card-head { padding: 20px 18px 0; }
+            .rc-card-body { padding: 16px 18px 20px; }
+            .rc-card-foot { padding: 14px 18px; }
         }
     </style>
 
     <form id="commentsForm" method="POST" action="{% url 'manage_master_comments' %}?year={{ request.GET.year }}&term={{ request.GET.term }}&grade={{ request.GET.grade }}&stream={{ request.GET.stream }}&assessment={{ request.GET.assessment }}">
-        {% csrf_token %}
-        <div class="remarks-shell">
-            <div class="remarks-head">
-                <div>
-                    <h2>Report Card Configuration</h2>
-                    <p>{{ selected_grade }} {{ selected_stream }} | {{ selected_term }} | {{ selected_year }}. Configure remarks and term dates once for this report set.</p>
+    {% csrf_token %}
+    <div class="rc-card">
+        <div class="rc-card-head">
+            <div>
+                <div class="rc-card-title">Report Configuration</div>
+                <div class="rc-card-tags">
+                    <span class="rc-tag"><i class="ph ph-chalkboard-teacher"></i> {{ selected_grade }} {{ selected_stream }}</span>
+                    <span class="rc-tag"><i class="ph ph-calendar"></i> {{ selected_term }} {{ selected_year }}</span>
                 </div>
-                <button type="button" class="close-btn" onclick="closeCommentsModal()">&times;</button>
             </div>
+            <button type="button" class="rc-close" onclick="closeCommentsModal()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
 
-            <div class="remarks-body">
-                <div class="setup-grid">
-                    <div class="setup-field">
-                        <label>Closing Date</label>
-                        <input type="date" name="closing_date" value="{{ comment_obj.closing_date|date:'Y-m-d' }}">
+        <div class="rc-card-body">
+            <div class="rc-date-card">
+                <div class="rc-date-label">Term Dates</div>
+                <div class="rc-date-grid">
+                    <div class="rc-field">
+                        <span class="rc-field-label">Opening</span>
+                        <input type="date" name="opening_date" value="{{ comment_obj.opening_date|date:'Y-m-d' }}" class="rc-field-input">
                     </div>
-                    <div class="setup-field">
-                        <label>Opening Date</label>
-                        <input type="date" name="opening_date" value="{{ comment_obj.opening_date|date:'Y-m-d' }}">
+                    <div class="rc-field">
+                        <span class="rc-field-label">Closing</span>
+                        <input type="date" name="closing_date" value="{{ comment_obj.closing_date|date:'Y-m-d' }}" class="rc-field-input">
                     </div>
-                    <div class="setup-field">
-                        <label>Report Context</label>
-                        <input type="text" value="{{ selected_assessment|title }} | {{ selected_term }} {{ selected_year }}" readonly>
-                    </div>
-                </div>
-
-                <div class="comment-grid">
-                    {% if is_primary %}
-                    <div class="comment-card ee"><label>EE - Excellent</label><textarea name="comment_ee" rows="3">{{ comment_obj.comment_ee }}</textarea></div>
-                    <div class="comment-card me"><label>ME - Good</label><textarea name="comment_me" rows="3">{{ comment_obj.comment_me }}</textarea></div>
-                    <div class="comment-card ae"><label>AE - Satisfactory</label><textarea name="comment_ae" rows="3">{{ comment_obj.comment_ae }}</textarea></div>
-                    <div class="comment-card be"><label>BE - Needs Improvement</label><textarea name="comment_be" rows="3">{{ comment_obj.comment_be }}</textarea></div>
-                    {% else %}
-                    <div class="comment-card ee"><label>EE1 - Exceptional</label><textarea name="comment_ee1" rows="3">{{ comment_obj.comment_ee1 }}</textarea></div>
-                    <div class="comment-card ee"><label>EE2 - High Mastery</label><textarea name="comment_ee2" rows="3">{{ comment_obj.comment_ee2 }}</textarea></div>
-                    <div class="comment-card me"><label>ME1 - Solid Competence</label><textarea name="comment_me1" rows="3">{{ comment_obj.comment_me1 }}</textarea></div>
-                    <div class="comment-card me"><label>ME2 - Basic Competence</label><textarea name="comment_me2" rows="3">{{ comment_obj.comment_me2 }}</textarea></div>
-                    <div class="comment-card ae"><label>AE1 - Approaching</label><textarea name="comment_ae1" rows="3">{{ comment_obj.comment_ae1 }}</textarea></div>
-                    <div class="comment-card ae"><label>AE2 - Developing</label><textarea name="comment_ae2" rows="3">{{ comment_obj.comment_ae2 }}</textarea></div>
-                    <div class="comment-card be"><label>BE1 - Emerging</label><textarea name="comment_be1" rows="3">{{ comment_obj.comment_be1 }}</textarea></div>
-                    <div class="comment-card be"><label>BE2 - Critical Support</label><textarea name="comment_be2" rows="3">{{ comment_obj.comment_be2 }}</textarea></div>
-                    {% endif %}
                 </div>
             </div>
 
-            <div class="remarks-footer">
-                <button type="button" class="footer-btn cancel-btn" onclick="closeCommentsModal()">Cancel</button>
-                <button type="submit" class="footer-btn save-btn">Save Configuration</button>
+            <div class="rc-context">
+                <div class="rc-context-icon"><i class="ph ph-file-text"></i></div>
+                <div class="rc-context-text">{{ selected_assessment|title }} &middot; {{ selected_term }} {{ selected_year }}</div>
+            </div>
+
+            <div class="rc-label">Learner Remarks</div>
+            <div class="rc-comments">
+                {% if is_primary %}
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-ee"></span><span class="rc-comment-name">EE &mdash; Excellent</span></div>
+                    <textarea name="comment_ee" rows="2" placeholder="Remark for excellent performance...">{{ comment_obj.comment_ee }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-me"></span><span class="rc-comment-name">ME &mdash; Good</span></div>
+                    <textarea name="comment_me" rows="2" placeholder="Remark for good performance...">{{ comment_obj.comment_me }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-ae"></span><span class="rc-comment-name">AE &mdash; Satisfactory</span></div>
+                    <textarea name="comment_ae" rows="2" placeholder="Remark for satisfactory performance...">{{ comment_obj.comment_ae }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-be"></span><span class="rc-comment-name">BE &mdash; Needs Improvement</span></div>
+                    <textarea name="comment_be" rows="2" placeholder="Remark for needs improvement...">{{ comment_obj.comment_be }}</textarea>
+                </div>
+                {% else %}
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-ee"></span><span class="rc-comment-name">EE1 &mdash; Exceptional</span></div>
+                    <textarea name="comment_ee1" rows="2" placeholder="Remark for exceptional performance...">{{ comment_obj.comment_ee1 }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-ee"></span><span class="rc-comment-name">EE2 &mdash; High Mastery</span></div>
+                    <textarea name="comment_ee2" rows="2" placeholder="Remark for high mastery...">{{ comment_obj.comment_ee2 }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-me"></span><span class="rc-comment-name">ME1 &mdash; Solid Competence</span></div>
+                    <textarea name="comment_me1" rows="2" placeholder="Remark for solid competence...">{{ comment_obj.comment_me1 }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-me"></span><span class="rc-comment-name">ME2 &mdash; Basic Competence</span></div>
+                    <textarea name="comment_me2" rows="2" placeholder="Remark for basic competence...">{{ comment_obj.comment_me2 }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-ae"></span><span class="rc-comment-name">AE1 &mdash; Approaching</span></div>
+                    <textarea name="comment_ae1" rows="2" placeholder="Remark for approaching...">{{ comment_obj.comment_ae1 }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-ae"></span><span class="rc-comment-name">AE2 &mdash; Developing</span></div>
+                    <textarea name="comment_ae2" rows="2" placeholder="Remark for developing...">{{ comment_obj.comment_ae2 }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-be"></span><span class="rc-comment-name">BE1 &mdash; Emerging</span></div>
+                    <textarea name="comment_be1" rows="2" placeholder="Remark for emerging...">{{ comment_obj.comment_be1 }}</textarea>
+                </div>
+                <div class="rc-comment">
+                    <div class="rc-comment-head"><span class="rc-dot rc-dot-be"></span><span class="rc-comment-name">BE2 &mdash; Critical Support</span></div>
+                    <textarea name="comment_be2" rows="2" placeholder="Remark for critical support...">{{ comment_obj.comment_be2 }}</textarea>
+                </div>
+                {% endif %}
             </div>
         </div>
+
+        <div class="rc-card-foot">
+            <button type="button" class="rc-btn rc-btn-cancel" onclick="closeCommentsModal()">Cancel</button>
+            <button type="submit" class="rc-btn rc-btn-save">Save Configuration</button>
+        </div>
+    </div>
     </form>
 </div>

@@ -229,309 +229,244 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       iOS 17 MOBILE REDESIGN (< 640px)
+       iOS 17 MOBILE REDESIGN (< 640px) — oraimo green
        ═══════════════════════════════════════════════════════════════ */
     @media (max-width: 640px) {
+
+        :root {
+            --lp-accent: var(--en-green, #9be816);
+            --lp-accent-strong: var(--en-green-active, #5c8a00);
+            --lp-ink: #0f172a;
+            --lp-ink-soft: #64748b;
+            --lp-ink-faint: #94a3b8;
+            --lp-hairline: rgba(15, 23, 42, 0.08);
+            --lp-surface: #ffffff;
+            --lp-bg: #f5f6f9;
+            --lp-radius-lg: 20px;
+            --lp-radius-md: 14px;
+            --lp-safe-top: env(safe-area-inset-top, 0px);
+            --lp-safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
         /* Hide desktop layout */
         .learner-hero, .metrics-grid, .main-grid { display: none !important; }
 
         /* Show mobile elements */
-        .learner-mobile-topbar, .learner-mobile-hero, .learner-mobile-tabs,
+        .learner-mobile-topbar, .learner-mobile-tabs,
         .learner-tab-content, .learner-mobile-section,
         .learner-edit-trigger, .learner-sheet-overlay { display: block !important; }
 
-        .learner-page { padding: 0; background: var(--en-bg); min-height: 100vh; overflow-x: hidden; }
+        .learner-page {
+            padding: 0;
+            background: var(--lp-bg);
+            min-height: 100dvh;
+            overflow-x: clip;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Plus Jakarta Sans', 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
 
-        /* ── Mobile Top Bar ─────────────────────────────────── */
+        /* ── Sticky header: identity row + segmented tabs, ONE unit ──
+           (fixes the old bug where the topbar and tabs were two
+           separately-stickied elements with a guessed pixel offset,
+           which drifted out of sync and let content peek through) */
         .learner-mobile-topbar {
+            display: flex; flex-direction: column;
             position: sticky; top: 0; z-index: 200;
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px 16px;
-            background: rgba(255,255,255,0.82);
-            backdrop-filter: saturate(180%) blur(20px);
-            -webkit-backdrop-filter: saturate(180%) blur(20px);
-            border-bottom: 0.5px solid rgba(0,0,0,0.08);
+            padding-top: var(--lp-safe-top);
+            background: rgba(245, 246, 249, 0.78);
+            backdrop-filter: saturate(180%) blur(24px);
+            -webkit-backdrop-filter: saturate(180%) blur(24px);
+            border-bottom: 1px solid var(--lp-hairline);
+        }
+
+        .learner-topbar-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 16px;
         }
 
         .learner-back-btn {
-            width: 36px; height: 36px; border-radius: 50%; border: none;
-            background: rgba(0,0,0,0.04); display: flex; align-items: center;
-            justify-content: center; color: #0f172a; font-size: 18px;
+            width: 32px; height: 32px; border-radius: 50%; border: none;
+            background: rgba(15, 23, 42, 0.06); display: flex; align-items: center;
+            justify-content: center; color: var(--lp-ink); font-size: 16px;
             cursor: pointer; -webkit-tap-highlight-color: transparent;
-            transition: background 0.2s; text-decoration: none; flex-shrink: 0;
+            transition: background 0.15s, transform 0.15s; text-decoration: none; flex-shrink: 0;
         }
-        .learner-back-btn:active { background: rgba(0,0,0,0.08); }
+        .learner-back-btn:active { background: rgba(15, 23, 42, 0.12); transform: scale(0.92); }
 
         .learner-mobile-avatar {
-            width:34px; height:34px; border-radius:50%;
-            background:linear-gradient(135deg, #0f172a, #1e293b);
-            color:var(--en-green); display:flex; align-items:center;
-            justify-content:center; font-size:13px; font-weight:800; flex-shrink:0;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: linear-gradient(135deg, #15220c, #1c2b0f);
+            color: var(--lp-accent); display: flex; align-items: center;
+            justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0;
         }
 
-        .learner-topbar-info { flex:1; min-width:0; }
+        .learner-topbar-info { flex: 1; min-width: 0; }
 
         .learner-topbar-name {
-            font-size:15px; font-weight:700; color:#0f172a;
-            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-            line-height:1.2;
+            font-size: 15px; font-weight: 700; color: var(--lp-ink);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;
         }
 
-        .learner-topbar-adm {
-            font-size:11px; font-weight:600; color:#94a3b8; line-height:1.2;
-        }
+        .learner-topbar-adm { font-size: 11px; font-weight: 600; color: var(--lp-ink-faint); line-height: 1.2; }
 
         .learner-edit-trigger {
-            border:none; background:transparent; color:var(--en-green-active, #16a34a);
-            font-size:15px; font-weight:700; cursor:pointer;
-            -webkit-tap-highlight-color:transparent; padding:6px 2px; flex-shrink:0;
+            border: none; background: rgba(15, 23, 42, 0.05); color: var(--lp-accent-strong);
+            font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 999px;
+            -webkit-tap-highlight-color: transparent; padding: 7px 14px; flex-shrink: 0;
+            transition: background 0.15s, transform 0.15s;
         }
-        .learner-edit-trigger:active { opacity:0.6; }
+        .learner-edit-trigger:active { background: rgba(15, 23, 42, 0.1); transform: scale(0.95); }
 
-        /* ── Mobile Hero Section ────────────────────────────── */
-        .learner-mobile-hero { padding: 20px 16px 0; }
-
-        .learner-hero-avatar {
-            width: 72px; height: 72px; border-radius: 50%;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: var(--en-green); display: flex; align-items: center;
-            justify-content: center; font-size: 28px; font-weight: 800;
-            margin-bottom: 14px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
-        }
-
-        .learner-hero-title {
-            font-size: 24px; font-weight: 800; color: #0f172a;
-            margin: 0 0 4px; line-height: 1.2;
-        }
-
-        .learner-hero-sub {
-            font-size: 13px; color: #64748b; font-weight: 600; margin: 0 0 16px;
-        }
-
-        .learner-hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-
-        .learner-hero-stat {
-            background: #ffffff; border: 1px solid #e2e8f0;
-            border-radius: 14px; padding: 14px 10px; text-align: center;
-        }
-
-        .learner-hero-stat-value {
-            font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.1;
-        }
-        .learner-hero-stat-value.green { color: var(--en-green-active, #65a30d); }
-
-        .learner-hero-stat-label {
-            font-size: 10px; font-weight: 700; color: #94a3b8;
-            text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;
-        }
-
-        /* ── Segmented Tabs ─────────────────────────────────── */
-        .learner-mobile-tabs {
-            padding: 16px 16px 0; position: sticky; top: 60px;
-            z-index: 190; background: var(--en-bg);
-        }
+        /* Segmented tabs now live inside the same sticky block, so
+           there is nothing to fall out of alignment with */
+        .learner-mobile-tabs { padding: 2px 16px 10px; }
 
         .learner-segmented {
-            display: flex; background: rgba(0,0,0,0.04);
-            border-radius: 12px; padding: 3px; gap: 3px;
+            display: flex; background: rgba(15, 23, 42, 0.05);
+            border-radius: 11px; padding: 3px; gap: 2px;
         }
 
         .learner-seg-btn {
-            flex: 1; border: none; background: transparent; border-radius: 10px;
-            padding: 10px 8px; font-size: 13px; font-weight: 700; color: #64748b;
-            cursor: pointer; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            flex: 1; border: none; background: transparent; border-radius: 9px;
+            padding: 9px 6px; font-size: 13px; font-weight: 600; color: var(--lp-ink-soft);
+            cursor: pointer; transition: color 0.2s, background 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             -webkit-tap-highlight-color: transparent;
         }
-
         .learner-seg-btn.active {
-            background: #ffffff; color: #0f172a;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+            background: #ffffff; color: var(--lp-ink); font-weight: 700;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12), 0 1px 1px rgba(15, 23, 42, 0.04);
         }
 
-        /* ── Tab Content Panels ─────────────────────────────── */
-        .learner-tab-content {
-            display: none; padding: 16px;
-            animation: learnerFadeIn 0.3s ease;
+        /* ── Hero performance card ─────────────────────────── */
+        .lp-hero-card {
+            margin: 14px 16px 12px; background: var(--lp-surface); border: 1px solid var(--lp-hairline);
+            border-radius: var(--lp-radius-lg); overflow: hidden;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
+        .lp-hero-row { display: flex; }
+        .lp-hero-cell { flex: 1; text-align: center; padding: 16px 6px; border-right: 1px solid var(--lp-hairline); }
+        .lp-hero-cell:last-child { border-right: none; }
+        .lp-hero-val { font-size: 22px; font-weight: 800; color: var(--lp-ink); line-height: 1.1; letter-spacing: -0.3px; }
+        .lp-hero-val.green { color: var(--lp-accent-strong); }
+        .lp-hero-lbl { font-size: 10px; font-weight: 700; color: var(--lp-ink-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 5px; }
+
+        /* ── Recent exam strip ─────────────────────────────── */
+        .lp-recent-heading {
+            padding: 0 16px 8px; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.7px; color: var(--lp-ink-faint);
+        }
+        .lp-recent-strip { padding: 0 16px 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .lp-recent-strip::-webkit-scrollbar { display: none; }
+        .lp-recent-list { display: flex; gap: 10px; min-width: min-content; padding-bottom: 4px; }
+        .lp-recent-chip {
+            min-width: 108px; background: var(--lp-surface); border: 1px solid var(--lp-hairline);
+            border-radius: var(--lp-radius-md); padding: 12px 13px; flex-shrink: 0;
+        }
+        .lp-recent-chip-name { font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lp-recent-chip-score { font-size: 19px; font-weight: 800; color: var(--lp-ink); letter-spacing: -0.3px; }
+        .lp-recent-chip-meta { font-size: 10px; color: var(--lp-ink-faint); font-weight: 600; margin-top: 3px; }
+
+        /* ── Tab panels ─────────────────────────────────────── */
+        .learner-tab-content { display: none; padding: 4px 16px 32px; animation: learnerFadeIn 0.25s ease; }
         .learner-tab-content.active { display: block; }
-
         @keyframes learnerFadeIn {
-            from { opacity: 0; transform: translateY(8px); }
+            from { opacity: 0; transform: translateY(6px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* ── Section Cards ──────────────────────────────────── */
         .learner-mobile-section {
-            background: #ffffff; border: 1px solid #e2e8f0;
-            border-radius: 16px; margin-bottom: 14px; overflow: hidden;
+            background: var(--lp-surface); border: 1px solid var(--lp-hairline);
+            border-radius: var(--lp-radius-lg); margin-bottom: 14px; overflow: hidden;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
-
         .learner-section-header {
-            padding: 16px 16px 0; font-size: 11px; font-weight: 800;
-            text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8;
+            padding: 14px 16px 2px; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.7px; color: var(--lp-ink-faint);
         }
 
         .learner-info-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 14px 16px; border-bottom: 0.5px solid rgba(0,0,0,0.04);
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+            padding: 13px 16px; border-bottom: 1px solid var(--lp-hairline);
         }
         .learner-info-row:last-child { border-bottom: none; }
+        .learner-info-label { font-size: 14px; color: var(--lp-ink-soft); font-weight: 500; flex-shrink: 0; }
+        .learner-info-value { font-size: 14px; font-weight: 700; color: var(--lp-ink); text-align: right; word-break: break-word; }
 
-        .learner-info-label { font-size: 14px; color: #64748b; font-weight: 600; }
-
-        .learner-info-value {
-            font-size: 14px; font-weight: 700; color: #0f172a;
-            text-align: right; max-width: 55%; word-break: break-word;
-        }
-
-        /* ── Performance Bar Chart (Mobile) ─────────────────── */
-        .learner-chart-scroll {
-            overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 16px;
-        }
-
+        /* ── Performance bar chart ────────────────────────────
+           (bars used to be invisible: the old container only had
+           min-height, so percentage bar heights had nothing definite
+           to resolve against. Giving the track a fixed height fixes it) */
+        .learner-chart-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 18px 16px 16px; }
         .learner-chart-bars {
-            display: flex; align-items: end; gap: 10px; min-height: 140px;
-            border-left: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0;
-            padding: 8px 8px 0;
+            display: flex; align-items: flex-end; gap: 14px; height: 160px;
+            border-bottom: 1.5px solid var(--lp-hairline); padding: 0 4px;
         }
-
-        .learner-chart-bar-wrap {
-            min-width: 54px; display: flex; flex-direction: column;
-            align-items: center; justify-content: flex-end; height: 100%;
-        }
-
-        .learner-chart-bar-value {
-            font-size: 10px; font-weight: 800; color: #0f172a; margin-bottom: 4px;
-        }
-
+        .learner-chart-bar-wrap { min-width: 50px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+        .learner-chart-bar-value { font-size: 11px; font-weight: 800; color: var(--lp-ink); margin-bottom: 6px; }
         .learner-chart-bar {
-            width: 30px; border-radius: 8px 8px 0 0;
-            background: linear-gradient(180deg, var(--en-green, #9be816), #65a30d);
-            min-height: 4px;
+            width: 26px; border-radius: 8px 8px 3px 3px;
+            background: linear-gradient(180deg, var(--lp-accent), var(--lp-accent-strong));
+            min-height: 6px; box-shadow: 0 2px 6px rgba(92, 138, 0, 0.25);
         }
+        .learner-chart-bar-label { margin-top: 8px; font-size: 9.5px; font-weight: 700; color: var(--lp-ink-faint); text-align: center; line-height: 1.3; }
+        .learner-chart-empty { padding: 36px 16px; text-align: center; color: var(--lp-ink-faint); font-size: 13px; font-weight: 600; }
 
-        .learner-chart-bar-label {
-            margin-top: 6px; font-size: 9px; font-weight: 700; color: #94a3b8;
-            text-align: center; line-height: 1.2;
-        }
+        /* ── Subject score rows ───────────────────────────────
+           (Kenya CBC grading colors) */
+        .lp-score-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--lp-hairline); }
+        .lp-score-row:last-child { border-bottom: none; }
+        .lp-score-subject { flex: 1; font-size: 14px; font-weight: 600; color: #334155; }
+        .lp-score-value { font-size: 14px; font-weight: 800; color: var(--lp-ink); min-width: 38px; text-align: right; }
 
-        .learner-chart-empty {
-            padding: 32px 16px; text-align: center; color: #94a3b8;
-            font-size: 13px; font-weight: 600;
-        }
+        .lp-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.2px; }
+        .lp-badge-ee { background: #dcfce7; color: #166534; }
+        .lp-badge-me { background: #fef9c3; color: #854d0e; }
+        .lp-badge-ae { background: #ffedd5; color: #9a3412; }
+        .lp-badge-be { background: #fee2e2; color: #991b1b; }
+        .lp-badge-ab { background: #f1f5f9; color: #64748b; }
 
-        /* ── Exam Cards (Horizontal scroll) ─────────────────── */
-        .learner-exam-cards {
-            overflow-x: auto; -webkit-overflow-scrolling: touch;
-            padding: 0 16px 16px; display: flex; gap: 12px;
-        }
-
-        .learner-exam-card {
-            min-width: 280px; max-width: 300px; background: #ffffff;
-            border: 1px solid #e2e8f0; border-radius: 14px;
-            padding: 16px; flex-shrink: 0;
-        }
-
-        .learner-exam-card-head {
-            display: flex; justify-content: space-between;
-            align-items: flex-start; margin-bottom: 12px;
-        }
-
-        .learner-exam-card-title {
-            font-size: 15px; font-weight: 800; color: #0f172a; margin: 0;
-        }
-
-        .learner-exam-card-meta {
-            font-size: 12px; color: #94a3b8; font-weight: 600; margin-top: 2px;
-        }
-
-        .learner-exam-card-plv {
-            background: #ecfccb; color: #365314; border-radius: 999px;
-            padding: 4px 10px; font-size: 11px; font-weight: 800; flex-shrink: 0;
-        }
-
-        .learner-exam-card-stats { display: flex; gap: 12px; margin-bottom: 12px; }
-
-        .learner-exam-stat { text-align: center; flex: 1; }
-
-        .learner-exam-stat-val { font-size: 18px; font-weight: 800; color: #0f172a; }
-
-        .learner-exam-stat-lbl {
-            font-size: 9px; font-weight: 700; color: #94a3b8;
-            text-transform: uppercase; letter-spacing: 0.3px;
-        }
-
-        .learner-exam-subjects { border-top: 0.5px solid rgba(0,0,0,0.06); padding-top: 10px; }
-
-        .learner-subject-row {
-            display: flex; justify-content: space-between;
-            align-items: center; padding: 6px 0;
-        }
-
-        .learner-subject-name { font-size: 13px; font-weight: 600; color: #334155; }
-
-        .learner-subject-score { display: flex; gap: 10px; font-size: 12px; font-weight: 700; }
-        .learner-subject-score .score { color: #0f172a; min-width: 28px; text-align: right; }
-        .learner-subject-score .level { color: #64748b; min-width: 24px; text-align: center; }
-        .learner-subject-score .points { color: #94a3b8; min-width: 20px; text-align: right; }
+        /* ── History: expandable exam cards ───────────────────── */
+        .lp-exam-card { background: var(--lp-surface); border: 1px solid var(--lp-hairline); border-radius: var(--lp-radius-lg); margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+        .lp-exam-header { display: flex; align-items: center; gap: 10px; padding: 15px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .lp-exam-header:active { background: #f8fafc; }
+        .lp-exam-title-group { flex: 1; min-width: 0; }
+        .lp-exam-title { font-size: 15px; font-weight: 800; color: var(--lp-ink); margin: 0; }
+        .lp-exam-meta { font-size: 12px; color: var(--lp-ink-faint); font-weight: 600; margin-top: 2px; }
+        .lp-exam-mean { font-size: 15px; font-weight: 800; color: var(--lp-accent-strong); flex-shrink: 0; }
+        .lp-exam-chevron { color: #cbd5e1; font-size: 13px; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); flex-shrink: 0; }
+        .lp-exam-card.open .lp-exam-chevron { transform: rotate(90deg); }
+        .lp-exam-marks { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+        .lp-exam-card.open .lp-exam-marks { max-height: 640px; }
+        .lp-exam-marks-inner { border-top: 1px solid var(--lp-hairline); }
 
         .learner-exam-no-marks {
-            padding: 20px 16px; text-align: center; color: #94a3b8;
-            font-size: 13px; font-weight: 600;
+            padding: 40px 20px; text-align: center; color: var(--lp-ink-faint);
+            font-size: 13px; font-weight: 600; background: var(--lp-surface);
+            border: 1px dashed #cbd5e1; border-radius: var(--lp-radius-lg);
         }
 
-        /* ── Edit Bottom Sheet (mobile only) ────────────────── */
-        .learner-sheet-overlay {
-            position: fixed; inset: 0; z-index: 800;
-            pointer-events: none; opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        .learner-sheet-overlay.open {
-            pointer-events: all; opacity: 1;
-        }
-
-        .learner-sheet-backdrop {
-            position: absolute; inset: 0;
-            background: rgba(0,0,0,0.4);
-        }
-
+        /* ── Edit bottom sheet ─────────────────────────────────── */
+        .learner-sheet-overlay { position: fixed; inset: 0; z-index: 800; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; }
+        .learner-sheet-overlay.open { pointer-events: all; opacity: 1; }
+        .learner-sheet-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); }
         .learner-sheet-panel {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            background: #ffffff; border-radius: 20px 20px 0 0;
-            max-height: 85vh; overflow-y: auto;
-            transform: translateY(100%);
-            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-            -webkit-overflow-scrolling: touch;
+            position: absolute; bottom: 0; left: 0; right: 0; background: var(--lp-surface);
+            border-radius: 22px 22px 0 0; max-height: 88vh; overflow-y: auto;
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            -webkit-overflow-scrolling: touch; padding-bottom: var(--lp-safe-bottom);
         }
         .learner-sheet-overlay.open .learner-sheet-panel { transform: translateY(0); }
-
-        .learner-sheet-handle {
-            width: 36px; height: 5px; background: #e2e8f0;
-            border-radius: 999px; margin: 10px auto 0;
-        }
-
-        .learner-sheet-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 16px 20px 12px; border-bottom: 0.5px solid rgba(0,0,0,0.06);
-        }
-
-        .learner-sheet-title { font-size: 18px; font-weight: 800; color: #0f172a; }
-
-        .learner-sheet-close {
-            width: 32px; height: 32px; border-radius: 50%; border: none;
-            background: rgba(0,0,0,0.04); display: flex; align-items: center;
-            justify-content: center; color: #64748b; font-size: 14px; cursor: pointer;
-        }
-        .learner-sheet-close:active { background: rgba(0,0,0,0.08); }
-
-        .learner-sheet-body { padding: 16px 20px 32px; }
-
+        .learner-sheet-handle { width: 36px; height: 5px; background: #e2e8f0; border-radius: 999px; margin: 10px auto 0; }
+        .learner-sheet-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px 12px; border-bottom: 1px solid var(--lp-hairline); }
+        .learner-sheet-title { font-size: 17px; font-weight: 800; color: var(--lp-ink); }
+        .learner-sheet-close { width: 30px; height: 30px; border-radius: 50%; border: none; background: rgba(15, 23, 42, 0.06); display: flex; align-items: center; justify-content: center; color: var(--lp-ink-soft); font-size: 13px; cursor: pointer; }
+        .learner-sheet-close:active { background: rgba(15, 23, 42, 0.12); }
+        .learner-sheet-body { padding: 16px 20px 28px; }
         .learner-sheet-field { margin-bottom: 14px; }
-
         .learner-sheet-label {
             display: block; font-size: 11px; font-weight: 800;
             text-transform: uppercase; letter-spacing: 0.6px;
-            color: #94a3b8; margin-bottom: 6px;
+            color: var(--lp-ink-faint); margin-bottom: 6px;
         }
 
         .learner-sheet-body input[type="text"],
@@ -540,39 +475,36 @@
         .learner-sheet-body textarea {
             width: 100% !important; border: 1.5px solid #e2e8f0 !important;
             border-radius: 12px !important; padding: 13px 14px !important;
-            font-size: 15px !important; font-weight: 700 !important;
-            color: #0f172a !important; background: #f8fafc !important;
-            transition: border-color 0.2s; box-sizing: border-box !important;
+            font-size: 16px !important; font-weight: 600 !important;
+            color: var(--lp-ink) !important; background: #f8fafc !important;
+            transition: border-color 0.2s, background 0.2s; box-sizing: border-box !important;
             -webkit-appearance: none; min-height: 48px;
         }
         .learner-sheet-body input:focus,
         .learner-sheet-body select:focus {
-            outline: none; border-color: var(--en-green) !important;
+            outline: none; border-color: var(--lp-accent) !important;
             background: #ffffff !important;
         }
 
         .learner-sheet-body .save-btn,
         .learner-sheet-body button[type="submit"] {
-            width: 100%; margin-top: 8px; border: none !important;
-            border-radius: 14px !important; background: var(--en-green) !important;
-            color: #0f172a !important; padding: 15px !important;
+            width: 100%; margin-top: 10px; border: none !important;
+            border-radius: 14px !important; background: var(--lp-accent) !important;
+            color: #14210a !important; padding: 15px !important;
             font-size: 16px !important; font-weight: 800 !important;
-            cursor: pointer; min-height: 52px;
+            cursor: pointer; min-height: 52px; transition: transform 0.1s;
         }
         .learner-sheet-body .save-btn:active,
-        .learner-sheet-body button[type="submit"]:active {
-            background: var(--en-green-hover, #8ad412) !important;
-        }
+        .learner-sheet-body button[type="submit"]:active { transform: scale(0.98); }
 
         .learner-sheet-body label {
             display: block !important; font-size: 11px !important; font-weight: 800 !important;
             text-transform: uppercase !important; letter-spacing: 0.6px !important;
-            color: #94a3b8 !important; margin: 12px 0 6px !important;
+            color: var(--lp-ink-faint) !important; margin: 14px 0 6px !important;
         }
 
-        .learner-sheet-body .learner-sheet-readonly-note {
-            font-size: 11px; color: #94a3b8; font-weight: 600; margin-top: 4px;
-        }
+        .learner-sheet-body .learner-sheet-readonly-note,
+        .learner-sheet-body p { font-size: 11px; color: var(--lp-ink-faint); font-weight: 600; margin-top: 4px; }
 
         .learner-sheet-error {
             padding: 10px 14px; border-radius: 10px; margin-bottom: 14px;
@@ -580,112 +512,18 @@
             color: #991b1b; border: 1px solid #fecaca;
         }
 
-        /* ── Kenya Grading Colors ────────────────────────────── */
-        .lp-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800; }
-        .lp-badge-ee { background:#dcfce7; color:#166534; }
-        .lp-badge-me { background:#fef9c3; color:#854d0e; }
-        .lp-badge-ae { background:#ffedd5; color:#9a3412; }
-        .lp-badge-be { background:#fee2e2; color:#991b1b; }
-        .lp-badge-ab { background:#f1f5f9; color:#64748b; }
-
-        /* ── Score Row (vertical subject list) ───────────────── */
-        .lp-score-row {
-            display:flex; align-items:center; gap:12px;
-            padding:12px 16px; border-bottom:0.5px solid rgba(0,0,0,0.04);
-        }
-        .lp-score-row:last-child { border-bottom:none; }
-        .lp-score-subject { flex:1; font-size:14px; font-weight:600; color:#334155; }
-        .lp-score-value { font-size:15px; font-weight:800; color:#0f172a; min-width:42px; text-align:right; }
-
-        /* ── Exam Card (vertical list) ───────────────────────── */
-        .lp-exam-card {
-            background:#ffffff; border:1px solid #e2e8f0; border-radius:16px;
-            margin-bottom:12px; overflow:hidden;
-        }
-        .lp-exam-header {
-            display:flex; justify-content:space-between; align-items:center;
-            padding:14px 16px; cursor:pointer;
-            -webkit-tap-highlight-color:transparent;
-        }
-        .lp-exam-header:active { background:#f8fafc; }
-        .lp-exam-title-group { flex:1; min-width:0; }
-        .lp-exam-title { font-size:15px; font-weight:800; color:#0f172a; margin:0; }
-        .lp-exam-meta { font-size:12px; color:#94a3b8; font-weight:600; margin-top:2px; }
-        .lp-exam-chevron { color:#cbd5e1; font-size:14px; transition:transform 0.2s; flex-shrink:0; margin-left:8px; }
-        .lp-exam-card.open .lp-exam-chevron { transform:rotate(90deg); }
-        .lp-exam-summary {
-            display:flex; gap:0; border-top:0.5px solid rgba(0,0,0,0.04);
-        }
-        .lp-exam-summary-cell {
-            flex:1; text-align:center; padding:10px 8px;
-            border-right:0.5px solid rgba(0,0,0,0.04);
-        }
-        .lp-exam-summary-cell:last-child { border-right:none; }
-        .lp-exam-summary-val { font-size:16px; font-weight:800; color:#0f172a; }
-        .lp-exam-summary-lbl { font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.3px; margin-top:2px; }
-        .lp-exam-marks {
-            max-height:0; overflow:hidden; transition:max-height 0.3s ease;
-        }
-        .lp-exam-card.open .lp-exam-marks { max-height:600px; }
-        .lp-exam-marks-inner { border-top:0.5px solid rgba(0,0,0,0.04); }
-
-        /* ── Hero Performance Card ───────────────────────────── */
-        .lp-hero-card {
-            margin:0 16px 14px; background:#ffffff; border:1px solid #e2e8f0;
-            border-radius:16px; overflow:hidden;
-        }
-        .lp-hero-row {
-            display:flex; gap:0;
-        }
-        .lp-hero-cell {
-            flex:1; text-align:center; padding:16px 8px;
-            border-right:0.5px solid rgba(0,0,0,0.04);
-        }
-        .lp-hero-cell:last-child { border-right:none; }
-        .lp-hero-val { font-size:24px; font-weight:800; color:#0f172a; line-height:1; }
-        .lp-hero-val.green { color:#16a34a; }
-        .lp-hero-lbl { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-top:6px; }
-
-        /* ── Recent Exam Strip ───────────────────────────────── */
-        .lp-recent-strip {
-            padding:0 16px 14px; overflow-x:auto; -webkit-overflow-scrolling:touch;
-        }
-        .lp-recent-strip::-webkit-scrollbar { display:none; }
-        .lp-recent-list { display:flex; gap:10px; min-width:min-content; }
-        .lp-recent-chip {
-            min-width:140px; background:#ffffff; border:1px solid #e2e8f0;
-            border-radius:12px; padding:10px 12px; flex-shrink:0;
-        }
-        .lp-recent-chip-name { font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .lp-recent-chip-score { font-size:18px; font-weight:800; color:#0f172a; }
-        .lp-recent-chip-meta { font-size:10px; color:#94a3b8; font-weight:600; margin-top:2px; }
-
-        /* ── Edit Mode ───────────────────────────────────────── */
-        .lp-edit-fields { display:none; }
-        .lp-view-content { display:block; }
-        body.lp-editing .lp-edit-fields { display:block; }
-        body.lp-editing .lp-view-content { display:none; }
-        body.lp-editing .lp-score-row input,
-        body.lp-editing .lp-score-row select {
-            width:100%; border:1.5px solid #e2e8f0; border-radius:10px;
-            padding:10px 12px; font-size:14px; font-weight:700; color:#0f172a;
-            background:#f8fafc; min-height:44px;
-        }
-
-        /* ── Page load stagger animation ─────────────────────── */
+        /* ── Entrance animation ───────────────────────────────── */
         .learner-animate-in {
-            opacity:0; transform:translateY(16px);
-            animation:learnerSlideUp 0.45s cubic-bezier(0.16,1,0.3,1) forwards;
+            opacity: 0; transform: translateY(12px);
+            animation: learnerSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        .learner-animate-in:nth-child(1) { animation-delay:0.05s; }
-        .learner-animate-in:nth-child(2) { animation-delay:0.1s; }
-        .learner-animate-in:nth-child(3) { animation-delay:0.15s; }
-        .learner-animate-in:nth-child(4) { animation-delay:0.2s; }
-        .learner-animate-in:nth-child(5) { animation-delay:0.25s; }
-        .learner-animate-in:nth-child(6) { animation-delay:0.3s; }
+        @keyframes learnerSlideUp { to { opacity: 1; transform: translateY(0); } }
 
-        @keyframes learnerSlideUp {
-            to { opacity:1; transform:translateY(0); }
+        @media (prefers-reduced-motion: reduce) {
+            .learner-animate-in, .learner-tab-content, .lp-exam-marks, .learner-sheet-panel {
+                animation: none !important; transition: none !important;
+                opacity: 1 !important; transform: none !important;
+            }
         }
     }
 </style>
@@ -695,30 +533,39 @@
          MOBILE LAYOUT (iOS 17 — hidden on desktop)
          ═══════════════════════════════════════════════════════════ -->
 
-    <!-- ── Top Bar ─────────────────────────────────────────────── -->
+    <!-- ── Sticky header: identity row + segmented tabs, one unit ── -->
     <div class="learner-mobile-topbar">
-        <a href="javascript:history.back()" class="learner-back-btn" aria-label="Go back">
-            <i class="bi bi-chevron-left"></i>
-        </a>
-        <div class="learner-mobile-avatar">{{ student.name|first|upper }}</div>
-        <div class="learner-topbar-info">
-            <div class="learner-topbar-name">{{ student.name }}</div>
-            <div class="learner-topbar-adm">{{ student.admission_no }}</div>
+        <div class="learner-topbar-row">
+            <a href="javascript:history.back()" class="learner-back-btn" aria-label="Go back">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+            <div class="learner-mobile-avatar">{{ student.name|first|upper }}</div>
+            <div class="learner-topbar-info">
+                <div class="learner-topbar-name">{{ student.name }}</div>
+                <div class="learner-topbar-adm">Adm {{ student.admission_no }}</div>
+            </div>
+            {% if can_edit_student %}
+            <button class="learner-edit-trigger" id="learnerEditBtn" aria-label="Edit learner">Edit</button>
+            {% endif %}
         </div>
-        {% if can_edit_student %}
-        <button class="learner-edit-trigger" id="learnerEditBtn" aria-label="Edit learner">Edit</button>
-        {% endif %}
+        <div class="learner-mobile-tabs">
+            <div class="learner-segmented">
+                <button class="learner-seg-btn active" data-tab="learner-info">Info</button>
+                <button class="learner-seg-btn" data-tab="learner-performance">Performance</button>
+                <button class="learner-seg-btn" data-tab="learner-history">History</button>
+            </div>
+        </div>
     </div>
 
     <!-- ── Hero: Performance Snapshot ──────────────────────────── -->
     <div class="lp-hero-card learner-animate-in">
         <div class="lp-hero-row">
             <div class="lp-hero-cell">
-                <div class="lp-hero-val green">{% if latest_exam %}{{ latest_exam.mean }}%{% else %}-{% endif %}</div>
+                <div class="lp-hero-val green">{% if latest_exam %}{{ latest_exam.mean }}%{% else %}&mdash;{% endif %}</div>
                 <div class="lp-hero-lbl">Latest Mean</div>
             </div>
             <div class="lp-hero-cell">
-                <div class="lp-hero-val">{% if latest_exam %}{{ latest_exam.plv }}{% else %}-{% endif %}</div>
+                <div class="lp-hero-val">{% if latest_exam %}{{ latest_exam.plv }}{% else %}&mdash;{% endif %}</div>
                 <div class="lp-hero-lbl">Grade / PLV</div>
             </div>
             <div class="lp-hero-cell">
@@ -731,9 +578,7 @@
     <!-- ── Recent Exam: Subject Score Strip ────────────────────── -->
     {% if latest_exam %}
     <div class="learner-animate-in">
-        <div style="padding:0 16px 6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:#94a3b8;">
-            Latest Exam &mdash; {{ latest_exam.exam_type }} ({{ latest_exam.term }} {{ latest_exam.year }})
-        </div>
+        <div class="lp-recent-heading">Latest &mdash; {{ latest_exam.exam_type }} ({{ latest_exam.term }} {{ latest_exam.year }})</div>
         <div class="lp-recent-strip">
             <div class="lp-recent-list">
                 {% for mark in latest_exam.marks %}
@@ -748,17 +593,8 @@
     </div>
     {% endif %}
 
-    <!-- ── Segmented Tabs ──────────────────────────────────────── -->
-    <div class="learner-mobile-tabs learner-animate-in">
-        <div class="learner-segmented">
-            <button class="learner-seg-btn active" data-tab="learner-info">Info</button>
-            <button class="learner-seg-btn" data-tab="learner-performance">Performance</button>
-            <button class="learner-seg-btn" data-tab="learner-history">History</button>
-        </div>
-    </div>
-
     <!-- ═══ TAB: INFO ══════════════════════════════════════════ -->
-    <div class="learner-tab-content active learner-animate-in" id="learner-info">
+    <div class="learner-tab-content active" id="learner-info">
         <div class="learner-mobile-section">
             <div class="learner-section-header">Student Details</div>
             <div class="learner-info-row">
@@ -797,7 +633,7 @@
     </div>
 
     <!-- ═══ TAB: PERFORMANCE ═══════════════════════════════════ -->
-    <div class="learner-tab-content learner-animate-in" id="learner-performance">
+    <div class="learner-tab-content" id="learner-performance">
         <!-- Bar Chart -->
         <div class="learner-mobile-section">
             <div class="learner-section-header">Performance Trend</div>
@@ -850,7 +686,7 @@
     </div>
 
     <!-- ═══ TAB: HISTORY ═══════════════════════════════════════ -->
-    <div class="learner-tab-content learner-animate-in" id="learner-history">
+    <div class="learner-tab-content" id="learner-history">
         {% if exam_history %}
             {% for exam in exam_history %}
                 <div class="lp-exam-card" onclick="this.classList.toggle('open')">
@@ -859,9 +695,7 @@
                             <h3 class="lp-exam-title">{{ exam.exam_type }}</h3>
                             <div class="lp-exam-meta">{{ exam.term }} {{ exam.year }}</div>
                         </div>
-                        <span class="lp-exam-summary-cell" style="border:none;padding:0;">
-                            <span class="lp-exam-summary-val" style="font-size:14px;">{{ exam.mean }}%</span>
-                        </span>
+                        <span class="lp-exam-mean">{{ exam.mean }}%</span>
                         <i class="bi bi-chevron-right lp-exam-chevron"></i>
                     </div>
                     <div class="lp-exam-marks">

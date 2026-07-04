@@ -1,4 +1,10 @@
 {% extends 'students/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/results-mobile.css' %}">
+{% endblock %}
+
 {% block content %}
 <style>
     :root { --oraimo-green: #a4e61d; }
@@ -1761,6 +1767,8 @@
     }
 </style>
 
+{# ── DESKTOP VIEW (hidden on mobile via results-mobile.css) ── #}
+<div class="rd-desktop">
 <div class="analysis-container">
 
     <!-- iOS 17 Segmented Control -->
@@ -1769,7 +1777,7 @@
             <i class="ph ph-chart-bar" style="margin-right:4px;"></i> Published
         </a>
         <a href="{% url 'report_card_select' %}" style="flex:1; text-align:center; padding:10px 16px; font-size:14px; font-weight:700; color:#64748b; border-radius:10px; text-decoration:none; transition:all 0.2s;">
-            <i class="ph ph-file-pdf" style="margin-right:4px;"></i> Report Cards
+            <i class="ph ph-certificate" style="margin-right:4px;"></i> Report Cards
         </a>
     </div>
 
@@ -2038,6 +2046,231 @@
     {% endif %}
 
 </div>
+</div>{# end .rd-desktop #}
+
+{# ── MOBILE VIEW (hidden on desktop via results-mobile.css) ── #}
+<div class="rs-shell">
+    <div class="rs-header">
+        <span class="rs-header-title">Published Results</span>
+        <span class="rs-header-badge">
+            <i class="ph ph-chart-bar" style="font-size:11px;"></i>
+            {{ access_label }}
+        </span>
+    </div>
+
+    <div class="rs-body">
+        {# ── Segmented Control ── #}
+        <div class="rs-segmented">
+            <a href="{% url 'results_list' %}" class="rs-seg-btn active">
+                <i class="ph ph-chart-bar"></i> Published
+            </a>
+            <a href="{% url 'report_card_select' %}" class="rs-seg-btn">
+                <i class="ph ph-certificate"></i> Report Cards
+            </a>
+        </div>
+
+        {% if show_table %}
+            {# ── Hero Card ── #}
+            <div class="rs-hero">
+                <div class="rs-hero-label">
+                    <i class="ph ph-seal-check"></i> Official Results
+                </div>
+                <div class="rs-hero-title">{{ selected_exam }} — {{ selected_grade }} {{ selected_stream }}</div>
+                <div class="rs-hero-meta">
+                    <div class="rs-hero-pill">
+                        <span class="rs-hero-pill-label">Term</span>
+                        <span class="rs-hero-pill-value">{{ selected_term }}</span>
+                    </div>
+                    <div class="rs-hero-pill">
+                        <span class="rs-hero-pill-label">Year</span>
+                        <span class="rs-hero-pill-value">{{ selected_year }}</span>
+                    </div>
+                    <div class="rs-hero-pill">
+                        <span class="rs-hero-pill-label">Subjects</span>
+                        <span class="rs-hero-pill-value">{{ published_subject_count }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {# ── Context Switcher ── #}
+            {% if published_contexts|length > 1 %}
+                <form method="GET" class="rs-switcher">
+                    <label class="rs-switcher-label">Switch View</label>
+                    <select name="context" class="rs-switcher-select" onchange="this.form.submit()">
+                        {% for item in published_contexts %}
+                            <option value="{{ item.context_key }}" {% if item.context_key == selected_context_key %}selected{% endif %}>
+                                {{ item.class_name }} {{ item.stream }} — {{ item.exam_name }} | {{ item.term }} {{ item.year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            {% endif %}
+
+            {# ── Actions ── #}
+            <div class="rs-actions">
+                <button onclick="window.print()" class="rs-action-btn primary">
+                    <i class="ph ph-printer"></i> Print
+                </button>
+                <a href="{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}" class="rs-action-btn secondary">
+                    <i class="ph ph-download-simple"></i> PDF
+                </a>
+            </div>
+
+            {# ── Student Score Cards (collapsible) ── #}
+            <div class="rs-section-header">
+                <span class="rs-section-title">Student Results</span>
+                <span class="rs-section-count">{{ broadsheet|length }} students</span>
+            </div>
+            <div class="rs-students">
+                {% for row in broadsheet %}
+                <div class="rs-card" onclick="this.classList.toggle('expanded')">
+                    {# ── Collapsed row: always visible ── #}
+                    <div class="rs-card-row">
+                        <div class="rs-rank {% if forloop.counter == 1 %}rank-1{% elif forloop.counter == 2 %}rank-2{% elif forloop.counter == 3 %}rank-3{% endif %}">
+                            {{ forloop.counter }}
+                        </div>
+                        <div class="rs-card-identity">
+                            <div class="rs-card-name">{{ row.student.name }}</div>
+                            <div class="rs-card-adm">ADM {{ row.student.admission_no }}</div>
+                        </div>
+                        <div class="rs-card-summary">
+                            <div class="rs-summary-pill total">
+                                <span class="rs-summary-pill-label">Total</span>
+                                <span class="rs-summary-pill-value">{{ row.total }}</span>
+                            </div>
+                            <div class="rs-summary-pill">
+                                <span class="rs-summary-pill-label">TPS</span>
+                                <span class="rs-summary-pill-value">{{ row.tps }}</span>
+                            </div>
+                            <span class="rs-summary-plv
+                                {% if row.plv == 'EE' %}rs-plv-ee
+                                {% elif row.plv == 'ME' %}rs-plv-me
+                                {% elif row.plv == 'AE' %}rs-plv-ae
+                                {% elif row.plv == 'BE' %}rs-plv-be{% endif %}">
+                                {{ row.plv }}
+                            </span>
+                        </div>
+                        <div class="rs-card-chevron">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                    </div>
+
+                    {# ── Expanded details: hidden by default ── #}
+                    <div class="rs-card-details">
+                        <div class="rs-card-divider"></div>
+                        <div class="rs-card-subjects">
+                            {% for code, short in published_subjects %}
+                            <div class="rs-chip">
+                                <span class="rs-chip-subject">{{ short }}</span>
+                                {% for score_entry in row.scores %}
+                                    {% if forloop.parentloop.counter == forloop.counter %}
+                                <span class="rs-chip-score">{{ score_entry.score }}</span>
+                                <span class="rs-chip-level">{{ score_entry.level }}</span>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {# ── Subject Analysis Cards ── #}
+            {% if analysis_rows %}
+            <div class="rs-section-header">
+                <span class="rs-section-title">Subject Analysis</span>
+            </div>
+            <div class="rs-analysis-cards">
+                {% for item in analysis_rows %}
+                <div class="rs-subject-card">
+                    <div class="rs-subject-card-head">
+                        <div class="rs-subject-icon">{{ item.short|truncatechars:3 }}</div>
+                        <div class="rs-subject-info">
+                            <div class="rs-subject-name">{{ item.short }}</div>
+                            <div class="rs-subject-teacher">{{ item.teacher_name }}</div>
+                        </div>
+                        <div class="rs-subject-mean">
+                            <div class="rs-subject-mean-value">{{ item.mean_score }}</div>
+                            <div class="rs-subject-mean-label">Mean</div>
+                        </div>
+                    </div>
+                    <div class="rs-dist-bar"
+                         data-ee="{{ item.distribution.EE1|default:0|add:item.distribution.EE2|default:0 }}"
+                         data-me="{{ item.distribution.ME1|default:0|add:item.distribution.ME2|default:0 }}"
+                         data-ae="{{ item.distribution.AE1|default:0|add:item.distribution.AE2|default:0 }}"
+                         data-be="{{ item.distribution.BE1|default:0|add:item.distribution.BE2|default:0 }}">
+                    </div>
+                    <div class="rs-dist-legend">
+                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-ee"></span> EE {{ item.distribution.EE1|default:0|add:item.distribution.EE2|default:0 }}</span>
+                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-me"></span> ME {{ item.distribution.ME1|default:0|add:item.distribution.ME2|default:0 }}</span>
+                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-ae"></span> AE {{ item.distribution.AE1|default:0|add:item.distribution.AE2|default:0 }}</span>
+                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-be"></span> BE {{ item.distribution.BE1|default:0|add:item.distribution.BE2|default:0 }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+        {% elif published_contexts %}
+            {# ── Exam Groups Landing ── #}
+            <div class="rs-groups">
+                {% regroup published_contexts by exam_name as exam_groups %}
+                {% for exam_group in exam_groups %}
+                    {% with first=exam_group.list.0 %}
+                    <div class="rs-group-card {% if forloop.first %}is-latest{% endif %}">
+                        <div class="rs-group-header">
+                            <div class="rs-group-info">
+                                <span class="rs-group-label">
+                                    {% if forloop.first %}
+                                        <i class="ph ph-lightning"></i> Latest Published
+                                    {% else %}
+                                        Assessment
+                                    {% endif %}
+                                </span>
+                                <div class="rs-group-name">{{ exam_group.grouper }}</div>
+                            </div>
+                            <div class="rs-group-badges">
+                                {% if forloop.first %}
+                                    <span class="rs-new-badge">
+                                        <i class="ph ph-star"></i> NEW
+                                    </span>
+                                {% endif %}
+                                <span class="rs-timeline-badge">
+                                    <i class="ph ph-calendar"></i>
+                                    {{ first.term }} | {{ first.year }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="rs-class-rows">
+                            {% for item in exam_group.list %}
+                            <a href="?context={{ item.context_key|urlencode }}" class="rs-class-row">
+                                <span class="rs-class-dot"></span>
+                                <div class="rs-class-info">
+                                    <div class="rs-class-name">{{ item.class_name }} {{ item.stream }}</div>
+                                    <div class="rs-class-subjects">{{ item.subject_count }} subjects published</div>
+                                </div>
+                                <span class="rs-class-chevron">›</span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endwith %}
+                {% endfor %}
+            </div>
+
+        {% else %}
+            {# ── Empty State ── #}
+            <div class="rs-empty">
+                <div class="rs-empty-icon">
+                    <i class="ph ph-chart-bar"></i>
+                </div>
+                <div class="rs-empty-title">No Published Results</div>
+                <div class="rs-empty-text">Results will appear here once the assessment administrator publishes at least one subject sheet.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
 
 {% endblock %}
 
@@ -2046,52 +2279,25 @@
 document.addEventListener('DOMContentLoaded', function() {
     if (window.innerWidth > 768) return;
 
-    var rows = document.querySelectorAll('.table-analysis tbody tr');
-    var subjectNames = Array.from(document.querySelectorAll('.table-analysis thead .subj-header')).map(function(th) {
-        return th.textContent.trim();
-    });
+    /* ── Distribution bars: calculate widths from data attributes ── */
+    document.querySelectorAll('.rs-dist-bar').forEach(function(bar) {
+        var ee = parseInt(bar.dataset.ee) || 0;
+        var me = parseInt(bar.dataset.me) || 0;
+        var ae = parseInt(bar.dataset.ae) || 0;
+        var be = parseInt(bar.dataset.be) || 0;
+        var total = ee + me + ae + be;
+        if (total === 0) return;
 
-    rows.forEach(function(row) {
-        // Get data from hidden cells
-        var cells = row.querySelectorAll('td');
-        if (cells.length < 3) return;
+        var pctEE = (ee / total * 100).toFixed(1);
+        var pctME = (me / total * 100).toFixed(1);
+        var pctAE = (ae / total * 100).toFixed(1);
+        var pctBE = (be / total * 100).toFixed(1);
 
-        var summaryRow = document.createElement('div');
-        summaryRow.className = 'mobile-summary-row';
-
-        // Extract TPS, Total, PLV from last 3 columns
-        var tps = cells[cells.length - 3] ? cells[cells.length - 3].textContent.trim() : '';
-        var total = cells[cells.length - 2] ? cells[cells.length - 2].textContent.trim() : '';
-        var plv = cells[cells.length - 1] ? cells[cells.length - 1].textContent.trim() : '';
-
-        summaryRow.innerHTML =
-            '<span class="summary-chip">TPS: <strong>' + tps + '</strong></span>' +
-            '<span class="summary-chip">Total: <strong>' + total + '</strong></span>' +
-            '<span class="summary-chip">PLV: <strong>' + plv + '</strong></span>';
-
-        row.appendChild(summaryRow);
-
-        var subjectGrid = document.createElement('div');
-        subjectGrid.className = 'mobile-subject-grid';
-        var subjectHtml = '';
-        subjectNames.forEach(function(name, idx) {
-            var scoreCell = cells[2 + (idx * 2)];
-            var levelCell = cells[3 + (idx * 2)];
-            var score = scoreCell ? scoreCell.textContent.trim() : '';
-            var level = levelCell ? levelCell.textContent.trim() : '';
-            subjectHtml += '<div class="mobile-subject-chip"><span>' + name + '</span><strong>' + score + ' ' + level + '</strong></div>';
-        });
-        subjectGrid.innerHTML = subjectHtml;
-        row.appendChild(subjectGrid);
-
-        var hint = document.createElement('div');
-        hint.className = 'expand-hint';
-        hint.textContent = 'Tap to view subject scores';
-        row.appendChild(hint);
-
-        row.addEventListener('click', function() {
-            this.classList.toggle('expanded');
-        });
+        bar.innerHTML =
+            '<div class="rs-dist-seg rs-dist-ee" style="width:' + pctEE + '%"></div>' +
+            '<div class="rs-dist-seg rs-dist-me" style="width:' + pctME + '%"></div>' +
+            '<div class="rs-dist-seg rs-dist-ae" style="width:' + pctAE + '%"></div>' +
+            '<div class="rs-dist-seg rs-dist-be" style="width:' + pctBE + '%"></div>';
     });
 });
 </script>

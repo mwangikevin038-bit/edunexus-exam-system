@@ -319,7 +319,7 @@ def report_card_select(request):
         'published_contexts': published_contexts,
         'published_subject_count': selected_context["subject_count"] if selected_context else 0,
         'total_required_subjects': total_required_subjects,
-        'student_count': students.count() if selected_context else 0,
+        'student_count': len(students) if selected_context else 0,
         'years':              range(2024, datetime.date.today().year + 1),
         'terms':              TERM_CHOICES,
         'grades':             [class_teacher_scope[0]] if class_teacher_scope and not is_admin_view else grade_choices,

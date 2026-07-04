@@ -525,7 +525,7 @@ body.sidebar-collapsed .main-content {
 .mobile-menu-sheet {
     position: fixed;
     inset: 0;
-    z-index: calc(var(--z-bottomnav) + 2);
+    z-index: 950;
     pointer-events: none;
     visibility: hidden;
 }
@@ -823,6 +823,7 @@ body.sidebar-collapsed .main-content {
 
     .bottom-nav {
         display: flex;
+        z-index: 900;
     }
 
     .main-content {

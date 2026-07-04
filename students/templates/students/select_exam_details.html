@@ -1,4 +1,9 @@
 {% extends 'students/base.html' %}
+{% load static %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/capture-mobile.css' %}">
+<link rel="stylesheet" href="{% static 'css/entry-mobile.css' %}">
+{% endblock %}
 {% block content %}
 <style>
     .cap{max-width:100%;margin:0 auto;padding-bottom:90px;animation:capIn 350ms cubic-bezier(.16,1,.3,1) both}
@@ -175,154 +180,178 @@
 
     {% if selected_assignment and selected_exam %}
 
-        <a href="{% url back_url %}" class="cap-back">
-            <i class="ph ph-arrow-left"></i> Back to assessments
-        </a>
+        {# ═══ iOS 17 MARK ENTRY SHELL ════════════════════════════ #}
+        <div class="en-shell">
+            <header class="en-header">
+                <a href="{% url back_url %}" class="en-back">
+                    <i class="ph ph-arrow-left"></i> Back to assessments
+                </a>
+                <div class="en-header-title">Score Capture</div>
+                <div class="en-header-subtitle">Enter marks below. Changes save automatically.</div>
+            </header>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div class="cap-alert {% if message.tags == 'success' %}cap-alert-success{% elif message.tags == 'error' %}cap-alert-danger{% else %}cap-alert-info{% endif %}">
-                    <i class="ph {% if message.tags == 'success' %}ph-check-circle{% elif message.tags == 'error' %}ph-warning-circle{% else %}ph-info{% endif %}"></i>
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
+            <main class="en-body">
 
-        {% if is_locked %}
-            <div class="cap-alert cap-alert-danger">
-                <i class="ph ph-lock"></i>
-                This assessment has been locked by the administrator. Entries are read-only.
-            </div>
-        {% endif %}
-
-        {% if is_submitted %}
-            <div class="cap-alert cap-alert-info">
-                <i class="ph ph-check-circle"></i>
-                This sheet has been submitted. Use "Return for Edits" below to make changes.
-            </div>
-        {% endif %}
-
-        {% if submission and submission.status == "returned" %}
-            <div class="cap-alert cap-alert-warning">
-                <i class="ph ph-arrow-u-up-left"></i>
-                <div>
-                    <strong>Returned for Correction</strong><br>
-                    Please review scores, apply corrections, and submit again.
-                    {% if submission.admin_note %}
-                        <p>{{ submission.admin_note }}</p>
-                    {% endif %}
-                </div>
-            </div>
-        {% endif %}
-
-        <div class="cap-green-card">
-            <div class="cap-green-top">
-                <div class="cap-green-icon">
-                    <i class="ph ph-book-open"></i>
-                </div>
-                <div class="cap-green-info">
-                    <div class="cap-green-class">{{ selected_assignment.class_name }} {{ selected_assignment.stream }}</div>
-                    <div class="cap-green-subject">{{ selected_assignment.subject.name }}</div>
-                    <div class="cap-green-meta">{{ selected_exam.name }} · {{ selected_exam.term }} · {{ selected_exam.year }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="cap-action-btns">
-            <button type="button" class="cap-action-btn" onclick="alert('CSV import coming soon')">
-                <i class="ph ph-upload-simple"></i> Import
-            </button>
-            <button type="button" class="cap-action-btn primary active">
-                <i class="ph ph-keyboard"></i> Key In
-            </button>
-        </div>
-
-        <form method="POST" id="marksForm">
-            {% csrf_token %}
-            <input type="hidden" name="assignment_id" value="{{ selected_assignment.id }}">
-            <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
-
-            <div class="cap-meta">
-                <div class="cap-meta-cell">
-                    <div class="cap-meta-label">Assessment</div>
-                    <div class="cap-meta-value">{{ selected_exam.name }}</div>
-                </div>
-                <div class="cap-meta-cell">
-                    <div class="cap-meta-label">Total Marks</div>
-                    <input type="number" name="maximum_marks" id="maximumMarks"
-                           class="cap-meta-input"
-                           value="{{ current_maximum_marks|default:100 }}"
-                           min="1" max="500"
-                           oninput="recalculateAll()"
-                           {% if is_locked or is_submitted %}readonly{% endif %}>
-                </div>
-                <div class="cap-meta-cell">
-                    <div class="cap-meta-label">Term</div>
-                    <div class="cap-meta-value">{{ selected_exam.term }}</div>
-                </div>
-                <div class="cap-meta-cell">
-                    <div class="cap-meta-label">Year</div>
-                    <div class="cap-meta-value">{{ selected_exam.year }}</div>
-                </div>
-            </div>
-
-            <div class="cap-section">
-                <span class="cap-section-title">LEARNER SCORES ({{ students|length }})</span>
-            </div>
-
-            <div class="cap-students">
-                {% for student in students %}
-                    <div class="cap-student" data-student-id="{{ student.id }}">
-                        <div class="cap-student-left">
-                            <div class="cap-student-name">{{ student.name }}</div>
-                            <div class="cap-student-adm">{{ student.admission_no }}</div>
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="en-banner {% if message.tags == 'success' %}en-banner-success{% elif message.tags == 'error' %}en-banner-danger{% else %}en-banner-info{% endif %}">
+                            <i class="ph {% if message.tags == 'success' %}ph-check-circle{% elif message.tags == 'error' %}ph-warning-circle{% else %}ph-info{% endif %}"></i>
+                            <div class="en-banner-content">{{ message }}</div>
                         </div>
-                        <div class="cap-student-right">
-                            <input type="text"
-                                   name="score_{{ student.id }}"
-                                   value="{{ student.current_score }}"
-                                   class="cap-score"
-                                   inputmode="decimal"
-                                   enterkeyhint="next"
-                                   oninput="calcScore(this)"
-                                   onkeydown="nextOnEnter(event, this)"
-                                   placeholder="—"
-                                   data-had-value="{% if student.current_score != '' and student.current_score is not None %}1{% else %}0{% endif %}"
-                                   {% if is_locked %}readonly{% endif %}>
-                            <button type="button" class="cap-absent"
-                                    onclick="markAB(this)" tabindex="-1"
-                                    {% if is_locked %}disabled{% endif %}>AB</button>
-                            <div class="cap-student-status">
-                                <span class="cap-level" data-level="{{ forloop.counter }}">—</span>
-                                <span class="cap-pts" data-pts="{{ forloop.counter }}"></span>
-                                <span class="cap-pct" data-pct="{{ forloop.counter }}"></span>
+                    {% endfor %}
+                {% endif %}
+
+                {% if is_locked %}
+                    <div class="en-banner en-banner-danger">
+                        <i class="ph ph-lock"></i>
+                        <div class="en-banner-content">This assessment has been locked by the administrator. Entries are read-only.</div>
+                    </div>
+                {% endif %}
+
+                {% if is_submitted %}
+                    <div class="en-banner">
+                        <i class="ph ph-check-circle"></i>
+                        <div class="en-banner-content">
+                            This sheet has been submitted. Use the button below to return it for editing.
+                            <button type="button" class="en-banner-btn" onclick="returnForEdits()">
+                                <i class="ph ph-arrow-u-up-left"></i> Return for Edits
+                            </button>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if submission and submission.status == "returned" %}
+                    <div class="en-banner en-banner-warning">
+                        <i class="ph ph-arrow-u-up-left"></i>
+                        <div class="en-banner-content">
+                            <strong>Returned for Correction</strong><br>
+                            Please review scores, apply corrections, and submit again.
+                            {% if submission.admin_note %}
+                                <div class="en-banner-note">{{ submission.admin_note }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                {# ── Green Hero Card ──────────────────────────────── #}
+                <div class="en-hero">
+                    <div class="en-hero-top">
+                        <div class="en-hero-icon">
+                            <i class="ph ph-book-open"></i>
+                        </div>
+                        <div class="en-hero-info">
+                            <div class="en-hero-class">{{ selected_assignment.class_name }} {{ selected_assignment.stream }}</div>
+                            <div class="en-hero-subject">{{ selected_assignment.subject.name }}</div>
+                        </div>
+                    </div>
+                    <div class="en-meta-row">
+                        <span class="en-pill"><i class="ph ph-clipboard-text"></i> {{ selected_exam.name }}</span>
+                        <span class="en-pill"><i class="ph ph-calendar"></i> {{ selected_exam.term }}</span>
+                        <span class="en-pill"><i class="ph ph-clock"></i> {{ selected_exam.year }}</span>
+                    </div>
+                </div>
+
+                {# ── Segmented Control ────────────────────────────── #}
+                <div class="en-segment">
+                    <button type="button" class="en-segment-btn" onclick="alert('CSV import coming soon')">
+                        <i class="ph ph-upload-simple"></i> Import
+                    </button>
+                    <button type="button" class="en-segment-btn active">
+                        <i class="ph ph-keyboard"></i> Key In
+                    </button>
+                </div>
+
+                {# ── Metadata Pills ───────────────────────────────── #}
+                <div class="en-meta-pills">
+                    <span class="en-meta-pill">
+                        <i class="ph ph-clipboard-text"></i>
+                        <strong>{{ selected_exam.name }}</strong>
+                    </span>
+                    <span class="en-meta-pill">
+                        <i class="ph ph-squares-four"></i>
+                        <span>Total:</span>
+                        <div class="en-meta-pill-input">
+                            <input type="number" name="maximum_marks" id="maximumMarks"
+                                   value="{{ current_maximum_marks|default:100 }}"
+                                   min="1" max="500"
+                                   oninput="recalculateAll()"
+                                   {% if is_locked or is_submitted %}readonly{% endif %}>
+                            <span>pts</span>
+                        </div>
+                    </span>
+                    <span class="en-meta-pill">
+                        <i class="ph ph-calendar"></i>
+                        {{ selected_exam.term }} {{ selected_exam.year }}
+                    </span>
+                </div>
+
+                <form method="POST" id="marksForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="assignment_id" value="{{ selected_assignment.id }}">
+                    <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
+
+                    {# ── Learner Scores Section ──────────────────────── #}
+                    <div class="en-section">
+                        <span class="en-section-title">LEARNER SCORES ({{ students|length }})</span>
+                    </div>
+
+                    <div class="en-students">
+                        {% for student in students %}
+                            <div class="en-student" data-student-id="{{ student.id }}">
+                                <div class="en-student-left">
+                                    <div class="en-student-name">{{ student.name }}</div>
+                                    <div class="en-student-adm">{{ student.admission_no }}</div>
+                                </div>
+                                <div class="en-student-right">
+                                    <input type="text"
+                                           name="score_{{ student.id }}"
+                                           value="{{ student.current_score }}"
+                                           class="en-score"
+                                           inputmode="decimal"
+                                           enterkeyhint="next"
+                                           oninput="calcScore(this)"
+                                           onkeydown="nextOnEnter(event, this)"
+                                           placeholder="—"
+                                           data-had-value="{% if student.current_score != '' and student.current_score is not None %}1{% else %}0{% endif %}"
+                                           {% if is_locked %}readonly{% endif %}>
+                                    <button type="button" class="en-absent"
+                                            onclick="markAB(this)" tabindex="-1"
+                                            {% if is_locked %}disabled{% endif %}>AB</button>
+                                    <div class="en-student-status">
+                                        <span class="en-level" data-level="{{ forloop.counter }}">—</span>
+                                        <span class="en-pts" data-pts="{{ forloop.counter }}"></span>
+                                        <span class="en-pct" data-pct="{{ forloop.counter }}"></span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        {% empty %}
+                            <div class="en-empty">
+                                <div class="en-empty-icon"><i class="ph ph-users"></i></div>
+                                <div class="en-empty-title">No learners found</div>
+                                <div class="en-empty-desc">No learners registered in this class stream.</div>
+                            </div>
+                        {% endfor %}
                     </div>
-                {% empty %}
-                    <div class="cap-empty">
-                        <div class="cap-empty-icon"><i class="ph ph-users"></i></div>
-                        <div class="cap-empty-title">No learners found</div>
-                        <div class="cap-empty-desc">No learners registered in this class stream.</div>
-                    </div>
-                {% endfor %}
-            </div>
-        </form>
+                </form>
 
+            </main>
+        </div>
+
+        {# ── Floating Bottom Bar (outside shell, above nav) ─────── #}
         {% if not is_locked and not is_submitted %}
-            <div class="cap-bottom-bar">
-                <div class="cap-progress"><span id="scoredCount">0</span>/{{ students|length }} <span>Students Scored</span></div>
-                <button type="submit" form="marksForm" class="cap-submit-btn">
+            <div class="en-bottom-bar">
+                <div class="en-progress"><span id="scoredCount">0</span>/{{ students|length }} <span>Students Scored</span></div>
+                <button type="submit" form="marksForm" class="en-submit-btn">
                     <i class="ph ph-cloud-arrow-up"></i> Submit Marks
                 </button>
             </div>
         {% elif is_submitted and not is_locked %}
-            <div class="cap-bottom-bar cap-bottom-bar-returned">
-                <div class="cap-progress">
+            <div class="en-bottom-bar en-bottom-bar-returned">
+                <div class="en-progress">
                     <i class="ph ph-check-circle" style="color:#16a34a;font-size:16px"></i>
-                    <span>Submitted — awaiting admin review</span>
+                    <span>Submitted</span>
                 </div>
-                <button type="button" class="cap-submit-btn cap-return-btn" onclick="returnForEdits()">
+                <button type="button" class="en-submit-btn en-return-btn" onclick="returnForEdits()">
                     <i class="ph ph-arrow-u-up-left"></i> Return for Edits
                 </button>
             </div>
@@ -330,56 +359,105 @@
 
     {% else %}
 
-        <div class="cap-head">
-            <h1>Assessment Workspace</h1>
-            <p>Tap an assessment to begin entering learner scores.</p>
-        </div>
+        {# ═══ iOS 17 MOBILE ASSESSMENT LIST ════════════════════ #}
+        <div class="cp-shell">
+            <header class="cp-header">
+                <h1 class="cp-title">Assessment Workspace</h1>
+                <div class="cp-subtitle">Tap an assessment to begin entering learner scores.</div>
+            </header>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div class="cap-alert {% if message.tags == 'success' %}cap-alert-success{% elif message.tags == 'error' %}cap-alert-danger{% else %}cap-alert-info{% endif %}">
-                    <i class="ph {% if message.tags == 'success' %}ph-check-circle{% elif message.tags == 'error' %}ph-warning-circle{% else %}ph-info{% endif %}"></i>
-                    {{ message }}
+            <main class="cp-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="cap-alert {% if message.tags == 'success' %}cap-alert-success{% elif message.tags == 'error' %}cap-alert-danger{% else %}cap-alert-info{% endif %}" style="margin: 0 0 12px;">
+                            <i class="ph {% if message.tags == 'success' %}ph-check-circle{% elif message.tags == 'error' %}ph-warning-circle{% else %}ph-info{% endif %}"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {% regroup exam_rows by assignment.class_name as class_groups %}
+
+                {% for group in class_groups %}
+                    <div class="cp-group">
+                        <div class="cp-group-head">
+                            <div class="cp-group-left">
+                                <div class="cp-group-icon"><i class="ph ph-chalkboard-teacher"></i></div>
+                                <div class="cp-group-name">{{ group.grouper }}</div>
+                            </div>
+                            <span class="cp-group-count">{{ group.list|length }}</span>
+                        </div>
+                        <div class="cp-items">
+                            {% for row in group.list %}
+                                <a class="cp-assess" href="?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}">
+                                    <div class="cp-assess-left">
+                                        <div class="cp-assess-dot {{ row.status_key }}"></div>
+                                        <div class="cp-assess-info">
+                                            <div class="cp-assess-name">{{ row.assignment.subject.name }}</div>
+                                            <div class="cp-assess-detail">{{ row.assignment.stream }} · {{ row.exam.name }} · {{ row.exam.term }} {{ row.exam.year }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="cp-assess-right">
+                                        <span class="cp-assess-status {{ row.status_key }}">{{ row.status_label }}</span>
+                                        <i class="ph ph-caret-right cp-assess-chevron"></i>
+                                    </div>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="cp-empty">
+                        <div class="cp-empty-icon"><i class="ph ph-inbox"></i></div>
+                        <div class="cp-empty-title">No assessments available</div>
+                        <div class="cp-empty-desc">Assessment sheets will appear here once published for your classes.</div>
+                    </div>
+                {% endfor %}
+            </main>
+        </div>
+        {# ═══ END iOS 17 MOBILE ════════════════════════════════ #}
+
+        {# ── Desktop view (hidden on mobile via CSS) ─────────── #}
+        <div class="cap" style="display:none;">
+            <div class="cap-head">
+                <h1>Assessment Workspace</h1>
+                <p>Tap an assessment to begin entering learner scores.</p>
+            </div>
+            {% regroup exam_rows by assignment.class_name as class_groups %}
+            {% for group in class_groups %}
+                <div class="cap-group">
+                    <div class="cap-group-head">
+                        <div class="cap-group-left">
+                            <div class="cap-group-icon"><i class="ph ph-chalkboard-teacher"></i></div>
+                            <div class="cap-group-name">{{ group.grouper }}</div>
+                        </div>
+                        <span class="cap-group-count">{{ group.list|length }}</span>
+                    </div>
+                    <div class="cap-group-items">
+                        {% for row in group.list %}
+                            <a class="cap-assess" href="?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}">
+                                <div class="cap-assess-left">
+                                    <div class="cap-assess-dot {{ row.status_key }}"></div>
+                                    <div class="cap-assess-info">
+                                        <div class="cap-assess-name">{{ row.assignment.subject.name }}</div>
+                                        <div class="cap-assess-detail">{{ row.assignment.stream }} · {{ row.exam.name }} · {{ row.exam.term }} {{ row.exam.year }}</div>
+                                    </div>
+                                </div>
+                                <div class="cap-assess-right">
+                                    <span class="cap-assess-status {{ row.status_key }}">{{ row.status_label }}</span>
+                                    <i class="ph ph-caret-right cap-assess-chevron"></i>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="cap-empty">
+                    <div class="cap-empty-icon"><i class="ph ph-inbox"></i></div>
+                    <div class="cap-empty-title">No assessments available</div>
+                    <div class="cap-empty-desc">Assessment sheets will appear here once published for your classes.</div>
                 </div>
             {% endfor %}
-        {% endif %}
-
-        {% regroup exam_rows by assignment.class_name as class_groups %}
-
-        {% for group in class_groups %}
-            <div class="cap-group">
-                <div class="cap-group-head">
-                    <div class="cap-group-left">
-                        <div class="cap-group-icon"><i class="ph ph-chalkboard-teacher"></i></div>
-                        <div class="cap-group-name">{{ group.grouper }}</div>
-                    </div>
-                    <span class="cap-group-count">{{ group.list|length }}</span>
-                </div>
-                <div class="cap-group-items">
-                    {% for row in group.list %}
-                        <a class="cap-assess" href="?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}">
-                            <div class="cap-assess-left">
-                                <div class="cap-assess-dot {{ row.status_key }}"></div>
-                                <div class="cap-assess-info">
-                                    <div class="cap-assess-name">{{ row.assignment.subject.name }}</div>
-                                    <div class="cap-assess-detail">{{ row.assignment.stream }} · {{ row.exam.name }} · {{ row.exam.term }} {{ row.exam.year }}</div>
-                                </div>
-                            </div>
-                            <div class="cap-assess-right">
-                                <span class="cap-assess-status {{ row.status_key }}">{{ row.status_label }}</span>
-                                <i class="ph ph-caret-right cap-assess-chevron"></i>
-                            </div>
-                        </a>
-                    {% endfor %}
-                </div>
-            </div>
-        {% empty %}
-            <div class="cap-empty">
-                <div class="cap-empty-icon"><i class="ph ph-inbox"></i></div>
-                <div class="cap-empty-title">No assessments available</div>
-                <div class="cap-empty-desc">Assessment sheets will appear here once published for your classes.</div>
-            </div>
-        {% endfor %}
+        </div>
 
     {% endif %}
 </div>
@@ -421,10 +499,10 @@
     var pageLoaded = false;
 
     function showToast(msg, type) {
-        var existing = document.querySelector('.cap-toast');
+        var existing = document.querySelector('.en-toast');
         if (existing) existing.remove();
         var t = document.createElement('div');
-        t.className = 'cap-toast';
+        t.className = 'en-toast';
         t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:10px;font-size:.8125rem;font-weight:700;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity 300ms;opacity:1;pointer-events:none;';
         if (type === 'error') { t.style.background='#fef2f2'; t.style.color='#991b1b'; t.style.border='1px solid #fecaca'; }
         else if (type === 'success') { t.style.background='#f0fdf4'; t.style.color='#15803d'; t.style.border='1px solid #bbf7d0'; }
@@ -436,7 +514,7 @@
     }
 
     function autoSaveMark(input) {
-        var row = input.closest('.cap-student');
+        var row = input.closest('.en-student');
         if (!row || input.readOnly) return;
         var studentId = row.getAttribute('data-student-id');
         var assignmentId = document.querySelector('input[name="assignment_id"]');
@@ -487,7 +565,7 @@
     }
 
     function autoDeleteMark(input) {
-        var row = input.closest('.cap-student');
+        var row = input.closest('.en-student');
         if (!row || input.readOnly) return;
         var studentId = row.getAttribute('data-student-id');
         var assignmentId = document.querySelector('input[name="assignment_id"]');
@@ -539,7 +617,7 @@
     }
 
     function updateProgress() {
-        var inputs = document.querySelectorAll('.cap-score');
+        var inputs = document.querySelectorAll('.en-score');
         var scored = 0;
         inputs.forEach(function(inp) {
             var v = inp.value.trim().toUpperCase();
@@ -552,10 +630,10 @@
     window.calcScore = function(input, skipSave) {
         var max = parseFloat(document.getElementById('maximumMarks').value) || 100;
         var val = input.value.trim().toUpperCase();
-        var row = input.closest('.cap-student');
-        var badge = row.querySelector('.cap-level');
-        var pts = row.querySelector('.cap-pts');
-        var pct = row.querySelector('.cap-pct');
+        var row = input.closest('.en-student');
+        var badge = row.querySelector('.en-level');
+        var pts = row.querySelector('.en-pts');
+        var pct = row.querySelector('.en-pct');
 
         if (val === 'AB') {
             badge.textContent = 'AB';
@@ -627,8 +705,8 @@
     };
 
     window.markAB = function(btn) {
-        var row = btn.closest('.cap-student');
-        var input = row.querySelector('.cap-score');
+        var row = btn.closest('.en-student');
+        var input = row.querySelector('.en-score');
         input.value = 'AB';
         calcScore(input);
         input.focus();
@@ -638,7 +716,7 @@
         if (e.key === 'Enter' || e.key === 'Go' || e.key === 'Next') {
             e.preventDefault();
             calcScore(input);
-            var all = Array.from(document.querySelectorAll('.cap-score'));
+            var all = Array.from(document.querySelectorAll('.en-score'));
             var idx = all.indexOf(input);
             var next = all[idx + 1];
             if (next && !next.readOnly) {
@@ -649,7 +727,7 @@
     };
 
     window.recalculateAll = function() {
-        document.querySelectorAll('.cap-score').forEach(function(inp) {
+        document.querySelectorAll('.en-score').forEach(function(inp) {
             calcScore(inp, true);
         });
     };

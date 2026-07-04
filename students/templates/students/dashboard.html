@@ -1,26 +1,30 @@
 {% extends 'students/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/dashboard-mobile.css' %}">
+{% endblock %}
 
 {% block content %}
 <style>
     /* ═══════════════════════════════════════════════════════════
-       MODERN SAAS DASHBOARD — Clean, Readable, Premium
+       MODERN SAAS DASHBOARD — Desktop Only
        ═══════════════════════════════════════════════════════════ */
     .dash {
         max-width: 100%;
         margin: 0 auto;
         padding-bottom: var(--space-4);
-        animation: dashFadeIn 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: dashFadeInOld 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
     }
-    @keyframes dashFadeIn {
+    @keyframes dashFadeInOld {
         from { opacity: 0; transform: translateY(12px); }
         to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Greeting ─────────────────────────────────────────────── */
-    .dash-greeting {
+    .dash-greeting-dt {
         margin-bottom: 24px;
     }
-    .dash-greeting h1 {
+    .dash-greeting-dt h1 {
         font-size: 1.5rem;
         font-weight: 800;
         color: #171717;
@@ -28,19 +32,18 @@
         line-height: 1.25;
         margin: 0;
     }
-    .dash-greeting h1 em {
+    .dash-greeting-dt h1 em {
         font-style: normal;
         color: #171717;
     }
-    .dash-greeting p {
+    .dash-greeting-dt p {
         font-size: 0.8125rem;
         color: #737373;
         margin: 6px 0 0;
         font-weight: 500;
     }
 
-    /* ── Hero Action Card ─────────────────────────────────────── */
-    .dash-hero {
+    .dash-hero-dt {
         display: block;
         text-decoration: none;
         background: #ffffff;
@@ -51,495 +54,169 @@
         transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
         -webkit-tap-highlight-color: transparent;
     }
-    .dash-hero:active {
-        transform: scale(0.985);
-    }
-    .dash-hero-inner {
+    .dash-hero-dt:active { transform: scale(0.985); }
+    .dash-hero-inner-dt {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 14px;
     }
-    .dash-hero-left {
+    .dash-hero-left-dt {
         display: flex;
         align-items: center;
         gap: 14px;
         min-width: 0;
     }
-    .dash-hero-icon {
-        width: 46px;
-        height: 46px;
-        border-radius: 13px;
-        background: #171717;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
+    .dash-hero-icon-dt {
+        width: 46px; height: 46px; border-radius: 13px;
+        background: #171717; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .dash-hero-icon i {
-        font-size: 21px;
-        color: #ffffff;
-    }
-    .dash-hero-text h3 {
-        font-size: 0.9375rem;
-        font-weight: 700;
-        color: #171717;
-        margin: 0 0 1px;
-        letter-spacing: -0.01em;
-    }
-    .dash-hero-text p {
-        font-size: 0.75rem;
-        color: #737373;
-        margin: 0;
-        font-weight: 500;
-    }
-    .dash-hero-arrow {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        background: #f5f5f5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    .dash-hero-arrow i {
-        font-size: 16px;
-        color: #525252;
-    }
+    .dash-hero-icon-dt i { font-size: 21px; color: #ffffff; }
+    .dash-hero-text-dt h3 { font-size: 0.9375rem; font-weight: 700; color: #171717; margin: 0 0 1px; letter-spacing: -0.01em; }
+    .dash-hero-text-dt p { font-size: 0.75rem; color: #737373; margin: 0; font-weight: 500; }
+    .dash-hero-arrow-dt { width: 34px; height: 34px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .dash-hero-arrow-dt i { font-size: 16px; color: #525252; }
 
-    /* ── Small Action Cards ───────────────────────────────────── */
-    .dash-actions {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-bottom: 28px;
-    }
-    .dash-action {
-        display: flex;
-        flex-direction: column;
-        text-decoration: none;
-        background: #ffffff;
-        border: 1px solid #e5e5e5;
-        border-radius: 12px;
-        padding: 16px 12px;
-        transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
-        -webkit-tap-highlight-color: transparent;
-    }
-    .dash-action:active {
-        transform: scale(0.97);
-    }
-    .dash-action-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        background: #f5f5f5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 12px;
-    }
-    .dash-action-icon i {
-        font-size: 18px;
-        color: #171717;
-    }
-    .dash-action-title {
-        font-size: 0.8125rem;
-        font-weight: 700;
-        color: #171717;
-        letter-spacing: -0.01em;
-    }
+    .dash-actions-dt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 28px; }
+    .dash-action-dt { display: flex; flex-direction: column; text-decoration: none; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px 12px; transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1); -webkit-tap-highlight-color: transparent; }
+    .dash-action-dt:active { transform: scale(0.97); }
+    .dash-action-icon-dt { width: 36px; height: 36px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+    .dash-action-icon-dt i { font-size: 18px; color: #171717; }
+    .dash-action-title-dt { font-size: 0.8125rem; font-weight: 700; color: #171717; letter-spacing: -0.01em; }
 
-    /* ── Metrics (Progress Rings) ─────────────────────────────── */
-    .dash-metrics-label {
-        font-size: 0.6875rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #737373;
-        margin-bottom: 12px;
-    }
-    .dash-metrics {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-        margin-bottom: 28px;
-    }
-    .dash-metric {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        background: #ffffff;
-        border: 1px solid #e5e5e5;
-        border-radius: 12px;
-        padding: 16px 8px;
-    }
-    .dash-ring {
-        position: relative;
-        width: 50px;
-        height: 50px;
-    }
-    .dash-ring svg {
-        width: 50px;
-        height: 50px;
-        transform: rotate(-90deg);
-    }
-    .dash-ring-track {
-        fill: none;
-        stroke: #f0f0f0;
-        stroke-width: 4;
-    }
-    .dash-ring-fill {
-        fill: none;
-        stroke-width: 4;
-        stroke-linecap: round;
-        transition: stroke-dashoffset 700ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .dash-ring-value {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        font-weight: 800;
-        color: #171717;
-        letter-spacing: -0.02em;
-    }
-    .dash-metric-label {
-        font-size: 0.5625rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: #525252;
-        text-align: center;
-        line-height: 1.3;
-    }
+    .dash-metrics-label-dt { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #737373; margin-bottom: 12px; }
+    .dash-metrics-dt { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+    .dash-metric-dt { display: flex; flex-direction: column; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px 8px; }
+    .dash-ring-dt { position: relative; width: 50px; height: 50px; }
+    .dash-ring-dt svg { width: 50px; height: 50px; transform: rotate(-90deg); }
+    .dash-ring-track-dt { fill: none; stroke: #f0f0f0; stroke-width: 4; }
+    .dash-ring-fill-dt { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 700ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .dash-ring-value-dt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 800; color: #171717; letter-spacing: -0.02em; }
+    .dash-metric-label-dt { font-size: 0.5625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #525252; text-align: center; line-height: 1.3; }
 
-    /* ── Section Header ───────────────────────────────────────── */
-    .dash-section-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 12px;
-    }
-    .dash-section-title {
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: #171717;
-        letter-spacing: -0.01em;
-    }
-    .dash-section-link {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #171717;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 2px;
-        opacity: 0.6;
-        transition: opacity 200ms;
-    }
-    .dash-section-link:active { opacity: 1; }
-    .dash-section-link i { font-size: 14px; }
+    .dash-section-head-dt { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .dash-section-title-dt { font-size: 0.875rem; font-weight: 700; color: #171717; letter-spacing: -0.01em; }
+    .dash-section-link-dt { font-size: 0.75rem; font-weight: 600; color: #171717; text-decoration: none; display: flex; align-items: center; gap: 2px; opacity: 0.6; transition: opacity 200ms; }
+    .dash-section-link-dt:active { opacity: 1; }
+    .dash-section-link-dt i { font-size: 14px; }
 
-    /* ── Class Cards ──────────────────────────────────────────── */
-    .dash-classes {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-bottom: 28px;
-    }
-    .dash-class {
-        background: #ffffff;
-        border: 1px solid #e5e5e5;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-    .dash-class-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 14px 16px;
-    }
-    .dash-class-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 0;
-    }
-    .dash-class-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        background: #f5f5f5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    .dash-class-icon i {
-        font-size: 16px;
-        color: #171717;
-    }
-    .dash-class-name {
-        font-size: 0.8125rem;
-        font-weight: 700;
-        color: #171717;
-        letter-spacing: -0.01em;
-    }
-    .dash-class-meta {
-        font-size: 0.6875rem;
-        color: #737373;
-        font-weight: 500;
-        margin-top: 1px;
-    }
-    .dash-class-badge {
-        font-size: 0.5625rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        padding: 4px 10px;
-        border-radius: 20px;
-        background: #f0fdf4;
-        color: #15803d;
-        flex-shrink: 0;
-    }
-    .dash-class-progress {
-        padding: 0 16px 14px;
-    }
-    .dash-progress-bar {
-        width: 100%;
-        height: 3px;
-        background: #f0f0f0;
-        border-radius: 3px;
-        overflow: hidden;
-    }
-    .dash-progress-fill {
-        height: 100%;
-        background: #171717;
-        border-radius: 3px;
-        transition: width 500ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .dash-class-stats {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 10px;
-    }
-    .dash-class-stat {
-        font-size: 0.6875rem;
-        color: #737373;
-        font-weight: 600;
-    }
-    .dash-class-stat strong {
-        color: #171717;
-        font-weight: 700;
-    }
-    .dash-class-capture {
-        font-size: 0.6875rem;
-        font-weight: 700;
-        color: #171717;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 3px;
-    }
-    .dash-class-capture i { font-size: 12px; }
-    .dash-class-capture:active { opacity: 0.6; }
+    .dash-classes-dt { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .dash-class-dt { background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; overflow: hidden; }
+    .dash-class-top-dt { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
+    .dash-class-left-dt { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .dash-class-icon-dt { width: 36px; height: 36px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .dash-class-icon-dt i { font-size: 16px; color: #171717; }
+    .dash-class-name-dt { font-size: 0.8125rem; font-weight: 700; color: #171717; letter-spacing: -0.01em; }
+    .dash-class-meta-dt { font-size: 0.6875rem; color: #737373; font-weight: 500; margin-top: 1px; }
+    .dash-class-badge-dt { font-size: 0.5625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 4px 10px; border-radius: 20px; background: #f0fdf4; color: #15803d; flex-shrink: 0; }
+    .dash-class-progress-dt { padding: 0 16px 14px; }
+    .dash-progress-bar-dt { width: 100%; height: 3px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+    .dash-progress-fill-dt { height: 100%; background: #171717; border-radius: 3px; transition: width 500ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .dash-class-stats-dt { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .dash-class-stat-dt { font-size: 0.6875rem; color: #737373; font-weight: 600; }
+    .dash-class-stat-dt strong { color: #171717; font-weight: 700; }
+    .dash-class-capture-dt { font-size: 0.6875rem; font-weight: 700; color: #171717; text-decoration: none; display: flex; align-items: center; gap: 3px; }
+    .dash-class-capture-dt i { font-size: 12px; }
+    .dash-class-capture-dt:active { opacity: 0.6; }
 
-    /* ── Empty State ──────────────────────────────────────────── */
-    .dash-empty {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 40px 20px;
-        text-align: center;
-    }
-    .dash-empty-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 14px;
-        background: #f5f5f5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 12px;
-    }
-    .dash-empty-icon i {
-        font-size: 24px;
-        color: #a3a3a3;
-    }
-    .dash-empty-title {
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: #171717;
-        margin-bottom: 4px;
-    }
-    .dash-empty-desc {
-        font-size: 0.75rem;
-        color: #737373;
-        max-width: 240px;
-    }
+    .dash-empty-dt { display: flex; flex-direction: column; align-items: center; padding: 40px 20px; text-align: center; }
+    .dash-empty-icon-dt { width: 56px; height: 56px; border-radius: 14px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+    .dash-empty-icon-dt i { font-size: 24px; color: #a3a3a3; }
+    .dash-empty-title-dt { font-size: 0.875rem; font-weight: 700; color: #171717; margin-bottom: 4px; }
+    .dash-empty-desc-dt { font-size: 0.75rem; color: #737373; max-width: 240px; }
 
-    /* ── Published Results ────────────────────────────────────── */
-    .dash-results {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-bottom: 28px;
-    }
-    .dash-result {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        background: #ffffff;
-        border: 1px solid #e5e5e5;
-        border-radius: 12px;
-        text-decoration: none;
-        transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
-        -webkit-tap-highlight-color: transparent;
-    }
-    .dash-result:active { transform: scale(0.985); }
-    .dash-result-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .dash-result-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background: #f5f5f5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .dash-result-icon i {
-        font-size: 15px;
-        color: #171717;
-    }
-    .dash-result-name {
-        font-size: 0.8125rem;
-        font-weight: 700;
-        color: #171717;
-    }
-    .dash-result-meta {
-        font-size: 0.6875rem;
-        color: #737373;
-        font-weight: 500;
-    }
-    .dash-result-chevron {
-        color: #a3a3a3;
-        font-size: 16px;
-    }
+    .dash-results-dt { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+    .dash-result-dt { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; text-decoration: none; transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1); -webkit-tap-highlight-color: transparent; }
+    .dash-result-dt:active { transform: scale(0.985); }
+    .dash-result-left-dt { display: flex; align-items: center; gap: 12px; }
+    .dash-result-icon-dt { width: 32px; height: 32px; border-radius: 8px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; }
+    .dash-result-icon-dt i { font-size: 15px; color: #171717; }
+    .dash-result-name-dt { font-size: 0.8125rem; font-weight: 700; color: #171717; }
+    .dash-result-meta-dt { font-size: 0.6875rem; color: #737373; font-weight: 500; }
+    .dash-result-chevron-dt { color: #a3a3a3; font-size: 16px; }
 
-    /* ── Class Teacher Card ───────────────────────────────────── */
-    .dash-ct {
-        background: #ffffff;
-        border: 1px solid #e5e5e5;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 28px;
-    }
-    .dash-ct-label {
-        font-size: 0.6875rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #737373;
-        margin-bottom: 6px;
-    }
-    .dash-ct-value {
-        font-size: 0.9375rem;
-        font-weight: 700;
-        color: #171717;
-    }
+    .dash-ct-dt { background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px; margin-bottom: 28px; }
+    .dash-ct-label-dt { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #737373; margin-bottom: 6px; }
+    .dash-ct-value-dt { font-size: 0.9375rem; font-weight: 700; color: #171717; }
 
-    /* ── Responsive — Mobile (< 768px) ─────────────────────── */
     @media (max-width: 420px) {
         .dash { padding-bottom: 12px; }
-        .dash-greeting h1 { font-size: 1.375rem; }
-        .dash-hero-icon { width: 42px; height: 42px; }
-        .dash-hero-icon i { font-size: 19px; }
-        .dash-metrics { grid-template-columns: repeat(2, 1fr); }
+        .dash-greeting-dt h1 { font-size: 1.375rem; }
+        .dash-hero-icon-dt { width: 42px; height: 42px; }
+        .dash-hero-icon-dt i { font-size: 19px; }
+        .dash-metrics-dt { grid-template-columns: repeat(2, 1fr); }
     }
 
-    /* ── Desktop (≥ 768px) ─────────────────────────────────── */
     @media (min-width: 768px) {
-        .dash {
-            padding: 24px 0 48px;
-        }
-        .dash-greeting { margin-bottom: 28px; }
-        .dash-greeting h1 { font-size: 1.75rem; }
-        .dash-greeting p { font-size: 0.875rem; margin-top: 4px; }
-
-        /* Hero */
-        .dash-hero { padding: 20px 22px; border-radius: 14px; }
-        .dash-hero-icon { width: 48px; height: 48px; border-radius: 13px; }
-        .dash-hero-icon i { font-size: 22px; }
-        .dash-hero-text h3 { font-size: 1rem; }
-        .dash-hero-text p { font-size: 0.8125rem; }
-
-        /* Action cards — 3 equal columns */
-        .dash-actions {
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 36px;
-        }
-        .dash-action {
-            padding: 20px 16px;
-            border-radius: 14px;
-        }
-        .dash-action-icon { width: 40px; height: 40px; margin-bottom: 14px; }
-        .dash-action-title { font-size: 0.875rem; }
-
-        /* Metrics — 4 columns */
-        .dash-metrics {
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 40px;
-        }
-        .dash-metric {
-            padding: 20px 8px;
-            border-radius: 14px;
-        }
-        .dash-ring { width: 52px; height: 52px; }
-        .dash-ring svg { width: 52px; height: 52px; }
-        .dash-ring-value { font-size: 1.0625rem; }
-        .dash-metric-label { font-size: 0.5625rem; }
-
-        /* Class cards — 2 columns */
-        .dash-classes {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 40px;
-        }
-        .dash-class { border-radius: 14px; }
-
-        /* Published results */
-        .dash-results { gap: 10px; }
-        .dash-result { padding: 14px 18px; border-radius: 14px; }
+        .dash { padding: 24px 0 48px; }
+        .dash-greeting-dt { margin-bottom: 28px; }
+        .dash-greeting-dt h1 { font-size: 1.75rem; }
+        .dash-greeting-dt p { font-size: 0.875rem; margin-top: 4px; }
+        .dash-hero-dt { padding: 20px 22px; border-radius: 14px; }
+        .dash-hero-icon-dt { width: 48px; height: 48px; border-radius: 13px; }
+        .dash-hero-icon-dt i { font-size: 22px; }
+        .dash-hero-text-dt h3 { font-size: 1rem; }
+        .dash-hero-text-dt p { font-size: 0.8125rem; }
+        .dash-actions-dt { grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 36px; }
+        .dash-action-dt { padding: 20px 16px; border-radius: 14px; }
+        .dash-action-icon-dt { width: 40px; height: 40px; margin-bottom: 14px; }
+        .dash-action-title-dt { font-size: 0.875rem; }
+        .dash-metrics-dt { grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 40px; }
+        .dash-metric-dt { padding: 20px 8px; border-radius: 14px; }
+        .dash-ring-dt { width: 52px; height: 52px; }
+        .dash-ring-dt svg { width: 52px; height: 52px; }
+        .dash-ring-value-dt { font-size: 1.0625rem; }
+        .dash-metric-label-dt { font-size: 0.5625rem; }
+        .dash-classes-dt { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 40px; }
+        .dash-class-dt { border-radius: 14px; }
+        .dash-results-dt { gap: 10px; }
+        .dash-result-dt { padding: 14px 18px; border-radius: 14px; }
     }
 </style>
 
-<div class="dash">
-    <!-- GREETING -->
-    <div class="dash-greeting">
-        <h1>Welcome back, <em>{{ request.user.first_name|default:"Teacher" }}</em></h1>
-        <p>{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</p>
-    </div>
+<!-- ═══════════════════════════════════════════════════════════
+     iOS 17 MOBILE DASHBOARD (hidden on desktop)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="dash-ios" id="dashIos">
+    <!-- HEADER -->
+    <header class="dash-header">
+        <div class="dash-greeting">
+            <div class="dash-greeting-main">Welcome back, {{ request.user.first_name|default:"Teacher" }}</div>
+            <div class="dash-greeting-sub">{% if teacher %}{{ teacher.get_full_title }}{% endif %} · {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</div>
+        </div>
+        <div class="dash-avatar">{{ request.user.first_name|first|default:"U" }}</div>
+    </header>
 
-    <!-- HERO ACTION: Score Capture -->
-    {% if section == 'JSS' %}
-        <a class="dash-hero" href="{% url 'select_exam' %}">
-    {% else %}
-        <a class="dash-hero" href="{% url 'select_exam_primary' %}">
-    {% endif %}
-        <div class="dash-hero-inner">
+    <!-- SCROLLABLE BODY -->
+    <main class="dash-body">
+        <!-- QUICK ACTIONS -->
+        <section class="dash-actions" aria-label="Quick actions">
+            <a class="dash-action" href="{% url 'results_list' %}">
+                <div class="dash-action-icon green">
+                    <i class="ph ph-chart-line-up"></i>
+                </div>
+                <div class="dash-action-label">Results</div>
+            </a>
+            <a class="dash-action" href="{% url 'class_lists' %}">
+                <div class="dash-action-icon blue">
+                    <i class="ph ph-users"></i>
+                </div>
+                <div class="dash-action-label">Class Lists</div>
+            </a>
+            <a class="dash-action" href="{% url 'home_alt' %}">
+                <div class="dash-action-icon purple">
+                    <i class="ph ph-user-circle"></i>
+                </div>
+                <div class="dash-action-label">Profile</div>
+            </a>
+        </section>
+
+        <!-- HERO: Score Capture -->
+        {% if section == 'JSS' %}
+            <a class="dash-hero" href="{% url 'select_exam' %}">
+        {% else %}
+            <a class="dash-hero" href="{% url 'select_exam_primary' %}">
+        {% endif %}
             <div class="dash-hero-left">
                 <div class="dash-hero-icon">
                     <i class="ph ph-pencil-simple"></i>
@@ -552,118 +229,282 @@
             <div class="dash-hero-arrow">
                 <i class="ph ph-arrow-right"></i>
             </div>
+        </a>
+
+        <!-- OVERVIEW -->
+        <div class="dash-section-label">Overview</div>
+        <section class="dash-overview" aria-label="Overview metrics">
+            <div class="dash-metric">
+                <div class="dash-ring">
+                    <svg viewBox="0 0 48 48">
+                        <circle class="dash-ring-track" cx="24" cy="24" r="20"></circle>
+                        <circle class="dash-ring-fill navy" cx="24" cy="24" r="20"
+                                stroke-dasharray="125.66"
+                                data-value="{{ assignment_count }}"
+                                data-max="10"></circle>
+                    </svg>
+                    <div class="dash-ring-value">{{ assignment_count }}</div>
+                </div>
+                <div class="dash-metric-label">Allocations</div>
+            </div>
+            <div class="dash-metric">
+                <div class="dash-ring">
+                    <svg viewBox="0 0 48 48">
+                        <circle class="dash-ring-track" cx="24" cy="24" r="20"></circle>
+                        <circle class="dash-ring-fill blue" cx="24" cy="24" r="20"
+                                stroke-dasharray="125.66"
+                                data-value="{{ active_exam_count }}"
+                                data-max="10"></circle>
+                    </svg>
+                    <div class="dash-ring-value">{{ active_exam_count }}</div>
+                </div>
+                <div class="dash-metric-label">Active Exams</div>
+            </div>
+            <div class="dash-metric">
+                <div class="dash-ring">
+                    <svg viewBox="0 0 48 48">
+                        <circle class="dash-ring-track" cx="24" cy="24" r="20"></circle>
+                        <circle class="dash-ring-fill green" cx="24" cy="24" r="20"
+                                stroke-dasharray="125.66"
+                                data-value="{{ submitted_count }}"
+                                data-max="10"></circle>
+                    </svg>
+                    <div class="dash-ring-value">{{ submitted_count }}</div>
+                </div>
+                <div class="dash-metric-label">Submitted</div>
+            </div>
+            <div class="dash-metric">
+                <div class="dash-ring">
+                    <svg viewBox="0 0 48 48">
+                        <circle class="dash-ring-track" cx="24" cy="24" r="20"></circle>
+                        <circle class="dash-ring-fill amber" cx="24" cy="24" r="20"
+                                stroke-dasharray="125.66"
+                                data-value="{{ returned_count }}"
+                                data-max="10"></circle>
+                    </svg>
+                    <div class="dash-ring-value">{{ returned_count }}</div>
+                </div>
+                <div class="dash-metric-label">Returned</div>
+            </div>
+        </section>
+
+        <!-- MY CLASSES -->
+        <section aria-label="My Classes">
+            <div class="dash-section-head">
+                <h2 class="dash-section-title">My Classes</h2>
+            </div>
+            <div class="dash-classes">
+                {% for assignment in assignments %}
+                    <div class="dash-class">
+                        <div class="dash-class-top">
+                            <div class="dash-class-left">
+                                <div class="dash-class-icon">
+                                    <i class="ph ph-book-open"></i>
+                                </div>
+                                <div>
+                                    <div class="dash-class-name">{{ assignment.subject.name }}</div>
+                                    <div class="dash-class-meta">{{ assignment.class_name }} {{ assignment.stream }}</div>
+                                </div>
+                            </div>
+                            <span class="dash-class-badge">Active</span>
+                        </div>
+                        <div class="dash-class-progress">
+                            <div class="dash-progress-bar">
+                                <div class="dash-progress-fill" style="width: 0%"></div>
+                            </div>
+                            <div class="dash-class-stats">
+                                <span class="dash-class-stat"><strong>0</strong> exams entered</span>
+                                <a class="dash-class-capture"
+                                   href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
+                                    Capture <i class="ph ph-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="dash-empty">
+                        <div class="dash-empty-icon">
+                            <i class="ph ph-inbox"></i>
+                        </div>
+                        <div class="dash-empty-title">No assignments yet</div>
+                        <div class="dash-empty-desc">Subject allocations will appear here once assigned by your admin.</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- PUBLISHED RESULTS -->
+        {% if published_contexts %}
+        <section aria-label="Published Results">
+            <div class="dash-section-head">
+                <h2 class="dash-section-title">Published Results</h2>
+                <a class="dash-section-link" href="{% url 'results_list' %}">View all <i class="ph ph-arrow-right"></i></a>
+            </div>
+            <div class="dash-results">
+                {% for item in published_contexts %}
+                    <a class="dash-result" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}">
+                        <div class="dash-result-left">
+                            <div class="dash-result-icon">
+                                <i class="ph ph-chart-line-up"></i>
+                            </div>
+                            <div>
+                                <div class="dash-result-name">{{ item.class_name }} {{ item.stream }}</div>
+                                <div class="dash-result-meta">{{ item.term }} {{ item.year }}</div>
+                            </div>
+                        </div>
+                        <i class="ph ph-chevron-right dash-result-chevron"></i>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- CLASS TEACHER SCOPE -->
+        {% if class_teacher_scope %}
+        <div class="dash-ct-dt" style="background:#fff; border:1px solid var(--dm-border); border-radius:var(--dm-radius); padding:14px 16px; margin-bottom:24px;">
+            <div class="dash-ct-label-dt">Class Teacher</div>
+            <div class="dash-ct-value-dt">{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</div>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DESKTOP DASHBOARD (hidden on mobile)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="dash">
+    <div class="dash-greeting-dt">
+        <h1>Welcome back, <em>{{ request.user.first_name|default:"Teacher" }}</em></h1>
+        <p>{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</p>
+    </div>
+
+    {% if section == 'JSS' %}
+        <a class="dash-hero-dt" href="{% url 'select_exam' %}">
+    {% else %}
+        <a class="dash-hero-dt" href="{% url 'select_exam_primary' %}">
+    {% endif %}
+        <div class="dash-hero-inner-dt">
+            <div class="dash-hero-left-dt">
+                <div class="dash-hero-icon-dt">
+                    <i class="ph ph-pencil-simple"></i>
+                </div>
+                <div class="dash-hero-text-dt">
+                    <h3>Score Capture</h3>
+                    <p>Enter marks for your classes</p>
+                </div>
+            </div>
+            <div class="dash-hero-arrow-dt">
+                <i class="ph ph-arrow-right"></i>
+            </div>
         </div>
     </a>
 
-    <!-- SMALL ACTION CARDS -->
-    <div class="dash-actions">
-        <a class="dash-action" href="{% url 'results_list' %}">
-            <div class="dash-action-icon">
+    <div class="dash-actions-dt">
+        <a class="dash-action-dt" href="{% url 'results_list' %}">
+            <div class="dash-action-icon-dt">
                 <i class="ph ph-chart-line-up"></i>
             </div>
-            <div class="dash-action-title">Results</div>
+            <div class="dash-action-title-dt">Results</div>
         </a>
-        <a class="dash-action" href="{% url 'class_lists' %}">
-            <div class="dash-action-icon">
+        <a class="dash-action-dt" href="{% url 'class_lists' %}">
+            <div class="dash-action-icon-dt">
                 <i class="ph ph-users"></i>
             </div>
-            <div class="dash-action-title">Class Lists</div>
+            <div class="dash-action-title-dt">Class Lists</div>
         </a>
-        <a class="dash-action" href="{% url 'home_alt' %}">
-            <div class="dash-action-icon">
+        <a class="dash-action-dt" href="{% url 'home_alt' %}">
+            <div class="dash-action-icon-dt">
                 <i class="ph ph-user-circle"></i>
             </div>
-            <div class="dash-action-title">Profile</div>
+            <div class="dash-action-title-dt">Profile</div>
         </a>
     </div>
 
-    <!-- METRICS — Progress Rings -->
-    <div class="dash-metrics-label">Overview</div>
-    <div class="dash-metrics">
-        <div class="dash-metric">
-            <div class="dash-ring">
+    <div class="dash-metrics-label-dt">Overview</div>
+    <div class="dash-metrics-dt">
+        <div class="dash-metric-dt">
+            <div class="dash-ring-dt">
                 <svg viewBox="0 0 50 50">
-                    <circle class="dash-ring-track" cx="25" cy="25" r="21"></circle>
-                    <circle class="dash-ring-fill" cx="25" cy="25" r="21"
+                    <circle class="dash-ring-track-dt" cx="25" cy="25" r="21"></circle>
+                    <circle class="dash-ring-fill-dt" cx="25" cy="25" r="21"
                             stroke="#171717"
                             stroke-dasharray="131.95"
                             data-value="{{ assignment_count }}"
                             data-max="10"></circle>
                 </svg>
-                <div class="dash-ring-value">{{ assignment_count }}</div>
+                <div class="dash-ring-value-dt">{{ assignment_count }}</div>
             </div>
-            <div class="dash-metric-label">Allocations</div>
+            <div class="dash-metric-label-dt">Allocations</div>
         </div>
-        <div class="dash-metric">
-            <div class="dash-ring">
+        <div class="dash-metric-dt">
+            <div class="dash-ring-dt">
                 <svg viewBox="0 0 50 50">
-                    <circle class="dash-ring-track" cx="25" cy="25" r="21"></circle>
-                    <circle class="dash-ring-fill" cx="25" cy="25" r="21"
+                    <circle class="dash-ring-track-dt" cx="25" cy="25" r="21"></circle>
+                    <circle class="dash-ring-fill-dt" cx="25" cy="25" r="21"
                             stroke="#3b82f6"
                             stroke-dasharray="131.95"
                             data-value="{{ active_exam_count }}"
                             data-max="10"></circle>
                 </svg>
-                <div class="dash-ring-value">{{ active_exam_count }}</div>
+                <div class="dash-ring-value-dt">{{ active_exam_count }}</div>
             </div>
-            <div class="dash-metric-label">Active Exams</div>
+            <div class="dash-metric-label-dt">Active Exams</div>
         </div>
-        <div class="dash-metric">
-            <div class="dash-ring">
+        <div class="dash-metric-dt">
+            <div class="dash-ring-dt">
                 <svg viewBox="0 0 50 50">
-                    <circle class="dash-ring-track" cx="25" cy="25" r="21"></circle>
-                    <circle class="dash-ring-fill" cx="25" cy="25" r="21"
+                    <circle class="dash-ring-track-dt" cx="25" cy="25" r="21"></circle>
+                    <circle class="dash-ring-fill-dt" cx="25" cy="25" r="21"
                             stroke="#22c55e"
                             stroke-dasharray="131.95"
                             data-value="{{ submitted_count }}"
                             data-max="10"></circle>
                 </svg>
-                <div class="dash-ring-value">{{ submitted_count }}</div>
+                <div class="dash-ring-value-dt">{{ submitted_count }}</div>
             </div>
-            <div class="dash-metric-label">Submitted</div>
+            <div class="dash-metric-label-dt">Submitted</div>
         </div>
-        <div class="dash-metric">
-            <div class="dash-ring">
+        <div class="dash-metric-dt">
+            <div class="dash-ring-dt">
                 <svg viewBox="0 0 50 50">
-                    <circle class="dash-ring-track" cx="25" cy="25" r="21"></circle>
-                    <circle class="dash-ring-fill" cx="25" cy="25" r="21"
+                    <circle class="dash-ring-track-dt" cx="25" cy="25" r="21"></circle>
+                    <circle class="dash-ring-fill-dt" cx="25" cy="25" r="21"
                             stroke="#f59e0b"
                             stroke-dasharray="131.95"
                             data-value="{{ returned_count }}"
                             data-max="10"></circle>
                 </svg>
-                <div class="dash-ring-value">{{ returned_count }}</div>
+                <div class="dash-ring-value-dt">{{ returned_count }}</div>
             </div>
-            <div class="dash-metric-label">Returned</div>
+            <div class="dash-metric-label-dt">Returned</div>
         </div>
     </div>
 
-    <!-- MY CLASSES -->
-    <div class="dash-section-head">
-        <h2 class="dash-section-title">My Classes</h2>
+    <div class="dash-section-head-dt">
+        <h2 class="dash-section-title-dt">My Classes</h2>
     </div>
-    <div class="dash-classes">
+    <div class="dash-classes-dt">
         {% for assignment in assignments %}
-            <div class="dash-class">
-                <div class="dash-class-top">
-                    <div class="dash-class-left">
-                        <div class="dash-class-icon">
+            <div class="dash-class-dt">
+                <div class="dash-class-top-dt">
+                    <div class="dash-class-left-dt">
+                        <div class="dash-class-icon-dt">
                             <i class="ph ph-book-open"></i>
                         </div>
                         <div>
-                            <div class="dash-class-name">{{ assignment.subject.name }}</div>
-                            <div class="dash-class-meta">{{ assignment.class_name }} {{ assignment.stream }}</div>
+                            <div class="dash-class-name-dt">{{ assignment.subject.name }}</div>
+                            <div class="dash-class-meta-dt">{{ assignment.class_name }} {{ assignment.stream }}</div>
                         </div>
                     </div>
-                    <span class="dash-class-badge">Active</span>
+                    <span class="dash-class-badge-dt">Active</span>
                 </div>
-                <div class="dash-class-progress">
-                    <div class="dash-progress-bar">
-                        <div class="dash-progress-fill" style="width: 0%"></div>
+                <div class="dash-class-progress-dt">
+                    <div class="dash-progress-bar-dt">
+                        <div class="dash-progress-fill-dt" style="width: 0%"></div>
                     </div>
-                    <div class="dash-class-stats">
-                        <span class="dash-class-stat"><strong>0</strong> exams entered</span>
-                        <a class="dash-class-capture"
+                    <div class="dash-class-stats-dt">
+                        <span class="dash-class-stat-dt"><strong>0</strong> exams entered</span>
+                        <a class="dash-class-capture-dt"
                            href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
                             Capture <i class="ph ph-arrow-right"></i>
                         </a>
@@ -671,58 +512,74 @@
                 </div>
             </div>
         {% empty %}
-            <div class="dash-empty">
-                <div class="dash-empty-icon">
+            <div class="dash-empty-dt">
+                <div class="dash-empty-icon-dt">
                     <i class="ph ph-inbox"></i>
                 </div>
-                <div class="dash-empty-title">No assignments yet</div>
-                <div class="dash-empty-desc">Subject allocations will appear here once assigned by your admin.</div>
+                <div class="dash-empty-title-dt">No assignments yet</div>
+                <div class="dash-empty-desc-dt">Subject allocations will appear here once assigned by your admin.</div>
             </div>
         {% endfor %}
     </div>
 
-    <!-- PUBLISHED RESULTS -->
     {% if published_contexts %}
-    <div class="dash-section-head">
-        <h2 class="dash-section-title">Published Results</h2>
-        <a class="dash-section-link" href="{% url 'results_list' %}">View all <i class="ph ph-arrow-right"></i></a>
+    <div class="dash-section-head-dt">
+        <h2 class="dash-section-title-dt">Published Results</h2>
+        <a class="dash-section-link-dt" href="{% url 'results_list' %}">View all <i class="ph ph-arrow-right"></i></a>
     </div>
-    <div class="dash-results">
+    <div class="dash-results-dt">
         {% for item in published_contexts %}
-            <a class="dash-result" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}">
-                <div class="dash-result-left">
-                    <div class="dash-result-icon">
+            <a class="dash-result-dt" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}">
+                <div class="dash-result-left-dt">
+                    <div class="dash-result-icon-dt">
                         <i class="ph ph-chart-line-up"></i>
                     </div>
                     <div>
-                        <div class="dash-result-name">{{ item.class_name }} {{ item.stream }}</div>
-                        <div class="dash-result-meta">{{ item.term }} {{ item.year }}</div>
+                        <div class="dash-result-name-dt">{{ item.class_name }} {{ item.stream }}</div>
+                        <div class="dash-result-meta-dt">{{ item.term }} {{ item.year }}</div>
                     </div>
                 </div>
-                <i class="ph ph-chevron-right dash-result-chevron"></i>
+                <i class="ph ph-chevron-right dash-result-chevron-dt"></i>
             </a>
         {% endfor %}
     </div>
     {% endif %}
 
-    <!-- CLASS TEACHER SCOPE -->
     {% if class_teacher_scope %}
-    <div class="dash-ct">
-        <div class="dash-ct-label">Class Teacher</div>
-        <div class="dash-ct-value">{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</div>
+    <div class="dash-ct-dt">
+        <div class="dash-ct-label-dt">Class Teacher</div>
+        <div class="dash-ct-value-dt">{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</div>
     </div>
     {% endif %}
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var C = 131.95;
+    // ── iOS Dashboard Rings ──────────────────────────────────
+    var C = 125.66; // 2 * PI * 20 (mobile ring radius)
     document.querySelectorAll('.dash-ring-fill').forEach(function(ring) {
         ring.style.strokeDashoffset = C;
         var val = parseInt(ring.getAttribute('data-value')) || 0;
         var max = parseInt(ring.getAttribute('data-max')) || 10;
         var pct = Math.min(val / max, 1);
         var offset = C - (pct * C);
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                ring.style.strokeDashoffset = offset;
+            });
+        });
+    });
+
+    // ── Desktop Rings ────────────────────────────────────────
+    var Cd = 131.95;
+    document.querySelectorAll('.dash-ring-fill-dt').forEach(function(ring) {
+        ring.style.strokeDashoffset = Cd;
+        var val = parseInt(ring.getAttribute('data-value')) || 0;
+        var max = parseInt(ring.getAttribute('data-max')) || 10;
+        var pct = Math.min(val / max, 1);
+        var offset = Cd - (pct * Cd);
         requestAnimationFrame(function() {
             requestAnimationFrame(function() {
                 ring.style.strokeDashoffset = offset;
