@@ -1,24 +1,134 @@
 {% extends 'students/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/profile-mobile.css' %}">
+{% endblock %}
 
 {% block content %}
+<!-- ═══════════════════════════════════════════════════════════
+     iOS 17 MOBILE PROFILE (hidden on desktop)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="pf-shell">
+    <!-- HEADER -->
+    <header class="pf-header">
+        <div class="pf-header-left">
+            <div class="pf-header-greeting" id="pfGreeting">Good day, {{ request.user.first_name|default:"Teacher" }}</div>
+            <div class="pf-header-sub">Faculty Profile</div>
+        </div>
+        <div class="pf-avatar">{{ request.user.first_name|first|default:"U" }}</div>
+    </header>
+
+    <!-- SCROLLABLE BODY -->
+    <main class="pf-body">
+        <!-- HERO CARD -->
+        <section class="pf-hero">
+            <div class="pf-hero-avatar"><i class="ph ph-user-circle"></i></div>
+            <div class="pf-hero-name">{% if teacher %}{{ teacher.get_full_title }}{% else %}{{ user.username }}{% endif %}</div>
+            <div class="pf-hero-subtitle">Personal faculty profile, subject allocations, and school account details.</div>
+            <span class="pf-hero-badge">
+                <i class="ph ph-shield-check"></i>
+                {% if class_teacher_scope %}Class Teacher{% else %}Subject Teacher{% endif %}
+            </span>
+        </section>
+
+        <!-- ACCOUNT DETAILS -->
+        <div class="pf-section-label">Account Details</div>
+        <div class="pf-details-card">
+            <div class="pf-detail-row">
+                <div class="pf-detail-icon"><i class="ph ph-hash"></i></div>
+                <div class="pf-detail-content">
+                    <div class="pf-detail-label">TSC Number</div>
+                    <div class="pf-detail-value">{{ teacher.tsc_number|default:"Not assigned" }}</div>
+                </div>
+            </div>
+            <div class="pf-detail-row">
+                <div class="pf-detail-icon"><i class="ph ph-user"></i></div>
+                <div class="pf-detail-content">
+                    <div class="pf-detail-label">System Username</div>
+                    <div class="pf-detail-value">{{ user.username }}</div>
+                </div>
+            </div>
+            <div class="pf-detail-row">
+                <div class="pf-detail-icon"><i class="ph ph-phone"></i></div>
+                <div class="pf-detail-content">
+                    <div class="pf-detail-label">Phone Number</div>
+                    <div class="pf-detail-value">{{ teacher.phone_number|default:"Not provided" }}</div>
+                </div>
+            </div>
+            <div class="pf-detail-row">
+                <div class="pf-detail-icon"><i class="ph ph-envelope"></i></div>
+                <div class="pf-detail-content">
+                    <div class="pf-detail-label">Email Address</div>
+                    <div class="pf-detail-value">{{ teacher.email|default:"Not provided" }}</div>
+                </div>
+            </div>
+            <div class="pf-detail-row">
+                <div class="pf-detail-icon"><i class="ph ph-chalkboard-teacher"></i></div>
+                <div class="pf-detail-content">
+                    <div class="pf-detail-label">Class Teacher Scope</div>
+                    <div class="pf-detail-value">{% if class_teacher_scope %}{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}{% else %}Not assigned{% endif %}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUBJECT ALLOCATIONS -->
+        <div class="pf-alloc-header">
+            <div class="pf-alloc-title">Subject Allocations</div>
+            <div class="pf-alloc-count">{{ assignment_count }} {% if assignment_count == 1 %}subject{% else %}subjects{% endif %}</div>
+        </div>
+        <div class="pf-alloc-list">
+            {% for assignment in assignments %}
+                <div class="pf-alloc-item">
+                    <div class="pf-alloc-icon">
+                        <i class="ph ph-book-open"></i>
+                    </div>
+                    <div class="pf-alloc-info">
+                        <div class="pf-alloc-subject">{{ assignment.subject.name }}</div>
+                        <div class="pf-alloc-class">{{ assignment.class_name }} {{ assignment.stream }}</div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="pf-alloc-empty">
+                    <div class="pf-alloc-empty-icon">
+                        <i class="ph ph-inbox"></i>
+                    </div>
+                    <div class="pf-alloc-empty-title">No active allocations</div>
+                    <div class="pf-alloc-empty-desc">The school admin has not linked subjects to this profile yet.</div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="pf-actions">
+            <a href="/password-change/" class="pf-btn pf-btn-primary">
+                <i class="ph ph-shield-check"></i> Change Account Password
+            </a>
+        </div>
+    </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DESKTOP PROFILE (hidden on mobile)
+     ═══════════════════════════════════════════════════════════ -->
 <style>
-    .profile-page {
+    .pf-desktop {
         min-height: 100vh;
         background: #f6f8fb;
         padding: 38px 42px;
         font-family: 'Inter', sans-serif;
     }
 
-    .profile-hero,
-    .profile-panel,
-    .identity-card {
+    .pf-desktop .profile-hero,
+    .pf-desktop .profile-panel,
+    .pf-desktop .identity-card {
         background: #ffffff;
         border: 1px solid #dbe3ee;
         border-radius: 16px;
         box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
     }
 
-    .profile-hero {
+    .pf-desktop .profile-hero {
         display: grid;
         grid-template-columns: auto 1fr auto;
         gap: 22px;
@@ -28,7 +138,7 @@
         margin-bottom: 24px;
     }
 
-    .avatar {
+    .pf-desktop .avatar {
         width: 82px;
         height: 82px;
         border-radius: 18px;
@@ -42,7 +152,7 @@
         font-size: 28px;
     }
 
-    .profile-title h1 {
+    .pf-desktop .profile-title h1 {
         margin: 0 0 7px;
         font-family: 'Montserrat', sans-serif;
         font-size: 32px;
@@ -51,14 +161,14 @@
         letter-spacing: -0.4px;
     }
 
-    .profile-title p {
+    .pf-desktop .profile-title p {
         margin: 0;
         color: #64748b;
         font-size: 15px;
         font-weight: 750;
     }
 
-    .profile-badge {
+    .pf-desktop .profile-badge {
         background: #ecfccb;
         color: #365314;
         border: 1px solid #bef264;
@@ -71,32 +181,32 @@
         white-space: nowrap;
     }
 
-    .stats-grid {
+    .pf-desktop .stats-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 16px;
         margin-bottom: 24px;
     }
 
-    .identity-grid {
+    .pf-desktop .identity-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 16px;
         margin-bottom: 24px;
     }
 
-    .identity-card,
-    .stat-card {
+    .pf-desktop .identity-card,
+    .pf-desktop .stat-card {
         padding: 18px 20px;
     }
 
-    .stat-card {
+    .pf-desktop .stat-card {
         background: #ffffff;
         border: 1px solid #dbe3ee;
         border-radius: 14px;
     }
 
-    .label {
+    .pf-desktop .label {
         display: block;
         color: #64748b;
         font-size: 11px;
@@ -106,7 +216,7 @@
         margin-bottom: 7px;
     }
 
-    .value {
+    .pf-desktop .value {
         display: block;
         color: #0f172a;
         font-size: 18px;
@@ -114,55 +224,55 @@
         word-break: break-word;
     }
 
-    .stat-card .value {
+    .pf-desktop .stat-card .value {
         font-size: 30px;
         line-height: 1;
     }
 
-    .profile-panel {
+    .pf-desktop .profile-panel {
         overflow: hidden;
         margin-bottom: 22px;
     }
 
-    .panel-head {
+    .pf-desktop .panel-head {
         background: #0f172a;
         color: #ffffff;
         padding: 22px 26px;
         border-left: 8px solid var(--oraimo-green, #9be816);
     }
 
-    .panel-head h2 {
+    .pf-desktop .panel-head h2 {
         margin: 0 0 5px;
         font-family: 'Montserrat', sans-serif;
         font-size: 22px;
         font-weight: 900;
     }
 
-    .panel-head p {
+    .pf-desktop .panel-head p {
         margin: 0;
         color: #dbeafe;
         font-weight: 700;
         font-size: 14px;
     }
 
-    .panel-body {
+    .pf-desktop .panel-body {
         padding: 24px 26px;
     }
 
-    .allocation-grid {
+    .pf-desktop .allocation-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
     }
 
-    .allocation-card {
+    .pf-desktop .allocation-card {
         border: 1px solid #e2e8f0;
         background: #f8fafc;
         border-radius: 14px;
         padding: 16px;
     }
 
-    .allocation-card strong {
+    .pf-desktop .allocation-card strong {
         display: block;
         color: #0f172a;
         font-size: 16px;
@@ -170,13 +280,13 @@
         margin-bottom: 5px;
     }
 
-    .allocation-card span {
+    .pf-desktop .allocation-card span {
         color: #64748b;
         font-size: 13px;
         font-weight: 800;
     }
 
-    .password-link {
+    .pf-desktop .password-link {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -189,27 +299,29 @@
         font-weight: 900;
     }
 
-    .password-link:hover {
+    .pf-desktop .password-link:hover {
         background: var(--oraimo-green, #9be816);
         color: #0f172a;
     }
 
     @media (max-width: 980px) {
-        .profile-hero { grid-template-columns: 1fr; }
-        .stats-grid, .identity-grid, .allocation-grid { grid-template-columns: 1fr; }
+        .pf-desktop .profile-hero { grid-template-columns: 1fr; }
+        .pf-desktop .stats-grid,
+        .pf-desktop .identity-grid,
+        .pf-desktop .allocation-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 640px) {
-        .profile-page { padding: 16px 12px; }
+        .pf-desktop { padding: 16px 12px; }
 
-        .profile-hero {
+        .pf-desktop .profile-hero {
             padding: 20px 16px;
             grid-template-columns: 1fr;
             text-align: center;
             gap: 14px;
         }
 
-        .avatar {
+        .pf-desktop .avatar {
             width: 64px;
             height: 64px;
             font-size: 22px;
@@ -217,89 +329,35 @@
             border-radius: 14px;
         }
 
-        .profile-title h1 {
-            font-size: 22px;
-            font-weight: 800;
-        }
+        .pf-desktop .profile-title h1 { font-size: 22px; font-weight: 800; }
+        .pf-desktop .profile-title p { font-size: 13px; }
 
-        .profile-title p {
-            font-size: 13px;
-        }
-
-        .profile-badge {
+        .pf-desktop .profile-badge {
             font-size: 11px;
             padding: 8px 14px;
             justify-self: center;
         }
 
-        .stats-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
+        .pf-desktop .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+        .pf-desktop .stat-card { padding: 14px 12px; border-radius: 10px; }
+        .pf-desktop .stat-card .value { font-size: 22px; }
+        .pf-desktop .label { font-size: 10px; letter-spacing: 0.5px; }
 
-        .stat-card {
-            padding: 14px 12px;
-            border-radius: 10px;
-        }
+        .pf-desktop .identity-grid { grid-template-columns: 1fr; gap: 10px; }
+        .pf-desktop .identity-card { padding: 14px; border-radius: 10px; }
+        .pf-desktop .identity-card .value { font-size: 15px; }
 
-        .stat-card .value {
-            font-size: 22px;
-        }
+        .pf-desktop .panel-head { padding: 16px 14px; }
+        .pf-desktop .panel-head h2 { font-size: 17px; }
+        .pf-desktop .panel-head p { font-size: 12px; }
+        .pf-desktop .panel-body { padding: 16px 14px; }
 
-        .label {
-            font-size: 10px;
-            letter-spacing: 0.5px;
-        }
+        .pf-desktop .allocation-grid { grid-template-columns: 1fr; gap: 10px; }
+        .pf-desktop .allocation-card { padding: 14px; border-radius: 10px; }
+        .pf-desktop .allocation-card strong { font-size: 14px; }
+        .pf-desktop .allocation-card span { font-size: 12px; }
 
-        .identity-grid {
-            grid-template-columns: 1fr;
-            gap: 10px;
-        }
-
-        .identity-card {
-            padding: 14px 14px;
-            border-radius: 10px;
-        }
-
-        .identity-card .value {
-            font-size: 15px;
-        }
-
-        .panel-head {
-            padding: 16px 14px;
-        }
-
-        .panel-head h2 {
-            font-size: 17px;
-        }
-
-        .panel-head p {
-            font-size: 12px;
-        }
-
-        .panel-body {
-            padding: 16px 14px;
-        }
-
-        .allocation-grid {
-            grid-template-columns: 1fr;
-            gap: 10px;
-        }
-
-        .allocation-card {
-            padding: 14px;
-            border-radius: 10px;
-        }
-
-        .allocation-card strong {
-            font-size: 14px;
-        }
-
-        .allocation-card span {
-            font-size: 12px;
-        }
-
-        .password-link {
+        .pf-desktop .password-link {
             width: 100%;
             justify-content: center;
             min-height: 42px;
@@ -308,7 +366,7 @@
     }
 </style>
 
-<div class="profile-page">
+<div class="pf-desktop">
     <section class="profile-hero">
         <div class="avatar"><i class="bi bi-person-badge"></i></div>
         <div class="profile-title">
@@ -392,4 +450,18 @@
         <i class="bi bi-shield-lock me-2"></i>Change Account Password
     </a>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var greetEl = document.getElementById('pfGreeting');
+    if (greetEl) {
+        var h = new Date().getHours();
+        var name = '{{ request.user.first_name|escapejs|default:"Teacher" }}';
+        var g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+        greetEl.textContent = g + ', ' + name;
+    }
+});
+</script>
 {% endblock %}

@@ -313,6 +313,13 @@ def class_lists(request):
     section = get_request_school_section(request)
     grades_for_section = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
 
+    section_colors = {
+        'JSS':           '#3A6AD8',
+        'PRIMARY':       '#047857',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    section_accent = section_colors.get(section, '#3A6AD8')
+
     return render(request, 'students/class_lists.html', {
         'students':         students,
         'selected_grade':   selected_grade,
@@ -322,6 +329,7 @@ def class_lists(request):
         'current_view_mode': view_mode,
         'can_access_admin_register': can_access_admin_register,
         'is_admin_view': is_admin_view,
+        'section_accent':   section_accent,
         'access_label': "School-wide learner directory" if is_admin_view else "Assigned learner directory",
         'grades':           grades_for_section,
         'streams':          get_streams_for_school(school, section),

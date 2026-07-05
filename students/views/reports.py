@@ -225,6 +225,14 @@ def results_list(request):
     # Use Primary template when in Primary workspace
     template = 'students/results_list_primary.html' if is_primary else 'students/results_list.html'
 
+    # Section accent colors for branding header
+    section_colors = {
+        'JSS':           '#3A6AD8',
+        'PRIMARY':       '#047857',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    section_accent = section_colors.get(section, '#3A6AD8')
+
     return render(request, template, {
         'broadsheet':      broadsheet,
         'analysis_data':   analysis_data,
@@ -243,6 +251,7 @@ def results_list(request):
         'student_count': student_count,
         'is_admin_view': is_admin_view,
         'is_primary': is_primary,
+        'section_accent': section_accent,
         'access_label': "School-wide official results" if is_admin_view else ("Class teacher view" if class_teacher_scope else "Subject teacher view"),
         'years':           list(range(2024, datetime.date.today().year + 1)),
         'terms':           TERM_CHOICES,

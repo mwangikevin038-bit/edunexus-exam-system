@@ -480,7 +480,7 @@
         overflow: hidden;
         margin-bottom: 0;
         box-shadow: none;
-        border-bottom: 2px solid var(--bs-burgundy);
+        border-bottom: 2px solid var(--section-accent, #3A6AD8);
     }
 
     .bs-header-topbar {
@@ -564,7 +564,7 @@
         font-family: 'Georgia', 'Times New Roman', Times, serif;
         font-size: 22pt;
         font-weight: 700;
-        color: #3A6AD8;
+        color: var(--section-accent, #3A6AD8);
         letter-spacing: 0.5px;
         line-height: 1.1;
         margin: 0 0 3px;
@@ -598,7 +598,7 @@
         font-size: 10pt;
         font-weight: 700;
         color: #ffffff !important;
-        background: #3A6AD8 !important;
+        background: var(--section-accent, #3A6AD8) !important;
         border: none !important;
         display: inline-flex;
         align-items: center;
@@ -857,7 +857,7 @@
         }
 
         .bs-header-block {
-            border-bottom: 3px solid var(--bs-burgundy);
+            border-bottom: 3px solid var(--section-accent, #3A6AD8);
         }
 
         .bs-header-main {
@@ -1013,7 +1013,7 @@
     .pdf-export-mode .table-analysis .col-total { width: 48px !important; }
     .pdf-export-mode .table-analysis .col-plv { width: 36px !important; }
     .pdf-export-mode .bs-header-topbar { display: none !important; }
-    .pdf-export-mode .bs-results-badge { background: #3A6AD8 !important; color: #ffffff !important; border: none !important; border-radius: 16px !important; font-size: 8pt !important; padding: 5px 12px !important; }
+    .pdf-export-mode .bs-results-badge { background: var(--section-accent, #3A6AD8) !important; color: #ffffff !important; border: none !important; border-radius: 16px !important; font-size: 8pt !important; padding: 5px 12px !important; }
     .pdf-export-mode .bs-header-accent { display: none !important; }
     .pdf-export-mode .subj-header { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000 !important; font-size: 12pt !important; font-weight: 700 !important; }
     .pdf-export-mode .sub-hdr-mk  { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000 !important; font-size: 12pt !important; font-weight: 600 !important; }
@@ -1029,8 +1029,8 @@
     /* PDF export header colors */
     .pdf-export-mode .bs-header-logo-wrap { background: transparent !important; }
     .pdf-export-mode .bs-header-green-stripe { display: none !important; }
-    .pdf-export-mode .bs-header-block { border: none !important; border-bottom: 2px solid var(--bs-burgundy) !important; }
-    .pdf-export-mode .bs-school-name { font-family: 'Georgia', 'Times New Roman', Times, serif !important; color: #3A6AD8 !important; font-size: 16pt !important; }
+    .pdf-export-mode .bs-header-block { border: none !important; border-bottom: 2px solid var(--section-accent, #3A6AD8) !important; }
+    .pdf-export-mode .bs-school-name { font-family: 'Georgia', 'Times New Roman', Times, serif !important; color: var(--section-accent, #3A6AD8) !important; font-size: 16pt !important; }
     .pdf-export-mode .summary-table th { background-color: #B6B6B5 !important; color: #000000 !important; font-size: 12pt !important; padding: 6px 5px !important; border: 1px solid #000000 !important; }
     .pdf-export-mode .summary-table td { font-size: 12pt !important; padding: 5px 5px !important; border: 1px solid #000000 !important; }
 
@@ -1349,6 +1349,8 @@
 
     /* ═══ PRINT ONLY — hide chrome + page setup ═══ */
     @media print {
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        html { background: #ffffff !important; background-image: none !important; }
         /* Kill ALL backgrounds — force pure white everywhere */
         html, body, .app-shell, .app-content, .main-content {
             background: #ffffff !important;
@@ -1440,7 +1442,7 @@
             font-family: 'Georgia', 'Times New Roman', Times, serif !important;
             font-size: 22pt !important;
             font-weight: 700 !important;
-            color: #3A6AD8 !important;
+            color: var(--section-accent, #3A6AD8) !important;
             letter-spacing: 0.5px !important;
             line-height: 1.1 !important;
             margin: 0 0 3px !important;
@@ -1463,7 +1465,7 @@
             font-size: 10pt !important;
             font-weight: 700 !important;
             color: #ffffff !important;
-            background: #3A6AD8 !important;
+            background: var(--section-accent, #3A6AD8) !important;
             border: none !important;
             display: inline-flex !important;
             align-items: center !important;
@@ -1648,7 +1650,7 @@
     </div>
 
     <!-- Branding header OUTSIDE the scrollable card so it stays at screen width -->
-    <div class="bs-header-block bs-branding-only">
+    <div class="bs-header-block bs-branding-only" style="--section-accent: {{ section_accent }};">
         <div class="bs-header-main">
             <div class="bs-header-logo-wrap">
                 <div class="bs-logo-frame">

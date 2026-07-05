@@ -1,0 +1,622 @@
+/* ═══════════════════════════════════════════════════════════════
+   iOS 17 PROFILE PAGE — Oraimo Green Premium Theme
+   EduNexus Exam System · Teacher/Admin Mobile View
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Palette ─────────────────────────────────────────────────── */
+:root {
+    --pf-bg:              #F5F7F6;
+    --pf-surface:         #FFFFFF;
+    --pf-green:           #9be816;
+    --pf-green-dark:      #7ac010;
+    --pf-green-glow:      rgba(155, 232, 22, 0.30);
+    --pf-green-subtle:    rgba(155, 232, 22, 0.10);
+    --pf-green-tint:      #f4fce3;
+    --pf-text:            #1A1A1A;
+    --pf-text-secondary:  #6B7280;
+    --pf-text-muted:      #9CA3AF;
+    --pf-border:          rgba(0, 0, 0, 0.04);
+    --pf-shadow:          0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    --pf-shadow-lg:       0 8px 32px -4px rgba(0, 0, 0, 0.08);
+    --pf-radius:          20px;
+    --pf-radius-md:       14px;
+    --pf-radius-sm:       10px;
+    --pf-font:            'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+    --pf-nav-height:      72px;
+    --pf-safe-bottom:     env(safe-area-inset-bottom, 0px);
+    --pf-safe-top:        env(safe-area-inset-top, 0px);
+}
+
+/* ── Reset for profile scope ────────────────────────────────── */
+.pf-shell *,
+.pf-shell *::before,
+.pf-shell *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SHELL — Full-screen flex column
+   ═══════════════════════════════════════════════════════════════ */
+.pf-shell {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    height: 100vh;
+    background: var(--pf-bg);
+    font-family: var(--pf-font);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: visible;
+    z-index: 800;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER — Frosted glass greeting bar
+   ═══════════════════════════════════════════════════════════════ */
+.pf-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    padding-top: calc(12px + var(--pf-safe-top));
+    background: rgba(245, 247, 246, 0.88);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--pf-border);
+    z-index: 10;
+}
+
+.pf-header-left {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.pf-header-greeting {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--pf-text);
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pf-header-sub {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--pf-text-muted);
+    letter-spacing: -0.01em;
+    margin-top: 1px;
+}
+
+.pf-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #9be816 0%, #7ac010 50%, #5a9a0c 100%);
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8125rem;
+    letter-spacing: 0.01em;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(155, 232, 22, 0.3);
+    border: 2.5px solid rgba(255, 255, 255, 0.9);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLLABLE BODY
+   ═══════════════════════════════════════════════════════════════ */
+.pf-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    padding: 16px 20px;
+    padding-bottom: 100px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HERO CARD — Avatar, Name, Role
+   ═══════════════════════════════════════════════════════════════ */
+.pf-hero {
+    background: var(--pf-surface);
+    border-radius: var(--pf-radius);
+    box-shadow: var(--pf-shadow);
+    border: 1px solid var(--pf-border);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.pf-hero-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #9be816 0%, #7dd3fc 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 1.5rem;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 16px rgba(155, 232, 22, 0.25);
+}
+
+.pf-hero-avatar i {
+    font-size: 28px;
+}
+
+.pf-hero-name {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--pf-text);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 4px;
+}
+
+.pf-hero-subtitle {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--pf-text-muted);
+    line-height: 1.4;
+    margin-bottom: 12px;
+    max-width: 280px;
+}
+
+.pf-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--pf-green-subtle);
+    color: #365314;
+    border: 1px solid rgba(155, 232, 22, 0.3);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 700;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.pf-hero-badge i {
+    font-size: 12px;
+    color: var(--pf-green-dark);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATS OVERVIEW — 4-column progress rings
+   ═══════════════════════════════════════════════════════════════ */
+.pf-section-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--pf-text-muted);
+    margin-bottom: 12px;
+}
+
+.pf-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.pf-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 4px;
+    background: var(--pf-surface);
+    border-radius: var(--pf-radius);
+    box-shadow: var(--pf-shadow);
+    border: 1px solid var(--pf-border);
+}
+
+/* Progress Ring */
+.pf-ring {
+    position: relative;
+    width: 48px;
+    height: 48px;
+}
+
+.pf-ring svg {
+    width: 48px;
+    height: 48px;
+    transform: rotate(-90deg);
+}
+
+.pf-ring-track {
+    fill: none;
+    stroke: #F0F0F0;
+    stroke-width: 3.5;
+}
+
+.pf-ring-fill {
+    fill: none;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 800ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pf-ring-fill.green  { stroke: var(--pf-green); }
+.pf-ring-fill.navy   { stroke: var(--pf-text); }
+.pf-ring-fill.blue   { stroke: #3B82F6; }
+.pf-ring-fill.amber  { stroke: #F59E0B; }
+
+.pf-ring-value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9375rem;
+    font-weight: 800;
+    color: var(--pf-text);
+    letter-spacing: -0.02em;
+}
+
+.pf-stat-label {
+    font-size: 0.5625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--pf-text-secondary);
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACCOUNT DETAILS — Clean row items
+   ═══════════════════════════════════════════════════════════════ */
+.pf-details-card {
+    background: var(--pf-surface);
+    border-radius: var(--pf-radius);
+    box-shadow: var(--pf-shadow);
+    border: 1px solid var(--pf-border);
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.pf-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+}
+
+.pf-detail-row + .pf-detail-row {
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.pf-detail-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--pf-radius-sm);
+    background: var(--pf-green-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pf-detail-icon i {
+    font-size: 16px;
+    color: var(--pf-green-dark);
+}
+
+.pf-detail-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.pf-detail-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--pf-text-muted);
+    margin-bottom: 1px;
+}
+
+.pf-detail-value {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--pf-text);
+    letter-spacing: -0.01em;
+    word-break: break-word;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUBJECT ALLOCATIONS — Card list
+   ═══════════════════════════════════════════════════════════════ */
+.pf-alloc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.pf-alloc-title {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--pf-text);
+    letter-spacing: -0.01em;
+}
+
+.pf-alloc-count {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--pf-text-muted);
+}
+
+.pf-alloc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.pf-alloc-item {
+    background: var(--pf-surface);
+    border-radius: var(--pf-radius-md);
+    box-shadow: var(--pf-shadow);
+    border: 1px solid var(--pf-border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.pf-alloc-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--pf-radius-sm);
+    background: var(--pf-green-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pf-alloc-icon i {
+    font-size: 18px;
+    color: var(--pf-green-dark);
+}
+
+.pf-alloc-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pf-alloc-subject {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--pf-text);
+    letter-spacing: -0.01em;
+}
+
+.pf-alloc-class {
+    font-size: 0.75rem;
+    color: var(--pf-text-muted);
+    font-weight: 500;
+    margin-top: 1px;
+}
+
+/* Empty state */
+.pf-alloc-empty {
+    background: var(--pf-surface);
+    border-radius: var(--pf-radius-md);
+    box-shadow: var(--pf-shadow);
+    border: 1px solid var(--pf-border);
+    padding: 32px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.pf-alloc-empty-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--pf-green-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.pf-alloc-empty-icon i {
+    font-size: 22px;
+    color: var(--pf-green-dark);
+}
+
+.pf-alloc-empty-title {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--pf-text);
+    margin-bottom: 3px;
+}
+
+.pf-alloc-empty-desc {
+    font-size: 0.6875rem;
+    color: var(--pf-text-muted);
+    max-width: 220px;
+    line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACTION BUTTONS
+   ═══════════════════════════════════════════════════════════════ */
+.pf-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.pf-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 48px;
+    border-radius: var(--pf-radius-md);
+    border: none;
+    font-family: var(--pf-font);
+    font-weight: 700;
+    font-size: 0.875rem;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pf-btn:active {
+    transform: scale(0.97);
+}
+
+.pf-btn-primary {
+    background: linear-gradient(135deg, #15803D 0%, #166534 100%);
+    color: #FFFFFF;
+    box-shadow: 0 4px 16px -2px rgba(21, 128, 61, 0.35);
+}
+
+.pf-btn-primary i {
+    font-size: 18px;
+}
+
+.pf-btn-outline {
+    background: var(--pf-surface);
+    color: var(--pf-text);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: var(--pf-shadow);
+}
+
+.pf-btn-outline i {
+    font-size: 18px;
+    color: var(--pf-green-dark);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes pfFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.pf-body > * {
+    animation: pfFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.pf-body > *:nth-child(1) { animation-delay: 0ms; }
+.pf-body > *:nth-child(2) { animation-delay: 50ms; }
+.pf-body > *:nth-child(3) { animation-delay: 100ms; }
+.pf-body > *:nth-child(4) { animation-delay: 150ms; }
+.pf-body > *:nth-child(5) { animation-delay: 200ms; }
+.pf-body > *:nth-child(6) { animation-delay: 250ms; }
+.pf-body > *:nth-child(7) { animation-delay: 300ms; }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLLBAR — minimal iOS style
+   ═══════════════════════════════════════════════════════════════ */
+.pf-body::-webkit-scrollbar {
+    width: 0;
+    display: none;
+}
+
+.pf-body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SMALL SCREENS
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 380px) {
+    .pf-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .pf-hero {
+        padding: 20px 16px;
+    }
+
+    .pf-hero-avatar {
+        width: 64px;
+        height: 64px;
+    }
+
+    .pf-hero-avatar i {
+        font-size: 24px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESKTOP — hide mobile profile
+   ═══════════════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+    .pf-shell {
+        display: none;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE — hide old desktop profile, show iOS one
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* Hide the old desktop profile entirely */
+    .pf-desktop {
+        display: none !important;
+    }
+
+    /* Also hide desktop topbar on mobile */
+    .topbar {
+        display: none !important;
+    }
+
+    /* Hide base template mobile-topbar */
+    .mobile-topbar {
+        display: none !important;
+    }
+
+    .bottom-nav {
+        z-index: 900 !important;
+    }
+
+    /* Ensure main-content doesn't interfere with fixed layout */
+    .main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+    }
+
+    .app-content {
+        overflow: visible !important;
+    }
+}

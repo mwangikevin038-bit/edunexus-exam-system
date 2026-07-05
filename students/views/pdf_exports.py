@@ -389,6 +389,13 @@ def download_classlist_pdf(request):
 
     section = get_request_school_section(request)
 
+    section_colors = {
+        'JSS':           '#3A6AD8',
+        'PRIMARY':       '#047857',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    section_accent = section_colors.get(section, '#3A6AD8')
+
     # Reuse the same context-building logic as class_lists view
     view_mode = request.GET.get('view_mode', 'teacher')
     if view_mode not in ('teacher', 'admin'):
@@ -436,6 +443,7 @@ def download_classlist_pdf(request):
         'can_access_admin_register': can_access_admin_register,
         'is_admin_view':         is_admin_view,
         'access_label':          'PDF Export',
+        'section_accent':        section_accent,
         'grades':                GRADE_CHOICES,
         'streams':               get_streams_for_school(school, section),
     }, request=request)
