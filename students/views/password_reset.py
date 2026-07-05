@@ -148,6 +148,23 @@ class SecurePasswordResetConfirmView(PasswordResetConfirmView):
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
 
+            # Clear must_change_password on Teacher profile to prevent forced-change loop
+            from ..models import Teacher, SchoolAdmin
+            try:
+                teacher = Teacher.objects.get(user=user)
+                if teacher.must_change_password:
+                    teacher.must_change_password = False
+                    teacher.save(update_fields=['must_change_password'])
+            except Teacher.DoesNotExist:
+                pass
+            try:
+                admin = SchoolAdmin.objects.get(user=user)
+                if admin.must_change_password:
+                    admin.must_change_password = False
+                    admin.save(update_fields=['must_change_password'])
+            except SchoolAdmin.DoesNotExist:
+                pass
+
             # Log the password reset completion
             logger.info(
                 "Password reset completed for user: %s from IP: %s",

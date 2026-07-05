@@ -144,14 +144,14 @@ def school_admin_dashboard(request):
     if section == 'LOWER_PRIMARY':
         student_qs = student_qs.filter(school_section='PRIMARY', sub_section='LOWER')
         teacher_qs = teacher_qs.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', None])
-        exam_qs = exam_qs.filter(school_section='PRIMARY')
+        exam_qs = exam_qs.filter(school_section='PRIMARY', sub_section='LOWER')
         assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='LOWER')
         submission_qs = submission_qs.filter(school_section='PRIMARY', sub_section='LOWER')
         mark_qs = mark_qs.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
         student_qs = student_qs.filter(school_section='PRIMARY', sub_section='UPPER')
         teacher_qs = teacher_qs.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['UPPER', None])
-        exam_qs = exam_qs.filter(school_section='PRIMARY')
+        exam_qs = exam_qs.filter(school_section='PRIMARY', sub_section='UPPER')
         assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='UPPER')
         submission_qs = submission_qs.filter(school_section='PRIMARY', sub_section='UPPER')
         mark_qs = mark_qs.filter(school_section='PRIMARY', sub_section='UPPER')
@@ -281,7 +281,14 @@ def school_admin_dashboard(request):
     active_classes = len([g for g, d in class_stats.items() if d['total'] > 0])
 
     # --- Section label for template ---
-    section_label = 'Upper Primary' if is_primary else 'Junior Secondary' if section == 'JSS' else 'All Sections'
+    if is_lower_primary:
+        section_label = 'Lower Primary'
+    elif is_primary:
+        section_label = 'Upper Primary'
+    elif section == 'JSS':
+        section_label = 'Junior Secondary'
+    else:
+        section_label = 'All Sections'
 
     return render(request, 'students/dashboard_admin.html', {
         'total_students':       total_students,

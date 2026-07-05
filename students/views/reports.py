@@ -16,7 +16,11 @@ from django.views.decorators.cache import never_cache
 from .constants import (
     ASSESSMENT_MAP,
     GRADE_CHOICES,
+    LOWER_PRIMARY_GRADE_CHOICES,
+    LOWER_PRIMARY_SUBJECT_NAMES,
+    LOWER_PRIMARY_SUBJECT_SHORT_MAP,
     ORDERED_LEVELS,
+    PRIMARY_PERF_LEVELS,
     PRIMARY_SUBJECT_NAMES,
     PRIMARY_SUBJECT_SHORT_MAP,
     SUBJECT_SHORT_MAP,
@@ -80,8 +84,14 @@ def results_list(request):
 
     # Determine workspace section for grade choices and template
     section = get_request_school_section(request)
-    is_primary = section == 'PRIMARY'
-    grade_choices = PRIMARY_GRADE_CHOICES if is_primary else GRADE_CHOICES
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
+    if is_lower_primary:
+        grade_choices = LOWER_PRIMARY_GRADE_CHOICES
+    elif is_primary:
+        grade_choices = PRIMARY_GRADE_CHOICES
+    else:
+        grade_choices = GRADE_CHOICES
 
     published_contexts = get_published_contexts_for_user(request.user)
     selected_context = get_selected_context(request, published_contexts) if request.GET.get("context") else None
@@ -94,9 +104,14 @@ def results_list(request):
     selected_context_key = selected_context["context_key"] if selected_context else ""
 
     # Use the correct subject map for the workspace section
-    subject_map = PRIMARY_SUBJECT_SHORT_MAP if is_primary else SUBJECT_SHORT_MAP
+    if is_lower_primary:
+        subject_map = LOWER_PRIMARY_SUBJECT_SHORT_MAP
+    elif is_primary:
+        subject_map = PRIMARY_SUBJECT_SHORT_MAP
+    else:
+        subject_map = SUBJECT_SHORT_MAP
     subject_codes = list(subject_map.keys())
-    active_levels = PRIMARY_ORDERED_LEVELS if is_primary else ORDERED_LEVELS
+    active_levels = PRIMARY_PERF_LEVELS if is_primary else ORDERED_LEVELS
 
     # Initialise per-subject analysis buckets
     analysis_data = {
@@ -273,9 +288,14 @@ def report_card_select(request):
 
     # Determine workspace section for grade choices and template
     section = get_request_school_section(request)
-    is_primary = section == 'PRIMARY'
     is_lower_primary = section == 'LOWER_PRIMARY'
-    grade_choices = PRIMARY_GRADE_CHOICES if is_primary else GRADE_CHOICES
+    is_primary = section == 'PRIMARY' or is_lower_primary
+    if is_lower_primary:
+        grade_choices = LOWER_PRIMARY_GRADE_CHOICES
+    elif is_primary:
+        grade_choices = PRIMARY_GRADE_CHOICES
+    else:
+        grade_choices = GRADE_CHOICES
 
     if not is_admin_view and not class_teacher_scope:
         messages.error(request, "Report cards are available to administrators and assigned class teachers only.")
@@ -403,8 +423,14 @@ def individual_report(request, student_id):
         position = 0
 
     # Attach subject name and teacher to each mark
+    is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
     is_primary = student.school_section == 'PRIMARY'
-    subject_mapping = PRIMARY_SUBJECT_NAMES if is_primary else {s.code: s.name for s in published_subjects_qs}
+    if is_lower_primary:
+        subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
+    elif is_primary:
+        subject_mapping = PRIMARY_SUBJECT_NAMES
+    else:
+        subject_mapping = {s.code: s.name for s in published_subjects_qs}
     teacher_map = {
         a.subject.code: a.teacher_profile.get_full_title()
         for a in SubjectAssignment.objects.filter(
@@ -552,6 +578,7 @@ def bulk_report_cards(request):
             return redirect('report_card_select')
 
     is_primary = sample.school_section == 'PRIMARY' if sample else False
+    is_lower_primary = (sample.school_section == 'PRIMARY' and sample.sub_section == 'LOWER') if sample else False
     from ..models import Subject
 
     published_subject_codes = set()
@@ -564,7 +591,12 @@ def bulk_report_cards(request):
             db_assessment,
         )
     published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
-    subject_mapping = PRIMARY_SUBJECT_NAMES if is_primary else {s.code: s.name for s in published_subjects_qs}
+    if is_lower_primary:
+        subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
+    elif is_primary:
+        subject_mapping = PRIMARY_SUBJECT_NAMES
+    else:
+        subject_mapping = {s.code: s.name for s in published_subjects_qs}
 
     marks_prefetch = Prefetch(
         'marks',

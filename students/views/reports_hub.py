@@ -35,7 +35,8 @@ def reports_hub(request):
         return redirect('welcome_page')
 
     section = get_request_school_section(request)
-    is_primary = section == 'PRIMARY'
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
     is_admin = user_has_main_school_admin_override(request.user)
     teacher = get_teacher_for_user(request.user)
     class_scope = get_class_teacher_scope(teacher)

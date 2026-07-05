@@ -179,8 +179,16 @@ class ForcePasswordChangeMiddleware:
             if request.session.get("force_password_change"):
                 path = request.path
                 if not any(path.startswith(prefix) for prefix in self.EXEMPT_PREFIXES):
+                    # Only add warning if not already on a password-change redirect
+                    # to prevent message stacking on repeated blocked requests
                     from django.shortcuts import redirect
                     from django.contrib import messages
-                    messages.warning(request, "You must change your password before continuing.")
+                    storage = messages.get_messages(request)
+                    has_password_warning = any(
+                        'change your password' in str(m).lower()
+                        for m in storage
+                    )
+                    if not has_password_warning:
+                        messages.warning(request, "You must change your password before continuing.")
                     return redirect("password_change")
         return self.get_response(request)

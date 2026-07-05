@@ -533,9 +533,9 @@ def manage_exams(request):
     section = get_request_school_section(request)
     exams = Exam.objects.filter(school=school)
     if section == 'LOWER_PRIMARY':
-        exams = exams.filter(school_section='PRIMARY')
+        exams = exams.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
-        exams = exams.filter(school_section='PRIMARY')
+        exams = exams.filter(school_section='PRIMARY', sub_section='UPPER')
     elif section == 'JSS':
         exams = exams.filter(school_section='JSS')
     exams = exams.order_by("-year", "term", "name")
@@ -556,9 +556,9 @@ def manage_exams(request):
     if not selected_exam:
         selected_exam = Exam.objects.filter(school=school, status="active")
         if section == 'LOWER_PRIMARY':
-            selected_exam = selected_exam.filter(school_section='PRIMARY')
+            selected_exam = selected_exam.filter(school_section='PRIMARY', sub_section='LOWER')
         elif section == 'PRIMARY':
-            selected_exam = selected_exam.filter(school_section='PRIMARY')
+            selected_exam = selected_exam.filter(school_section='PRIMARY', sub_section='UPPER')
         elif section == 'JSS':
             selected_exam = selected_exam.filter(school_section='JSS')
         selected_exam = selected_exam.order_by("-year", "term", "name").first()

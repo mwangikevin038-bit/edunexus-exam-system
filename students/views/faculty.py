@@ -19,6 +19,8 @@ from django.core.mail import EmailMessage
 
 from .constants import (
     ASSESSMENT_MAP,
+    LOWER_PRIMARY_SUBJECT_NAMES,
+    LOWER_PRIMARY_SUBJECT_SHORT_MAP,
     OPPOSITE_RELIGION_SUBJECT,
     PRIMARY_SUBJECT_NAMES,
     PRIMARY_SUBJECT_SHORT_MAP,
@@ -92,7 +94,8 @@ def manage_master_comments(request):
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
 
     section = get_request_school_section(request) or 'JSS'
-    is_primary = section == 'PRIMARY'
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
 
     if not user_has_main_school_admin_override(request.user):
         teacher = get_teacher_for_user(request.user)
@@ -161,7 +164,8 @@ def manage_headteacher_comments(request):
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
 
     section = get_request_school_section(request) or 'JSS'
-    is_primary = section == 'PRIMARY'
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
 
     comment_obj, _ = SchoolHeadteacherComment.objects.get_or_create(
         school=school, year=year, term=term, exam_type=db_assessment,
@@ -250,6 +254,7 @@ def manage_faculty_matrix(request):
                 default_password = generate_default_password()
                 email_address = request.POST.get('email', '').strip()
                 section = get_request_school_section(request)
+                sub_section = request.POST.get('sub_section', '').strip() or None
                 with transaction.atomic():
                     new_user = User.objects.create_user(
                         username=login_username,
@@ -262,6 +267,7 @@ def manage_faculty_matrix(request):
                         user=new_user, title=title, tsc_number=tsc_number,
                         phone_number=phone_number, email=email_address,
                         school=school, school_section=section or 'BOTH',
+                        sub_section=sub_section,
                         assigned_task='Teacher', subjects_taught='', classes='',
                         must_change_password=True,
                     )
@@ -447,6 +453,7 @@ def manage_faculty_matrix(request):
         'grades':      grades_for_section,
         'streams':     streams_for_section,
         'grade_streams': _get_grade_streams(school, section),
+        'section':     section,
     })
 
 
@@ -532,9 +539,17 @@ def learner_profile(request, student_id):
         Mark.objects.filter(student=student)
         .order_by('year', 'term', 'exam_type', 'subject')
     )
+    is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
     is_primary = student.school_section == 'PRIMARY'
-    subject_mapping = PRIMARY_SUBJECT_NAMES if is_primary else {s.code: s.name for s in Subject.objects.filter(school=student.school)}
-    short_mapping = PRIMARY_SUBJECT_SHORT_MAP if is_primary else SUBJECT_SHORT_MAP
+    if is_lower_primary:
+        subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
+        short_mapping = LOWER_PRIMARY_SUBJECT_SHORT_MAP
+    elif is_primary:
+        subject_mapping = PRIMARY_SUBJECT_NAMES
+        short_mapping = PRIMARY_SUBJECT_SHORT_MAP
+    else:
+        subject_mapping = {s.code: s.name for s in Subject.objects.filter(school=student.school)}
+        short_mapping = SUBJECT_SHORT_MAP
     exam_groups = {}
     subject_trends = {}
 

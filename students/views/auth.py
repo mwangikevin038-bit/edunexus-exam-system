@@ -14,7 +14,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from .helpers import get_teacher_for_user
 from ..security import rate_limit, user_has_main_school_admin_override
-from ..models import Teacher
+from ..models import Teacher, SchoolAdmin
 
 
 def welcome_page(request):
@@ -99,6 +99,12 @@ def login_view(request):
         if user is not None:
             login(request, user)
 
+            # Handle "Remember me" — persist session for 2 weeks if checked
+            if request.POST.get('remember'):
+                request.session.set_expiry(1209600)  # 2 weeks
+            else:
+                request.session.set_expiry(0)  # Browser close
+
             # Double-lock: reject superuser even if they somehow got past the check above
             if user.is_superuser:
                 logout(request)
@@ -117,15 +123,24 @@ def login_view(request):
             if user_has_main_school_admin_override(user):
                 return redirect('school_admin_dashboard')
 
-            # Check if teacher must change password on first login
+            # Check if user must change password on first login
+            must_change = False
             try:
                 teacher_profile = user.teacher_profile
                 if teacher_profile.must_change_password:
-                    request.session['force_password_change'] = True
-                    messages.warning(request, "You must change your password before continuing. Please set a new strong password.")
-                    return redirect('password_change')
+                    must_change = True
             except Teacher.DoesNotExist:
                 pass
+            try:
+                admin_profile = user.school_admin_profile
+                if admin_profile.must_change_password:
+                    must_change = True
+            except SchoolAdmin.DoesNotExist:
+                pass
+            if must_change:
+                request.session['force_password_change'] = True
+                messages.warning(request, "You must change your password before continuing. Please set a new strong password.")
+                return redirect('password_change')
 
             return redirect('dashboard_alt')
 
@@ -183,6 +198,14 @@ def custom_password_change(request):
                     teacher.must_change_password = False
                     teacher.save(update_fields=['must_change_password'])
             except Teacher.DoesNotExist:
+                pass
+            # Update must_change_password on SchoolAdmin profile if it exists
+            try:
+                admin = SchoolAdmin.objects.get(user=request.user)
+                if admin.must_change_password:
+                    admin.must_change_password = False
+                    admin.save(update_fields=['must_change_password'])
+            except SchoolAdmin.DoesNotExist:
                 pass
             messages.success(request, "Your password has been changed successfully.")
             return redirect('home_alt')

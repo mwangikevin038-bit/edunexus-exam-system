@@ -22,7 +22,7 @@ from django.template.loader import render_to_string
 from django.utils.text import slugify
 from playwright.sync_api import sync_playwright
 
-from .constants import GRADE_CHOICES, ORDERED_LEVELS, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
+from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
 from .reports import PRIMARY_ORDERED_LEVELS
 from .exams import PRIMARY_PERFORMANCE_SCALE, _get_primary_performance
 from .helpers import (
@@ -90,10 +90,16 @@ def download_broadsheet_pdf(request):
 
     # ── Determine workspace section early for primary-aware grading ─────────
     section = get_request_school_section(request)
-    is_primary = section == 'PRIMARY'
-    subject_map = PRIMARY_SUBJECT_SHORT_MAP if is_primary else SUBJECT_SHORT_MAP
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
+    if is_lower_primary:
+        subject_map = LOWER_PRIMARY_SUBJECT_SHORT_MAP
+    elif is_primary:
+        subject_map = PRIMARY_SUBJECT_SHORT_MAP
+    else:
+        subject_map = SUBJECT_SHORT_MAP
     subject_codes = list(subject_map.keys())
-    active_levels = PRIMARY_ORDERED_LEVELS if is_primary else ORDERED_LEVELS
+    active_levels = PRIMARY_PERF_LEVELS if is_primary else ORDERED_LEVELS
 
     analysis_data = {
         short: {
