@@ -313,60 +313,55 @@
     font-size: 12px;
   }
 
-  /* ===== TEACHER TABLE ===== */
-  .faculty-table {
-    width: 100%;
-    border-collapse: collapse;
+  /* ===== TEACHER CARDS GRID ===== */
+  .teacher-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1px;
+    background: var(--slate-100);
+    border-radius: 12px;
+    overflow: hidden;
   }
 
-  .faculty-table thead th {
-    padding: 14px 24px;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--slate-500);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    background: var(--slate-50);
-    border-bottom: 2px solid var(--slate-200);
-    text-align: left;
-  }
-
-  .faculty-table tbody tr {
+  .teacher-card {
+    background: #fff;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 20px;
+    align-items: start;
     transition: background 0.15s ease;
   }
 
-  .faculty-table tbody tr:hover {
-    background: rgba(164, 230, 29, 0.03);
+  .teacher-card:hover {
+    background: rgba(164, 230, 29, 0.02);
   }
 
-  .faculty-table tbody td {
-    padding: 18px 24px;
-    border-bottom: 1px solid var(--slate-100);
-    vertical-align: top;
-  }
-
-  .faculty-table tbody tr:last-child td {
-    border-bottom: none;
-  }
-
-  /* Teacher Profile Cell */
-  .teacher-info {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
+  /* Avatar */
   .teacher-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--oraimo-green-light) 0%, #d4f5a0 100%);
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--oraimo-green) 0%, var(--oraimo-green-dark) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 800;
     color: var(--navy);
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(164, 230, 29, 0.2);
+  }
+
+  /* Teacher Info */
+  .teacher-info {
+    min-width: 0;
+  }
+
+  .teacher-name-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 4px;
   }
 
@@ -377,36 +372,73 @@
     letter-spacing: -0.2px;
   }
 
-  .teacher-meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--slate-500);
-    font-weight: 500;
-  }
-
-  .teacher-meta .tsc-badge {
+  .tsc-badge {
     background: var(--slate-100);
     border: 1px solid var(--slate-200);
     border-radius: 6px;
     padding: 2px 8px;
     font-size: 11px;
     font-weight: 600;
-    color: var(--slate-600);
+    color: var(--slate-500);
+    white-space: nowrap;
   }
 
+  /* Assignments Grid */
+  .assignments-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .assignment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    padding: 6px 11px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-700);
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .assignment-chip:hover {
+    background: var(--oraimo-green-light);
+    border-color: var(--oraimo-green);
+    color: var(--navy);
+  }
+
+  .assignment-chip .chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--oraimo-green);
+    flex-shrink: 0;
+  }
+
+  .no-assignments {
+    color: var(--slate-400);
+    font-size: 13px;
+    font-style: italic;
+    padding: 4px 0;
+  }
+
+  /* Actions Column */
   .teacher-actions {
     display: flex;
     gap: 6px;
-    margin-top: 10px;
+    flex-shrink: 0;
   }
 
   .btn-action {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 6px 12px;
+    padding: 7px 12px;
     border-radius: 8px;
     font-size: 12px;
     font-weight: 700;
@@ -416,6 +448,7 @@
     color: var(--slate-600);
     transition: all 0.15s ease;
     text-decoration: none;
+    white-space: nowrap;
   }
 
   .btn-action:hover {
@@ -435,50 +468,11 @@
     border-color: #fca5a5;
   }
 
-  /* Assignment Badges */
-  .assignments-cell {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .assignment-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--slate-50);
-    border: 1px solid var(--slate-200);
-    padding: 7px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--slate-700);
-    transition: all 0.15s ease;
-  }
-
-  .assignment-chip:hover {
-    background: var(--oraimo-green-light);
-    border-color: var(--oraimo-green);
-    color: var(--navy);
-    transform: translateY(-1px);
-  }
-
-  .assignment-chip .chip-icon {
-    font-size: 12px;
-    opacity: 0.7;
-  }
-
-  .no-assignments {
-    color: var(--slate-400);
-    font-size: 13px;
-    font-style: italic;
-    padding: 8px 0;
-  }
-
   /* Empty State */
   .empty-state {
     text-align: center;
     padding: 60px 24px;
+    background: #fff;
   }
 
   .empty-state-icon {
@@ -809,20 +803,19 @@
       justify-content: center;
     }
 
-    .faculty-table thead {
-      display: none;
+    .teacher-cards {
+      border-radius: 12px;
     }
 
-    .faculty-table tbody tr {
-      display: block;
+    .teacher-card {
+      grid-template-columns: auto 1fr;
+      gap: 14px;
       padding: 16px;
-      border-bottom: 1px solid var(--slate-200);
     }
 
-    .faculty-table tbody td {
-      display: block;
-      padding: 8px 0;
-      border: none;
+    .teacher-actions {
+      grid-column: 1 / -1;
+      margin-top: 4px;
     }
 
     .modal-box {
@@ -969,73 +962,57 @@
           </div>
         </div>
 
-        <table class="faculty-table" id="facultyTable">
-          <thead>
-            <tr>
-              <th style="width: 35%;">Teacher Profile</th>
-              <th style="width: 65%;">Allocated Subject & Class Targets</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for teacher in teachers %}
-              <tr class="teacher-row">
-                <td>
-                  <div class="teacher-info">
-                    <div class="teacher-avatar">{{ teacher.title|first }}</div>
-                    <div class="teacher-name">{{ teacher.get_full_title }}</div>
-                    <div class="teacher-meta">
-                      <span class="tsc-badge">TSC: {{ teacher.tsc_number }}</span>
-                    </div>
-                    <div class="teacher-actions">
-                      <button type="button" class="btn-action"
-                              data-id="{{ teacher.id }}"
-                              data-title="{{ teacher.title|default:'Mr.' }}"
-                              data-fullname="{{ teacher.user.first_name|default:teacher.user.username }}"
-                              data-tsc="{{ teacher.tsc_number }}"
-                              data-phone="{{ teacher.phone_number|default:'' }}"
-                              data-email="{{ teacher.email|default:'' }}"
-                              onclick="handleEditClick(this)">
-                        <i class="bi bi-pencil-square"></i> Edit
+        <div class="teacher-cards" id="facultyTable">
+          {% for teacher in teachers %}
+            <div class="teacher-card teacher-row">
+              <div class="teacher-avatar">{{ teacher.title|first }}</div>
+              <div class="teacher-info">
+                <div class="teacher-name-row">
+                  <span class="teacher-name">{{ teacher.get_full_title }}</span>
+                  <span class="tsc-badge">TSC: {{ teacher.tsc_number }}</span>
+                </div>
+                <div class="assignments-grid">
+                  {% if teacher.assignments.all %}
+                    {% for assignment in teacher.assignments.all %}
+                      <span class="assignment-chip">
+                        <span class="chip-dot"></span>
+                        {{ assignment.subject.name }}: {{ assignment.class_name }} ({{ assignment.stream }})
+                      </span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="no-assignments">No active assignments mapped to this profile.</span>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="teacher-actions">
+                <button type="button" class="btn-action"
+                        data-id="{{ teacher.id }}"
+                        data-title="{{ teacher.title|default:'Mr.' }}"
+                        data-fullname="{{ teacher.user.first_name|default:teacher.user.username }}"
+                        data-tsc="{{ teacher.tsc_number }}"
+                        data-phone="{{ teacher.phone_number|default:'' }}"
+                        data-email="{{ teacher.email|default:'' }}"
+                        onclick="handleEditClick(this)">
+                  <i class="bi bi-pencil-square"></i> Edit
+                </button>
+                <form method="POST" action="" onsubmit="return confirm('Are you sure you want to delete this teacher? This will permanently remove their login credentials and all subject assignments.');" style="display: inline-block;">
+                      {% csrf_token %}
+                      <input type="hidden" name="action_type" value="delete_profile">
+                      <input type="hidden" name="teacher_id" value="{{ teacher.id }}">
+                      <button type="submit" class="btn-action btn-delete">
+                          <i class="bi bi-trash3"></i> Delete
                       </button>
-                      <form method="POST" action="" onsubmit="return confirm('Are you sure you want to delete this teacher? This will permanently remove their login credentials and all subject assignments.');" style="display: inline-block;">
-                            {% csrf_token %}
-                            <input type="hidden" name="action_type" value="delete_profile">
-                            <input type="hidden" name="teacher_id" value="{{ teacher.id }}">
-                            <button type="submit" class="btn-action btn-delete">
-                                <i class="bi bi-trash3"></i> Delete
-                            </button>
-                      </form>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div class="assignments-cell">
-                    {% if teacher.assignments.all %}
-                      {% for assignment in teacher.assignments.all %}
-                        <span class="assignment-chip">
-                          <span class="chip-icon">📚</span>
-                          {{ assignment.subject.name }}: {{ assignment.class_name }} ({{ assignment.stream }})
-                        </span>
-                      {% endfor %}
-                    {% else %}
-                      <span class="no-assignments">No active assignments mapped to this profile.</span>
-                    {% endif %}
-                  </div>
-                </td>
-              </tr>
-            {% empty %}
-              <tr>
-                <td colspan="2">
-                  <div class="empty-state">
-                    <div class="empty-state-icon">👨‍🏫</div>
-                    <div class="empty-state-title">No Faculty Found</div>
-                    <div class="empty-state-text">No active faculty definitions found within this school account.</div>
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+                </form>
+              </div>
+            </div>
+          {% empty %}
+            <div class="empty-state">
+              <div class="empty-state-icon">👨‍🏫</div>
+              <div class="empty-state-title">No Faculty Found</div>
+              <div class="empty-state-text">No active faculty definitions found within this school account.</div>
+            </div>
+          {% endfor %}
+        </div>
       </div>
 
       <a href="{% url 'school_admin_dashboard' %}" class="back-link">
@@ -1170,14 +1147,14 @@
 <script>
   function filterMatrixTable() {
     let input = document.getElementById("matrixSearch").value.toUpperCase();
-    let table = document.getElementById("facultyTable");
-    let rows = table.getElementsByClassName("teacher-row");
-    for (let i = 0; i < rows.length; i++) {
-      let textContent = rows[i].textContent || rows[i].innerText;
+    let container = document.getElementById("facultyTable");
+    let cards = container.getElementsByClassName("teacher-row");
+    for (let i = 0; i < cards.length; i++) {
+      let textContent = cards[i].textContent || cards[i].innerText;
       if (textContent.toUpperCase().indexOf(input) > -1) {
-        rows[i].style.display = "";
+        cards[i].style.display = "";
       } else {
-        rows[i].style.display = "none";
+        cards[i].style.display = "none";
       }
     }
   }
