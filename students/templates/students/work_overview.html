@@ -47,7 +47,7 @@
                     {% endif %}
                 {% endfor %}
 
-                <a class="card card-hover mb-3 flex items-center gap-4 p-4" href="{% with ws=request.session.workspace_section sec=request.session.school_section %}{% if ws == 'PRIMARY' or sec == 'PRIMARY' %}{% url 'select_exam_primary' %}{% else %}{% url 'select_exam' %}{% endif %}{% endwith %}" style="text-decoration:none;color:inherit;">
+                <a class="card card-hover mb-3 flex items-center gap-4 p-4" href="{% with ws=request.session.workspace_section sec=request.session.school_section teacher_sec=request.user.teacher_profile.school_section %}{% if ws == 'PRIMARY' or sec == 'PRIMARY' or teacher_sec == 'PRIMARY' %}{% url 'select_exam_primary' %}{% else %}{% url 'select_exam' %}{% endif %}{% endwith %}" style="text-decoration:none;color:inherit;">
                     <!-- Progress Ring -->
                     <div class="flex-shrink-0" style="width:48px;height:48px;position:relative;">
                         <svg style="transform:rotate(-90deg);width:48px;height:48px;" viewBox="0 0 48 48">
@@ -73,8 +73,8 @@
             {% endfor %}
 
             <div class="mt-2 mb-5">
-                {% with ws=request.session.workspace_section sec=request.session.school_section %}
-                {% if ws == 'PRIMARY' or sec == 'PRIMARY' %}
+                {% with ws=request.session.workspace_section sec=request.session.school_section teacher_sec=request.user.teacher_profile.school_section %}
+                {% if ws == 'PRIMARY' or sec == 'PRIMARY' or teacher_sec == 'PRIMARY' %}
                 <a class="btn btn-primary btn-block btn-lg" href="{% url 'select_exam_primary' %}">
                     <i data-lucide="pen-line"></i> Enter Marks
                 </a>

@@ -357,10 +357,27 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DESKTOP — Hide mobile shell
+   DESKTOP — natural document scroll, visible scrollbar
    ═══════════════════════════════════════════════════════════════ */
 @media (min-width: 769px) {
     .cp-shell {
-        display: none;
+        position: relative;
+        top: auto; left: auto; right: auto; bottom: auto;
+        height: auto;
+        min-height: 0;
+        max-width: 880px;
+        margin: 0 auto;
+        border-radius: 0;
+        background: transparent;
     }
+    .cp-header { position: relative; }
+    .cp-body {
+        flex: none;
+        height: auto;
+        overflow: visible;
+        padding: 24px 32px 120px;
+        scrollbar-width: auto;
+        -ms-overflow-style: auto;
+    }
+    .cp-body::-webkit-scrollbar { width: auto; display: block; }
 }

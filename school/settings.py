@@ -40,12 +40,12 @@ LOCAL_ALLOWED_HOSTS = [
     '127.0.0.1',
     '192.168.36.186',
     '192.168.52.230',
-    '192.168.29.230',
+    '192.168.30.230',
     '192.168.29.91',
     '10.161.194.230',
     '192.168.112.230',
     '192.168.1.101',
-    '192.168.1.104',
+    '192.168.1.100',
     '192.168.39.127',
     'edunexus.local',
 ]
@@ -84,15 +84,20 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Messages must be set up before any middleware that may add a
+    # message (ForcePasswordChangeMiddleware, tenant blockers, etc.).
+    'django.contrib.messages.middleware.MessageMiddleware',
     'students.security.middleware.ForcePasswordChangeMiddleware',
     'axes.middleware.AxesMiddleware',
     'students.security.middleware.SessionSchoolValidator',
     'students.school_scope.CurrentSchoolMiddleware',
     'students.security.middleware.TenantIsolationMiddleware',
     'students.security.middleware.SecurityAuditMiddleware',
-    'students.security.middleware.EndpointRateLimitMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Close stale DB connections at the end of every request so the
+    # auto-save endpoints + async audit logger don't accumulate idle
+    # connections until Postgres' max_connections is hit.
+    'students.security.middleware.CloseOldConnectionsMiddleware',
 ]
 
 # ==============================================================================
@@ -147,6 +152,30 @@ SESSION_COOKIE_SAMESITE = 'Lax'      # CSRF protection
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_COOKIE_AGE = 60 * 60 * 8     # 8 hours
 
+
+# ==============================================================================
+# DATA-IMPORT / MIGRATION DEFAULTS
+# ------------------------------------------------------------------------------
+# These are the defaults used by the management commands that import /
+# restore student rosters from external sources (e.g. scanned mark-entry
+# sheets, CSVs).  Override any of them with the matching env var in
+# your deployment.
+# ==============================================================================
+# Phone used to identify a placeholder Guardian row attached to a
+# student who has been freshly imported but whose real parent has not
+# yet been linked.  Import commands will reuse the same Guardian row
+# across all unlinked students of one import run, so the user can
+# then re-link them in the admin without ending up with a pile of
+# throwaway guardians.
+UNLINKED_GUARDIAN_PHONE = os.environ.get(
+    'EDUNEXUS_UNLINKED_GUARDIAN_PHONE', '0700000000',
+)
+# Name written to the placeholder Guardian row so it's easy to spot
+# in the admin and re-link via the link button.
+UNLINKED_GUARDIAN_NAME = os.environ.get(
+    'EDUNEXUS_UNLINKED_GUARDIAN_NAME', 'Unlinked — link in Faculty admin',
+)
+
 # Development: HTTP is fine. Production: set both to True.
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
@@ -178,11 +207,11 @@ else:
 CSRF_TRUSTED_ORIGINS = [
     'http://*.localhost:8000',
     'http://192.168.36.186:8000',
-    'http://192.168.29.230:8000',
+    'http://192.168.30.230:8000',
     'http://192.168.29.91:8000',
     'http://10.161.194.230:8000',
     'http://192.168.112.230:8000',
-    'http://192.168.1.101:8000',
+    'http://192.168.1.100:8000',
     'http://192.168.39.127:8000',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
@@ -192,6 +221,16 @@ CSRF_TRUSTED_ORIGINS = [
 # ==============================================================================
 # DATABASE — credentials from environment
 # ==============================================================================
+# CONN_MAX_AGE:
+#   * Production (DEBUG=False): persistent connections (60s) so a busy
+#     worker can reuse them — saves the ~3-15 ms TCP+TLS handshake per
+#     request.
+#   * Development (DEBUG=True): force connections closed after every
+#     request (CONN_MAX_AGE=0). The auto-save endpoints + async audit
+#     logger can otherwise open enough connections to exhaust Postgres's
+#     default max_connections=100, producing intermittent
+#     "OperationalError: too many clients already" errors during local
+#     testing.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -200,7 +239,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),   # never hardcode
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 60,
+        'CONN_MAX_AGE': 60 if not DEBUG else 0,
     },
 }
 

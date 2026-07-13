@@ -192,3 +192,32 @@ class ForcePasswordChangeMiddleware:
                         messages.warning(request, "You must change your password before continuing.")
                     return redirect("password_change")
         return self.get_response(request)
+
+
+class CloseOldConnectionsMiddleware:
+    """
+    Close stale DB connections at the end of every request so the
+    per-keystroke auto-save endpoints + async audit logger don't
+    accumulate idle connections until Postgres' max_connections is
+    exhausted. Trivial cost (one function call), big payoff.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_response(self, request, response):
+        try:
+            from django.db import close_old_connections
+            close_old_connections()
+        except Exception:
+            pass
+        return response
+
+    def process_exception(self, request, exception):
+        try:
+            from django.db import close_old_connections
+            close_old_connections()
+        except Exception:
+            pass

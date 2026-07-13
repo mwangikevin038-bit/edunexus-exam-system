@@ -6,174 +6,23 @@
 {% endblock %}
 {% block content %}
 <style>
+    /* Outer page wrapper */
     .cap{max-width:100%;margin:0 auto;padding-bottom:90px;animation:capIn 350ms cubic-bezier(.16,1,.3,1) both}
     @keyframes capIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-    .cap-back{display:inline-flex;align-items:center;gap:6px;color:#737373;text-decoration:none;font-size:.8125rem;font-weight:600;margin-bottom:16px;padding:4px 0;-webkit-tap-highlight-color:transparent}
-    .cap-back:active{color:#171717}
-    .cap-back i{font-size:14px}
-
+    /* Message banners (assessment list) */
     .cap-alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;margin-bottom:16px;font-size:.8125rem;font-weight:600;line-height:1.4}
     .cap-alert i{font-size:16px;margin-top:1px;flex-shrink:0}
     .cap-alert-success{background:#f0fdf4;color:#15803d}
     .cap-alert-info{background:#eff6ff;color:#1d4ed8}
     .cap-alert-danger{background:#fef2f2;color:#dc2626}
     .cap-alert-warning{background:#fffbeb;color:#92400e}
-    .cap-alert-warning p{background:#fff;border:1px solid #fed7aa;border-radius:8px;padding:10px;margin-top:8px;font-size:.75rem;color:#171717;font-weight:500}
 
-    .cap-green-card{background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);border-radius:16px;padding:18px;margin-bottom:14px;color:#fff}
-    .cap-green-top{display:flex;align-items:flex-start;gap:12px}
-    .cap-green-icon{width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .cap-green-icon i{font-size:20px;color:#fff}
-    .cap-green-info{flex:1;min-width:0}
-    .cap-green-class{font-size:1rem;font-weight:800;color:#fff;margin-bottom:1px;letter-spacing:-.01em}
-    .cap-green-subject{font-size:.8125rem;color:rgba(255,255,255,.85);font-weight:500}
-    .cap-green-meta{font-size:.6875rem;color:rgba(255,255,255,.6);font-weight:500;margin-top:6px}
-
-    .cap-action-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
-    .cap-action-btn{display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border-radius:11px;font-size:.8125rem;font-weight:700;font-family:inherit;cursor:pointer;border:1.5px solid #e5e5e5;background:#fff;color:#171717;transition:transform 150ms;-webkit-tap-highlight-color:transparent}
-    .cap-action-btn:active{transform:scale(.97)}
-    .cap-action-btn i{font-size:15px}
-    .cap-action-btn.primary{background:#171717;color:#fff;border-color:#171717}
-    .cap-action-btn.active{background:#171717;color:#fff;border-color:#171717}
-
-    .cap-meta{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:22px;border:1.5px solid #e5e5e5;border-radius:12px;overflow:hidden}
-    .cap-meta-cell{padding:12px 14px}
-    .cap-meta-cell:nth-child(1),.cap-meta-cell:nth-child(2){border-bottom:1.5px solid #e5e5e5}
-    .cap-meta-cell:nth-child(1){border-right:1.5px solid #e5e5e5}
-    .cap-meta-cell:nth-child(3){border-right:1.5px solid #e5e5e5}
-    .cap-meta-label{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a3a3a3;margin-bottom:4px}
-    .cap-meta-value{font-size:.875rem;font-weight:700;color:#171717}
-    .cap-meta-input{width:100%;height:32px;padding:0 10px;background:#f9f9f9;border:1.5px solid #e5e5e5;border-radius:8px;font-size:.875rem;font-weight:700;color:#171717;font-family:inherit}
-    .cap-meta-input:focus{outline:none;border-color:#171717;background:#fff}
-    .cap-meta-input[readonly]{background:#f5f5f5;color:#a3a3a3;cursor:not-allowed}
-
-    .cap-section{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-    .cap-section-title{font-size:.75rem;font-weight:700;color:#171717;text-transform:uppercase;letter-spacing:.04em}
-    .cap-section-count{font-size:.75rem;color:#a3a3a3;font-weight:600}
-
-    .cap-students{display:flex;flex-direction:column;margin-bottom:20px}
-    .cap-student{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid #f0f0f0;gap:10px;border-radius:12px;margin-bottom:4px;background:#fff;transition:background 150ms}
-    .cap-student:last-child{border-bottom:none}
-    .cap-student-left{display:flex;flex-direction:column;min-width:0;flex:1}
-    .cap-student-name{font-size:.875rem;font-weight:700;color:#171717;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .cap-student-adm{font-size:.6875rem;color:#a3a3a3;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
-    .cap-student-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-    .cap-score{width:52px;height:42px;border:1.5px solid #e5e5e5;border-radius:10px;text-align:center;font-size:1rem;font-weight:800;color:#171717;background:#fff;-webkit-appearance:none;transition:border-color 150ms,box-shadow 150ms}
-    .cap-score:focus{outline:none;border-color:#171717;box-shadow:0 0 0 3px rgba(23,23,23,.06)}
-    .cap-score[readonly]{background:#f5f5f5;color:#a3a3a3;cursor:not-allowed}
-    .cap-absent{width:42px;height:42px;border:1.5px solid #e5e5e5;border-radius:10px;background:#fafafa;color:#737373;font-size:.6875rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:all 150ms}
-    .cap-absent:active{transform:scale(.92);background:#fee2e2;border-color:#ef4444;color:#991b1b}
-    .cap-student-status{display:flex;align-items:center;gap:4px;min-width:0;justify-content:flex-end;flex-wrap:nowrap}
-    .cap-level{font-size:.75rem;font-weight:700;color:#a3a3a3;white-space:nowrap;padding:3px 8px;border-radius:6px;background:#f5f5f5;transition:all 150ms;line-height:1.2}
-    .cap-level.has-score{font-weight:800}
-    .cap-pts{font-size:.6875rem;font-weight:800;color:#a3a3a3;white-space:nowrap;padding:3px 6px;border-radius:6px;background:#f5f5f5;transition:all 150ms;line-height:1.2;display:none}
-    .cap-pts.has-score{display:inline-block}
-    .cap-pct{font-size:.625rem;font-weight:700;color:#a3a3a3;white-space:nowrap;padding:2px 6px;border-radius:6px;background:#f5f5f5;transition:all 150ms;line-height:1.2;display:none}
-    .cap-pct.has-score{display:inline-block}
-
-    @keyframes savedFlash{0%{background:#f0fdf4}100%{background:#fff}}
-    .cap-student.saved-flash{animation:savedFlash 800ms ease}
-
-    .cap-empty{display:flex;flex-direction:column;align-items:center;padding:48px 20px;text-align:center}
-    .cap-empty-icon{width:56px;height:56px;border-radius:14px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
-    .cap-empty-icon i{font-size:24px;color:#a3a3a3}
-    .cap-empty-title{font-size:.875rem;font-weight:700;color:#171717;margin-bottom:4px}
-    .cap-empty-desc{font-size:.75rem;color:#737373;max-width:260px}
-
-    .cap-bottom-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid #f0f0f0;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;z-index:100}
-    .cap-progress{font-size:.8125rem;font-weight:700;color:#171717}
-    .cap-progress span{color:#a3a3a3;font-weight:600}
-    .cap-submit-btn{display:flex;align-items:center;gap:6px;height:42px;padding:0 20px;border:none;border-radius:12px;background:#171717;color:#fff;font-size:.8125rem;font-weight:700;font-family:inherit;cursor:pointer;transition:transform 150ms,opacity 150ms;-webkit-tap-highlight-color:transparent}
-    .cap-submit-btn:active{transform:scale(.97);opacity:.9}
-    .cap-submit-btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
-    .cap-submit-btn i{font-size:16px}
-    .cap-bottom-bar-returned{background:rgba(240,253,244,.95);border-top:1px solid #bbf7d0}
-    .cap-return-btn{background:#fff;color:#15803d;border:1.5px solid #bbf7d0}
-
-    .cap-group{margin-bottom:20px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;overflow:hidden}
-    .cap-group-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fafafa;border-bottom:1px solid #f0f0f0}
-    .cap-group-left{display:flex;align-items:center;gap:10px;min-width:0}
-    .cap-group-icon{width:34px;height:34px;border-radius:9px;background:#171717;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
-    .cap-group-name{font-size:.875rem;font-weight:800;color:#171717;letter-spacing:-.01em}
-    .cap-group-count{font-size:.625rem;font-weight:700;color:#a3a3a3;background:#f0f0f0;padding:2px 8px;border-radius:20px}
-    .cap-group-items{padding:0}
-    .cap-assess{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #f5f5f5;gap:10px;text-decoration:none;color:inherit}
-    .cap-assess:last-child{border-bottom:none}
-    .cap-assess-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
-    .cap-assess-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-    .cap-assess-dot.not_started{background:#e5e5e5}
-    .cap-assess-dot.in_progress{background:#f59e0b}
-    .cap-assess-dot.submitted{background:#3b82f6}
-    .cap-assess-dot.returned{background:#ef4444}
-    .cap-assess-dot.approved,.cap-assess-dot.published,.cap-assess-dot.ready{background:#22c55e}
-    .cap-assess-info{min-width:0}
-    .cap-assess-name{font-size:.8125rem;font-weight:700;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .cap-assess-detail{font-size:.6875rem;color:#737373;font-weight:500;margin-top:1px}
-    .cap-assess-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-    .cap-assess-status{font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:6px}
-    .cap-assess-status.not_started{background:#f5f5f5;color:#737373}
-    .cap-assess-status.in_progress{background:#fef3c7;color:#92400e}
-    .cap-assess-status.submitted{background:#dbeafe;color:#1d4ed8}
-    .cap-assess-status.returned{background:#fee2e2;color:#991b1b}
-    .cap-assess-status.approved,.cap-assess-status.published{background:#f0fdf4;color:#15803d}
-    .cap-assess-chevron{color:#ccc;font-size:14px}
-
-    .cap-head{margin-bottom:24px}
-    .cap-head h1{font-size:1.5rem;font-weight:800;color:#171717;letter-spacing:-.03em;line-height:1.25;margin:0}
-    .cap-head p{font-size:.8125rem;color:#737373;margin:6px 0 0;font-weight:500}
-
-    @media(max-width:420px){
-        .cap-green-card{padding:14px;border-radius:14px}
-        .cap-green-class{font-size:.9375rem}
-        .cap-green-icon{width:36px;height:36px;border-radius:10px}
-        .cap-green-icon i{font-size:18px}
-        .cap-student{padding:10px 12px;gap:8px}
-        .cap-student-name{font-size:.8125rem}
-        .cap-student-adm{font-size:.625rem}
-        .cap-score{width:46px;height:38px;font-size:.875rem;border-radius:8px}
-        .cap-absent{width:38px;height:38px;border-radius:8px;font-size:.625rem}
-        .cap-level{font-size:.625rem;padding:2px 6px}
-        .cap-pts{font-size:.5625rem;padding:2px 5px}
-        .cap-pct{font-size:.5rem;padding:2px 5px}
-        .cap-student-status{gap:3px}
-        .cap-meta{border-radius:10px}
-        .cap-meta-cell{padding:10px 12px}
-        .cap-meta-label{font-size:.5625rem}
-        .cap-meta-value{font-size:.8125rem}
-        .cap-meta-input{height:28px;font-size:.8125rem}
-        .cap-action-btns{gap:8px}
-        .cap-action-btn{height:38px;font-size:.75rem;border-radius:10px}
-        .cap-bottom-bar{padding:10px 14px}
-        .cap-submit-btn{height:38px;font-size:.75rem;padding:0 16px}
-        .cap-progress{font-size:.75rem}
-    }
-
-    @media(min-width:768px){
-        .cap{padding:24px 0 48px}
-        .cap-head h1{font-size:2rem}
-        .cap-head p{font-size:.9375rem}
-        .cap-green-card{padding:22px 24px;border-radius:18px}
-        .cap-green-class{font-size:1.125rem}
-        .cap-green-icon{width:48px;height:48px;border-radius:13px}
-        .cap-green-icon i{font-size:22px}
-        .cap-group{border-radius:16px}
-        .cap-group-head{padding:16px 20px}
-        .cap-group-icon{width:38px;height:38px;border-radius:10px}
-        .cap-group-name{font-size:.9375rem}
-        .cap-assess{padding:15px 20px}
-        .cap-assess-name{font-size:.875rem}
-        .cap-assess-detail{font-size:.75rem}
-        .cap-assess-status{font-size:.625rem;padding:4px 10px;border-radius:8px}
-        .cap-student{padding:16px 14px}
-        .cap-student-name{font-size:.9375rem}
-        .cap-score{width:56px;height:44px;font-size:1rem;border-radius:12px}
-        .cap-absent{width:44px;height:44px;border-radius:12px}
-        .cap-bottom-bar{padding:14px 24px}
-        .cap-meta{border-radius:14px}
-        .cap-action-btn{height:46px;border-radius:12px;font-size:.875rem}
-        .cap-level{font-size:.8125rem;padding:3px 10px}
-    }
+    /* Entry-view extras not in the static CSS */
+    .en-body{padding-bottom:96px}
+    .en-meta-pills--inline{margin-top:12px;margin-bottom:14px}
+    .en-score.is-invalid{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.08);background:#fef2f2}
+    .en-submit-btn[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none}
 </style>
 
 <div class="cap">
@@ -268,18 +117,6 @@
                         <strong>{{ selected_exam.name }}</strong>
                     </span>
                     <span class="en-meta-pill">
-                        <i class="ph ph-squares-four"></i>
-                        <span>Total:</span>
-                        <div class="en-meta-pill-input">
-                            <input type="number" name="maximum_marks" id="maximumMarks"
-                                   value="{{ current_maximum_marks|default:100 }}"
-                                   min="1" max="500"
-                                   oninput="recalculateAll()"
-                                   {% if is_locked or is_submitted %}readonly{% endif %}>
-                            <span>pts</span>
-                        </div>
-                    </span>
-                    <span class="en-meta-pill">
                         <i class="ph ph-calendar"></i>
                         {{ selected_exam.term }} {{ selected_exam.year }}
                     </span>
@@ -290,12 +127,27 @@
                     <input type="hidden" name="assignment_id" value="{{ selected_assignment.id }}">
                     <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
 
+                    <div class="en-meta-pills en-meta-pills--inline">
+                        <span class="en-meta-pill">
+                            <i class="ph ph-squares-four"></i>
+                            <span>Total:</span>
+                            <div class="en-meta-pill-input">
+                                <input type="number" name="maximum_marks" id="maximumMarks"
+                                       class="js-maximum-marks"
+                                       value="{{ current_maximum_marks|default:100 }}"
+                                       min="1" max="500"
+                                       {% if is_locked or is_submitted %}readonly{% endif %}>
+                                <span>pts</span>
+                            </div>
+                        </span>
+                    </div>
+
                     {# ── Learner Scores Section ──────────────────────── #}
                     <div class="en-section">
                         <span class="en-section-title">LEARNER SCORES ({{ students|length }})</span>
                     </div>
 
-                    <div class="en-students">
+                    <div class="en-students" id="studentsContainer">
                         {% for student in students %}
                             <div class="en-student" data-student-id="{{ student.id }}">
                                 <div class="en-student-left">
@@ -306,21 +158,20 @@
                                     <input type="text"
                                            name="score_{{ student.id }}"
                                            value="{{ student.current_score }}"
-                                           class="en-score"
-                                           inputmode="decimal"
+                                           class="en-score js-score"
+                                           inputmode="numeric"
                                            enterkeyhint="next"
-                                           oninput="calcScore(this)"
-                                           onkeydown="nextOnEnter(event, this)"
                                            placeholder="—"
+                                           aria-label="Score for {{ student.name }}"
                                            data-had-value="{% if student.current_score != '' and student.current_score is not None %}1{% else %}0{% endif %}"
-                                           {% if is_locked %}readonly{% endif %}>
-                                    <button type="button" class="en-absent"
-                                            onclick="markAB(this)" tabindex="-1"
-                                            {% if is_locked %}disabled{% endif %}>AB</button>
+                                           {% if is_locked or is_submitted %}readonly{% endif %}>
+                                    <button type="button" class="en-absent js-absent"
+                                            aria-label="Toggle absent for {{ student.name }}"
+                                            {% if is_locked or is_submitted %}disabled{% endif %}>AB</button>
                                     <div class="en-student-status">
-                                        <span class="en-level" data-level="{{ forloop.counter }}">—</span>
-                                        <span class="en-pts" data-pts="{{ forloop.counter }}"></span>
-                                        <span class="en-pct" data-pct="{{ forloop.counter }}"></span>
+                                        <span class="en-level js-level">—</span>
+                                        <span class="en-pts js-pts"></span>
+                                        <span class="en-pct js-pct"></span>
                                     </div>
                                 </div>
                             </div>
@@ -332,30 +183,37 @@
                             </div>
                         {% endfor %}
                     </div>
+
+                    {# Submit row — always visible at the end of the form.
+                       Lives in normal document flow (not fixed-position) so
+                       it never gets clipped by a phone's address bar, bottom
+                       nav, or any other browser overlay. The user scrolls
+                       to the bottom of the student list and clicks. #}
+                    <div class="en-inline-submit {% if is_submitted %}en-inline-submit--submitted{% endif %}">
+                        <span class="en-inline-submit-progress">
+                            {% if is_submitted %}
+                                <i class="ph ph-check-circle" style="color:#16a34a;font-size:18px"></i>
+                                <span>This sheet has been submitted.</span>
+                            {% else %}
+                                <span id="scoredCountInline">0</span> / {{ students|length }} scored
+                            {% endif %}
+                        </span>
+                        {% if is_submitted and not is_locked %}
+                            <button type="button" class="en-submit-btn en-submit-btn--inline en-return-btn" onclick="returnForEdits()">
+                                <i class="ph ph-arrow-u-up-left"></i> Return for Edits
+                            </button>
+                        {% elif not is_locked %}
+                            <button type="submit" class="en-submit-btn en-submit-btn--inline">
+                                <i class="ph ph-cloud-arrow-up"></i> Submit Marks
+                            </button>
+                        {% else %}
+                            <span class="en-locked-badge"><i class="ph ph-lock"></i> Locked by admin</span>
+                        {% endif %}
+                    </div>
                 </form>
 
             </main>
         </div>
-
-        {# ── Floating Bottom Bar (outside shell, above nav) ─────── #}
-        {% if not is_locked and not is_submitted %}
-            <div class="en-bottom-bar">
-                <div class="en-progress"><span id="scoredCount">0</span>/{{ students|length }} <span>Students Scored</span></div>
-                <button type="submit" form="marksForm" class="en-submit-btn">
-                    <i class="ph ph-cloud-arrow-up"></i> Submit Marks
-                </button>
-            </div>
-        {% elif is_submitted and not is_locked %}
-            <div class="en-bottom-bar en-bottom-bar-returned">
-                <div class="en-progress">
-                    <i class="ph ph-check-circle" style="color:#16a34a;font-size:16px"></i>
-                    <span>Submitted</span>
-                </div>
-                <button type="button" class="en-submit-btn en-return-btn" onclick="returnForEdits()">
-                    <i class="ph ph-arrow-u-up-left"></i> Return for Edits
-                </button>
-            </div>
-        {% endif %}
 
     {% else %}
 
@@ -416,49 +274,6 @@
         </div>
         {# ═══ END iOS 17 MOBILE ════════════════════════════════ #}
 
-        {# ── Desktop view (hidden on mobile via CSS) ─────────── #}
-        <div class="cap" style="display:none;">
-            <div class="cap-head">
-                <h1>Assessment Workspace</h1>
-                <p>Tap an assessment to begin entering learner scores.</p>
-            </div>
-            {% regroup exam_rows by assignment.class_name as class_groups %}
-            {% for group in class_groups %}
-                <div class="cap-group">
-                    <div class="cap-group-head">
-                        <div class="cap-group-left">
-                            <div class="cap-group-icon"><i class="ph ph-chalkboard-teacher"></i></div>
-                            <div class="cap-group-name">{{ group.grouper }}</div>
-                        </div>
-                        <span class="cap-group-count">{{ group.list|length }}</span>
-                    </div>
-                    <div class="cap-group-items">
-                        {% for row in group.list %}
-                            <a class="cap-assess" href="?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}">
-                                <div class="cap-assess-left">
-                                    <div class="cap-assess-dot {{ row.status_key }}"></div>
-                                    <div class="cap-assess-info">
-                                        <div class="cap-assess-name">{{ row.assignment.subject.name }}</div>
-                                        <div class="cap-assess-detail">{{ row.assignment.stream }} · {{ row.exam.name }} · {{ row.exam.term }} {{ row.exam.year }}</div>
-                                    </div>
-                                </div>
-                                <div class="cap-assess-right">
-                                    <span class="cap-assess-status {{ row.status_key }}">{{ row.status_label }}</span>
-                                    <i class="ph ph-caret-right cap-assess-chevron"></i>
-                                </div>
-                            </a>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% empty %}
-                <div class="cap-empty">
-                    <div class="cap-empty-icon"><i class="ph ph-inbox"></i></div>
-                    <div class="cap-empty-title">No assessments available</div>
-                    <div class="cap-empty-desc">Assessment sheets will appear here once published for your classes.</div>
-                </div>
-            {% endfor %}
-        </div>
-
     {% endif %}
 </div>
 
@@ -466,37 +281,53 @@
 (function() {
     var MODE = '{{ grading_mode|default:"jss" }}';
 
+    // Server-rendered grading scale so what the teacher sees matches what
+    // the server stores. Sorted high-to-low so the first matching range wins.
+    var GRADING_SCALE = ({{ grading_scale_json|default:"[]"|safe }}).slice().sort(function(a, b) {
+        return (b.min_score || 0) - (a.min_score || 0);
+    });
+    var SCALE_COLORS = {
+        'EE':  '#14532d', 'EE1': '#14532d', 'EE2': '#15803d',
+        'ME':  '#16a34a', 'ME1': '#16a34a', 'ME2': '#65a30d',
+        'AE':  '#d97706', 'AE1': '#d97706', 'AE2': '#ea580c',
+        'BE':  '#dc2626', 'BE1': '#dc2626', 'BE2': '#991b1b',
+    };
+    var SCALE_BG = {
+        'EE':  '#dcfce7', 'EE1': '#dcfce7', 'EE2': '#f0fdf4',
+        'ME':  '#f0fdf4', 'ME1': '#f0fdf4', 'ME2': '#ecfccb',
+        'AE':  '#fef3c7', 'AE1': '#fef3c7', 'AE2': '#ffedd5',
+        'BE':  '#fee2e2', 'BE1': '#fee2e2', 'BE2': '#fee2e2',
+    };
+
     function getLevel(pct) {
-        if (MODE === 'primary') {
-            if (pct >= 75) return { text: 'EE', pts: 4, color: '#15803d', bg: '#f0fdf4' };
-            if (pct >= 50) return { text: 'ME', pts: 3, color: '#16a34a', bg: '#f0fdf4' };
-            if (pct >= 25) return { text: 'AE', pts: 2, color: '#d97706', bg: '#fef3c7' };
-            return { text: 'BE', pts: 1, color: '#dc2626', bg: '#fee2e2' };
+        var p = Math.max(0, Math.min(100, Math.round(pct)));
+        for (var i = 0; i < GRADING_SCALE.length; i++) {
+            var e = GRADING_SCALE[i];
+            if (e.min_score <= p && p <= e.max_score) {
+                return { text: e.level, pts: e.points || 0,
+                         color: SCALE_COLORS[e.level] || '#525252',
+                         bg: SCALE_BG[e.level] || '#f5f5f5' };
+            }
         }
-        if (pct >= 90) return { text: 'EE1', pts: 8, color: '#14532d', bg: '#dcfce7' };
-        if (pct >= 75) return { text: 'EE2', pts: 7, color: '#15803d', bg: '#f0fdf4' };
-        if (pct >= 58) return { text: 'ME1', pts: 6, color: '#16a34a', bg: '#f0fdf4' };
-        if (pct >= 41) return { text: 'ME2', pts: 5, color: '#65a30d', bg: '#ecfccb' };
-        if (pct >= 31) return { text: 'AE1', pts: 4, color: '#d97706', bg: '#fef3c7' };
-        if (pct >= 21) return { text: 'AE2', pts: 3, color: '#ea580c', bg: '#ffedd5' };
-        if (pct >= 11) return { text: 'BE1', pts: 2, color: '#dc2626', bg: '#fee2e2' };
-        return { text: 'BE2', pts: 1, color: '#991b1b', bg: '#fee2e2' };
+        return null;
     }
 
-    function getCookie(name) {
-        var v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-        return v ? v.pop() : '';
-    }
-
+    // Lazy CSRF — read once per request, reuse.
+    var _csrf = null;
     function getCsrfToken() {
-        var token = getCookie('csrftoken');
-        if (token) return token;
-        var input = document.querySelector('#marksForm input[name="csrfmiddlewaretoken"]');
-        return input ? input.value : '';
+        if (_csrf) return _csrf;
+        var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        if (m) { _csrf = m[1]; return _csrf; }
+        var i = document.querySelector('#marksForm input[name="csrfmiddlewaretoken"]');
+        _csrf = i ? i.value : '';
+        return _csrf;
     }
 
+    // Single in-flight fetch per student — coalesce rapid keystrokes.
+    // 1500ms debounce is the sweet spot for typing speed vs. server load.
+    var DEBOUNCE_MS = 1500;
     var saveTimers = {};
-    var pageLoaded = false;
+    var inflightByStudent = {};
 
     function showToast(msg, type) {
         var existing = document.querySelector('.en-toast');
@@ -504,16 +335,78 @@
         var t = document.createElement('div');
         t.className = 'en-toast';
         t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:10px;font-size:.8125rem;font-weight:700;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity 300ms;opacity:1;pointer-events:none;';
-        if (type === 'error') { t.style.background='#fef2f2'; t.style.color='#991b1b'; t.style.border='1px solid #fecaca'; }
-        else if (type === 'success') { t.style.background='#f0fdf4'; t.style.color='#15803d'; t.style.border='1px solid #bbf7d0'; }
-        else { t.style.background='#eff6ff'; t.style.color='#1d4ed8'; t.style.border='1px solid #bfdbfe'; }
+        var bg = type === 'error' ? '#fef2f2' : type === 'success' ? '#f0fdf4' : '#eff6ff';
+        var fg = type === 'error' ? '#991b1b' : type === 'success' ? '#15803d' : '#1d4ed8';
+        var bd = type === 'error' ? '#fecaca' : type === 'success' ? '#bbf7d0' : '#bfdbfe';
+        t.style.background = bg; t.style.color = fg; t.style.border = '1px solid ' + bd;
         t.textContent = msg;
         document.body.appendChild(t);
         setTimeout(function(){ t.style.opacity='0'; }, 2200);
-        setTimeout(function(){ t.remove(); }, 2500);
+        setTimeout(function(){ if (t.parentNode) t.remove(); }, 2500);
     }
 
-    function autoSaveMark(input) {
+    function flushPendingSaves() {
+        var promises = [];
+        Object.keys(saveTimers).forEach(function(sid) {
+            clearTimeout(saveTimers[sid]);
+            var row = document.querySelector('.en-student[data-student-id="' + sid + '"]');
+            var input = row && row.querySelector('.js-score');
+            if (input) promises.push(sendSave(input, true));
+        });
+        saveTimers = {};
+        return Promise.all(promises);
+    }
+
+    function postJSON(url, payload) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCsrfToken()},
+            body: payload,
+        }).then(function(r) {
+            var ct = r.headers.get('content-type') || '';
+            if (ct.indexOf('application/json') === -1) {
+                if (r.status === 403) return {ok: false, error: 'Permission denied'};
+                if (r.status === 302 || r.status === 401) return {ok: false, error: 'Session expired'};
+                return {ok: false, error: 'HTTP ' + r.status};
+            }
+            return r.json();
+        });
+    }
+
+    function sendSave(input) {
+        var row = input.closest('.en-student');
+        if (!row || input.readOnly) return Promise.resolve();
+        var studentId = row.getAttribute('data-student-id');
+        var assignmentId = document.querySelector('input[name="assignment_id"]');
+        var examId = document.querySelector('input[name="exam_id"]');
+        if (!studentId || !assignmentId || !examId) return Promise.resolve();
+
+        if (inflightByStudent[studentId]) return inflightByStudent[studentId];
+
+        var fd = new FormData();
+        fd.append('student_id', studentId);
+        fd.append('assignment_id', assignmentId.value);
+        fd.append('exam_id', examId.value);
+        fd.append('score', input.value.trim());
+        var maxEl = document.getElementById('maximumMarks');
+        fd.append('maximum_marks', maxEl ? (maxEl.value || '100') : '100');
+
+        var p = postJSON('{% url "save_mark" %}', fd);
+        inflightByStudent[studentId] = p;
+        p.finally(function() { delete inflightByStudent[studentId]; });
+
+        p.then(function(data) {
+            if (data.ok) {
+                row.classList.add('saved-flash');
+                setTimeout(function(){ row.classList.remove('saved-flash'); }, 800);
+            } else if (data.error) {
+                showToast('Save failed: ' + data.error, 'error');
+            }
+        }).catch(function() { showToast('Network error — score not saved', 'error'); });
+        return p;
+    }
+
+    function sendDelete(input) {
         var row = input.closest('.en-student');
         if (!row || input.readOnly) return;
         var studentId = row.getAttribute('data-student-id');
@@ -521,253 +414,221 @@
         var examId = document.querySelector('input[name="exam_id"]');
         if (!studentId || !assignmentId || !examId) return;
 
-        if (saveTimers[studentId]) clearTimeout(saveTimers[studentId]);
-
-        saveTimers[studentId] = setTimeout(function() {
-            var fd = new FormData();
-            fd.append('student_id', studentId);
-            fd.append('assignment_id', assignmentId.value);
-            fd.append('exam_id', examId.value);
-            fd.append('score', input.value.trim());
-            fd.append('maximum_marks', (document.getElementById('maximumMarks').value || '100'));
-            fd.append('csrfmiddlewaretoken', getCsrfToken());
-
-            fetch('{% url "save_mark" %}', {
-                method: 'POST',
-                body: fd
-            }).then(function(r) {
-                var ct = r.headers.get('content-type') || '';
-                if (ct.indexOf('application/json') === -1) {
-                    if (r.status === 403) {
-                        showToast('Save failed: permission denied. Please refresh the page.', 'error');
-                    } else if (r.status === 302 || r.status === 401) {
-                        showToast('Session expired — please refresh', 'error');
-                    } else {
-                        showToast('Save failed (HTTP ' + r.status + '). Please refresh.', 'error');
-                    }
-                    return null;
-                }
-                return r.json();
-            }).then(function(data) {
-                if (!data) return;
-                if (data.ok) {
-                    row.classList.add('saved-flash');
-                    setTimeout(function(){ row.classList.remove('saved-flash'); }, 800);
-                } else if (data.error) {
-                    console.warn('Auto-save failed:', data.error);
-                    showToast('Save failed: ' + data.error, 'error');
-                }
-            }).catch(function(e) {
-                console.warn('Auto-save network error:', e);
-                showToast('Network error — score not saved', 'error');
-            });
-        }, 600);
-    }
-
-    function autoDeleteMark(input) {
-        var row = input.closest('.en-student');
-        if (!row || input.readOnly) return;
-        var studentId = row.getAttribute('data-student-id');
-        var assignmentId = document.querySelector('input[name="assignment_id"]');
-        var examId = document.querySelector('input[name="exam_id"]');
-        if (!studentId || !assignmentId || !examId) return;
-
-        if (saveTimers[studentId]) {
-            clearTimeout(saveTimers[studentId]);
-            delete saveTimers[studentId];
-        }
+        if (saveTimers[studentId]) { clearTimeout(saveTimers[studentId]); delete saveTimers[studentId]; }
 
         var fd = new FormData();
         fd.append('student_id', studentId);
         fd.append('assignment_id', assignmentId.value);
         fd.append('exam_id', examId.value);
         fd.append('score', '');
-        fd.append('csrfmiddlewaretoken', getCsrfToken());
-
-        fetch('{% url "clear_mark" %}', {
-            method: 'POST',
-            body: fd
-        }).then(function(r) {
-            var ct = r.headers.get('content-type') || '';
-            if (ct.indexOf('application/json') === -1) {
-                if (r.status === 403) {
-                    showToast('Clear failed: permission denied. Please refresh the page.', 'error');
-                } else if (r.status === 302 || r.status === 401) {
-                    showToast('Session expired — please refresh', 'error');
-                } else {
-                    showToast('Clear failed (HTTP ' + r.status + '). Please refresh.', 'error');
-                }
-                return null;
-            }
-            return r.json();
-        }).then(function(data) {
-            if (!data) return;
+        postJSON('{% url "clear_mark" %}', fd).then(function(data) {
             if (data.ok) {
                 updateProgress();
             } else if (data.error) {
-                console.warn('Clear failed:', data.error);
                 showToast('Clear failed: ' + data.error, 'error');
                 input.dataset.hadValue = '1';
             }
-        }).catch(function(e) {
-            console.warn('Clear network error:', e);
-            showToast('Network error — mark not cleared', 'error');
-            input.dataset.hadValue = '1';
         });
     }
 
     function updateProgress() {
-        var inputs = document.querySelectorAll('.en-score');
-        var scored = 0;
-        inputs.forEach(function(inp) {
-            var v = inp.value.trim().toUpperCase();
-            if (v && !isNaN(parseFloat(v)) || v === 'AB') scored++;
-        });
+        var inputs = document.querySelectorAll('.js-score');
+        var scored = 0, invalid = 0;
+        for (var i = 0; i < inputs.length; i++) {
+            var v = (inputs[i].value || '').trim().toUpperCase();
+            if (v === 'AB') { scored++; continue; }
+            if (v !== '' && !isNaN(parseFloat(v))) scored++;
+            if (inputs[i].classList.contains('is-invalid')) invalid++;
+        }
         var el = document.getElementById('scoredCount');
         if (el) el.textContent = scored;
+        var el2 = document.getElementById('scoredCountInline');
+        if (el2) el2.textContent = scored;
+        var submitBtn = document.querySelector('.en-submit-btn');
+        if (submitBtn) {
+            if (invalid > 0) submitBtn.setAttribute('disabled', 'disabled');
+            else submitBtn.removeAttribute('disabled');
+        }
     }
 
-    window.calcScore = function(input, skipSave) {
-        var max = parseFloat(document.getElementById('maximumMarks').value) || 100;
-        var val = input.value.trim().toUpperCase();
+    function clearBadges(row) {
+        var b = row.querySelector('.js-level');
+        var p = row.querySelector('.js-pts');
+        var c = row.querySelector('.js-pct');
+        b.textContent = '—'; b.style.color = ''; b.style.background = '';
+        b.classList.remove('has-score');
+        p.textContent = ''; p.classList.remove('has-score');
+        c.textContent = ''; c.classList.remove('has-score');
+    }
+
+    function paintLevel(row, level, pctVal) {
+        var b = row.querySelector('.js-level');
+        var p = row.querySelector('.js-pts');
+        var c = row.querySelector('.js-pct');
+        b.textContent = level.text; b.style.color = level.color; b.style.background = level.bg;
+        b.classList.add('has-score');
+        p.textContent = level.pts + 'pts'; p.style.color = level.color; p.style.background = level.bg;
+        p.classList.add('has-score');
+        c.textContent = pctVal.toFixed(0) + '%'; c.style.color = level.color; c.style.background = level.bg;
+        c.classList.add('has-score');
+    }
+
+    function calcScore(input, skipSave) {
+        var maxEl = document.getElementById('maximumMarks');
+        var max = maxEl ? (parseFloat(maxEl.value) || 100) : 100;
+        var val = (input.value || '').trim().toUpperCase();
         var row = input.closest('.en-student');
-        var badge = row.querySelector('.en-level');
-        var pts = row.querySelector('.en-pts');
-        var pct = row.querySelector('.en-pct');
+        var badge = row.querySelector('.js-level');
 
         if (val === 'AB') {
-            badge.textContent = 'AB';
-            badge.style.color = '#3730a3';
-            badge.style.background = '#e0e7ff';
+            badge.textContent = 'AB'; badge.style.color = '#3730a3'; badge.style.background = '#e0e7ff';
             badge.classList.add('has-score');
-            pts.textContent = '';
-            pts.classList.remove('has-score');
-            pct.textContent = '';
-            pct.classList.remove('has-score');
+            row.querySelector('.js-pts').textContent = '';
+            row.querySelector('.js-pct').textContent = '';
+            input.classList.remove('is-invalid');
             updateProgress();
-            if (!skipSave) autoSaveMark(input);
+            if (!skipSave) queueSave(input);
             return;
         }
-
-        var score = parseFloat(val);
-        if (!val || isNaN(score) || max <= 0) {
-            badge.textContent = '—';
-            badge.style.color = '';
-            badge.style.background = '';
-            badge.classList.remove('has-score');
-            pts.textContent = '';
-            pts.classList.remove('has-score');
-            pct.textContent = '';
-            pct.classList.remove('has-score');
+        if (val === '') {
+            clearBadges(row);
+            input.classList.remove('is-invalid');
             updateProgress();
             if (!skipSave && input.dataset.hadValue === '1') {
                 input.dataset.hadValue = '0';
-                autoDeleteMark(input);
+                sendDelete(input);
             }
             return;
         }
-
-        if (!skipSave) input.dataset.hadValue = '1';
-
-        if (score > max) {
-            badge.textContent = 'Over';
-            badge.style.color = '#991b1b';
-            badge.style.background = '#fee2e2';
+        var score = parseFloat(val);
+        if (isNaN(score)) {
+            badge.textContent = '?'; badge.style.color = '#991b1b'; badge.style.background = '#fee2e2';
             badge.classList.add('has-score');
-            pts.textContent = '';
-            pts.classList.remove('has-score');
-            pct.textContent = '';
-            pct.classList.remove('has-score');
+            input.classList.add('is-invalid');
             updateProgress();
             return;
         }
-
-        var pctVal = (score / max) * 100;
-        var lv = getLevel(pctVal);
-
-        badge.textContent = lv.text;
-        badge.style.color = lv.color;
-        badge.style.background = lv.bg;
-        badge.classList.add('has-score');
-
-        pts.textContent = lv.pts + 'pts';
-        pts.style.color = lv.color;
-        pts.style.background = lv.bg;
-        pts.classList.add('has-score');
-
-        pct.textContent = pctVal.toFixed(0) + '%';
-        pct.style.color = lv.color;
-        pct.style.background = lv.bg;
-        pct.classList.add('has-score');
-
-        updateProgress();
-        if (!skipSave) autoSaveMark(input);
-    };
-
-    window.markAB = function(btn) {
-        var row = btn.closest('.en-student');
-        var input = row.querySelector('.en-score');
-        input.value = 'AB';
-        calcScore(input);
-        input.focus();
-    };
-
-    window.nextOnEnter = function(e, input) {
-        if (e.key === 'Enter' || e.key === 'Go' || e.key === 'Next') {
-            e.preventDefault();
-            calcScore(input);
-            var all = Array.from(document.querySelectorAll('.en-score'));
-            var idx = all.indexOf(input);
-            var next = all[idx + 1];
-            if (next && !next.readOnly) {
-                next.focus();
-                next.select();
-            }
+        if (score < 0 || score > max) {
+            badge.textContent = 'Over'; badge.style.color = '#991b1b'; badge.style.background = '#fee2e2';
+            badge.classList.add('has-score');
+            input.classList.add('is-invalid');
+            updateProgress();
+            return;
         }
-    };
+        if (!skipSave) input.dataset.hadValue = '1';
+        input.classList.remove('is-invalid');
+        var lv = getLevel((score / max) * 100);
+        if (lv) paintLevel(row, lv, (score / max) * 100);
+        else clearBadges(row);
+        updateProgress();
+        if (!skipSave) queueSave(input);
+    }
 
-    window.recalculateAll = function() {
-        document.querySelectorAll('.en-score').forEach(function(inp) {
-            calcScore(inp, true);
+    function queueSave(input) {
+        var row = input.closest('.en-student');
+        if (!row) return;
+        var studentId = row.getAttribute('data-student-id');
+        if (saveTimers[studentId]) clearTimeout(saveTimers[studentId]);
+        saveTimers[studentId] = setTimeout(function() {
+            delete saveTimers[studentId];
+            sendSave(input);
+        }, DEBOUNCE_MS);
+    }
+
+    // ─── Single delegated event handler (no per-input bindings) ────────────
+    var container = document.getElementById('studentsContainer');
+    if (container) {
+        container.addEventListener('input', function(e) {
+            var t = e.target;
+            if (t.classList && t.classList.contains('js-score')) calcScore(t);
         });
-    };
+        container.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter' && e.key !== 'Go' && e.key !== 'Next') return;
+            var t = e.target;
+            if (!(t.classList && t.classList.contains('js-score'))) return;
+            e.preventDefault();
+            calcScore(t);
+            var inputs = document.querySelectorAll('.js-score');
+            for (var i = 0; i < inputs.length; i++) {
+                if (inputs[i] === t) {
+                    var next = inputs[i + 1];
+                    if (next && !next.readOnly) { next.focus(); next.select(); }
+                    break;
+                }
+            }
+        });
+        container.addEventListener('click', function(e) {
+            var btn = e.target.closest && e.target.closest('.js-absent');
+            if (!btn) return;
+            var row = btn.closest('.en-student');
+            var input = row.querySelector('.js-score');
+            if (!input || input.readOnly) return;
+            if ((input.value || '').trim().toUpperCase() === 'AB') {
+                input.value = '';
+            } else {
+                input.value = 'AB';
+            }
+            calcScore(input);
+            input.focus();
+        });
+        container.addEventListener('keydown', function(e) {
+            var btn = e.target.closest && e.target.closest('.js-absent');
+            if (!btn) return;
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                btn.click();
+            }
+        }, true);
+    }
+
+    // Maximum marks: only update displayed percentages, do NOT auto-save on
+    // every keystroke. Teachers adjust the total infrequently and we don't
+    // want to thrash the server while they type "100".
+    var maxInput = document.getElementById('maximumMarks');
+    if (maxInput) {
+        var maxTimer = null;
+        maxInput.addEventListener('input', function() {
+            if (maxTimer) clearTimeout(maxTimer);
+            maxTimer = setTimeout(function() {
+                var inputs = document.querySelectorAll('.js-score');
+                for (var i = 0; i < inputs.length; i++) calcScore(inputs[i], true);
+            }, 300);
+        });
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
-        recalculateAll();
-        pageLoaded = true;
+        // First paint: pull existing scores from the rendered input.value
+        // and compute their badges. No DOM writes beyond the same elements
+        // we already have.
+        var inputs = document.querySelectorAll('.js-score');
+        for (var i = 0; i < inputs.length; i++) calcScore(inputs[i], true);
+
+        var form = document.getElementById('marksForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                if (document.querySelectorAll('.js-score.is-invalid').length) {
+                    e.preventDefault();
+                    showToast('Fix over-max scores before submitting.', 'error');
+                    return false;
+                }
+                if (Object.keys(saveTimers).length) {
+                    e.preventDefault();
+                    flushPendingSaves().finally(function() { form.submit(); });
+                }
+            });
+        }
     });
 
     window.returnForEdits = function() {
-        var assignmentId = document.querySelector('input[name="assignment_id"]');
-        var examId = document.querySelector('input[name="exam_id"]');
-        if (!assignmentId || !examId) return;
-
+        var a = document.querySelector('input[name="assignment_id"]');
+        var e = document.querySelector('input[name="exam_id"]');
+        if (!a || !e) return;
         var fd = new FormData();
-        fd.append('assignment_id', assignmentId.value);
-        fd.append('exam_id', examId.value);
-        fd.append('csrfmiddlewaretoken', getCsrfToken());
-
-        fetch('{% url "return_mark_sheet" %}', {
-            method: 'POST',
-            body: fd
-        }).then(function(r) {
-            var ct = r.headers.get('content-type') || '';
-            if (ct.indexOf('application/json') === -1) {
-                if (r.status === 403) {
-                    alert('Permission denied. Please refresh the page.');
-                } else {
-                    alert('Session expired — please refresh');
-                }
-                return null;
-            }
-            return r.json();
-        }).then(function(data) {
-            if (!data) return;
-            if (data.ok) {
-                location.reload();
-            } else {
-                alert(data.error || 'Could not return sheet');
-            }
+        fd.append('assignment_id', a.value);
+        fd.append('exam_id', e.value);
+        postJSON('{% url "return_mark_sheet" %}', fd).then(function(data) {
+            if (data.ok) location.reload();
+            else alert(data.error || 'Could not return sheet');
         }).catch(function() { alert('Network error'); });
     };
 })();

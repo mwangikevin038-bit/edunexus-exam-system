@@ -588,16 +588,62 @@
     position: fixed;
     bottom: var(--en-bottom-nav);
     left: 0; right: 0;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-top: 1px solid #f0f0f0;
+    background: #ffffff;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+    border-top: 1px solid #e5e5e5;
     padding: 12px 16px;
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     display: flex;
     align-items: center;
     justify-content: space-between;
     z-index: 810;
+}
+
+/* Inline submit block (lives INSIDE the form, after the last student
+   card). In normal document flow — not fixed — so it's never clipped
+   by the phone address bar, the bottom nav, or any browser overlay.
+   The user scrolls to the bottom of the student list and clicks. */
+.en-inline-submit {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+    margin-bottom: calc(var(--en-bottom-nav, 72px) + 24px);
+    padding: 16px;
+    background: #ffffff;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    position: sticky;
+    bottom: calc(var(--en-bottom-nav, 72px) + 12px);
+    z-index: 5;
+}
+.en-inline-submit-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .875rem;
+    font-weight: 700;
+    color: #171717;
+}
+.en-submit-btn--inline { width: auto; flex: 0 0 auto; }
+
+.en-inline-submit--submitted {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.en-locked-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .8125rem;
+    font-weight: 700;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 8px 12px;
 }
 
 .en-progress {
@@ -687,7 +733,44 @@
     .en-banner-btn { padding: 5px 10px; font-size: .6875rem; }
 }
 
-/* ── Desktop — Hide shell ───────────────────────────────────── */
+/* ── Desktop — natural document scroll, visible scrollbar ──────
+   The mobile shell is a full-viewport fixed layout with an internal
+   scroll container so the floating bottom bar stays glued to the
+   viewport. That layout is hostile on desktop: with a hidden
+   scrollbar on .en-body and position:fixed on .en-shell, the user
+   can't see there's anything to scroll and the document scrollbar
+   is never engaged. Fall back to a plain flowing layout here. */
 @media (min-width: 769px) {
-    .en-shell { display: none; }
+    .en-shell {
+        position: relative;
+        top: auto; left: auto; right: auto; bottom: auto;
+        height: auto;
+        min-height: 0;
+        max-width: 880px;
+        margin: 0 auto;
+        border-radius: 0;
+        background: transparent;
+    }
+    .en-header { position: relative; }
+    .en-body {
+        flex: none;
+        height: auto;
+        overflow: visible;
+        padding: 24px 32px 120px;
+        scrollbar-width: auto;
+        -ms-overflow-style: auto;
+    }
+    .en-body::-webkit-scrollbar { width: auto; display: block; }
+    /* On desktop, keep the bottom bar pinned to the viewport — the
+       mobile-bottom-nav is hidden at this width so there's no 72 px
+       gap to leave.  The sticky positioning we had previously was
+       unreliable across browsers when the bar lives outside
+       .en-shell in the DOM. */
+    .en-bottom-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 810;
+    }
 }

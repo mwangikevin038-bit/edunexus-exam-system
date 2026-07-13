@@ -62,8 +62,18 @@ def _diff_instances(old_data, new_data, tracked_fields):
 def _write_audit_log_async(payload):
     def _persist():
         from students.models import SecurityAuditLog
+        from django.db import close_old_connections
 
-        SecurityAuditLog.objects.create(**payload)
+        try:
+            SecurityAuditLog.objects.create(**payload)
+        except Exception:
+            logger.exception("async audit log persist failed")
+        finally:
+            # Each background thread opens its own connection. Without
+            # closing it the connection lingers in Django's per-thread
+            # pool, and a burst of audit writes (e.g. score capture
+            # auto-saves) can exhaust Postgres' max_connections.
+            close_old_connections()
 
     transaction.on_commit(lambda: threading.Thread(target=_persist, daemon=True).start())
 

@@ -527,6 +527,41 @@ class Mark(SchoolScopedModel):
         if self.is_absent:
             return f"{self.student.name} - {self.subject}: AB"
         return f"{self.student.name} - {self.subject}: {self.score}"
+
+
+# ==================================================================================
+# 🔐 PASSWORD HISTORY — prevent reuse of the last N passwords
+# ==================================================================================
+class PasswordHistory(models.Model):
+    """
+    Stores a bcrypt hash of each user's last ``HISTORY_DEPTH`` passwords.
+    Used by the password-change / reset forms to refuse a new password
+    that matches any of the recent ones.
+
+    The plaintext is never stored — only the hash. That means a leaked
+    PasswordHistory table cannot be used to log in (it doesn't contain
+    the password), only to detect reuse.
+    """
+    HISTORY_DEPTH = 5  # remember last 5 passwords
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='password_history',
+    )
+    password_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', '-created_at'], name='pwdhist_user_idx'),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
 # ==================================================================================
 # 🔄 UNIFIED TEACHER MODEL - Consolidates TeacherProfile + Teacher
 # ==================================================================================

@@ -340,12 +340,8 @@
                     <i class="ph ph-identification-badge"></i> <span>Faculty Profile</span>
                 </a>
 
-                {% with ws=request.session.workspace_section sec=request.session.school_section %}
-                {% if ws == 'LOWER_PRIMARY' %}
-                    <a class="nav-link-card {% if request.resolver_match.url_name == 'select_exam_primary' %}active-section{% endif %}" href="{% url 'select_exam_primary' %}">
-                        <i class="ph ph-keyboard"></i> <span>Score Capture</span>
-                    </a>
-                {% elif ws == 'PRIMARY' or sec == 'PRIMARY' %}
+                {% with ws=request.session.workspace_section sec=request.session.school_section teacher_sec=request.user.teacher_profile.school_section %}
+                {% if ws == 'LOWER_PRIMARY' or teacher_sec == 'PRIMARY' or sec == 'PRIMARY' %}
                     <a class="nav-link-card {% if request.resolver_match.url_name == 'select_exam_primary' %}active-section{% endif %}" href="{% url 'select_exam_primary' %}">
                         <i class="ph ph-keyboard"></i> <span>Score Capture</span>
                     </a>
@@ -504,8 +500,8 @@
                 <i class="ph ph-users"></i>
                 <span>Lists</span>
             </a>
-            {% with ws=request.session.workspace_section sec=request.session.school_section %}
-            {% if ws == 'LOWER_PRIMARY' or ws == 'PRIMARY' or sec == 'PRIMARY' %}
+            {% with ws=request.session.workspace_section sec=request.session.school_section teacher_sec=request.user.teacher_profile.school_section %}
+            {% if ws == 'LOWER_PRIMARY' or ws == 'PRIMARY' or sec == 'PRIMARY' or teacher_sec == 'PRIMARY' %}
                 <a class="bottom-nav-item nav-center {% if request.resolver_match.url_name == 'select_exam_primary' %}active{% endif %}"
                    href="{% url 'select_exam_primary' %}"
                    aria-label="Score Capture">
