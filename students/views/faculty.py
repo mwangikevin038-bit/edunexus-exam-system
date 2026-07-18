@@ -216,6 +216,50 @@ def _get_grade_streams(school, section):
     return options
 
 
+def section_target_qs(school, section):
+    """Return a Teacher queryset for the given workspace section (BOTH -> all)."""
+    qs = Teacher.all_objects.filter(school=school, is_active=True)
+    if section == 'LOWER_PRIMARY':
+        return qs.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', None, ''])
+    if section == 'PRIMARY':
+        return qs.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['UPPER', None, ''])
+    if section == 'JSS':
+        return qs.filter(school_section__in=['JSS', 'BOTH'])
+    return qs
+
+
+def _refresh_teacher_summary(teacher):
+    """Re-derive the denormalised subjects_taught / classes fields."""
+    try:
+        all_a = teacher.assignments.select_related('subject').all()
+        teacher.subjects_taught = ", ".join(sorted(set(a.subject.name for a in all_a)))
+        teacher.classes         = ", ".join(sorted(set(f"{a.class_name} {a.stream}" for a in all_a)))
+        teacher.save()
+    except Exception:
+        pass
+
+
+def _group_assignments_by_subject(assignments):
+    """
+    Group SubjectAssignment rows by subject.
+    Returns a list of dicts:
+      [{'subject': <Subject>, 'rows': [<SubjectAssignment>, ...], 'classes': ['G7 Blue', 'G9 Main']}, ...]
+    """
+    from collections import OrderedDict
+    groups = OrderedDict()
+    for a in assignments:
+        sid = a.subject_id
+        if sid not in groups:
+            groups[sid] = {
+                'subject': a.subject,
+                'rows': [],
+                'classes': [],
+            }
+        groups[sid]['rows'].append(a)
+        groups[sid]['classes'].append(f"{a.class_name} {a.stream}")
+    return list(groups.values())
+
+
 # ==============================================================================
 # SECTION 9 — FACULTY MANAGEMENT VIEW
 # ==============================================================================
@@ -402,6 +446,71 @@ def manage_faculty_matrix(request):
         # --- Assign subject to teacher ---
         else:
             school = get_request_school(request)
+            action = request.POST.get('action_type', 'assign')
+
+            # ── Delete an entire subject group from a teacher ────────────
+            if action == 'delete_subject_group':
+                teacher_id = request.POST.get('teacher_id')
+                subject_id = request.POST.get('subject_id')
+                teacher = Teacher.objects.filter(id=teacher_id, school=school).first()
+                from ..models import Subject
+                subject = Subject.objects.filter(id=subject_id, school=school).first()
+                if not teacher or not subject:
+                    messages.error(request, "Teacher or subject not found.")
+                    return redirect('manage_faculty_matrix')
+                # Section guard: same-section only
+                section = get_request_school_section(request)
+                if section != 'BOTH' and teacher.school_section != 'BOTH' and teacher.school_section != {
+                    'LOWER_PRIMARY': 'PRIMARY', 'PRIMARY': 'PRIMARY', 'JSS': 'JSS'
+                }.get(section):
+                    messages.error(request, "You can only modify teachers in your current workspace.")
+                    return redirect('manage_faculty_matrix')
+                deleted, _ = SubjectAssignment.objects.filter(
+                    school=school, teacher_profile=teacher, subject=subject
+                ).delete()
+                _refresh_teacher_summary(teacher)
+                messages.success(request,
+                    f"Removed {deleted} assignment(s) of {subject.name} from {teacher.get_full_title()}.")
+                return redirect('manage_faculty_matrix')
+
+            # ── Reassign an entire subject group to a different teacher ───
+            if action == 'reassign_subject_group':
+                teacher_id = request.POST.get('teacher_id')
+                subject_id = request.POST.get('subject_id')
+                new_teacher_id = request.POST.get('new_teacher_id', '').strip()
+                if not new_teacher_id:
+                    messages.error(request, "Please pick a teacher to reassign to.")
+                    return redirect('manage_faculty_matrix')
+                from_teacher = Teacher.objects.filter(id=teacher_id, school=school).first()
+                to_teacher   = Teacher.objects.filter(id=new_teacher_id, school=school).first()
+                from ..models import Subject
+                subject = Subject.objects.filter(id=subject_id, school=school).first()
+                if not (from_teacher and to_teacher and subject):
+                    messages.error(request, "Teacher or subject not found.")
+                    return redirect('manage_faculty_matrix')
+                if from_teacher.id == to_teacher.id:
+                    messages.warning(request, "Source and destination are the same teacher.")
+                    return redirect('manage_faculty_matrix')
+                # Section guard: target teacher must be in the same section
+                section = get_request_school_section(request)
+                if section != 'BOTH':
+                    valid_targets = section_target_qs(school, section).exclude(id=from_teacher.id)
+                    if not valid_targets.filter(id=to_teacher.id).exists():
+                        messages.error(request,
+                            f"{to_teacher.get_full_title()} is not in the {section} workspace.")
+                        return redirect('manage_faculty_matrix')
+                # Move all subject assignments
+                moved = SubjectAssignment.objects.filter(
+                    school=school, teacher_profile=from_teacher, subject=subject
+                ).update(teacher_profile=to_teacher)
+                _refresh_teacher_summary(from_teacher)
+                _refresh_teacher_summary(to_teacher)
+                messages.success(request,
+                    f"Reassigned {moved} assignment(s) of {subject.name} "
+                    f"from {from_teacher.get_full_title()} to {to_teacher.get_full_title()}.")
+                return redirect('manage_faculty_matrix')
+
+            # ── Default: create / update one assignment (teacher + subject + class + stream) ──
             teacher_id = request.POST.get('teacher_id')
             section = get_request_school_section(request)
             subject_id = request.POST.get('subject_code')
@@ -594,15 +703,17 @@ def manage_faculty_matrix(request):
     }.get(section, section)
 
     return render(request, 'students/manage_faculty.html', {
-        'assignments': assignments,
-        'teachers':    teachers_list,
-        'subjects':    subjects_for_section,
-        'grades':      grades_for_section,
-        'streams':     streams_for_section,
-        'grade_streams': _get_grade_streams(school, section),
-        'section':     section,
+        'assignments':        assignments,
+        'assignment_groups':  _group_assignments_by_subject(assignments),
+        'teachers':           teachers_list,
+        'subjects':           subjects_for_section,
+        'grades':             grades_for_section,
+        'streams':            streams_for_section,
+        'reassign_targets':   section_target_qs(school, section),
+        'grade_streams':      _get_grade_streams(school, section),
+        'section':            section,
         'section_breadcrumb_label': section_breadcrumb_label,
-        'section_summary': section_summary,
+        'section_summary':    section_summary,
     })
 
 

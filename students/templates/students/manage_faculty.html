@@ -420,6 +420,99 @@
     flex-shrink: 0;
   }
 
+  /* ── Grouped assignment (per subject) ───────────────────────────── */
+  .assignment-group {
+    display: block;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .assignment-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .assignment-group-title {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 13px;
+  }
+  .assignment-group-count {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .assignment-group-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+  }
+  .assignment-group-classes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .class-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #334155;
+    font-weight: 600;
+  }
+  .chip-dot-lg { width: 8px; height: 8px; }
+
+  .btn-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-mini:hover { background: #e2e8f0; }
+  .btn-mini-danger { color: #b91c1c; background: #fef2f2; border-color: #fecaca; padding: 4px 8px; }
+  .btn-mini-danger:hover { background: #fee2e2; }
+  .btn-mini-primary { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+  .btn-mini-primary:hover { background: #d1fae5; }
+
+  .assignment-group-reassign {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .reassign-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+  }
+  .field-select-inline {
+    flex: 1;
+    min-width: 180px;
+    padding: 6px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #fff;
+  }
+
   .no-assignments {
     color: var(--slate-400);
     font-size: 13px;
@@ -1205,12 +1298,60 @@
                   {% endif %}
                 </div>
                 <div class="assignments-grid">
-                  {% if teacher.assignments.all %}
-                    {% for assignment in teacher.assignments.all %}
-                      <span class="assignment-chip">
-                        <span class="chip-dot"></span>
-                        {{ assignment.subject.name }}: {{ assignment.class_name }} ({{ assignment.stream }})
-                      </span>
+                  {% regroup teacher.assignments.all|dictsort:"subject.name" by subject as grouped_assignments %}
+                  {% if grouped_assignments %}
+                    {% for group in grouped_assignments %}
+                      <div class="assignment-group" id="group-{{ teacher.id }}-{{ group.grouper.id }}">
+                        <div class="assignment-group-header">
+                          <span class="chip-dot chip-dot-lg"></span>
+                          <span class="assignment-group-title">{{ group.grouper.name }}</span>
+                          <span class="assignment-group-count">{{ group.list|length }} class{{ group.list|length|pluralize:"es" }}</span>
+                          <div class="assignment-group-actions">
+                            <button type="button" class="btn-mini" title="Reassign this subject to a different teacher"
+                                    onclick="toggleReassign({{ teacher.id }}, {{ group.grouper.id }}, '{{ group.grouper.name|escapejs }}', {{ group.list|length }})">
+                              <i class="bi bi-arrow-left-right"></i> Reassign
+                            </button>
+                            <form method="POST" style="display: inline-block;"
+                                  onsubmit="return confirm('Remove {{ group.grouper.name|escapejs }} from {{ teacher.get_full_title|escapejs }}? This will unassign {{ group.list|length }} class{{ group.list|length|pluralize }}.');">
+                              {% csrf_token %}
+                              <input type="hidden" name="action_type" value="delete_subject_group">
+                              <input type="hidden" name="teacher_id" value="{{ teacher.id }}">
+                              <input type="hidden" name="subject_id" value="{{ group.grouper.id }}">
+                              <button type="submit" class="btn-mini btn-mini-danger" title="Remove all assignments of this subject">
+                                <i class="bi bi-x-lg"></i>
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                        <div class="assignment-group-classes">
+                          {% for assignment in group.list|dictsort:"class_name" %}
+                            <span class="class-pill">{{ assignment.class_name }} {{ assignment.stream }}</span>
+                          {% endfor %}
+                        </div>
+                        <div class="assignment-group-reassign" id="reassign-{{ teacher.id }}-{{ group.grouper.id }}" style="display: none;">
+                          <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action_type" value="reassign_subject_group">
+                            <input type="hidden" name="teacher_id" value="{{ teacher.id }}">
+                            <input type="hidden" name="subject_id" value="{{ group.grouper.id }}">
+                            <span class="reassign-label">Move to:</span>
+                            <select name="new_teacher_id" class="field-select-inline" required>
+                              <option value="" disabled selected>Pick teacher...</option>
+                              {% for t in reassign_targets %}
+                                {% if t.id != teacher.id %}
+                                  <option value="{{ t.id }}">{{ t.get_full_title }} ({{ t.section_label|default:t.school_section }})</option>
+                                {% endif %}
+                              {% endfor %}
+                            </select>
+                            <button type="submit" class="btn-mini btn-mini-primary">
+                              <i class="bi bi-check-lg"></i> Save
+                            </button>
+                            <button type="button" class="btn-mini" onclick="toggleReassign({{ teacher.id }}, {{ group.grouper.id }}, '{{ group.grouper.name|escapejs }}', {{ group.list|length }})">
+                              Cancel
+                            </button>
+                          </form>
+                        </div>
+                      </div>
                     {% endfor %}
                   {% else %}
                     <span class="no-assignments">No active assignments mapped to this profile.</span>
@@ -1488,6 +1629,11 @@
 
   function closeFacultyModal() {
     document.getElementById("facultyModal").style.display = "none";
+  }
+
+  function toggleReassign(teacherId, subjectId, subjectName, count) {
+    var el = document.getElementById('reassign-' + teacherId + '-' + subjectId);
+    if (el) el.style.display = (el.style.display === 'none' ? 'flex' : 'none');
   }
 </script>
 {% endblock %}
