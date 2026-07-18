@@ -17,6 +17,9 @@ from .tenant import (
     get_school_object_or_403,
     get_school_queryset,
     enforce_section_access,
+    get_user_authoritative_section,
+    assert_user_in_section,
+    assert_class_in_workspace,
 )
 from .ratelimit import rate_limit
 
@@ -100,6 +103,9 @@ __all__ = [
     "get_school_object_or_403",
     "get_school_queryset",
     "enforce_section_access",
+    "get_user_authoritative_section",
+    "assert_user_in_section",
+    "assert_class_in_workspace",
     "tenant_read_only_required",
     "rate_limit",
 ]

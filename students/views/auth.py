@@ -155,24 +155,31 @@ def login_view(request):
 @require_http_methods(["POST"])
 def switch_workspace(request):
     """
-    Toggle the admin's active workspace between Primary and JSS.
-    Only accessible to users with school_section='BOTH'.
+    Toggle the admin's active workspace between LOWER_PRIMARY / PRIMARY / JSS.
+    Only accessible to users whose AUTHORITATIVE school_section is 'BOTH'
+    (school admin, superuser, or Teacher with school_section='BOTH').
     Sets session['workspace_section'] which drives the ContextVar filtering.
     """
-    user_section = request.session.get('school_section')
+    # Authoritative check — never trust the session for this.
+    from ..security import get_user_authoritative_section
+    user_section = get_user_authoritative_section(request.user)
     if user_section != 'BOTH':
         messages.error(request, "You do not have access to switch workspaces.")
         return redirect('school_admin_dashboard')
 
     target = request.POST.get('section', '').strip().upper()
-    if target not in ('PRIMARY', 'JSS'):
+    if target not in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
         messages.error(request, "Invalid workspace section.")
         return redirect('school_admin_dashboard')
 
     request.session['workspace_section'] = target
     request.session.modified = True
 
-    label_map = {'PRIMARY': 'Primary', 'JSS': 'Junior Secondary'}
+    label_map = {
+        'LOWER_PRIMARY': 'Lower Primary',
+        'PRIMARY': 'Upper Primary',
+        'JSS': 'Junior Secondary',
+    }
     messages.success(request, f"Switched to {label_map[target]} workspace.")
 
     return redirect('school_admin_dashboard')

@@ -71,8 +71,31 @@ def csv_upload_api(request):
     if len(rows) > 10000:
         return JsonResponse({"status": "error", "error": "Maximum 10,000 rows per upload."}, status=400)
 
-    upload_id = _uuid.uuid4().hex
+    # ── SECTION GUARD: pre-dispatch strict validation ─────────────────────
+    # Reject the upload BEFORE spinning up the worker if any row has a
+    # class_name that doesn't belong to the active workspace. The Celery
+    # task does the same check, but catching it here means a faster
+    # failure with no background work queued.
+    from ..views.constants import classes_for_section, validate_rows_for_section
     section = get_request_school_section(request) or 'JSS'
+    allowed = classes_for_section(section)
+    if allowed is None:
+        return JsonResponse({
+            "status": "error",
+            "error": f"Unknown workspace section {section!r}. Pick a valid workspace before uploading.",
+        }, status=400)
+    ok, section_errors, offending = validate_rows_for_section(rows, section)
+    if not ok:
+        return JsonResponse({
+            "status": "error",
+            "error": (
+                f"Upload rejected: {len(offending)} class(es) outside the {section} "
+                f"workspace ({sorted(offending)}). Switch workspaces or fix the CSV."
+            ),
+            "details": section_errors[:20],
+        }, status=400)
+
+    upload_id = _uuid.uuid4().hex
 
     from ..tasks import process_csv_upload as celery_task
     from ..csv_tasks import run_csv_upload_sync

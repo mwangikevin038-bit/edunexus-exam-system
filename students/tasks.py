@@ -111,6 +111,39 @@ def process_csv_upload(self, upload_id, school_id, rows_json, section='JSS'):
     valid_genders = set(dict(Student.GENDER_CHOICES).keys())
     valid_religions = set(dict(Student.RELIGION_CHOICES).keys())
 
+    # ── SECTION GUARD: strict pre-flight ──────────────────────────────────
+    # Reject the WHOLE upload if any row has a class_name that does not
+    # belong to the active workspace section. This prevents accidentally
+    # importing a JSS student into the Primary section, or vice versa.
+    from students.views.constants import classes_for_section, validate_rows_for_section
+    allowed_classes = classes_for_section(section)
+    if allowed_classes is None:
+        # Unknown section token — refuse to proceed.
+        msg = f"Unknown workspace section {section!r}. Upload aborted."
+        errors.append(msg)
+        _send_complete(upload_id, {
+            "status": "error", "processed": 0, "total": total,
+            "created": 0, "updated": 0, "skipped": total, "errors": errors,
+            "message": msg,
+        })
+        return {"status": "error", "errors": errors}
+    ok, section_errors, offending = validate_rows_for_section(rows_json, section)
+    if not ok:
+        msg = (
+            f"Upload REJECTED: {len(offending)} class(es) outside the {section} "
+            f"workspace ({sorted(offending)}). All rows must belong to {section}. "
+            f"Switch workspaces or fix the CSV."
+        )
+        errors.append(msg)
+        # Surface the first 20 offending rows so the user can fix their CSV.
+        errors.extend(section_errors[:20])
+        _send_complete(upload_id, {
+            "status": "error", "processed": 0, "total": total,
+            "created": 0, "updated": 0, "skipped": total, "errors": errors,
+            "message": msg,
+        })
+        return {"status": "error", "errors": errors}
+
     for chunk_start in range(0, total, CHUNK_SIZE):
         chunk = rows_json[chunk_start: chunk_start + CHUNK_SIZE]
         chunk_created, chunk_updated, chunk_skipped, chunk_errors = _process_chunk(

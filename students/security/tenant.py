@@ -230,6 +230,118 @@ def _client_ip(request):
     return request.META.get("REMOTE_ADDR", "unknown")
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# Section guard: explicit, named permission helper for cross-section locks.
+# Use this in views that build a queryset, write a record, or accept a
+# class_name / stream_name from a form. It centralises the "is this row
+# in the user's section?" check so it can never be forgotten.
+# ──────────────────────────────────────────────────────────────────────────
+
+# Map the workspace section tokens to the canonical DB school_section
+# and sub_section pair. Anything not listed here is admin-only (BOTH).
+WORKSPACE_TO_DB_SECTION = {
+    'LOWER_PRIMARY': ('PRIMARY', 'LOWER'),
+    'PRIMARY':       ('PRIMARY', 'UPPER'),
+    'JSS':           ('JSS',     None),
+}
+
+
+def get_user_authoritative_section(user):
+    """
+    Return the user's AUTHORITATIVE school_section from their profile.
+    - Platform superuser       -> 'BOTH'
+    - SchoolAdmin              -> 'BOTH'
+    - Teacher (sub_section set) -> 'LOWER_PRIMARY' or 'PRIMARY' (whichever matches)
+    - Teacher (no sub_section)  -> 'JSS' or 'PRIMARY' depending on school_section
+    - Anyone else              -> 'BOTH'
+
+    This is the ONLY source of truth for "where does this user belong?".
+    Never trust the session for a teacher's section.
+    """
+    if not user or not user.is_authenticated:
+        return 'BOTH'
+    if user.is_superuser:
+        return 'BOTH'
+    from students.models import SchoolAdmin, Teacher
+    if SchoolAdmin.objects.filter(user=user, is_active=True).exists():
+        return 'BOTH'
+    teacher = Teacher.all_objects.filter(user=user).first()
+    if not teacher:
+        return 'BOTH'
+    if teacher.school_section == 'BOTH':
+        return 'BOTH'
+    if teacher.school_section == 'PRIMARY':
+        if teacher.sub_section == 'LOWER':
+            return 'LOWER_PRIMARY'
+        if teacher.sub_section == 'UPPER':
+            return 'PRIMARY'
+        # PRIMARY with no sub_section — treat as Upper Primary by default
+        return 'PRIMARY'
+    if teacher.school_section == 'JSS':
+        return 'JSS'
+    return 'BOTH'
+
+
+def assert_user_in_section(request, required_workspace_section):
+    """
+    Hard guard: raise PermissionDenied if the authenticated user is not
+    allowed in `required_workspace_section` (one of 'LOWER_PRIMARY',
+    'PRIMARY', 'JSS'). Admins (BOTH) are always allowed.
+
+    Use this in any view that touches section-specific data, BEFORE doing
+    any read or write.
+    """
+    user = getattr(request, 'user', None)
+    user_section = get_user_authoritative_section(user)
+    if user_section == 'BOTH':
+        return
+    if user_section == required_workspace_section:
+        return
+    logger.warning(
+        "SECTION GUARD blocked: user_id=%s user_section=%s required=%s path=%s ip=%s",
+        getattr(user, 'pk', None),
+        user_section,
+        required_workspace_section,
+        getattr(request, 'path', 'unknown'),
+        _client_ip(request),
+    )
+    from django.core.exceptions import PermissionDenied
+    raise PermissionDenied(
+        f"You do not have access to the {required_workspace_section} workspace."
+    )
+
+
+def assert_class_in_workspace(request, class_name, workspace_section):
+    """
+    Hard guard for a single class_name submitted by a form / CSV.
+    Raises PermissionDenied if the class is outside the user's
+    workspace section.
+
+    NOTE: a user in a *different* workspace can still submit classes
+    from *their own* workspace. Use this only when the data MUST belong
+    to the *active* workspace, not to the user's section.
+    """
+    from students.models import Student
+    from django.core.exceptions import PermissionDenied
+    valid = set(dict(Student.CLASS_CHOICES).keys())
+    if class_name not in valid:
+        raise PermissionDenied(f"Unknown class '{class_name}'.")
+    from students.views.constants import classes_for_section
+    allowed = classes_for_section(workspace_section)
+    if class_name not in allowed:
+        logger.warning(
+            "CLASS-OUTSIDE-WORKSPACE blocked: user_id=%s class=%s workspace=%s path=%s",
+            getattr(request.user, 'pk', None),
+            class_name,
+            workspace_section,
+            getattr(request, 'path', 'unknown'),
+        )
+        raise PermissionDenied(
+            f"Class '{class_name}' is not part of the {workspace_section} workspace."
+        )
+
+
+
 class SchoolScopedViewMixin:
     """Mixin for class-based views enforcing tenant isolation."""
 

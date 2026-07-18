@@ -46,6 +46,82 @@ PRIMARY_PERF_LEVELS = ['EE', 'ME', 'AE', 'BE']
 
 LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
+
+# ── Section / sub-section ↔ class mapping (single source of truth) ─────
+# These three sets are the authoritative rule for which class_name
+# belongs to which section. Every CSV upload, form, and view MUST
+# validate against these — never hardcode a class range elsewhere.
+LOWER_PRIMARY_CLASSES = frozenset({'Grade 1', 'Grade 2', 'Grade 3'})
+UPPER_PRIMARY_CLASSES = frozenset({'Grade 4', 'Grade 5', 'Grade 6'})
+JSS_CLASSES           = frozenset({'Grade 7', 'Grade 8', 'Grade 9'})
+
+PRIMARY_CLASSES = LOWER_PRIMARY_CLASSES | UPPER_PRIMARY_CLASSES
+ALL_VALID_CLASSES = PRIMARY_CLASSES | JSS_CLASSES
+
+
+def classes_for_section(section):
+    """
+    Return the set of class names that belong to a given workspace section.
+    section is one of: 'LOWER_PRIMARY', 'PRIMARY', 'JSS', 'BOTH'.
+    Returns None for 'BOTH' (caller should decide).
+    """
+    if section == 'LOWER_PRIMARY':
+        return LOWER_PRIMARY_CLASSES
+    if section == 'PRIMARY':
+        return UPPER_PRIMARY_CLASSES
+    if section == 'JSS':
+        return JSS_CLASSES
+    if section == 'BOTH':
+        return ALL_VALID_CLASSES
+    return frozenset()
+
+
+def section_for_class(class_name):
+    """
+    Return ('PRIMARY'|'JSS', 'LOWER'|'UPPER'|None) for a given class name.
+    Returns (None, None) for unknown / empty.
+    """
+    if not class_name:
+        return None, None
+    if class_name in LOWER_PRIMARY_CLASSES:
+        return 'PRIMARY', 'LOWER'
+    if class_name in UPPER_PRIMARY_CLASSES:
+        return 'PRIMARY', 'UPPER'
+    if class_name in JSS_CLASSES:
+        return 'JSS', None
+    return None, None
+
+
+def validate_rows_for_section(rows, section, class_field='class_name'):
+    """
+    Strict-validate every row in `rows` belongs to `section`.
+    Returns (ok: bool, errors: list[str], offending_classes: set[str]).
+
+    - ok=True  → all rows are in section
+    - ok=False → at least one row is outside section; errors lists row indexes + class
+    - offending_classes: the unique set of bad class names
+    """
+    allowed = classes_for_section(section)
+    if not allowed:
+        return False, [f"Unknown workspace section: {section!r}"], set()
+
+    errors = []
+    offending = set()
+    for i, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            continue
+        cls = (row.get(class_field) or '').strip()
+        if not cls:
+            continue  # missing-class errors are caught elsewhere
+        if cls not in allowed:
+            offending.add(cls)
+            errors.append(
+                f"Row {i}: class '{cls}' does not belong to workspace '{section}'. "
+                f"Allowed: {sorted(allowed)}"
+            )
+    return (len(errors) == 0), errors, offending
+
+
 LOWER_PRIMARY_SUBJECT_SHORT_MAP = {
     'ELA': 'ELA', 'LIT': 'LIT', 'ENV': 'ENV', 'HYG': 'HYG',
     'CRE': 'CRE', 'IRE': 'IRE', 'HRE': 'HRE', 'MA': 'MA',

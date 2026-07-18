@@ -195,21 +195,31 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
         request._current_school_token = set_current_school(request.school)
 
         # ── Inject school_section into ContextVar for global query isolation ──
+        # The session's school_section is ONLY trusted for admin / BOTH
+        # users. For teachers, the section is ALWAYS re-derived from their
+        # profile so a forged or stale session value can never grant
+        # cross-section visibility.
+        user = getattr(request, "user", None)
+        is_authenticated = bool(user and user.is_authenticated)
+        user_authoritative = self._get_user_school_section(user) if is_authenticated else "BOTH"
+
         section = None
-        if hasattr(request, "session"):
-            section = request.session.get("school_section")
-            # For BOTH users, always resolve to a specific workspace (never BOTH)
-            if section == "BOTH":
-                workspace = request.session.get("workspace_section")
-                if workspace in ("LOWER_PRIMARY", "PRIMARY", "JSS"):
-                    section = workspace
-                else:
-                    # Default to PRIMARY for old sessions without workspace_section
-                    section = "PRIMARY"
-                    request.session["workspace_section"] = "PRIMARY"
-                    request.session.modified = True
+        if is_authenticated and user_authoritative == "BOTH":
+            # Admin / superuser: trust session so workspace toggle works.
+            if hasattr(request, "session"):
+                section = request.session.get("school_section")
+                if section == "BOTH":
+                    workspace = request.session.get("workspace_section")
+                    if workspace in ("LOWER_PRIMARY", "PRIMARY", "JSS"):
+                        section = workspace
+                    else:
+                        section = "PRIMARY"
+                        request.session["workspace_section"] = "PRIMARY"
+                        request.session.modified = True
         if not section:
-            section = self._get_user_school_section(request.user if hasattr(request, "user") else None)
+            # Teachers (and unauthenticated requests during the resolution
+            # phase) get their section from the profile, NEVER from session.
+            section = user_authoritative
         request._current_school_section_token = set_current_school_section(section or "BOTH")
 
     @staticmethod
