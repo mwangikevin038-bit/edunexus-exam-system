@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models import Count
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.template.loader import render_to_string
@@ -241,6 +242,21 @@ def manage_faculty_matrix(request):
                 messages.error(request, "This admin account is not linked to a school.")
                 return redirect('manage_faculty_matrix')
 
+            # Section is now taken EXPLICITLY from the form, not inherited
+            # from the workspace. This stops the "I was in JSS workspace and
+            # accidentally created a Lower Primary teacher" bug.
+            section_token = (request.POST.get('school_section_posting') or '').strip()
+            valid_sections = {'LOWER_PRIMARY', 'PRIMARY', 'JSS'}
+            if section_token not in valid_sections:
+                messages.error(request, "Please pick where this teacher will be posted (Lower / Upper / JSS).")
+                return redirect('manage_faculty_matrix')
+            if section_token == 'LOWER_PRIMARY':
+                db_section, db_sub = 'PRIMARY', 'LOWER'
+            elif section_token == 'PRIMARY':
+                db_section, db_sub = 'PRIMARY', 'UPPER'
+            else:  # JSS
+                db_section, db_sub = 'JSS', None
+
             login_username = f"{phone_number}@{school.code}"
 
             if User.objects.filter(username=login_username).exists():
@@ -253,8 +269,6 @@ def manage_faculty_matrix(request):
             try:
                 default_password = generate_default_password()
                 email_address = request.POST.get('email', '').strip()
-                section = get_request_school_section(request)
-                sub_section = request.POST.get('sub_section', '').strip() or None
                 with transaction.atomic():
                     new_user = User.objects.create_user(
                         username=login_username,
@@ -266,8 +280,9 @@ def manage_faculty_matrix(request):
                     Teacher.objects.create(
                         user=new_user, title=title, tsc_number=tsc_number,
                         phone_number=phone_number, email=email_address,
-                        school=school, school_section=section or 'BOTH',
-                        sub_section=sub_section,
+                        school=school,
+                        school_section=db_section,
+                        sub_section=db_sub,
                         assigned_task='Teacher', subjects_taught='', classes='',
                         must_change_password=True,
                     )
@@ -316,15 +331,41 @@ def manage_faculty_matrix(request):
                     full_name    = request.POST.get('full_name', '').strip()
                     phone_number = request.POST.get('phone_number', '').strip()
                     email        = request.POST.get('email', '').strip()
+                    new_tsc      = request.POST.get('tsc_number', '').strip()
 
+                    # ── Input validation ───────────────────────────────────
+                    if len(full_name) < 2:
+                        messages.error(request, "Full name must be at least 2 characters.")
+                        return redirect('manage_faculty_matrix')
+                    if phone_number and not (phone_number.isdigit() and len(phone_number) == 10 and phone_number.startswith('0')):
+                        messages.error(request,
+                            "Phone number must be 10 digits starting with 0 (e.g. 0712345678).")
+                        return redirect('manage_faculty_matrix')
+                    if not new_tsc or not new_tsc.isdigit():
+                        messages.error(request, "TSC number must be digits only.")
+                        return redirect('manage_faculty_matrix')
+                    # TSC must be unique within the school
+                    if Teacher.objects.filter(school=school, tsc_number=new_tsc).exclude(pk=teacher.pk).exists():
+                        messages.error(request,
+                            f"Another teacher already has TSC Number '{new_tsc}'.")
+                        return redirect('manage_faculty_matrix')
+                    # Phone number must be unique within the school (used as login)
+                    if phone_number:
+                        login_username = f"{phone_number}@{school.code}"
+                        if User.objects.filter(username=login_username).exclude(pk=teacher.user_id).exists():
+                            messages.error(request,
+                                f"Phone {phone_number} is already used as a login username by another account.")
+                            return redirect('manage_faculty_matrix')
+
+                    # ── Demographics (school_section / sub_section are intentionally NOT updatable) ──
                     teacher.user.first_name = full_name
                     teacher.user.last_name  = ''
-                    teacher.user.username   = f"{phone_number}@{teacher.school.code}" if teacher.school_id else phone_number
+                    teacher.user.username   = f"{phone_number}@{school.code}" if phone_number else teacher.user.username
                     teacher.user.email      = email
                     teacher.user.save()
 
                     teacher.title         = request.POST.get('title')
-                    teacher.tsc_number    = request.POST.get('tsc_number', '').strip()
+                    teacher.tsc_number    = new_tsc
                     teacher.phone_number  = phone_number
                     teacher.email         = email
                     teacher.assigned_task = request.POST.get('assigned_task', 'Teacher')
@@ -364,38 +405,92 @@ def manage_faculty_matrix(request):
             teacher_id = request.POST.get('teacher_id')
             section = get_request_school_section(request)
             subject_id = request.POST.get('subject_code')
+            grade = request.POST.get('grade', '').strip()
+            stream = request.POST.get('stream', '').strip()
             from ..models import Subject
-            subject = Subject.objects.filter(id=subject_id, school=school).first()
-            if subject:
-                # Determine sub_section from workspace
-                sub_section = None
-                if section == 'LOWER_PRIMARY':
-                    sub_section = 'LOWER'
-                elif section == 'PRIMARY':
-                    sub_section = 'UPPER'
+            from ..views.constants import classes_for_section, section_for_class
 
-                SubjectAssignment.objects.update_or_create(
-                    school=school,
-                    class_name=request.POST.get('grade'),
-                    stream=request.POST.get('stream'),
-                    subject=subject,
-                    defaults={
-                        'teacher_profile_id': teacher_id,
-                        'school_section': 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS',
-                        'sub_section': sub_section,
-                    }
-                )
-                try:
-                    target = Teacher.objects.get(id=teacher_id, school=school)
-                    all_a  = target.assignments.select_related('subject').all()
-                    target.subjects_taught = ", ".join(set(a.subject.name for a in all_a))
-                    target.classes         = ", ".join(set(f"{a.class_name} {a.stream}" for a in all_a))
-                    target.save()
-                except Teacher.DoesNotExist:
-                    pass
-                messages.success(request, "Subject assignment updated successfully.")
-            else:
+            # ── Validate section consistency ─────────────────────────────
+            if section not in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
+                messages.error(request, "Pick a valid workspace before allocating subjects.")
+                return redirect('manage_faculty_matrix')
+            if not grade or not stream:
+                messages.error(request, "Both grade and stream are required.")
+                return redirect('manage_faculty_matrix')
+            allowed_grades = classes_for_section(section)
+            if grade not in allowed_grades:
+                messages.error(request,
+                    f"Grade '{grade}' is not part of the {section} workspace.")
+                return redirect('manage_faculty_matrix')
+
+            teacher = Teacher.objects.filter(id=teacher_id, school=school).first()
+            subject = Subject.objects.filter(id=subject_id, school=school).first()
+            if not teacher:
+                messages.error(request, "Please pick a teacher.")
+                return redirect('manage_faculty_matrix')
+            if not subject:
                 messages.error(request, "Invalid subject selected.")
+                return redirect('manage_faculty_matrix')
+
+            # The subject MUST belong to the section we're assigning into.
+            expected_school_section, expected_sub_section = section_for_class(grade)
+            if subject.school_section == 'LOWER_PRIMARY' and section == 'LOWER_PRIMARY':
+                pass  # OK
+            elif subject.school_section == expected_school_section and \
+                 (subject.sub_section or '').upper() == (expected_sub_section or '').upper():
+                pass  # OK
+            elif subject.school_section == 'JSS' and section == 'JSS':
+                pass  # OK
+            else:
+                messages.error(request,
+                    f"Subject '{subject.name}' does not belong to the {section} workspace. "
+                    f"Switch workspaces or pick a different subject.")
+                return redirect('manage_faculty_matrix')
+
+            # The teacher MUST belong to this section.
+            teacher_section = teacher.school_section
+            teacher_sub = (teacher.sub_section or '').upper()
+            if teacher_section == 'BOTH':
+                pass  # cross-section teacher can teach anywhere
+            elif teacher_section == 'PRIMARY' and section in ('LOWER_PRIMARY', 'PRIMARY') and \
+                 (teacher_sub == section.replace('_PRIMARY', '').upper() or teacher_sub == ''):
+                pass
+            elif teacher_section == 'JSS' and section == 'JSS':
+                pass
+            else:
+                messages.error(request,
+                    f"{teacher.get_full_title()} is posted to a different section "
+                    f"and cannot be assigned here.")
+                return redirect('manage_faculty_matrix')
+
+            sub_section = None
+            if section == 'LOWER_PRIMARY':
+                sub_section = 'LOWER'
+            elif section == 'PRIMARY':
+                sub_section = 'UPPER'
+
+            SubjectAssignment.objects.update_or_create(
+                school=school,
+                class_name=grade,
+                stream=stream,
+                subject=subject,
+                defaults={
+                    'teacher_profile_id': teacher_id,
+                    'school_section': 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS',
+                    'sub_section': sub_section,
+                }
+            )
+            try:
+                all_a = teacher.assignments.select_related('subject').all()
+                teacher.subjects_taught = ", ".join(set(a.subject.name for a in all_a))
+                teacher.classes         = ", ".join(set(f"{a.class_name} {a.stream}" for a in all_a))
+                teacher.save()
+            except Exception:
+                pass
+            messages.success(
+                request,
+                f"Assigned {subject.name} to {teacher.get_full_title()} for {grade} {stream}."
+            )
             return redirect('manage_faculty_matrix')
 
     school = get_request_school(request)
@@ -405,6 +500,25 @@ def manage_faculty_matrix(request):
 
     # Filter by workspace section
     section = get_request_school_section(request)
+
+    # Section summary (for the page header cards) - counts are school-wide,
+    # independent of the workspace filter, so the admin always sees
+    # distribution across all 3 sections.
+    section_summary = {
+        'LOWER_PRIMARY': Teacher.objects.filter(
+            school=school, is_active=True, school_section='PRIMARY', sub_section='LOWER'
+        ).count(),
+        'PRIMARY': Teacher.objects.filter(
+            school=school, is_active=True, school_section='PRIMARY', sub_section='UPPER'
+        ).count(),
+        'JSS': Teacher.objects.filter(
+            school=school, is_active=True, school_section='JSS'
+        ).count(),
+        'BOTH': Teacher.objects.filter(
+            school=school, is_active=True, school_section='BOTH'
+        ).count(),
+    }
+    section_summary['TOTAL'] = sum(section_summary.values())
 
     teachers = Teacher.objects.filter(school=school).select_related('user').filter(is_active=True)
     assignments = SubjectAssignment.objects.filter(school=school).select_related('teacher_profile__user').all()
@@ -418,6 +532,31 @@ def manage_faculty_matrix(request):
     elif section == 'JSS':
         teachers = teachers.filter(school_section__in=['JSS', 'BOTH'])
         assignments = assignments.filter(school_section='JSS')
+
+    # ── Per-teacher metadata for the cards ──
+    # Attach extra attributes directly to the Teacher instances so the
+    # existing template (`{{ teacher.user.first_name }}`, etc.) keeps
+    # working unchanged.
+    def _section_label(t):
+        if t.school_section == 'BOTH':
+            return 'Cross-Section'
+        if t.school_section == 'PRIMARY':
+            return 'Lower Primary' if t.sub_section == 'LOWER' else 'Upper Primary'
+        if t.school_section == 'JSS':
+            return 'JSS'
+        return '—'
+
+    teacher_assignment_count = dict(
+        SubjectAssignment.objects.filter(school=school)
+        .values('teacher_profile_id').annotate(n=Count('id'))
+        .values_list('teacher_profile_id', 'n')
+    )
+
+    teachers_list = list(teachers)
+    for t in teachers_list:
+        t.assignment_count   = teacher_assignment_count.get(t.id, 0)
+        t.last_login         = t.user.last_login if t.user_id else None
+        t.section_label      = _section_label(t)
 
     # Pull grades from DB (school's actual class structure)
     from ..models import Grade, Stream, Subject
@@ -446,14 +585,24 @@ def manage_faculty_matrix(request):
     else:
         subjects_for_section = Subject.objects.filter(school=school, school_section=section, is_active=True).order_by('grade', 'code')
 
+    # Human label for the current workspace (for the allocation breadcrumb)
+    section_breadcrumb_label = {
+        'LOWER_PRIMARY': 'Lower Primary (Grades 1-3)',
+        'PRIMARY':       'Upper Primary (Grades 4-6)',
+        'JSS':           'Junior Secondary (Grades 7-9)',
+        'BOTH':          'All Sections',
+    }.get(section, section)
+
     return render(request, 'students/manage_faculty.html', {
         'assignments': assignments,
-        'teachers':    teachers,
+        'teachers':    teachers_list,
         'subjects':    subjects_for_section,
         'grades':      grades_for_section,
         'streams':     streams_for_section,
         'grade_streams': _get_grade_streams(school, section),
         'section':     section,
+        'section_breadcrumb_label': section_breadcrumb_label,
+        'section_summary': section_summary,
     })
 
 

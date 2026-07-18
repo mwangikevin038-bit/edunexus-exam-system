@@ -604,6 +604,169 @@
     gap: 8px;
   }
 
+  /* ── Section picker (3 tabs) ───────────────────────────────────── */
+  .section-picker {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .section-pick-tab {
+    flex: 1;
+    padding: 14px 10px;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    color: #475569;
+    cursor: pointer;
+    transition: all .15s ease;
+    text-align: center;
+  }
+  .section-pick-tab:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+  .section-pick-tab.active {
+    background: #ecfdf5;
+    border-color: #10b981;
+    color: #065f46;
+    box-shadow: 0 4px 10px rgba(16,185,129,.12);
+  }
+  .section-pick-tab i {
+    display: block;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  .section-pick-title {
+    font-weight: 800;
+    font-size: 13px;
+  }
+  .section-pick-sub {
+    font-size: 11px;
+    opacity: .75;
+    margin-top: 2px;
+  }
+  .section-picker-help {
+    font-size: 11px;
+    color: #64748b;
+    margin: 6px 0 18px;
+    line-height: 1.5;
+  }
+
+  /* ── Locked section chip (Edit mode) ────────────────────────────── */
+  .section-locked {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+    margin-bottom: 18px;
+  }
+  .section-locked-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #92400e;
+    font-weight: 700;
+    letter-spacing: .5px;
+  }
+  .section-locked-value {
+    font-weight: 800;
+    color: #78350f;
+    font-size: 14px;
+  }
+  .section-locked-icon {
+    margin-left: auto;
+    color: #92400e;
+  }
+
+  /* ── Section summary strip (page header) ───────────────────────── */
+  .section-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .summary-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .summary-icon {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    background: #f1f5f9; color: #475569;
+  }
+  .summary-lower  .summary-icon { background: #dbeafe; color: #1d4ed8; }
+  .summary-upper  .summary-icon { background: #fef3c7; color: #b45309; }
+  .summary-jss    .summary-icon { background: #dcfce7; color: #166534; }
+  .summary-both   .summary-icon { background: #ede9fe; color: #6d28d9; }
+  .summary-total  .summary-icon { background: #f1f5f9; color: #0f172a; }
+  .summary-count { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1; }
+  .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; font-weight: 600; }
+
+  /* ── Section badge on teacher card ─────────────────────────────── */
+  .section-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-left: 6px;
+  }
+  .section-badge-lower  { background: #dbeafe; color: #1d4ed8; }
+  .section-badge-upper  { background: #fef3c7; color: #b45309; }
+  .section-badge-jss    { background: #dcfce7; color: #166534; }
+  .section-badge-both   { background: #ede9fe; color: #6d28d9; }
+
+  .teacher-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 8px;
+  }
+  .meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: #f1f5f9;
+    color: #334155;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .meta-chip-muted { background: #f8fafc; color: #64748b; }
+  .meta-chip i { font-size: 10px; }
+
+  /* ── Allocation section pill ───────────────────────────────────── */
+  .allocation-section-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    background: #ecfdf5;
+    color: #065f46;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .allocation-header {
+    display: flex;
+    align-items: center;
+  }
+
   .form-section-label i {
     color: var(--oraimo-green);
     font-size: 13px;
@@ -885,6 +1048,47 @@
     {% endfor %}
   {% endif %}
 
+  <!-- Section Summary Cards (school-wide, always visible) -->
+  <div class="section-summary-strip">
+    <div class="summary-card summary-lower">
+      <div class="summary-icon"><i class="bi bi-book-half"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.LOWER_PRIMARY }}</div>
+        <div class="summary-label">Lower Primary</div>
+      </div>
+    </div>
+    <div class="summary-card summary-upper">
+      <div class="summary-icon"><i class="bi bi-book"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.PRIMARY }}</div>
+        <div class="summary-label">Upper Primary</div>
+      </div>
+    </div>
+    <div class="summary-card summary-jss">
+      <div class="summary-icon"><i class="bi bi-mortarboard-fill"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.JSS }}</div>
+        <div class="summary-label">JSS</div>
+      </div>
+    </div>
+    {% if section_summary.BOTH %}
+    <div class="summary-card summary-both">
+      <div class="summary-icon"><i class="bi bi-globe"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.BOTH }}</div>
+        <div class="summary-label">Cross-Section</div>
+      </div>
+    </div>
+    {% endif %}
+    <div class="summary-card summary-total">
+      <div class="summary-icon"><i class="bi bi-people-fill"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.TOTAL }}</div>
+        <div class="summary-label">Total Active</div>
+      </div>
+    </div>
+  </div>
+
   <div class="faculty-grid">
     <!-- Left: Allocation Form -->
     <div class="allocation-card">
@@ -893,6 +1097,9 @@
           <i class="bi bi-link-45deg"></i>
         </div>
         <h3>Deploy Allocation</h3>
+        <span class="allocation-section-pill">
+          <i class="bi bi-geo-alt-fill"></i> {{ section_breadcrumb_label }}
+        </span>
       </div>
       <div class="allocation-body">
         <form method="POST">
@@ -970,6 +1177,32 @@
                 <div class="teacher-name-row">
                   <span class="teacher-name">{{ teacher.get_full_title }}</span>
                   <span class="tsc-badge">TSC: {{ teacher.tsc_number }}</span>
+                  {% if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER' %}
+                    <span class="section-badge section-badge-lower">Lower Primary</span>
+                  {% elif teacher.school_section == 'PRIMARY' and teacher.sub_section == 'UPPER' %}
+                    <span class="section-badge section-badge-upper">Upper Primary</span>
+                  {% elif teacher.school_section == 'JSS' %}
+                    <span class="section-badge section-badge-jss">JSS</span>
+                  {% else %}
+                    <span class="section-badge section-badge-both">Cross-Section</span>
+                  {% endif %}
+                </div>
+                <div class="teacher-meta-row">
+                  <span class="meta-chip">
+                    <i class="bi bi-link-45deg"></i>
+                    {{ teacher.assignment_count }} assignment{{ teacher.assignment_count|pluralize }}
+                  </span>
+                  {% if teacher.last_login %}
+                  <span class="meta-chip meta-chip-muted">
+                    <i class="bi bi-clock-history"></i>
+                    Last login: {{ teacher.last_login|date:"M j, Y" }}
+                  </span>
+                  {% else %}
+                  <span class="meta-chip meta-chip-muted">
+                    <i class="bi bi-clock-history"></i>
+                    Never logged in
+                  </span>
+                  {% endif %}
                 </div>
                 <div class="assignments-grid">
                   {% if teacher.assignments.all %}
@@ -992,6 +1225,8 @@
                         data-tsc="{{ teacher.tsc_number }}"
                         data-phone="{{ teacher.phone_number|default:'' }}"
                         data-email="{{ teacher.email|default:'' }}"
+                        data-section="{{ teacher.section_label|default:'' }}"
+                        data-section-token="{% if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER' %}LOWER_PRIMARY{% elif teacher.school_section == 'PRIMARY' and teacher.sub_section == 'UPPER' %}PRIMARY{% elif teacher.school_section == 'JSS' %}JSS{% else %}BOTH{% endif %}"
                         onclick="handleEditClick(this)">
                   <i class="bi bi-pencil-square"></i> Edit
                 </button>
@@ -1039,8 +1274,41 @@
       <input type="hidden" id="modal_teacher_id" name="teacher_id" value="">
 
       <div class="modal-body">
+        <!-- Section Posting (EXPLICIT, not inherited) -->
+        <div class="form-section-label" id="sectionPickerLabel">
+          <i class="bi bi-geo-alt-fill"></i> Where will this teacher be posted?
+        </div>
+        <div class="section-picker" id="sectionPicker" role="tablist">
+          <button type="button" class="section-pick-tab" data-section="LOWER_PRIMARY" role="tab">
+            <i class="bi bi-book-half"></i>
+            <div class="section-pick-title">Lower Primary</div>
+            <div class="section-pick-sub">Grades 1 - 3</div>
+          </button>
+          <button type="button" class="section-pick-tab" data-section="PRIMARY" role="tab">
+            <i class="bi bi-book"></i>
+            <div class="section-pick-title">Upper Primary</div>
+            <div class="section-pick-sub">Grades 4 - 6</div>
+          </button>
+          <button type="button" class="section-pick-tab" data-section="JSS" role="tab">
+            <i class="bi bi-mortarboard-fill"></i>
+            <div class="section-pick-title">Junior Secondary</div>
+            <div class="section-pick-sub">Grades 7 - 9</div>
+          </button>
+        </div>
+        <input type="hidden" name="school_section_posting" id="school_section_posting" value="">
+        <div class="section-picker-help" id="sectionPickerHelp">
+          Pick one. The teacher will only see data for this section. This is permanent.
+        </div>
+
+        <!-- Locked section chip (shown only on Edit) -->
+        <div class="section-locked" id="sectionLockedChip" style="display: none;">
+          <span class="section-locked-label">Posted to</span>
+          <span class="section-locked-value" id="sectionLockedValue">—</span>
+          <i class="bi bi-lock-fill section-locked-icon" title="Section is permanent"></i>
+        </div>
+
         <!-- Personal Information -->
-        <div class="form-section-label">
+        <div class="form-section-label" style="margin-top: 18px;">
           <i class="bi bi-person-badge"></i> Personal Information
         </div>
 
@@ -1081,24 +1349,6 @@
             </select>
           </div>
         </div>
-
-        {% if section == 'LOWER_PRIMARY' or section == 'PRIMARY' %}
-        <div class="form-grid" style="margin-top: 16px;">
-          <div>
-            <label class="form-field-label">Sub Section <span class="req">*</span></label>
-            <select name="sub_section" class="form-field-input" required>
-              {% if section == 'LOWER_PRIMARY' %}
-                <option value="LOWER" selected>Lower Primary (Grades 1-3)</option>
-                <option value="UPPER">Upper Primary (Grades 4-6)</option>
-              {% else %}
-                <option value="UPPER" selected>Upper Primary (Grades 4-6)</option>
-                <option value="LOWER">Lower Primary (Grades 1-3)</option>
-              {% endif %}
-            </select>
-          </div>
-          <div></div>
-        </div>
-        {% endif %}
 
         <!-- Contact Information -->
         <div class="form-section-label" style="margin-top: 24px;">
@@ -1166,7 +1416,16 @@
     const tscNumber = buttonElement.getAttribute('data-tsc');
     const phoneNumber = buttonElement.getAttribute('data-phone');
     const email = buttonElement.getAttribute('data-email');
-    openEditModal(id, title, fullName, tscNumber, phoneNumber, email);
+    const sectionLabel = buttonElement.getAttribute('data-section');
+    const sectionToken = buttonElement.getAttribute('data-section-token');
+    openEditModal(id, title, fullName, tscNumber, phoneNumber, email, sectionLabel, sectionToken);
+  }
+
+  function selectSection(token) {
+    document.getElementById("school_section_posting").value = token;
+    document.querySelectorAll(".section-pick-tab").forEach(function (el) {
+      el.classList.toggle("active", el.getAttribute("data-section") === token);
+    });
   }
 
   function openCreateModal() {
@@ -1178,11 +1437,25 @@
     document.getElementById("field_full_name").value = "";
     document.getElementById("field_tsc_number").value = "";
     document.getElementById("field_phone_number").value = "";
+    const emailField = document.querySelector('input[name="email"]');
+    if (emailField) emailField.value = "";
     document.getElementById("emailNotice").style.display = "flex";
+
+    // Show the section picker, hide the locked chip
+    document.getElementById("sectionPicker").style.display = "flex";
+    document.getElementById("sectionPickerLabel").style.display = "flex";
+    document.getElementById("sectionPickerHelp").style.display = "block";
+    document.getElementById("sectionLockedChip").style.display = "none";
+
+    // Default the picker to the current workspace
+    const ws = "{{ section|default:'JSS' }}";
+    const token = (ws === "LOWER_PRIMARY" || ws === "PRIMARY" || ws === "JSS") ? ws : "JSS";
+    selectSection(token);
+
     modal.style.display = "flex";
   }
 
-  function openEditModal(id, title, fullName, tscNumber, phoneNumber, email) {
+  function openEditModal(id, title, fullName, tscNumber, phoneNumber, email, sectionLabel, sectionToken) {
     const modal = document.getElementById("facultyModal");
     document.getElementById("modal_action_type").value = "edit_profile";
     document.getElementById("modal_teacher_id").value = id;
@@ -1194,8 +1467,24 @@
     const emailField = document.querySelector('input[name="email"]');
     if (emailField) emailField.value = email || "";
     document.getElementById("emailNotice").style.display = "none";
+
+    // Hide the picker, show the locked chip
+    document.getElementById("sectionPicker").style.display = "none";
+    document.getElementById("sectionPickerLabel").style.display = "none";
+    document.getElementById("sectionPickerHelp").style.display = "none";
+    document.getElementById("sectionLockedChip").style.display = "flex";
+    document.getElementById("sectionLockedValue").textContent = sectionLabel || sectionToken || "—";
+    document.getElementById("school_section_posting").value = sectionToken || "";
+
     modal.style.display = "flex";
   }
+
+  // Wire up the 3-tab picker
+  document.querySelectorAll(".section-pick-tab").forEach(function (el) {
+    el.addEventListener("click", function () {
+      selectSection(this.getAttribute("data-section"));
+    });
+  });
 
   function closeFacultyModal() {
     document.getElementById("facultyModal").style.display = "none";
