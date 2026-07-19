@@ -448,11 +448,22 @@ def calculate_broadsheet_plv(total_marks, total_points, sub_section=None):
     return calculate_report_plv(total_points, total_marks, sub_section)
 
 
-def calculate_primary_plv(total_marks, assessed_subjects):
+def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None):
     """
     Primary broadsheet PLV based on the school's GradingConfig.
-    Tries total_scale first, then subject_scale (on mean %).
-    NO hardcoded fallback — if config is missing, logs error and returns '-'.
+
+    For primary, PLV is computed from the **mean percentage** across
+    assessed subjects (via subject_scale). This works correctly for any
+    number of subjects (4 in Grade 1-3, 5 in Grade 5, 7-9 in Grade 6).
+
+    The total_scale (absolute marks) is intentionally NOT used for primary
+    because the configured range (e.g. 0-400) only fits a 4-subject class.
+    It is used for JSS where the total scale (0-800) matches the 8 subjects.
+
+    Lookup order:
+      1. Sub-section-specific config (PRIMARY/LOWER or PRIMARY/UPPER)
+      2. Falls back to section-wide PRIMARY config
+    NO hardcoded fallback.
     """
     import logging
     from ..models import GradingConfig
@@ -465,21 +476,27 @@ def calculate_primary_plv(total_marks, assessed_subjects):
     section = get_current_school_section()
 
     if school and section:
-        config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
-        if config:
-            if config.total_scale:
-                level, _ = config.get_total_level(total_marks)
-                return level if level != '-' else '-'
-            if config.subject_scale:
-                mean = total_marks / assessed_subjects
-                level, _ = config.get_subject_level(mean)
+        # Try sub-section-specific config first
+        config = None
+        if sub_section:
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section=section, sub_section=sub_section
+            ).first()
+        if not config:
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section=section
+            ).first()
+        if config and config.subject_scale:
+            mean = total_marks / assessed_subjects
+            level, _ = config.get_subject_level(mean)
+            if level and level != '-':
                 return level
 
     logging.getLogger("students.helpers").error(
-        "GradingConfig missing for school_id=%s section=%s. "
+        "GradingConfig missing or unusable for school_id=%s section=%s sub_section=%s. "
         "Primary PLV cannot be resolved. "
         "Configure it at /school-admin/grading-config/.",
-        getattr(school, 'id', None), section,
+        getattr(school, 'id', None), section, sub_section,
     )
     return '-'
 
