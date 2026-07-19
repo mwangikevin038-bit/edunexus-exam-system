@@ -490,6 +490,7 @@ function getItem(obj, key) { return (obj && key in obj) ? obj[key] : ''; }
                 {% csrf_token %}
                 <input type="hidden" name="action" value="save_subject_scale">
                 <input type="hidden" name="section" value="{{ active_section }}">
+                <input type="hidden" name="sub_section" value="{% if active_section == 'PRIMARY' %}UPPER{% elif active_section == 'LOWER_PRIMARY' %}LOWER{% else %}{{ active_config.sub_section|default_if_none:'' }}{% endif %}">
                 <input type="hidden" name="scale_data" id="subjectScaleData" value="{{ active_config.subject_scale|escape }}">
 
                 <div id="subjectScaleRows">
@@ -551,6 +552,7 @@ function getItem(obj, key) { return (obj && key in obj) ? obj[key] : ''; }
                 {% csrf_token %}
                 <input type="hidden" name="action" value="save_total_scale">
                 <input type="hidden" name="section" value="{{ active_section }}">
+                <input type="hidden" name="sub_section" value="{% if active_section == 'PRIMARY' %}UPPER{% elif active_section == 'LOWER_PRIMARY' %}LOWER{% else %}{{ active_config.sub_section|default_if_none:'' }}{% endif %}">
                 <input type="hidden" name="scale_data" id="totalScaleData" value="{{ active_config.total_scale|escape }}">
 
                 <div id="totalScaleRows">
@@ -613,6 +615,7 @@ function testScore() {
     fd.append('action', 'test_score');
     fd.append('score', score);
     fd.append('section', '{{ active_section|escapejs }}');
+    fd.append('sub_section', '{% if active_section == "PRIMARY" %}UPPER{% elif active_section == "LOWER_PRIMARY" %}LOWER{% endif %}');
     fetch(window.location.pathname, {
         method: 'POST',
         body: fd,

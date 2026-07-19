@@ -61,6 +61,7 @@ def grading_configuration(request):
 
         if action == 'save_subject_scale':
             section = request.POST.get('section', active_section)
+            sub_section = request.POST.get('sub_section', '').strip() or None
             try:
                 scale_data = json.loads(request.POST.get('scale_data', '[]'))
             except json.JSONDecodeError:
@@ -69,13 +70,18 @@ def grading_configuration(request):
             config, _ = GradingConfig.all_objects.update_or_create(
                 school=school,
                 school_section=section,
+                sub_section=sub_section,
                 defaults={'subject_scale': scale_data},
             )
-            messages.success(request, f"Subject grading scale saved for {SECTION_LABELS.get(section, section)}.")
+            label = SECTION_LABELS.get(section, section)
+            if sub_section:
+                label = f"{label} ({sub_section.title()})"
+            messages.success(request, f"Subject grading scale saved for {label}.")
             return redirect(f'{request.path}?section={section}')
 
         elif action == 'save_total_scale':
             section = request.POST.get('section', active_section)
+            sub_section = request.POST.get('sub_section', '').strip() or None
             try:
                 scale_data = json.loads(request.POST.get('scale_data', '[]'))
             except json.JSONDecodeError:
@@ -84,31 +90,45 @@ def grading_configuration(request):
             config, _ = GradingConfig.all_objects.update_or_create(
                 school=school,
                 school_section=section,
+                sub_section=sub_section,
                 defaults={'total_scale': scale_data},
             )
-            messages.success(request, f"Total marks scale saved for {SECTION_LABELS.get(section, section)}.")
+            label = SECTION_LABELS.get(section, section)
+            if sub_section:
+                label = f"{label} ({sub_section.title()})"
+            messages.success(request, f"Total marks scale saved for {label}.")
             return redirect(f'{request.path}?section={section}')
 
         elif action == 'reset_subject_scale':
             section = request.POST.get('section', active_section)
+            sub_section = request.POST.get('sub_section', '').strip() or None
             default_scale = GradingConfig.get_default_subject_scale(section)
             config, _ = GradingConfig.all_objects.update_or_create(
                 school=school,
                 school_section=section,
+                sub_section=sub_section,
                 defaults={'subject_scale': default_scale},
             )
-            messages.success(request, f"Subject scale reset to defaults for {SECTION_LABELS.get(section, section)}.")
+            label = SECTION_LABELS.get(section, section)
+            if sub_section:
+                label = f"{label} ({sub_section.title()})"
+            messages.success(request, f"Subject scale reset to defaults for {label}.")
             return redirect(f'{request.path}?section={section}')
 
         elif action == 'reset_total_scale':
             section = request.POST.get('section', active_section)
+            sub_section = request.POST.get('sub_section', '').strip() or None
             default_scale = GradingConfig.get_default_total_scale(section)
             config, _ = GradingConfig.all_objects.update_or_create(
                 school=school,
                 school_section=section,
+                sub_section=sub_section,
                 defaults={'total_scale': default_scale},
             )
-            messages.success(request, f"Total marks scale reset to defaults for {SECTION_LABELS.get(section, section)}.")
+            label = SECTION_LABELS.get(section, section)
+            if sub_section:
+                label = f"{label} ({sub_section.title()})"
+            messages.success(request, f"Total marks scale reset to defaults for {label}.")
             return redirect(f'{request.path}?section={section}')
 
         elif action == 'test_score':
@@ -118,18 +138,30 @@ def grading_configuration(request):
             except (TypeError, ValueError):
                 return JsonResponse({'error': 'Invalid score.'}, status=400)
             section = request.POST.get('section', active_section)
-            config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
+            sub_section = request.POST.get('sub_section', '').strip() or None
+            # Try sub-section-specific config first
+            config = None
+            if sub_section:
+                config = GradingConfig.all_objects.filter(
+                    school=school, school_section=section, sub_section=sub_section
+                ).first()
+            if not config:
+                config = GradingConfig.all_objects.filter(
+                    school=school, school_section=section
+                ).first()
             if not config or not config.subject_scale:
                 return JsonResponse({'error': 'No config for this section.'}, status=404)
             level, points = config.get_subject_level(score)
             return JsonResponse({'score': score, 'level': level, 'points': points})
 
-    # GET — load configs for all sections
+    # GET — load configs for all sections. Note: PRIMARY has TWO rows now
+    # (LOWER and UPPER). We use .filter().first() so multiple matches don't crash.
     configs = {}
     for section_key in SECTION_MAP:
-        try:
-            config = GradingConfig.all_objects.get(school=school, school_section=section_key)
-        except GradingConfig.DoesNotExist:
+        config = GradingConfig.all_objects.filter(
+            school=school, school_section=section_key
+        ).first()
+        if not config:
             config = GradingConfig.all_objects.create(
                 school=school,
                 school_section=section_key,
@@ -138,7 +170,22 @@ def grading_configuration(request):
             )
         configs[section_key] = config
 
-    active_config = configs.get(active_section, configs['PRIMARY'])
+    # Also load the UPPER and LOWER primary configs (used by the Primary workspace)
+    primary_upper = GradingConfig.all_objects.filter(
+        school=school, school_section='PRIMARY', sub_section='UPPER'
+    ).first()
+    primary_lower = GradingConfig.all_objects.filter(
+        school=school, school_section='PRIMARY', sub_section='LOWER'
+    ).first()
+    configs['PRIMARY_UPPER'] = primary_upper
+    configs['PRIMARY_LOWER'] = primary_lower
+
+    # The active_config is the one shown on the page (based on active_section)
+    if active_section in ('PRIMARY', 'LOWER_PRIMARY'):
+        # For primary workspaces, default to the UPPER scale (more common)
+        active_config = primary_upper or primary_lower or configs.get('PRIMARY')
+    else:
+        active_config = configs.get(active_section, configs.get('PRIMARY'))
 
     # Show tabs filtered by the current workspace:
     #   JSS workspace       -> JSS only
@@ -185,6 +232,8 @@ def grading_configuration(request):
 
     return render(request, 'students/grading_configuration.html', {
         'configs': configs,
+        'primary_upper': primary_upper,
+        'primary_lower': primary_lower,
         'active_section': active_section,
         'active_config': active_config,
         'section_labels': SECTION_LABELS,
