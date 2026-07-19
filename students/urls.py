@@ -3,6 +3,9 @@ from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
+    # ── Health check (no auth) ───────────────────────────────────────────
+    path('healthz', views.healthz, name='healthz'),
+
     # ── Dashboard & profile ───────────────────────────────────────────────
     path('dashboard/', views.dashboard, name='dashboard_alt'),
     path('profile/', views.profile_view, name='home_alt'),

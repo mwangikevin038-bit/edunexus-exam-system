@@ -95,6 +95,8 @@ MIDDLEWARE = [
     'students.security.middleware.TenantIsolationMiddleware',
     'students.security.middleware.SecurityAuditMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # GZip compresses HTML/CSS/JSON responses (~70% smaller). Cheap win.
+    'django.middleware.gzip.GZipMiddleware',
     # Close stale DB connections at the end of every request so the
     # auto-save endpoints + async audit logger don't accumulate idle
     # connections until Postgres' max_connections is hit.
@@ -181,6 +183,15 @@ UNLINKED_GUARDIAN_NAME = os.environ.get(
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False       # JS must read csrftoken cookie for AJAX CSRF
+
+# Store sessions in Redis (not the DB) - 5-10x faster for auth.
+# Falls back to DB-backed sessions if Redis is unavailable.
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+SESSION_CACHE_ALIAS = 'default'
+# Only save the session if it actually changed. Big DB write reduction.
+SESSION_SAVE_EVERY_REQUEST = False
+# Sessions expire after 2 weeks of inactivity
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
 
 # ==============================================================================
 # SECURITY HEADERS

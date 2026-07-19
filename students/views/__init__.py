@@ -34,6 +34,9 @@ from .auth import (  # noqa: F401
     custom_password_change,
 )
 
+# ── Health check (no auth required) ──────────────────────────────────────────
+from .health import healthz  # noqa: F401,E402
+
 # ── Dashboard views ──────────────────────────────────────────────────────────
 from .dashboard import (  # noqa: F401
     profile_view,
