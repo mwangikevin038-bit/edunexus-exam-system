@@ -453,7 +453,16 @@ class Mark(SchoolScopedModel):
                 })
 
     def _resolve_grading(self, score):
-        """Return (performance_level, points) using GradingConfig or section defaults."""
+        """Return (performance_level, points) using the school's GradingConfig.
+
+        There is NO hardcoded fallback. If the GradingConfig row is missing
+        or empty for this school+section, we log a loud error and return
+        a sentinel ('NO CONFIG', 0) so the admin notices and can fix it
+        via /school-admin/grading-config/.
+
+        Already-saved Mark rows are unaffected because their
+        performance_level was computed and stored at save time.
+        """
         score = max(0, min(100, round(score or 0)))
 
         if self.school_id and self.school_section:
@@ -463,30 +472,15 @@ class Mark(SchoolScopedModel):
             if config and config.subject_scale:
                 return config.get_subject_level(score)
 
-        if self.school_section == 'PRIMARY':
-            if score >= 75:
-                return 'EE', 4
-            elif score >= 50:
-                return 'ME', 3
-            elif score >= 25:
-                return 'AE', 2
-            return 'BE', 1
-
-        if score >= 90:
-            return 'EE1', 8
-        elif score >= 75:
-            return 'EE2', 7
-        elif score >= 58:
-            return 'ME1', 6
-        elif score >= 41:
-            return 'ME2', 5
-        elif score >= 31:
-            return 'AE1', 4
-        elif score >= 21:
-            return 'AE2', 3
-        elif score >= 11:
-            return 'BE1', 2
-        return 'BE2', 1
+        # No config found — log it loudly and return a sentinel. This will
+        # surface in the logs so the admin can set up the missing config.
+        logger.error(
+            "GradingConfig missing for school_id=%s school_section=%s. "
+            "Mark performance_level cannot be resolved. "
+            "Configure it at /school-admin/grading-config/.",
+            self.school_id, self.school_section,
+        )
+        return 'NO CONFIG', 0
 
     def save(self, *args, **kwargs):
         if self.pk and self.integrity_checksum and not verify_mark_checksum(self):

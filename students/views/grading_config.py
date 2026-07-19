@@ -111,6 +111,19 @@ def grading_configuration(request):
             messages.success(request, f"Total marks scale reset to defaults for {SECTION_LABELS.get(section, section)}.")
             return redirect(f'{request.path}?section={section}')
 
+        elif action == 'test_score':
+            # Returns JSON: what level + points would a given score get?
+            try:
+                score = float(request.POST.get('score', -1))
+            except (TypeError, ValueError):
+                return JsonResponse({'error': 'Invalid score.'}, status=400)
+            section = request.POST.get('section', active_section)
+            config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
+            if not config or not config.subject_scale:
+                return JsonResponse({'error': 'No config for this section.'}, status=404)
+            level, points = config.get_subject_level(score)
+            return JsonResponse({'score': score, 'level': level, 'points': points})
+
     # GET — load configs for all sections
     configs = {}
     for section_key in SECTION_MAP:
@@ -127,8 +140,31 @@ def grading_configuration(request):
 
     active_config = configs.get(active_section, configs['PRIMARY'])
 
-    # Determine which sections to show as tabs based on the active section's group
-    available_sections = SECTION_GROUPS.get(active_section, [active_section])
+    # Show ALL sections as tabs (not grouped). Each section has its own scale.
+    available_sections = list(SECTION_MAP.keys())
+
+    # In-use stats: how many marks are currently using each scale?
+    # We count by performance_level value at section level.
+    from ..models import Mark
+    marks_in_use = {}
+    for section_key in SECTION_MAP:
+        marks_in_use[section_key] = Mark.all_objects.filter(
+            school=school, school_section=section_key
+        ).count()
+
+    # Sanity-check the active config: detect overlapping ranges
+    def _detect_overlaps(scale, key_min, key_max):
+        """Return list of overlapping (i, j) index pairs."""
+        overlaps = []
+        for i, a in enumerate(scale):
+            for j, b in enumerate(scale):
+                if j <= i:
+                    continue
+                if a[key_min] <= b[key_max] and b[key_min] <= a[key_max]:
+                    overlaps.append((i, j))
+        return overlaps
+    subject_overlaps = _detect_overlaps(active_config.subject_scale or [], 'min_score', 'max_score')
+    total_overlaps   = _detect_overlaps(active_config.total_scale or [],   'min_marks', 'max_marks')
 
     return render(request, 'students/grading_configuration.html', {
         'configs': configs,
@@ -136,4 +172,7 @@ def grading_configuration(request):
         'active_config': active_config,
         'section_labels': SECTION_LABELS,
         'available_sections': available_sections,
+        'marks_in_use': marks_in_use,
+        'subject_overlaps': subject_overlaps,
+        'total_overlaps': total_overlaps,
     })

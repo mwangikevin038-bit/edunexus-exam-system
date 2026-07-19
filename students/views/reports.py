@@ -28,7 +28,7 @@ from .constants import (
     get_streams_for_school,
     sort_subjects,
 )
-from .exams import PRIMARY_GRADE_CHOICES, PRIMARY_PERFORMANCE_SCALE, _get_primary_performance
+from .exams import PRIMARY_GRADE_CHOICES, _get_primary_performance
 from .helpers import (
     calculate_broadsheet_plv,
     calculate_primary_plv,

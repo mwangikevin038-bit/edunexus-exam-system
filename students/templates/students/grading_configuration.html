@@ -1,7 +1,13 @@
 {% extends 'students/base.html' %}
 {% load static %}
+{% load students_extras %}
 
 {% block content %}
+{% load l10n %}
+
+<script>
+function getItem(obj, key) { return (obj && key in obj) ? obj[key] : ''; }
+</script>
 <style>
     .grading-page {
         animation: fadeIn var(--duration-slow) var(--ease-out) both;
@@ -264,36 +270,203 @@
         .scale-range { width: 100%; }
         .scale-range input { flex: 1; }
     }
+
+    /* ── Section Tabs (chip-style) ──────────────────────────── */
+    .section-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: var(--space-4);
+    }
+    .section-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        color: #475569;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all .15s ease;
+    }
+    .section-tab:hover { border-color: #94a3b8; }
+    .section-tab.active {
+        background: #ecfdf5;
+        border-color: #10b981;
+        color: #065f46;
+        box-shadow: 0 4px 10px rgba(16,185,129,.12);
+    }
+    .section-tab .tab-badge {
+        background: rgba(0,0,0,.08);
+        color: inherit;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+    }
+    .section-tab.active .tab-badge { background: rgba(16,185,129,.2); }
+
+    /* ── In-use card ────────────────────────────────────────── */
+    .in-use-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 16px;
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 12px;
+        margin-bottom: 18px;
+    }
+    .in-use-card i { color: #0284c7; font-size: 18px; }
+    .in-use-card-text { font-size: 13px; color: #075985; font-weight: 600; }
+    .in-use-card-text strong { color: #0c4a6e; }
+
+    /* ── Score tester ───────────────────────────────────────── */
+    .score-tester {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #f0fdf4, #ecfeff);
+        border: 1px solid #86efac;
+        border-radius: 12px;
+        margin-bottom: 18px;
+    }
+    .score-tester label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #065f46;
+    }
+    .score-tester input {
+        width: 90px;
+        padding: 8px 10px;
+        border: 1px solid #86efac;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        text-align: center;
+        background: #fff;
+    }
+    .score-tester .test-btn {
+        padding: 8px 14px;
+        background: #10b981;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .score-tester .test-result {
+        font-size: 13px;
+        color: #065f46;
+        font-weight: 600;
+    }
+    .score-tester .test-result .result-level {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        margin: 0 6px;
+        font-weight: 800;
+        color: #fff;
+    }
+
+    /* ── Overlap warning ───────────────────────────────────── */
+    .overlap-warning {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 14px;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 10px;
+        margin: 10px 0;
+        color: #991b1b;
+        font-size: 12px;
+    }
+    .overlap-warning i { margin-top: 2px; }
+
+    /* ── Section header (icon + subtitle) ───────────────────── */
+    .scale-section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .scale-section-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+    .scale-section-sub {
+        font-size: 12px;
+        color: #64748b;
+        margin-left: auto;
+    }
+    .scale-section-icon {
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        background: #ecfdf5; color: #10b981;
+        font-size: 16px;
+    }
+    .scale-section-icon.total-icon { background: #dbeafe; color: #1d4ed8; }
 </style>
 
 <div class="grading-page">
     <!-- HEADER -->
     <div class="page-header">
         <h1>Grading <span>Configuration</span></h1>
-        <p>Define performance level scales for each section</p>
+        <p>Define performance level scales for each section. These scales are the only source of truth for mark → level mapping. <strong>There are no hardcoded fallbacks.</strong></p>
     </div>
 
     <!-- INFO NOTE -->
     <div class="info-note">
         <i class="bi bi-info-circle-fill"></i>
-        <p>Configure how mark ranges map to performance levels (EE, ME, AE, BE). Each section has independent scales that apply when results are published.</p>
+        <p>Configure how mark ranges map to performance levels (EE, ME, AE, BE for Primary; EE1-BE2 for JSS). Each section has its own independent scale. Changes here apply to <strong>new</strong> mark entries; already-saved marks keep their stored performance level.</p>
     </div>
 
-    <!-- SECTION SEGMENTED CONTROL -->
-    <form method="get" id="sectionForm">
-        <div class="segmented-control">
-            {% for section_key in available_sections %}
-            <input type="radio" name="section" value="{{ section_key }}" id="sec_{{ section_key|lower }}"
-                   onchange="this.form.submit()" {% if active_section == section_key %}checked{% endif %}>
-            <label for="sec_{{ section_key|lower }}">{% if section_key == 'LOWER_PRIMARY' %}Lower Primary{% elif section_key == 'PRIMARY' %}Primary{% elif section_key == 'JSS' %}JSS{% endif %}</label>
-            {% endfor %}
+    <!-- SECTION TABS -->
+    <div class="section-tabs">
+        {% for section_key in available_sections %}
+        <a href="?section={{ section_key }}" class="section-tab {% if active_section == section_key %}active{% endif %}">
+            {{ section_labels|get_item:section_key }}
+            <span class="tab-badge">{{ marks_in_use|get_item:section_key }} mark{{ marks_in_use|get_item:section_key|pluralize }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- IN-USE STATS -->
+    <div class="in-use-card">
+        <i class="bi bi-bar-chart-fill"></i>
+        <div class="in-use-card-text">
+            <strong>{{ marks_in_use|get_item:active_section }}</strong> mark{{ marks_in_use|get_item:active_section|pluralize }} currently use this scale.
+            Changes here will only affect <strong>new</strong> mark entries — already-saved marks keep their stored performance level.
         </div>
-    </form>
+    </div>
+
+    <!-- SCORE TESTER -->
+    <div class="score-tester">
+        <label>Test a score:</label>
+        <input type="number" id="testScore" min="0" max="100" placeholder="e.g. 75">
+        <span style="color:#64748b">%</span>
+        <button type="button" class="test-btn" onclick="testScore()">
+            <i class="bi bi-lightning-charge"></i> Check
+        </button>
+        <span class="test-result" id="testResult"></span>
+    </div>
 
     <!-- SUBJECT SCALE -->
     <div class="scale-section">
         <div class="scale-section-header">
+            <div class="scale-section-icon"><i class="bi bi-bookmark-star"></i></div>
             <h3 class="scale-section-title">Individual Subject Scale</h3>
+            <div class="scale-section-sub">Each subject mark is mapped to one of these levels.</div>
         </div>
         <div class="scale-card">
             <form method="post" id="subjectScaleForm">
@@ -303,6 +476,16 @@
                 <input type="hidden" name="scale_data" id="subjectScaleData" value="{{ active_config.subject_scale|escape }}">
 
                 <div id="subjectScaleRows">
+                    {% if subject_overlaps %}
+                    <div class="overlap-warning">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <div>
+                            <strong>Overlapping ranges detected!</strong>
+                            Row pairs {{ subject_overlaps|length }} overlap. Each score should map to exactly one level.
+                            Fix by adjusting the min/max values so ranges don't share any score.
+                        </div>
+                    </div>
+                    {% endif %}
                     {% for entry in active_config.subject_scale %}
                     <div class="scale-row" data-index="{{ forloop.counter0 }}">
                         <span class="level-badge {% if 'EE' in entry.level %}ee{% elif 'ME' in entry.level %}me{% elif 'AE' in entry.level %}ae{% else %}be{% endif %}">{{ entry.level }}</span>
@@ -342,7 +525,9 @@
     <!-- TOTAL SCALE -->
     <div class="scale-section">
         <div class="scale-section-header">
+            <div class="scale-section-icon total-icon"><i class="bi bi-calculator-fill"></i></div>
             <h3 class="scale-section-title">Total Marks Scale</h3>
+            <div class="scale-section-sub">Overall (aggregate) marks → level for the broadsheet / report card.</div>
         </div>
         <div class="scale-card">
             <form method="post" id="totalScaleForm">
@@ -352,6 +537,15 @@
                 <input type="hidden" name="scale_data" id="totalScaleData" value="{{ active_config.total_scale|escape }}">
 
                 <div id="totalScaleRows">
+                    {% if total_overlaps %}
+                    <div class="overlap-warning">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <div>
+                            <strong>Overlapping ranges detected!</strong>
+                            {{ total_overlaps|length }} range pair(s) overlap. Each total mark should map to exactly one level.
+                        </div>
+                    </div>
+                    {% endif %}
                     {% for entry in active_config.total_scale %}
                     <div class="scale-row" data-index="{{ forloop.counter0 }}">
                         <span class="level-badge {% if 'EE' in entry.level %}ee{% elif 'ME' in entry.level %}me{% elif 'AE' in entry.level %}ae{% else %}be{% endif %}">{{ entry.level }}</span>
@@ -390,6 +584,40 @@
 </div>
 
 <script>
+function testScore() {
+    const scoreInput = document.getElementById('testScore');
+    const result = document.getElementById('testResult');
+    const score = parseFloat(scoreInput.value);
+    if (isNaN(score) || score < 0 || score > 100) {
+        result.innerHTML = '<span style="color:#dc2626">Enter a score 0-100</span>';
+        return;
+    }
+    const fd = new FormData();
+    fd.append('action', 'test_score');
+    fd.append('score', score);
+    fd.append('section', '{{ active_section|escapejs }}');
+    fetch(window.location.pathname, {
+        method: 'POST',
+        body: fd,
+        headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
+    }).then(r => r.json()).then(data => {
+        if (data.error) {
+            result.innerHTML = '<span style="color:#dc2626">' + data.error + '</span>';
+        } else {
+            const lvl = (data.level || '').toString();
+            let cls = 'be';
+            if (lvl.indexOf('EE') !== -1) cls = 'ee';
+            else if (lvl.indexOf('ME') !== -1) cls = 'me';
+            else if (lvl.indexOf('AE') !== -1) cls = 'ae';
+            result.innerHTML = score + '%  ->  <span class="result-level" style="background: var(--level-' + cls + ', ' + ({
+                'ee':'#22c55e','me':'#3b82f6','ae':'#f59e0b','be':'#ef4444'
+            }[cls]) + '">' + data.level + '</span>  ' + data.points + ' pts';
+        }
+    }).catch(e => {
+        result.innerHTML = '<span style="color:#dc2626">Error: ' + e.message + '</span>';
+    });
+}
+
 function collectScaleData(type) {
     const prefix = type === 'subject' ? 'subject' : 'total';
     const rows = document.getElementById(prefix + 'ScaleRows').querySelectorAll('.scale-row');

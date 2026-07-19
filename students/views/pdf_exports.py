@@ -24,7 +24,7 @@ from playwright.sync_api import sync_playwright
 
 from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
 from .reports import PRIMARY_ORDERED_LEVELS
-from .exams import PRIMARY_PERFORMANCE_SCALE, _get_primary_performance
+from .exams import _get_primary_performance
 from .helpers import (
     calculate_broadsheet_plv,
     calculate_primary_plv,

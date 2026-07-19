@@ -1301,20 +1301,14 @@ def manage_assessment_locks(request):
 # PRIMARY SECTION — Mark Entry (mirrors JSS select_exam flow)
 # ==============================================================================
 
-PRIMARY_PERFORMANCE_SCALE = [
-    (75, 'EE', 4),
-    (50, 'ME', 3),
-    (25, 'AE', 2),
-    (0,  'BE', 1),
-]
-
 PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
 LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
 
 def _get_primary_performance(percentage):
     """Return (descriptor, points) for a primary percentage score.
-    Uses school-specific GradingConfig if available."""
+    Uses the school's GradingConfig from the DB. NO hardcoded fallback."""
+    import logging
     from ..models import GradingConfig
     from ..school_scope import get_current_school, get_current_school_section
 
@@ -1326,10 +1320,13 @@ def _get_primary_performance(percentage):
         if config and config.subject_scale:
             return config.get_subject_level(percentage)
 
-    for threshold, descriptor, points in PRIMARY_PERFORMANCE_SCALE:
-        if percentage >= threshold:
-            return descriptor, points
-    return 'BE', 1
+    logging.getLogger("students.exams").error(
+        "GradingConfig.subject_scale missing for school_id=%s section=%s. "
+        "Primary descriptor cannot be resolved. "
+        "Configure it at /school-admin/grading-config/.",
+        getattr(school, 'id', None), section,
+    )
+    return 'NO CONFIG', 0
 
 
 @login_required(login_url='login')

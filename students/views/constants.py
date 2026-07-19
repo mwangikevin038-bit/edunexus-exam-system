@@ -172,16 +172,9 @@ def get_grades_for_school(school, section=None):
         qs = qs.filter(school_section=_resolve_db_section(section))
     return list(qs.values_list("name", flat=True).distinct().order_by("name"))
 
-PERFORMANCE_SCALE = [
-    (90, 'EE1', 8),
-    (75, 'EE2', 7),
-    (58, 'ME1', 6),
-    (41, 'ME2', 5),
-    (31, 'AE1', 4),
-    (21, 'AE2', 3),
-    (11, 'BE1', 2),
-    (0,  'BE2', 1),
-]
+# PERFORMANCE_SCALE was a hardcoded fallback used when GradingConfig was
+# missing. It has been removed. The system now uses ONLY the school
+# admin's configured GradingConfig in the DB.
 
 ORDERED_LEVELS = ['EE1', 'EE2', 'ME1', 'ME2', 'AE1', 'AE2', 'BE1', 'BE2']
 

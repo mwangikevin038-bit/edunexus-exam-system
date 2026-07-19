@@ -16,7 +16,6 @@ from django.db.models.functions import Cast
 from .constants import (
     ASSESSMENT_SLUG_MAP,
     GRADE_CHOICES,
-    PERFORMANCE_SCALE,
     RELIGION_SUBJECTS,
     RELIGION_TAG,
 )
@@ -363,25 +362,36 @@ def user_can_edit_learner_profile(user, student):
 def get_performance_level(score):
     """
     Return (performance_level, points) for a converted 100% score.
-    Uses school-specific GradingConfig if available, otherwise falls back to defaults.
+    Uses the school's GradingConfig from the DB. NO hardcoded fallback.
+
+    If config is missing, logs an error and returns ('NO CONFIG', 0).
     """
+    import logging
     from ..models import GradingConfig
     from ..school_scope import get_current_school, get_current_school_section
 
     score = max(0, min(100, round(score or 0)))
 
     school = get_current_school()
-    section = get_current_school_section()
+    section = get_request_school_section_value()
 
     if school and section:
         config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
         if config and config.subject_scale:
             return config.get_subject_level(score)
 
-    for threshold, level, points in PERFORMANCE_SCALE:
-        if score >= threshold:
-            return level, points
-    return 'BE2', 1
+    logging.getLogger("students.helpers").error(
+        "GradingConfig missing for school_id=%s section=%s. "
+        "Configure it at /school-admin/grading-config/.",
+        getattr(school, 'id', None), section,
+    )
+    return 'NO CONFIG', 0
+
+
+def get_request_school_section_value():
+    """Local import wrapper to avoid circular imports at module load."""
+    from ..school_scope import get_current_school_section
+    return get_current_school_section()
 
 
 def calculate_report_plv(total_points, total_marks):
@@ -404,14 +414,12 @@ def calculate_report_plv(total_points, total_marks):
         if config and config.total_scale:
             return config.get_total_level(mks)[0] if mks else '-'
 
-    if   pts >= 68 or mks >= 810: return 'EE1'
-    elif pts >= 59 or mks >= 675: return 'EE2'
-    elif pts >= 48 or mks >= 522: return 'ME1'
-    elif pts >= 37 or mks >= 369: return 'ME2'
-    elif pts >= 28 or mks >= 279: return 'AE1'
-    elif pts >= 19 or mks >= 189: return 'AE2'
-    elif pts >= 10 or mks >= 99:  return 'BE1'
-    elif pts >= 1  or mks >= 1:   return 'BE2'
+    import logging
+    logging.getLogger("students.helpers").error(
+        "GradingConfig.total_scale missing for school_id=%s section=%s. "
+        "Configure it at /school-admin/grading-config/.",
+        getattr(school, 'id', None), section,
+    )
     return '-'
 
 
@@ -427,9 +435,11 @@ def calculate_broadsheet_plv(total_marks, total_points):
 
 def calculate_primary_plv(total_marks, assessed_subjects):
     """
-    Primary broadsheet PLV based on total marks using the saved Total Marks Scale
-    from GradingConfig. Falls back to subject_scale (mean %) if no total_scale.
+    Primary broadsheet PLV based on the school's GradingConfig.
+    Tries total_scale first, then subject_scale (on mean %).
+    NO hardcoded fallback — if config is missing, logs error and returns '-'.
     """
+    import logging
     from ..models import GradingConfig
     from ..school_scope import get_current_school, get_current_school_section
 
@@ -444,20 +454,19 @@ def calculate_primary_plv(total_marks, assessed_subjects):
         if config:
             if config.total_scale:
                 level, _ = config.get_total_level(total_marks)
-                return level if level != '-' else 'BE'
+                return level if level != '-' else '-'
             if config.subject_scale:
                 mean = total_marks / assessed_subjects
                 level, _ = config.get_subject_level(mean)
                 return level
 
-    mean = total_marks / assessed_subjects
-    if mean >= 75:
-        return 'EE'
-    elif mean >= 50:
-        return 'ME'
-    elif mean >= 25:
-        return 'AE'
-    return 'BE'
+    logging.getLogger("students.helpers").error(
+        "GradingConfig missing for school_id=%s section=%s. "
+        "Primary PLV cannot be resolved. "
+        "Configure it at /school-admin/grading-config/.",
+        getattr(school, 'id', None), section,
+    )
+    return '-'
 
 
 def get_next_admission_no():
