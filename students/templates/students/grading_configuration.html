@@ -431,6 +431,23 @@ function getItem(obj, key) { return (obj && key in obj) ? obj[key] : ''; }
         <p>Configure how mark ranges map to performance levels (EE, ME, AE, BE for Primary; EE1-BE2 for JSS). Each section has its own independent scale. Changes here apply to <strong>new</strong> mark entries; already-saved marks keep their stored performance level.</p>
     </div>
 
+    <!-- WORKSPACE HINT -->
+    {% if current_workspace and current_workspace != 'BOTH' %}
+    <div class="info-note" style="margin-bottom: 14px;">
+        <i class="bi bi-funnel-fill"></i>
+        <p>You are viewing the
+            <strong>
+                {% if current_workspace == 'JSS' %}Junior Secondary (Grades 7-9){% endif %}
+                {% if current_workspace == 'PRIMARY' %}Upper Primary (Grades 4-6){% endif %}
+                {% if current_workspace == 'LOWER_PRIMARY' %}Lower Primary (Grades 1-3){% endif %}
+            </strong>
+            workspace. Tabs are filtered to that workspace.
+            <a href="?section=LOWER_PRIMARY" style="color:#1d4ed8; font-weight:700;">Lower Primary</a> and
+            <a href="?section=PRIMARY" style="color:#1d4ed8; font-weight:700;">Upper Primary</a> scales still apply across the whole Primary institution.
+        </p>
+    </div>
+    {% endif %}
+
     <!-- SECTION TABS -->
     <div class="section-tabs">
         {% for section_key in available_sections %}

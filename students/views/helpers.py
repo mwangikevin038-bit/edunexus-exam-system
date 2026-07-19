@@ -359,10 +359,14 @@ def user_can_edit_learner_profile(user, student):
     )
 
 
-def get_performance_level(score):
+def get_performance_level(score, sub_section=None):
     """
     Return (performance_level, points) for a converted 100% score.
     Uses the school's GradingConfig from the DB. NO hardcoded fallback.
+
+    Looks up by (school_section, sub_section) so LOWER and UPPER primary
+    can have different scales. Pass sub_section explicitly when calling
+    from a context that knows it (e.g. iterating marks for a class).
 
     If config is missing, logs an error and returns ('NO CONFIG', 0).
     """
@@ -373,33 +377,39 @@ def get_performance_level(score):
     score = max(0, min(100, round(score or 0)))
 
     school = get_current_school()
-    section = get_request_school_section_value()
+    section = get_current_school_section()
 
     if school and section:
-        config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
+        # Try the sub-section-specific config first
+        if sub_section:
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section=section, sub_section=sub_section
+            ).first()
+            if config and config.subject_scale:
+                return config.get_subject_level(score)
+        # Fallback to the section-wide config (e.g. PRIMARY applies to all
+        # primary if LOWER_PRIMARY scale isn't separately configured)
+        config = GradingConfig.all_objects.filter(
+            school=school, school_section=section
+        ).first()
         if config and config.subject_scale:
             return config.get_subject_level(score)
 
     logging.getLogger("students.helpers").error(
-        "GradingConfig missing for school_id=%s section=%s. "
+        "GradingConfig missing for school_id=%s section=%s sub_section=%s. "
         "Configure it at /school-admin/grading-config/.",
-        getattr(school, 'id', None), section,
+        getattr(school, 'id', None), section, sub_section,
     )
     return 'NO CONFIG', 0
 
 
-def get_request_school_section_value():
-    """Local import wrapper to avoid circular imports at module load."""
-    from ..school_scope import get_current_school_section
-    return get_current_school_section()
-
-
-def calculate_report_plv(total_points, total_marks):
+def calculate_report_plv(total_points, total_marks, sub_section=None):
     """
     2-tier JSS Performance Level used for report card comment matching.
-    Accepts either points or raw marks as a fallback.
-    Uses school-specific GradingConfig if available.
+    Uses the school's GradingConfig.total_scale from the DB.
+    NO hardcoded fallback — if config is missing, logs error and returns '-'.
     """
+    import logging
     from ..models import GradingConfig
     from ..school_scope import get_current_school, get_current_school_section
 
@@ -410,27 +420,32 @@ def calculate_report_plv(total_points, total_marks):
     section = get_current_school_section()
 
     if school and section:
+        if sub_section:
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section=section, sub_section=sub_section
+            ).first()
+            if config and config.total_scale:
+                return config.get_total_level(mks)[0] if mks else '-'
         config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
         if config and config.total_scale:
             return config.get_total_level(mks)[0] if mks else '-'
 
-    import logging
     logging.getLogger("students.helpers").error(
-        "GradingConfig.total_scale missing for school_id=%s section=%s. "
+        "GradingConfig.total_scale missing for school_id=%s section=%s sub_section=%s. "
         "Configure it at /school-admin/grading-config/.",
-        getattr(school, 'id', None), section,
+        getattr(school, 'id', None), section, sub_section,
     )
     return '-'
 
 
-def calculate_broadsheet_plv(total_marks, total_points):
+def calculate_broadsheet_plv(total_marks, total_points, sub_section=None):
     """
     Overall broadsheet level based on the learner's total performance points
     and raw total mark, keeping it consistent with report card PLV thresholds.
     """
     if not total_points and not total_marks:
         return '-'
-    return calculate_report_plv(total_points, total_marks)
+    return calculate_report_plv(total_points, total_marks, sub_section)
 
 
 def calculate_primary_plv(total_marks, assessed_subjects):

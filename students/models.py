@@ -455,10 +455,14 @@ class Mark(SchoolScopedModel):
     def _resolve_grading(self, score):
         """Return (performance_level, points) using the school's GradingConfig.
 
-        There is NO hardcoded fallback. If the GradingConfig row is missing
-        or empty for this school+section, we log a loud error and return
-        a sentinel ('NO CONFIG', 0) so the admin notices and can fix it
-        via /school-admin/grading-config/.
+        Looks up the config by (school_section, sub_section) so:
+          - Grade 1-3 (sub=LOWER)  -> LOWER_PRIMARY scale
+          - Grade 4-6 (sub=UPPER)  -> PRIMARY scale
+          - Grade 7-9              -> JSS scale
+
+        There is NO hardcoded fallback. If no config exists, we log a
+        loud error and return ('NO CONFIG', 0) so the admin notices and
+        can fix it via /school-admin/grading-config/.
 
         Already-saved Mark rows are unaffected because their
         performance_level was computed and stored at save time.
@@ -466,19 +470,29 @@ class Mark(SchoolScopedModel):
         score = max(0, min(100, round(score or 0)))
 
         if self.school_id and self.school_section:
-            config = GradingConfig.all_objects.filter(
-                school=self.school, school_section=self.school_section
-            ).first()
+            # Look up by school_section + sub_section (when sub_section is set).
+            # For JSS marks (sub_section=None) the second filter is skipped.
+            lookup = {'school': self.school, 'school_section': self.school_section}
+            if self.sub_section:
+                lookup['sub_section'] = self.sub_section
+            else:
+                lookup['sub_section__isnull'] = True
+            config = GradingConfig.all_objects.filter(**lookup).first()
+            # Fallback: if no sub-section-specific config, try without the
+            # sub_section filter (covers PRIMARY-scale applying to all primary).
+            if not config and 'sub_section' in lookup:
+                config = GradingConfig.all_objects.filter(
+                    school=self.school, school_section=self.school_section
+                ).first()
             if config and config.subject_scale:
                 return config.get_subject_level(score)
 
-        # No config found — log it loudly and return a sentinel. This will
-        # surface in the logs so the admin can set up the missing config.
+        # No config found — log it loudly and return a sentinel.
         logger.error(
-            "GradingConfig missing for school_id=%s school_section=%s. "
+            "GradingConfig missing for school_id=%s school_section=%s sub_section=%s. "
             "Mark performance_level cannot be resolved. "
             "Configure it at /school-admin/grading-config/.",
-            self.school_id, self.school_section,
+            self.school_id, self.school_section, self.sub_section,
         )
         return 'NO CONFIG', 0
 
@@ -1235,6 +1249,13 @@ class GradingConfig(SchoolScopedModel):
     ]
 
     school_section = models.CharField(max_length=20, choices=SECTION_CHOICES)
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary (Grades 1-3)'), ('UPPER', 'Upper Primary (Grades 4-6)')],
+        null=True,
+        blank=True,
+        help_text="Lower or Upper primary. NULL for JSS or shared Primary scale.",
+    )
     subject_scale = models.JSONField(
         default=list,
         blank=True,
@@ -1247,7 +1268,7 @@ class GradingConfig(SchoolScopedModel):
     )
 
     class Meta:
-        unique_together = ('school', 'school_section')
+        unique_together = ('school', 'school_section', 'sub_section')
         verbose_name = "Grading Configuration"
         verbose_name_plural = "Grading Configurations"
 

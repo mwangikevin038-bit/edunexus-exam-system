@@ -140,11 +140,28 @@ def grading_configuration(request):
 
     active_config = configs.get(active_section, configs['PRIMARY'])
 
-    # Show ALL sections as tabs (not grouped). Each section has its own scale.
-    available_sections = list(SECTION_MAP.keys())
+    # Show tabs filtered by the current workspace:
+    #   JSS workspace       -> JSS only
+    #   LOWER_PRIMARY       -> LOWER_PRIMARY only
+    #   PRIMARY             -> LOWER_PRIMARY + PRIMARY  (one institution, two sub-scales)
+    #   BOTH (school admin) -> all three
+    #
+    # Read directly from session because get_request_school_section() collapses
+    # BOTH into a specific workspace.
+    is_both_admin = request.session.get('school_section') == 'BOTH'
+    current_ws = get_request_school_section(request)
+    if is_both_admin:
+        available_sections = list(SECTION_MAP.keys())
+    elif current_ws == 'JSS':
+        available_sections = ['JSS']
+    elif current_ws == 'LOWER_PRIMARY':
+        available_sections = ['LOWER_PRIMARY']
+    elif current_ws == 'PRIMARY':
+        available_sections = ['LOWER_PRIMARY', 'PRIMARY']
+    else:
+        available_sections = list(SECTION_MAP.keys())
 
     # In-use stats: how many marks are currently using each scale?
-    # We count by performance_level value at section level.
     from ..models import Mark
     marks_in_use = {}
     for section_key in SECTION_MAP:
@@ -172,6 +189,7 @@ def grading_configuration(request):
         'active_config': active_config,
         'section_labels': SECTION_LABELS,
         'available_sections': available_sections,
+        'current_workspace': current_ws,
         'marks_in_use': marks_in_use,
         'subject_overlaps': subject_overlaps,
         'total_overlaps': total_overlaps,
