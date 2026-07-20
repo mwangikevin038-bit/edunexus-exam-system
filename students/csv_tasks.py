@@ -165,7 +165,14 @@ def run_csv_upload_sync(upload_id, school_id, rows_json, section='JSS'):
 def _process_chunk(school, chunk, offset, section,
                    valid_classes, valid_streams, valid_terms,
                    valid_genders, valid_religions):
-    """Process a single chunk. Uses all_objects to bypass tenant scoping."""
+    """Process a single chunk as ONE big transaction (fast).
+
+    Old code did 1 transaction per row (~1000 round-trips for 1000 rows).
+    New code:
+      1. Pre-validates every row in memory
+      2. Pre-fetches existing guardians and students in 1 query each
+      3. Inserts/updates everything in 1 transaction
+    """
     from students.models import Guardian, Student
 
     created = 0
@@ -173,6 +180,8 @@ def _process_chunk(school, chunk, offset, section,
     skipped = 0
     errors = []
 
+    # Phase 1: parse + validate every row in memory
+    parsed = []   # list of dicts ready for DB
     for i, row in enumerate(chunk):
         row_num = offset + i + 2
         s_name = (row.get("student_name") or "").strip()
@@ -189,12 +198,10 @@ def _process_chunk(school, chunk, offset, section,
             skipped += 1
             errors.append(f"Row {row_num}: Missing required fields (skipped)")
             continue
-
         if cls not in valid_classes:
             skipped += 1
             errors.append(f"Row {row_num}: Invalid class '{cls}' (skipped)")
             continue
-
         if strm not in valid_streams:
             skipped += 1
             errors.append(f"Row {row_num}: Invalid stream '{strm}' (skipped)")
@@ -204,81 +211,161 @@ def _process_chunk(school, chunk, offset, section,
         gender = (row.get("gender") or "Not Specified").strip() or "Not Specified"
         religion = (row.get("religion") or "None").strip() or "None"
         assessment_no = (row.get("assessment_no") or "").strip()
-
-        if term not in valid_terms:
-            term = "Term 1"
-        if gender not in valid_genders:
-            gender = "Not Specified"
-        if religion not in valid_religions:
-            religion = "None"
+        if term not in valid_terms:    term = "Term 1"
+        if gender not in valid_genders: gender = "Not Specified"
+        if religion not in valid_religions: religion = "None"
 
         try:
-            with transaction.atomic():
-                guardian_obj, _ = Guardian.all_objects.get_or_create(
-                    school=school,
-                    phone=p_phone,
-                    defaults={"name": p_name, "school_section": section},
+            grade_num = int(cls.replace('Grade ', ''))
+            sub_section_val = 'LOWER' if grade_num <= 3 else 'UPPER'
+        except (ValueError, AttributeError):
+            sub_section_val = ''
+
+        parsed.append({
+            "row_num": row_num,
+            "name": s_name, "phone": p_phone, "parent_name": p_name,
+            "class": cls, "stream": strm, "admission_no": adm,
+            "term": term, "gender": gender, "religion": religion,
+            "assessment_no": assessment_no,
+            "sub_section": sub_section_val,
+        })
+
+    if not parsed:
+        return created, updated, skipped, errors
+
+    # Phase 2: bulk-fetch existing records (1 query each instead of N)
+    unique_phones = {p["phone"] for p in parsed}
+    existing_guardians = {
+        g.phone: g for g in
+        Guardian.all_objects.filter(school=school, phone__in=unique_phones)
+    }
+    admission_nos = [p["admission_no"] for p in parsed if p["admission_no"]]
+    existing_students = {}
+    if admission_nos:
+        existing_students = {
+            s.admission_no: s for s in
+            Student.all_objects.filter(school=school, admission_no__in=admission_nos)
+        }
+
+    # Phase 3: do all DB writes in ONE transaction
+    new_guardians = []
+    new_students = []
+    students_to_update = []
+
+    for p in parsed:
+        # Guardian: reuse existing or queue for insert
+        g = existing_guardians.get(p["phone"])
+        if g is None:
+            g = Guardian(
+                school=school, phone=p["phone"], name=p["parent_name"],
+                school_section=section,
+            )
+            new_guardians.append(g)
+            existing_guardians[p["phone"]] = g  # mark as known for in-chunk dedup
+
+    # Bulk-insert new guardians
+    if new_guardians:
+        Guardian.all_objects.bulk_create(new_guardians, ignore_conflicts=True)
+        # Re-fetch to get PKs
+        for g in Guardian.all_objects.filter(
+            school=school, phone__in=[x.phone for x in new_guardians]
+        ):
+            existing_guardians[g.phone] = g
+
+    for p in parsed:
+        guardian_obj = existing_guardians.get(p["phone"])
+        if p["admission_no"] and p["admission_no"] in existing_students:
+            # Update
+            es = existing_students[p["admission_no"]]
+            es.name = p["name"]
+            es.class_name = p["class"]
+            es.stream = p["stream"]
+            es.term = p["term"]
+            es.guardian = guardian_obj
+            es.assessment_no = p["assessment_no"]
+            es.religion = p["religion"]
+            es.gender = p["gender"]
+            es.sub_section = p["sub_section"]
+            students_to_update.append(es)
+        elif p["admission_no"]:
+            # New with explicit admission_no
+            new_students.append(Student(
+                school=school, admission_no=p["admission_no"],
+                assessment_no=p["assessment_no"], name=p["name"],
+                class_name=p["class"], stream=p["stream"],
+                term=p["term"], guardian=guardian_obj,
+                religion=p["religion"], gender=p["gender"],
+                school_section=section, sub_section=p["sub_section"],
+            ))
+        else:
+            # No admission_no — generate one
+            # (rare path; do it one at a time)
+            next_no = _next_admission_number(school)
+            new_students.append(Student(
+                school=school, admission_no=f"{next_no:03}",
+                assessment_no=p["assessment_no"], name=p["name"],
+                class_name=p["class"], stream=p["stream"],
+                term=p["term"], guardian=guardian_obj,
+                religion=p["religion"], gender=p["gender"],
+                school_section=section, sub_section=p["sub_section"],
+            ))
+
+    try:
+        with transaction.atomic():
+            if students_to_update:
+                Student.all_objects.bulk_update(
+                    students_to_update,
+                    ["name", "class_name", "stream", "term", "guardian",
+                     "assessment_no", "religion", "gender", "sub_section"],
+                    batch_size=100,
                 )
-
-                if adm:
-                    existing = Student.all_objects.filter(
-                        school=school, admission_no=adm
-                    ).first()
-                    if existing:
-                        existing.name = s_name
-                        existing.class_name = cls
-                        existing.stream = strm
-                        existing.term = term
-                        existing.guardian = guardian_obj
-                        existing.assessment_no = assessment_no
-                        existing.religion = religion
-                        existing.gender = gender
-                        try:
-                            grade_num = int(cls.replace('Grade ', ''))
-                            existing.sub_section = 'LOWER' if grade_num <= 3 else 'UPPER'
-                        except (ValueError, AttributeError):
-                            pass
-                        existing.save()
-                        updated += 1
-                    else:
-                        sub_section_val = _derive_sub_section(cls)
-                        Student.all_objects.create(
-                            school=school,
-                            admission_no=adm,
-                            assessment_no=assessment_no,
-                            name=s_name,
-                            class_name=cls,
-                            stream=strm,
-                            term=term,
-                            guardian=guardian_obj,
-                            religion=religion,
-                            gender=gender,
-                            school_section=section,
-                            sub_section=sub_section_val or '',
+                updated = len(students_to_update)
+            if new_students:
+                Student.all_objects.bulk_create(new_students, batch_size=100, ignore_conflicts=True)
+                created = len(new_students)
+    except Exception as e:
+        # Fall back to row-by-row so we don't lose the whole chunk
+        logger.exception("Bulk CSV chunk failed, falling back to row-by-row: %s", e)
+        from django.db import IntegrityError
+        for p in parsed:
+            try:
+                with transaction.atomic():
+                    g = existing_guardians.get(p["phone"])
+                    if not g:
+                        g, _ = Guardian.all_objects.get_or_create(
+                            school=school, phone=p["phone"],
+                            defaults={"name": p["parent_name"], "school_section": section},
                         )
+                    if p["admission_no"]:
+                        es, created_flag = Student.all_objects.update_or_create(
+                            school=school, admission_no=p["admission_no"],
+                            defaults={
+                                "name": p["name"], "class_name": p["class"],
+                                "stream": p["stream"], "term": p["term"],
+                                "guardian": g, "assessment_no": p["assessment_no"],
+                                "religion": p["religion"], "gender": p["gender"],
+                                "school_section": section,
+                                "sub_section": p["sub_section"],
+                            },
+                        )
+                    else:
+                        next_no = _next_admission_number(school)
+                        Student.all_objects.create(
+                            school=school, admission_no=f"{next_no:03}",
+                            assessment_no=p["assessment_no"], name=p["name"],
+                            class_name=p["class"], stream=p["stream"],
+                            term=p["term"], guardian=g,
+                            religion=p["religion"], gender=p["gender"],
+                            school_section=section,
+                            sub_section=p["sub_section"],
+                        )
+                    if created_flag:
                         created += 1
-                else:
-                    next_no = _next_admission_number(school)
-                    sub_section_val = _derive_sub_section(cls)
-                    Student.all_objects.create(
-                        school=school,
-                        admission_no=f"{next_no:03}",
-                        assessment_no=assessment_no,
-                        name=s_name,
-                        class_name=cls,
-                        stream=strm,
-                        term=term,
-                        guardian=guardian_obj,
-                        religion=religion,
-                        gender=gender,
-                        school_section=section,
-                        sub_section=sub_section_val or '',
-                    )
-                    created += 1
-
-        except Exception as e:
-            skipped += 1
-            errors.append(f"Row {row_num}: DB error — {e}")
+                    else:
+                        updated += 1
+            except IntegrityError as ie:
+                skipped += 1
+                errors.append(f"Row {p['row_num']}: {ie}")
 
     return created, updated, skipped, errors
 
