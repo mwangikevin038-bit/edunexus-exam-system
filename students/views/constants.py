@@ -103,6 +103,9 @@ def validate_rows_for_section(rows, section, class_field='class_name'):
 
     Note: the PRIMARY workspace accepts BOTH LOWER (Grades 1-3) and
     UPPER (Grades 4-6) sub-sections because they're the same institution.
+
+    Comparison is CASE-INSENSITIVE: "GRADE 3" matches "Grade 3" because
+    CSVs from Excel often have inconsistent capitalization.
     """
     if section == 'PRIMARY':
         allowed = LOWER_PRIMARY_CLASSES | UPPER_PRIMARY_CLASSES
@@ -110,6 +113,9 @@ def validate_rows_for_section(rows, section, class_field='class_name'):
         allowed = classes_for_section(section)
     if not allowed:
         return False, [f"Unknown workspace section: {section!r}"], set()
+
+    # Build a lowercase lookup so the comparison is case-insensitive
+    allowed_lower = {a.lower(): a for a in allowed}
 
     errors = []
     offending = set()
@@ -119,7 +125,7 @@ def validate_rows_for_section(rows, section, class_field='class_name'):
         cls = (row.get(class_field) or '').strip()
         if not cls:
             continue  # missing-class errors are caught elsewhere
-        if cls not in allowed:
+        if cls.lower() not in allowed_lower:
             offending.add(cls)
             errors.append(
                 f"Row {i}: class '{cls}' does not belong to workspace '{section}'. "

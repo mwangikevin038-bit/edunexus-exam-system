@@ -198,7 +198,9 @@ def _process_chunk(school, chunk, offset, section,
             skipped += 1
             errors.append(f"Row {row_num}: Missing required fields (skipped)")
             continue
-        if cls not in valid_classes:
+        # CASE-INSENSITIVE: Excel CSVs often have inconsistent capitalization
+        # ("GRADE 3" vs "Grade 3"). Without this, all rows would be rejected.
+        if cls.lower() not in {c.lower() for c in valid_classes}:
             skipped += 1
             errors.append(f"Row {row_num}: Invalid class '{cls}' (skipped)")
             continue
