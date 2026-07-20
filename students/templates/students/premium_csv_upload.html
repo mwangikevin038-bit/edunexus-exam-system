@@ -440,6 +440,9 @@ function startImport() {
   .then(data => {
     if (data.status === 'ok') {
       goToStep(4);
+      // Always start polling immediately (WebSocket may miss fast tasks).
+      // connectWebSocket also calls pollProgress as a fallback.
+      pollProgress(data.upload_id);
       connectWebSocket(data.upload_id);
     } else {
       alert('Upload failed: ' + (data.error || 'Unknown error'));
