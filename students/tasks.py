@@ -120,9 +120,17 @@ def process_csv_upload(upload_id, school_id, rows_json, section='JSS'):
     # Reject the WHOLE upload if any row has a class_name that does not
     # belong to the active workspace section. This prevents accidentally
     # importing a JSS student into the Primary section, or vice versa.
-    from students.views.constants import classes_for_section, validate_rows_for_section
-    allowed_classes = classes_for_section(section)
-    if allowed_classes is None:
+    from students.views.constants import (
+        LOWER_PRIMARY_CLASSES, UPPER_PRIMARY_CLASSES,
+        classes_for_section, validate_rows_for_section,
+    )
+    # PRIMARY workspace accepts BOTH LOWER (Grades 1-3) and UPPER (Grades 4-6)
+    # because they're the same institution, just two sub-sections.
+    if section == 'PRIMARY':
+        allowed_classes = LOWER_PRIMARY_CLASSES | UPPER_PRIMARY_CLASSES
+    else:
+        allowed_classes = classes_for_section(section)
+    if allowed_classes is None or not allowed_classes:
         # Unknown section token — refuse to proceed.
         msg = f"Unknown workspace section {section!r}. Upload aborted."
         errors.append(msg)

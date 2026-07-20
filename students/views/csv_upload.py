@@ -76,10 +76,18 @@ def csv_upload_api(request):
     # class_name that doesn't belong to the active workspace. The Celery
     # task does the same check, but catching it here means a faster
     # failure with no background work queued.
-    from ..views.constants import classes_for_section, validate_rows_for_section
+    from ..views.constants import (
+        LOWER_PRIMARY_CLASSES, UPPER_PRIMARY_CLASSES,
+        classes_for_section, validate_rows_for_section,
+    )
     section = get_request_school_section(request) or 'JSS'
-    allowed = classes_for_section(section)
-    if allowed is None:
+    # PRIMARY workspace accepts BOTH LOWER (Grades 1-3) and UPPER (Grades 4-6)
+    # because they're the same institution, just two sub-sections.
+    if section == 'PRIMARY':
+        allowed = LOWER_PRIMARY_CLASSES | UPPER_PRIMARY_CLASSES
+    else:
+        allowed = classes_for_section(section)
+    if allowed is None or not allowed:
         return JsonResponse({
             "status": "error",
             "error": f"Unknown workspace section {section!r}. Pick a valid workspace before uploading.",
