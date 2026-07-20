@@ -298,9 +298,9 @@ def _process_chunk(school, chunk, offset, section,
                 school_section=section, sub_section=p["sub_section"],
             ))
         else:
-            # No admission_no — generate one
-            # (rare path; do it one at a time)
-            next_no = _next_admission_number(school)
+            # No admission_no — generate one (scoped to section so PRIMARY and
+            # JSS each have their own independent number series).
+            next_no = _next_admission_number(school, school_section=section, sub_section=p["sub_section"])
             new_students.append(Student(
                 school=school, admission_no=f"{next_no:03}",
                 assessment_no=p["assessment_no"], name=p["name"],
@@ -349,7 +349,7 @@ def _process_chunk(school, chunk, offset, section,
                             },
                         )
                     else:
-                        next_no = _next_admission_number(school)
+                        next_no = _next_admission_number(school, school_section=section, sub_section=p.get("sub_section"))
                         Student.all_objects.create(
                             school=school, admission_no=f"{next_no:03}",
                             assessment_no=p["assessment_no"], name=p["name"],
@@ -370,17 +370,28 @@ def _process_chunk(school, chunk, offset, section,
     return created, updated, skipped, errors
 
 
-def _next_admission_number(school):
-    """Get the next available admission number for a school."""
+def _next_admission_number(school, school_section=None, sub_section=None):
+    """Get the next available admission number for a school.
+
+    Scoped by (school_section, sub_section) so PRIMARY and JSS each have
+    their own independent number series (the user's design rule).
+    """
     from students.models import Student
 
-    last = (
-        Student.all_objects.filter(school=school)
-        .filter(admission_no__regex=r'^[0-9]+$')
-        .order_by("-admission_no")
-        .values_list("admission_no", flat=True)
-        .first()
-    )
+    qs = Student.all_objects.filter(school=school, admission_no__regex=r'^[0-9]+$')
+    if school_section is not None:
+        qs = qs.filter(school_section=school_section)
+    if sub_section is not None:
+        qs = qs.filter(sub_section=sub_section)
+    elif school_section is not None:
+        # For JSS rows, sub_section is NULL. For PRIMARY we accept both
+        # LOWER and UPPER (they share the Primary number series).
+        if school_section == 'JSS':
+            qs = qs.filter(sub_section__isnull=True)
+        else:
+            qs = qs.filter(sub_section__in=['LOWER', 'UPPER', None, ''])
+
+    last = qs.order_by("-admission_no").values_list("admission_no", flat=True).first()
     if last and last.isdigit():
         return int(last) + 1
-    return Student.all_objects.filter(school=school).count() + 1
+    return qs.count() + 1
