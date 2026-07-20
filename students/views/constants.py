@@ -100,8 +100,14 @@ def validate_rows_for_section(rows, section, class_field='class_name'):
     - ok=True  → all rows are in section
     - ok=False → at least one row is outside section; errors lists row indexes + class
     - offending_classes: the unique set of bad class names
+
+    Note: the PRIMARY workspace accepts BOTH LOWER (Grades 1-3) and
+    UPPER (Grades 4-6) sub-sections because they're the same institution.
     """
-    allowed = classes_for_section(section)
+    if section == 'PRIMARY':
+        allowed = LOWER_PRIMARY_CLASSES | UPPER_PRIMARY_CLASSES
+    else:
+        allowed = classes_for_section(section)
     if not allowed:
         return False, [f"Unknown workspace section: {section!r}"], set()
 
