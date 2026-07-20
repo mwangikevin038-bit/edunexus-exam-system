@@ -49,11 +49,16 @@ def _send_complete(upload_id, data):
             pass
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=10)
-def process_csv_upload(self, upload_id, school_id, rows_json, section='JSS'):
+@shared_task(max_retries=2, default_retry_delay=10)
+def process_csv_upload(upload_id, school_id, rows_json, section='JSS'):
     """
     Main background task. Receives the full mapped CSV payload as a JSON list.
     Processes in chunks of CHUNK_SIZE to keep memory low.
+
+    Note: previously used `bind=True` which triggers a Celery 5.6.x
+    worker bug (`_loc` not initialized in fast_trace_task, raises
+    "not enough values to unpack"). We don't use `self` here, so
+    `bind=True` was unnecessary.
     """
     from students.models import Grade, Guardian, School, Stream, Student
 
