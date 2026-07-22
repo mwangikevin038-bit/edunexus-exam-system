@@ -45,7 +45,6 @@ def compute_exam_checksum(exam):
             exam.name or "",
             exam.term or "",
             exam.year or "",
-            exam.status or "",
         )
     )
     return hmac.new(_integrity_key(), payload.encode("utf-8"), hashlib.sha256).hexdigest()

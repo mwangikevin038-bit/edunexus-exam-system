@@ -184,31 +184,14 @@
                         {% endfor %}
                     </div>
 
-                    {# Submit row — always visible at the end of the form.
-                       Lives in normal document flow (not fixed-position) so
-                       it never gets clipped by a phone's address bar, bottom
-                       nav, or any other browser overlay. The user scrolls
-                       to the bottom of the student list and clicks. #}
-                    <div class="en-inline-submit {% if is_submitted %}en-inline-submit--submitted{% endif %}">
+                    {# Submit row — JS moves this outside .en-body for fixed positioning #}
+                    <div class="en-inline-submit" id="enInlineSubmit" data-submitted="{% if is_submitted %}1{% else %}0{% endif %}" data-locked="{% if is_locked %}1{% else %}0{% endif %}">
                         <span class="en-inline-submit-progress">
-                            {% if is_submitted %}
-                                <i class="ph ph-check-circle" style="color:#16a34a;font-size:18px"></i>
-                                <span>This sheet has been submitted.</span>
-                            {% else %}
-                                <span id="scoredCountInline">0</span> / {{ students|length }} scored
-                            {% endif %}
+                            <span id="scoredCountInline">0</span> / {{ students|length }} scored
                         </span>
-                        {% if is_submitted and not is_locked %}
-                            <button type="button" class="en-submit-btn en-submit-btn--inline en-return-btn" onclick="returnForEdits()">
-                                <i class="ph ph-arrow-u-up-left"></i> Return for Edits
-                            </button>
-                        {% elif not is_locked %}
-                            <button type="submit" class="en-submit-btn en-submit-btn--inline">
-                                <i class="ph ph-cloud-arrow-up"></i> Submit Marks
-                            </button>
-                        {% else %}
-                            <span class="en-locked-badge"><i class="ph ph-lock"></i> Locked by admin</span>
-                        {% endif %}
+                        <button type="button" class="en-submit-btn en-submit-btn--inline" id="enSubmitBtn">
+                            <i class="ph ph-cloud-arrow-up"></i> Submit
+                        </button>
                     </div>
                 </form>
 
@@ -449,6 +432,12 @@
             if (invalid > 0) submitBtn.setAttribute('disabled', 'disabled');
             else submitBtn.removeAttribute('disabled');
         }
+        var totalStudents = inputs.length;
+        var submitBar = document.getElementById('enInlineSubmit');
+        if (submitBar) {
+            if (scored >= totalStudents && totalStudents > 0) submitBar.classList.add('is-visible');
+            else submitBar.classList.remove('is-visible');
+        }
     }
 
     function clearBadges(row) {
@@ -602,6 +591,36 @@
         // we already have.
         var inputs = document.querySelectorAll('.js-score');
         for (var i = 0; i < inputs.length; i++) calcScore(inputs[i], true);
+
+        // Move submit bar to <body> so position:fixed escapes .en-shell
+        var submitBar = document.getElementById('enInlineSubmit');
+        var isSubmitted = submitBar && submitBar.getAttribute('data-submitted') === '1';
+        var isLocked = submitBar && submitBar.getAttribute('data-locked') === '1';
+        if (submitBar) {
+            document.body.appendChild(submitBar);
+            // Already submitted or locked — never show the floating bar
+            if (isSubmitted || isLocked) {
+                submitBar.remove();
+            }
+        }
+
+        // Wire up the submit button (it's outside the form now)
+        var submitBtn = document.getElementById('enSubmitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function() {
+                if (document.querySelectorAll('.js-score.is-invalid').length) {
+                    showToast('Fix over-max scores before submitting.', 'error');
+                    return;
+                }
+                var form = document.getElementById('marksForm');
+                if (!form) return;
+                if (Object.keys(saveTimers).length) {
+                    flushPendingSaves().finally(function() { form.submit(); });
+                } else {
+                    form.submit();
+                }
+            });
+        }
 
         var form = document.getElementById('marksForm');
         if (form) {

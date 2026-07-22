@@ -234,8 +234,23 @@ def get_learner_contexts_for_user(user):
     class_teacher_scope = get_class_teacher_scope(teacher)
     section = get_current_school_section()
 
-    # Build base student queryset, section-scoped via SchoolScopedManager
-    student_qs = Student.objects.all()
+    # Build base student queryset.
+    # Admin view uses all_objects to see students across all sub-sections
+    # (e.g. Grades 1-3 in LOWER alongside Grades 4-6 in UPPER).
+    # Non-admin (teacher) views stay scoped via Student.objects (SchoolScopedManager).
+    school = get_current_school()
+    if is_admin_view:
+        student_qs = Student.all_objects.all()
+        if school:
+            student_qs = student_qs.filter(school=school)
+        if section == 'JSS':
+            student_qs = student_qs.filter(school_section='JSS')
+        elif section == 'PRIMARY':
+            student_qs = student_qs.filter(school_section='PRIMARY')
+        elif section == 'LOWER_PRIMARY':
+            student_qs = student_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+    else:
+        student_qs = Student.objects.all()
 
     if is_admin_view:
         qs = student_qs.values("class_name", "stream").annotate(learner_count=Count("id"))
@@ -387,13 +402,26 @@ def get_performance_level(score, sub_section=None):
             ).first()
             if config and config.subject_scale:
                 return config.get_subject_level(score)
-        # Fallback to the section-wide config (e.g. PRIMARY applies to all
-        # primary if LOWER_PRIMARY scale isn't separately configured)
+        # Fallback to the section-wide config
         config = GradingConfig.all_objects.filter(
             school=school, school_section=section
         ).first()
         if config and config.subject_scale:
             return config.get_subject_level(score)
+        # For LOWER_PRIMARY, also try PRIMARY/LOWER as fallback
+        if section == 'LOWER_PRIMARY':
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='PRIMARY', sub_section='LOWER'
+            ).first()
+            if config and config.subject_scale:
+                return config.get_subject_level(score)
+        # For PRIMARY (upper), also try PRIMARY/UPPER as fallback
+        if section == 'PRIMARY':
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='PRIMARY', sub_section='UPPER'
+            ).first()
+            if config and config.subject_scale:
+                return config.get_subject_level(score)
 
     logging.getLogger("students.helpers").error(
         "GradingConfig missing for school_id=%s section=%s sub_section=%s. "

@@ -38,6 +38,7 @@ from .helpers import (
 from ..models import (
     AssessmentLock,
     Exam,
+    GradingConfig,
     Mark,
     MarkSubmission,
     Student,
@@ -55,6 +56,36 @@ from ..security import (
     user_has_main_school_admin_override,
 )
 from ..security.roles import user_can_mutate_marks
+from ..school_scope import get_current_school, get_current_school_section
+
+
+def _get_grading_scale_json():
+    """Return the subject grading scale for the current section as a JSON string."""
+    school = get_current_school()
+    section = get_current_school_section()
+    if school and section:
+        # Map session section to GradingConfig lookup fields
+        if section == 'LOWER_PRIMARY':
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='PRIMARY', sub_section='LOWER'
+            ).first()
+            if not config:
+                config = GradingConfig.all_objects.filter(
+                    school=school, school_section='LOWER_PRIMARY', sub_section__isnull=True
+                ).first()
+        elif section == 'PRIMARY':
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='PRIMARY', sub_section='UPPER'
+            ).first()
+        else:
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='JSS', sub_section__isnull=True
+            ).first()
+        if config and config.subject_scale:
+            return json.dumps(config.subject_scale)
+    if section in ('LOWER_PRIMARY', 'PRIMARY'):
+        return json.dumps(GradingConfig.get_default_subject_scale(section))
+    return json.dumps(GradingConfig.get_default_subject_scale('JSS'))
 
 
 def _resolve_opposite_religion_subject(school, assignment):
@@ -437,6 +468,7 @@ def select_exam(request):
         'submission': submission,
         'current_maximum_marks': current_maximum_marks,
         'grading_mode': 'jss',
+        'grading_scale_json': _get_grading_scale_json(),
         'back_url': 'select_exam',
     })
 
@@ -1722,6 +1754,7 @@ def select_exam_primary(request):
         'submission': submission,
         'current_maximum_marks': current_maximum_marks,
         'grading_mode': 'primary',
+        'grading_scale_json': _get_grading_scale_json(),
         'back_url': 'select_exam_primary',
     })
 

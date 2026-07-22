@@ -430,8 +430,9 @@ def download_classlist_pdf(request):
 
     students = Student.objects.none()
     if selected_context:
+        student_manager = Student.all_objects if is_admin_view else Student.objects
         students = (
-            Student.objects
+            student_manager
             .filter(school=school, class_name=selected_grade, stream=selected_stream)
             .filter(admission_no__regex=r'^[0-9]+$')
             .select_related('guardian')

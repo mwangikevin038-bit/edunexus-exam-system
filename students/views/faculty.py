@@ -350,15 +350,18 @@ def manage_faculty_matrix(request):
                         to=[email_address],
                     )
                     email.content_subtype = 'html'
-                    email.send(fail_silently=True)
+                    email.send(fail_silently=False)
                     email_sent = True
                 except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.exception("Failed to send welcome email to %s", email_address)
                     email_sent = False
 
                 if email_sent:
                     messages.success(request, f"Profile '{title} {full_name}' created successfully. Login credentials have been sent to {email_address}.")
                 else:
-                    messages.warning(request, f"Profile '{title} {full_name}' created. Email could not be sent. Username: {login_username}. Use 'Reset Password' to set a new password.")
+                    messages.warning(request, f"Profile '{title} {full_name}' created. Email could not be sent. Username: {login_username} | Password: {default_password}. Use 'Reset Password' to set a new password.")
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -561,9 +564,15 @@ def manage_faculty_matrix(request):
             teacher_sub = (teacher.sub_section or '').upper()
             if teacher_section == 'BOTH':
                 pass  # cross-section teacher can teach anywhere
-            elif teacher_section == 'PRIMARY' and section in ('LOWER_PRIMARY', 'PRIMARY') and \
-                 (teacher_sub == section.replace('_PRIMARY', '').upper() or teacher_sub == ''):
-                pass
+            elif teacher_section == 'PRIMARY' and section in ('LOWER_PRIMARY', 'PRIMARY'):
+                expected_sub = 'LOWER' if section == 'LOWER_PRIMARY' else 'UPPER'
+                if teacher_sub == expected_sub or teacher_sub == '':
+                    pass
+                else:
+                    messages.error(request,
+                        f"{teacher.get_full_title()} is posted to a different section "
+                        f"and cannot be assigned here.")
+                    return redirect('manage_faculty_matrix')
             elif teacher_section == 'JSS' and section == 'JSS':
                 pass
             else:

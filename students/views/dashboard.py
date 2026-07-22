@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, Q
 from django.shortcuts import redirect, render
 
-from .constants import GRADE_CHOICES
+from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES
 from .helpers import get_teacher_for_user, get_class_teacher_scope, get_published_contexts_for_user
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
 from ..models import (
@@ -118,8 +118,6 @@ def school_admin_dashboard(request):
     Shows population stats, missing-marks feed, grade performance, and best stream.
     Workspace-aware: filters data by school_section when toggled.
     """
-    from .exams import PRIMARY_GRADE_CHOICES
-
     current_year = datetime.date.today().year
 
     school = get_request_school(request)
@@ -131,7 +129,7 @@ def school_admin_dashboard(request):
     section = get_request_school_section(request)
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
-    grade_choices = LOWER_PRIMARY_GRADE_CHOICES if is_lower_primary else PRIMARY_GRADE_CHOICES if is_primary else ['Grade 7', 'Grade 8', 'Grade 9']
+    grade_choices = LOWER_PRIMARY_GRADE_CHOICES if is_lower_primary else (LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES) if is_primary else ['Grade 7', 'Grade 8', 'Grade 9']
 
     # Base querysets filtered by section
     student_qs = Student.objects.filter(school=school)
@@ -149,8 +147,8 @@ def school_admin_dashboard(request):
         submission_qs = submission_qs.filter(school_section='PRIMARY', sub_section='LOWER')
         mark_qs = mark_qs.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
-        student_qs = student_qs.filter(school_section='PRIMARY', sub_section='UPPER')
-        teacher_qs = teacher_qs.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['UPPER', None])
+        student_qs = student_qs.filter(school_section='PRIMARY')
+        teacher_qs = teacher_qs.filter(school_section__in=['PRIMARY', 'BOTH'])
         exam_qs = exam_qs.filter(school_section='PRIMARY', sub_section='UPPER')
         assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='UPPER')
         submission_qs = submission_qs.filter(school_section='PRIMARY', sub_section='UPPER')
@@ -215,6 +213,7 @@ def school_admin_dashboard(request):
 
     # --- Grade performance averages ---
     grade_colors = {
+        'Grade 1': '#f472b6', 'Grade 2': '#a78bfa', 'Grade 3': '#34d399',
         'Grade 4': '#8ae325', 'Grade 5': '#38bdf8', 'Grade 6': '#f59e0b',
         'Grade 7': '#8ae325', 'Grade 8': '#38bdf8', 'Grade 9': '#f59e0b',
     }

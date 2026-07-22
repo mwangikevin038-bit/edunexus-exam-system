@@ -100,11 +100,12 @@ def process_csv_upload(upload_id, school_id, rows_json, section='JSS'):
 
     # ✅ FIX 4: Pre-fetch valid classes and streams ONCE before the loop
     #           Previously this ran 2 DB queries per row — fatal for large files
+    #           Always union with ALL_VALID_CLASSES so classes not yet in the
+    #           Grade table (e.g. Grade 3 when only JSS grades exist) are still accepted.
+    from students.views.constants import ALL_VALID_CLASSES
     valid_classes = set(
         Grade.all_objects.filter(school=school).values_list("name", flat=True)
-    )
-    if not valid_classes:
-        valid_classes = set(dict(Student.CLASS_CHOICES).keys())
+    ) | ALL_VALID_CLASSES
 
     valid_streams = set(
         Stream.all_objects.filter(school=school).values_list("name", flat=True)
@@ -227,11 +228,13 @@ def _process_chunk(school, chunk, offset, section,
             errors.append(f"Row {row_num}: Missing required fields (skipped)")
             continue
 
-        if cls not in valid_classes:
+        lowercase_valid_classes = {str(c).lower().strip() for c in valid_classes}
+        if cls.lower().strip() not in lowercase_valid_classes:
             skipped += 1
             errors.append(f"Row {row_num}: Invalid class '{cls}' (skipped)")
             continue
 
+       
         if strm not in valid_streams:
             skipped += 1
             errors.append(f"Row {row_num}: Invalid stream '{strm}' (skipped)")
@@ -302,7 +305,6 @@ def _process_chunk(school, chunk, offset, section,
                         )
                         created += 1
                 else:
-                    next_no = _next_admission_number(school)
                     # Auto-set sub_section based on class_name
                     sub_section_val = None
                     try:
@@ -310,6 +312,7 @@ def _process_chunk(school, chunk, offset, section,
                         sub_section_val = 'LOWER' if grade_num <= 3 else 'UPPER'
                     except (ValueError, AttributeError):
                         pass
+                    next_no = _next_admission_number(school, school_section=section, sub_section=sub_section_val)
                     Student.all_objects.create(
                         school=school,
                         admission_no=f"{next_no:03}",
@@ -333,17 +336,24 @@ def _process_chunk(school, chunk, offset, section,
     return created, updated, skipped, errors
 
 
-def _next_admission_number(school):
-    """Get the next available admission number for a school."""
+def _next_admission_number(school, school_section=None, sub_section=None):
+    """Get the next available admission number for a school.
+
+    Scoped by school_section so PRIMARY and JSS each have their own
+    independent number series. For PRIMARY, always counts BOTH LOWER
+    and UPPER sub-sections since they share one number series.
+    """
     from students.models import Student
 
-    last = (
-        Student.all_objects.filter(school=school)
-        .filter(admission_no__regex=r'^[0-9]+$')
-        .order_by("-admission_no")
-        .values_list("admission_no", flat=True)
-        .first()
-    )
+    qs = Student.all_objects.filter(school=school, admission_no__regex=r'^[0-9]+$')
+    if school_section is not None:
+        qs = qs.filter(school_section=school_section)
+    if school_section == 'JSS':
+        qs = qs.filter(sub_section__isnull=True)
+    elif school_section in ('PRIMARY', 'LOWER_PRIMARY'):
+        qs = qs.filter(sub_section__in=['LOWER', 'UPPER', None, ''])
+
+    last = qs.order_by("-admission_no").values_list("admission_no", flat=True).first()
     if last and last.isdigit():
         return int(last) + 1
-    return Student.all_objects.filter(school=school).count() + 1
+    return qs.count() + 1

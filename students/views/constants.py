@@ -68,7 +68,7 @@ def classes_for_section(section):
     if section == 'LOWER_PRIMARY':
         return LOWER_PRIMARY_CLASSES
     if section == 'PRIMARY':
-        return UPPER_PRIMARY_CLASSES
+        return UPPER_PRIMARY_CLASSES | LOWER_PRIMARY_CLASSES
     if section == 'JSS':
         return JSS_CLASSES
     if section == 'BOTH':
@@ -95,42 +95,40 @@ def section_for_class(class_name):
 def validate_rows_for_section(rows, section, class_field='class_name'):
     """
     Strict-validate every row in `rows` belongs to `section`.
-    Returns (ok: bool, errors: list[str], offending_classes: set[str]).
-
-    - ok=True  → all rows are in section
-    - ok=False → at least one row is outside section; errors lists row indexes + class
-    - offending_classes: the unique set of bad class names
-
-    Note: the PRIMARY workspace accepts BOTH LOWER (Grades 1-3) and
-    UPPER (Grades 4-6) sub-sections because they're the same institution.
-
-    Comparison is CASE-INSENSITIVE: "GRADE 3" matches "Grade 3" because
-    CSVs from Excel often have inconsistent capitalization.
+    Accounts for PRIMARY containing both LOWER and UPPER sub-sections.
     """
     if section == 'PRIMARY':
+        # Primary accepts both sub-sections (Grades 1-3 AND Grades 4-6)
         allowed = LOWER_PRIMARY_CLASSES | UPPER_PRIMARY_CLASSES
     else:
         allowed = classes_for_section(section)
+
     if not allowed:
         return False, [f"Unknown workspace section: {section!r}"], set()
 
-    # Build a lowercase lookup so the comparison is case-insensitive
-    allowed_lower = {a.lower(): a for a in allowed}
+    # Build a clean, lowercase look-up map stripped of any accidental padding spaces
+    allowed_lower = {str(a).lower().strip(): a for a in allowed}
 
     errors = []
     offending = set()
+    
     for i, row in enumerate(rows, start=1):
         if not isinstance(row, dict):
             continue
         cls = (row.get(class_field) or '').strip()
         if not cls:
-            continue  # missing-class errors are caught elsewhere
-        if cls.lower() not in allowed_lower:
+            continue  
+            
+        # Clean the incoming class string for a completely safe match
+        clean_cls = cls.lower().strip()
+        
+        if clean_cls not in allowed_lower:
             offending.add(cls)
             errors.append(
                 f"Row {i}: class '{cls}' does not belong to workspace '{section}'. "
                 f"Allowed: {sorted(allowed)}"
             )
+            
     return (len(errors) == 0), errors, offending
 
 
@@ -154,8 +152,6 @@ LOWER_PRIMARY_SUBJECT_NAMES = {
 }
 
 # ── Grade/Stream/Term ────────────────────────────────────────────────────────
-# GRADE_CHOICES and TERM_CHOICES are system-wide (same for all tenants).
-# STREAM_CHOICES is no longer hardcoded — use get_streams_for_school() instead.
 GRADE_CHOICES  = [c[0] for c in Student.CLASS_CHOICES]
 TERM_CHOICES   = [c[0] for c in Student.TERM_CHOICES]
 
@@ -184,9 +180,6 @@ def get_grades_for_school(school, section=None):
         qs = qs.filter(school_section=_resolve_db_section(section))
     return list(qs.values_list("name", flat=True).distinct().order_by("name"))
 
-# PERFORMANCE_SCALE was a hardcoded fallback used when GradingConfig was
-# missing. It has been removed. The system now uses ONLY the school
-# admin's configured GradingConfig in the DB.
 
 ORDERED_LEVELS = ['EE1', 'EE2', 'ME1', 'ME2', 'AE1', 'AE2', 'BE1', 'BE2']
 
@@ -202,8 +195,6 @@ ASSESSMENT_MAP = {
 ASSESSMENT_SLUG_MAP = {name: slug for slug, name in ASSESSMENT_MAP.items()}
 
 # ── Subject Display Order (broadsheet column order) ──────────────────────────
-# Preferred column order: English, Kiswahili, Maths, Science, Agriculture,
-# Social Studies, CRE, IRE, Creative Arts.
 SUBJECT_DISPLAY_ORDER = {
     # JSS codes
     '901': 1, '902': 2, '903': 3, '905': 4, '906': 5,

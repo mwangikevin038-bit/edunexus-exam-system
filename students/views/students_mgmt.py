@@ -301,8 +301,11 @@ def class_lists(request):
 
     students = Student.objects.none()
     if selected_context:
+        # Admin view uses all_objects to see students across all sub-sections
+        # (e.g. Grade 3 LOWER alongside Grade 4-6 UPPER in PRIMARY workspace).
+        student_manager = Student.all_objects if is_admin_view else Student.objects
         students = (
-            Student.objects
+            student_manager
             .filter(school=school, class_name=selected_grade, stream=selected_stream)
             .filter(admission_no__regex=r'^[0-9]+$')
             .select_related('guardian')
@@ -311,14 +314,23 @@ def class_lists(request):
         )
 
     section = get_request_school_section(request)
-    grades_for_section = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
+    if section == 'LOWER_PRIMARY':
+        grades_for_section = LOWER_PRIMARY_GRADE_CHOICES
+    elif section == 'PRIMARY':
+        grades_for_section = LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES
+    else:
+        grades_for_section = GRADE_CHOICES
 
     section_colors = {
         'JSS':           '#3A6AD8',
         'PRIMARY':       '#047857',
         'LOWER_PRIMARY': '#B45309',
     }
-    section_accent = section_colors.get(section, '#3A6AD8')
+    # Use LOWER_PRIMARY color when a Grade 1-3 stream is selected
+    if selected_grade in LOWER_PRIMARY_GRADE_CHOICES:
+        section_accent = section_colors['LOWER_PRIMARY']
+    else:
+        section_accent = section_colors.get(section, '#3A6AD8')
 
     return render(request, 'students/class_lists.html', {
         'students':         students,

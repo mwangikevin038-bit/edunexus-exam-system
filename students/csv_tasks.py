@@ -87,12 +87,12 @@ def run_csv_upload_sync(upload_id, school_id, rows_json, section='JSS'):
         })
         return {"status": "error", "errors": errors}
 
-    # Pre-fetch valid classes and streams ONCE
+    # Pre-fetch valid classes and streams ONCE.
+    # Always union with CLASS_CHOICES so classes not yet in the Grade table
+    # (e.g. Grade 3 when only JSS grades exist) are still accepted.
     valid_classes = set(
         Grade.all_objects.filter(school=school).values_list("name", flat=True)
-    )
-    if not valid_classes:
-        valid_classes = set(dict(Student.CLASS_CHOICES).keys())
+    ) | set(dict(Student.CLASS_CHOICES).keys())
 
     valid_streams = set(
         Stream.all_objects.filter(school=school).values_list("name", flat=True)
@@ -199,11 +199,13 @@ def _process_chunk(school, chunk, offset, section,
             errors.append(f"Row {row_num}: Missing required fields (skipped)")
             continue
         # CASE-INSENSITIVE: Excel CSVs often have inconsistent capitalization
-        # ("GRADE 3" vs "Grade 3"). Without this, all rows would be rejected.
-        if cls.lower() not in {c.lower() for c in valid_classes}:
+        # Normalized to strip spaces and force matching strings safely
+        lowercase_valid_classes = {str(c).lower().strip() for c in valid_classes}
+        if cls.lower().strip() not in lowercase_valid_classes:
             skipped += 1
             errors.append(f"Row {row_num}: Invalid class '{cls}' (skipped)")
             continue
+
         if strm not in valid_streams:
             skipped += 1
             errors.append(f"Row {row_num}: Invalid stream '{strm}' (skipped)")
@@ -375,23 +377,19 @@ def _process_chunk(school, chunk, offset, section,
 def _next_admission_number(school, school_section=None, sub_section=None):
     """Get the next available admission number for a school.
 
-    Scoped by (school_section, sub_section) so PRIMARY and JSS each have
-    their own independent number series (the user's design rule).
+    Scoped by school_section so PRIMARY and JSS each have their own
+    independent number series. For PRIMARY, always counts BOTH LOWER
+    and UPPER sub-sections since they share one number series.
     """
     from students.models import Student
 
     qs = Student.all_objects.filter(school=school, admission_no__regex=r'^[0-9]+$')
     if school_section is not None:
         qs = qs.filter(school_section=school_section)
-    if sub_section is not None:
-        qs = qs.filter(sub_section=sub_section)
-    elif school_section is not None:
-        # For JSS rows, sub_section is NULL. For PRIMARY we accept both
-        # LOWER and UPPER (they share the Primary number series).
-        if school_section == 'JSS':
-            qs = qs.filter(sub_section__isnull=True)
-        else:
-            qs = qs.filter(sub_section__in=['LOWER', 'UPPER', None, ''])
+    if school_section == 'JSS':
+        qs = qs.filter(sub_section__isnull=True)
+    elif school_section in ('PRIMARY', 'LOWER_PRIMARY'):
+        qs = qs.filter(sub_section__in=['LOWER', 'UPPER', None, ''])
 
     last = qs.order_by("-admission_no").values_list("admission_no", flat=True).first()
     if last and last.isdigit():

@@ -72,35 +72,53 @@ def csv_upload_api(request):
         return JsonResponse({"status": "error", "error": "Maximum 10,000 rows per upload."}, status=400)
 
     # ── SECTION GUARD: pre-dispatch strict validation ─────────────────────
-    # Reject the upload BEFORE spinning up the worker if any row has a
-    # class_name that doesn't belong to the active workspace. The Celery
-    # task does the same check, but catching it here means a faster
-    # failure with no background work queued.
-    from ..views.constants import (
-        LOWER_PRIMARY_CLASSES, UPPER_PRIMARY_CLASSES,
-        classes_for_section, validate_rows_for_section,
-    )
+    # When admin is in PRIMARY workspace, accept BOTH LOWER (Grades 1-3)
+    # and UPPER (Grades 4-6) — they're the same institution, two sub-sections.
+    # HARD-CODED to avoid any stale .pyc cache issues.
+    PRIMARY_ALL = {'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'}
+    JSS_ALL = {'Grade 7', 'Grade 8', 'Grade 9'}
+    LOWER_PRIMARY_ONLY = {'Grade 1', 'Grade 2', 'Grade 3'}
+
     section = get_request_school_section(request) or 'JSS'
-    # PRIMARY workspace accepts BOTH LOWER (Grades 1-3) and UPPER (Grades 4-6)
-    # because they're the same institution, just two sub-sections.
     if section == 'PRIMARY':
-        allowed = LOWER_PRIMARY_CLASSES | UPPER_PRIMARY_CLASSES
+        allowed = PRIMARY_ALL
+    elif section == 'LOWER_PRIMARY':
+        allowed = LOWER_PRIMARY_ONLY
+    elif section == 'JSS':
+        allowed = JSS_ALL
     else:
-        allowed = classes_for_section(section)
-    if allowed is None or not allowed:
+        allowed = None
+
+    if allowed is None:
         return JsonResponse({
             "status": "error",
             "error": f"Unknown workspace section {section!r}. Pick a valid workspace before uploading.",
         }, status=400)
-    ok, section_errors, offending = validate_rows_for_section(rows, section)
-    if not ok:
+
+    # Case-insensitive check
+    allowed_lower = {a.lower() for a in allowed}
+    offending = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        cls = (row.get('class_name') or '').strip()
+        if cls and cls.lower() not in allowed_lower:
+            offending.add(cls)
+
+    if offending:
+        # Build the same error format the user is used to
+        sample_errors = [
+            f"Row {i+2}: class '{r.get('class_name','')}' does not belong to workspace '{section}'. Allowed: {sorted(allowed)}"
+            for i, r in enumerate(rows[:20])
+            if (r.get('class_name') or '').strip().lower() not in allowed_lower
+        ]
         return JsonResponse({
             "status": "error",
             "error": (
                 f"Upload rejected: {len(offending)} class(es) outside the {section} "
                 f"workspace ({sorted(offending)}). Switch workspaces or fix the CSV."
             ),
-            "details": section_errors[:20],
+            "details": sample_errors,
         }, status=400)
 
     upload_id = _uuid.uuid4().hex

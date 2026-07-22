@@ -6,10 +6,11 @@ individual student report card rendering, and bulk report card generation.
 """
 
 import datetime
+import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Prefetch, Sum
+from django.db.models import Avg, Prefetch, Sum
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 
@@ -44,6 +45,7 @@ from .helpers import (
 )
 from ..models import (
     ClassTeacherMasterComment,
+    GradingConfig,
     Mark,
     SchoolHeadteacherComment,
     Student,
@@ -361,6 +363,18 @@ def report_card_select(request):
     })
 
 
+def _grading_config_for(school, section, sub_section):
+    """Fetch the GradingConfig for a section/sub_section, falling back gracefully."""
+    config = GradingConfig.all_objects.filter(
+        school=school, school_section=section, sub_section=sub_section,
+    ).first()
+    if not config:
+        config = GradingConfig.all_objects.filter(
+            school=school, school_section=section, sub_section__isnull=True,
+        ).first()
+    return config
+
+
 @login_required(login_url='login')
 @never_cache
 def individual_report(request, student_id):
@@ -447,6 +461,46 @@ def individual_report(request, student_id):
             pct = mark.score or 0
             mark.performance_level, mark.points = _get_primary_performance(pct)
 
+    # ── Class average per subject (drives the Dev. column + chart) ─────────
+    class_subject_avgs = (
+        Mark.objects.filter(
+            school=school,
+            student__class_name=student.class_name, student__stream=student.stream,
+            year=year, term=term, exam_type=db_assessment,
+            subject__in=published_subjects_qs,
+        )
+        .exclude(is_absent=True)
+        .values('subject__code')
+        .annotate(avg_score=Avg('score'))
+    )
+    class_avg_map = {row['subject__code']: round(row['avg_score'], 1) for row in class_subject_avgs}
+
+    for mark in marks_list:
+        class_avg = class_avg_map.get(mark.subject.code)
+        mark.class_average = class_avg
+        if class_avg is not None and mark.score is not None and not mark.is_absent:
+            mark.deviation = round(mark.score - class_avg, 1)
+        else:
+            mark.deviation = None
+
+    # ── Grade descriptors, pulled live from GradingConfig (no hardcoding) ──
+    grading_config = _grading_config_for(school, student.school_section, student.sub_section)
+    grade_descriptors = grading_config.subject_scale if grading_config else []
+
+    # ── Mean points + denominators for the stat boxes ──────────────────────
+    assessed_subjects   = sum(1 for m in marks_list if m.score is not None and not m.is_absent)
+    max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
+    mean_points         = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
+    max_total_marks     = assessed_subjects * 100
+    max_total_points    = assessed_subjects * max_points_per_subj
+
+    # ── Chart payload: student score vs class average, per subject ─────────
+    chart_data_json = json.dumps({
+        'labels':    [m.subject_name for m in marks_list if not m.is_absent],
+        'student':   [m.score for m in marks_list if not m.is_absent],
+        'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
+    })
+
     # PLV and class teacher remark
     overall_plv = calculate_primary_plv(total_marks, sum(1 for m in marks if m.score)) if is_primary else calculate_report_plv(total_points, total_marks)
     master_comment = ClassTeacherMasterComment.objects.filter(
@@ -524,6 +578,12 @@ def individual_report(request, student_id):
         'position':            position,
         'class_count':         class_count,
         'overall_plv':         overall_plv,
+        'mean_points':         mean_points,
+        'mean_points_max':     max_points_per_subj,
+        'max_total_marks':     max_total_marks,
+        'max_total_points':    max_total_points,
+        'grade_descriptors':   grade_descriptors,
+        'chart_data_json':     chart_data_json,
         'class_teacher_remark': class_teacher_remark,
         'headteacher_comment': headteacher_comment,
         'closing_date':        closing_date,
@@ -536,6 +596,12 @@ def individual_report(request, student_id):
             'student': student, 'marks': marks_list,
             'total_marks': total_marks, 'total_points': total_points,
             'overall_plv': overall_plv,
+            'mean_points': mean_points,
+            'mean_points_max': max_points_per_subj,
+            'max_total_marks': max_total_marks,
+            'max_total_points': max_total_points,
+            'grade_descriptors': grade_descriptors,
+            'chart_data_json': chart_data_json,
             'class_teacher_remark': class_teacher_remark,
             'headteacher_comment': headteacher_comment,
             'closing_date': closing_date,
@@ -628,6 +694,24 @@ def bulk_report_cards(request):
     class_leaderboard    = [item['student_id'] for item in class_scores]
     total_class_count    = len(class_leaderboard)
 
+    # Class average per subject (shared across the whole batch — same class/stream)
+    class_subject_avgs = (
+        Mark.objects.filter(
+            school=school,
+            student__class_name=sample.class_name, student__stream=sample.stream,
+            year=year, term=term, exam_type=db_assessment,
+            subject__in=published_subjects_qs,
+        )
+        .exclude(is_absent=True)
+        .values('subject__code')
+        .annotate(avg_score=Avg('score'))
+    )
+    class_avg_map = {row['subject__code']: round(row['avg_score'], 1) for row in class_subject_avgs}
+
+    grading_config = _grading_config_for(school, sample.school_section, sample.sub_section) if sample else None
+    grade_descriptors = grading_config.subject_scale if grading_config else []
+    max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
+
     # Teacher map for this class
     teacher_map = {
         a.subject.code: a.teacher_profile.get_full_title()
@@ -664,6 +748,23 @@ def bulk_report_cards(request):
             if is_primary and not mark.is_absent:
                 pct = mark.score or 0
                 mark.performance_level, mark.points = _get_primary_performance(pct)
+            class_avg = class_avg_map.get(mark.subject.code)
+            mark.class_average = class_avg
+            if class_avg is not None and mark.score is not None and not mark.is_absent:
+                mark.deviation = round(mark.score - class_avg, 1)
+            else:
+                mark.deviation = None
+
+        assessed_subjects = sum(1 for m in marks if m.score is not None and not m.is_absent)
+        mean_points       = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
+        max_total_marks   = assessed_subjects * 100
+        max_total_points  = assessed_subjects * max_points_per_subj
+
+        chart_data_json = json.dumps({
+            'labels':    [m.subject_name for m in marks if not m.is_absent],
+            'student':   [m.score for m in marks if not m.is_absent],
+            'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent],
+        })
 
         try:
             position = class_leaderboard.index(student.id) + 1
@@ -722,6 +823,12 @@ def bulk_report_cards(request):
             'total_marks':         total_marks,
             'total_points':        total_points,
             'overall_plv':         overall_plv,
+            'mean_points':         mean_points,
+            'mean_points_max':     max_points_per_subj,
+            'max_total_marks':     max_total_marks,
+            'max_total_points':    max_total_points,
+            'grade_descriptors':   grade_descriptors,
+            'chart_data_json':     chart_data_json,
             'class_teacher_remark': class_teacher_remark,
             'headteacher_comment': headteacher_comment,
             'closing_date':        closing_date,
