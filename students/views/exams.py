@@ -205,14 +205,20 @@ def select_exam(request):
             selected_assignment.subject,
         )
 
+        # Batch-fetch all existing marks in ONE query instead of N queries
+        student_ids = [s.id for s in students]
+        existing_marks_qs = Mark.objects.filter(
+            student_id__in=student_ids,
+            subject=selected_assignment.subject,
+            term=selected_exam.term,
+            exam_type=selected_exam.name,
+            year=selected_exam.year,
+            school=school,
+        )
+        marks_by_student = {m.student_id: m for m in existing_marks_qs}
+
         for student in students:
-            existing = Mark.objects.filter(
-                student=student,
-                subject=selected_assignment.subject,
-                term=selected_exam.term,
-                exam_type=selected_exam.name,
-                year=selected_exam.year,
-            ).first()
+            existing = marks_by_student.get(student.id)
 
             if existing:
                 if existing.is_absent:
@@ -251,6 +257,12 @@ def select_exam(request):
             saved_count = 0
             deleted_count = 0
 
+            # Pre-resolve religion subject ONCE (not per student in loop)
+            is_religion = selected_assignment.subject.code in RELIGION_SUBJECTS
+            religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '') if is_religion else ''
+            opposite_religion = _resolve_opposite_religion_subject(school, selected_assignment) if is_religion else None
+            religion_student_ids = []  # Collect IDs to batch-update religion tag
+
             for student in students:
                 value = request.POST.get(f'score_{student.id}', '').strip()
 
@@ -271,15 +283,13 @@ def select_exam(request):
                     continue
 
                 if value.upper() == "AB":
-                    if selected_assignment.subject.code in RELIGION_SUBJECTS:
-                        religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
-                        Student.objects.filter(id=student.id).update(religion=religion_tag)
-                        opposite = _resolve_opposite_religion_subject(school, selected_assignment)
-                        if opposite:
+                    if is_religion:
+                        religion_student_ids.append(student.id)
+                        if opposite_religion:
                             Mark.all_objects.filter(
                                 school=school,
                                 student=student,
-                                subject=opposite,
+                                subject=opposite_religion,
                                 term=selected_exam.term,
                                 exam_type=selected_exam.name,
                                 year=selected_exam.year,
@@ -344,20 +354,22 @@ def select_exam(request):
                 # ================================================================
                 # CHANGE 2 — Auto-tag student with religion on first score entry
                 # ================================================================
-                if selected_assignment.subject.code in RELIGION_SUBJECTS:
-                    religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
-                    Student.objects.filter(id=student.id).update(religion=religion_tag)
-                    opposite = _resolve_opposite_religion_subject(school, selected_assignment)
-                    if opposite:
+                if is_religion:
+                    religion_student_ids.append(student.id)
+                    if opposite_religion:
                         Mark.all_objects.filter(
                             school=school,
                             student=student,
-                            subject=opposite,
+                            subject=opposite_religion,
                             term=selected_exam.term,
                             exam_type=selected_exam.name,
                             year=selected_exam.year,
                             school_section=selected_assignment.school_section,
                         ).delete()
+
+            # Batch-update religion tags for all tagged students (ONE query)
+            if religion_student_ids:
+                Student.objects.filter(id__in=religion_student_ids).update(religion=religion_tag)
 
             # ================================================================
             # CHANGE 3 — Skip must-fill check for IRE/CRE/HRE subjects
@@ -391,6 +403,22 @@ def select_exam(request):
 
     exam_rows = []
 
+    # Batch-fetch all submissions for this teacher + all active exams (ONE query instead of N)
+    all_submissions_qs = MarkSubmission.objects.filter(
+        teacher=teacher,
+        school=school,
+    )
+    if active_exams:
+        from django.db.models import Q
+        exam_q = Q()
+        for exam in active_exams:
+            exam_q |= Q(exam_name=exam.name, term=exam.term, year=exam.year)
+        all_submissions_qs = all_submissions_qs.filter(exam_q)
+    submission_map = {}
+    for sub in all_submissions_qs:
+        key = (sub.subject_id, sub.class_name, sub.stream, sub.exam_name, sub.term, sub.year)
+        submission_map[key] = sub
+
     for exam in active_exams:
         for assignment in assignments:
             total_students = get_religion_aware_student_count(
@@ -410,16 +438,8 @@ def select_exam(request):
 
             missing_count = max(total_students - uploaded_marks, 0)
 
-            row_submission = MarkSubmission.objects.filter(
-                teacher=teacher,
-                subject=assignment.subject,
-                class_name=assignment.class_name,
-                stream=assignment.stream,
-                exam_name=exam.name,
-                term=exam.term,
-                year=exam.year,
-                school_section=assignment.school_section,
-            ).first()
+            sub_key = (assignment.subject_id, assignment.class_name, assignment.stream, exam.name, exam.term, exam.year)
+            row_submission = submission_map.get(sub_key)
 
             status_label = "Not Started"
             status_key = "not_started"
@@ -529,10 +549,10 @@ def manage_exams(request):
                     name=exam_name,
                     term=term,
                     year=year,
+                    school_section=exam_db_section,
+                    sub_section=exam_sub_section,
                     defaults={
                         "status": status,
-                        "school_section": exam_db_section,
-                        "sub_section": exam_sub_section,
                     },
                 )
                 messages.success(request, "Assessment has been saved successfully.")
@@ -627,6 +647,18 @@ def manage_exams(request):
         elif section == 'JSS':
             assignments = assignments.filter(school_section='JSS')
 
+        # Batch-fetch ALL submissions for this exam (ONE query instead of N)
+        all_submissions = MarkSubmission.objects.filter(
+            school=school,
+            exam_name=selected_exam.name,
+            term=selected_exam.term,
+            year=selected_exam.year,
+        )
+        submission_map = {}
+        for sub in all_submissions:
+            key = (sub.teacher_id, sub.subject_id, sub.class_name, sub.stream)
+            submission_map[key] = sub
+
         for assignment in assignments:
             total_students = get_religion_aware_student_count(
             assignment.class_name,
@@ -647,16 +679,8 @@ def manage_exams(request):
             absent_count = marks_qs.filter(is_absent=True).count()
             missing_count = max(total_students - captured_count, 0)
 
-            submission = MarkSubmission.objects.filter(
-                teacher=assignment.teacher_profile,
-                subject=assignment.subject,
-                class_name=assignment.class_name,
-                stream=assignment.stream,
-                exam_name=selected_exam.name,
-                term=selected_exam.term,
-                year=selected_exam.year,
-                school_section=assignment.school_section,
-            ).first()
+            sub_key = (assignment.teacher_profile_id, assignment.subject_id, assignment.class_name, assignment.stream)
+            submission = submission_map.get(sub_key)
 
             if submission:
                 status_label = "Returned" if submission.status == "returned" else submission.get_status_display()

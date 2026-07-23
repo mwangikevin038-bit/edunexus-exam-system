@@ -207,7 +207,7 @@
         flex-shrink: 0;
     }
 
-    .report-content { display: flex; flex-direction: column; flex: 1; }
+    .report-content { display: flex; flex-direction: column; flex: 1; gap: 8px; }
 
     /* Header: logo + centered school info */
     .rc-header {
@@ -216,16 +216,15 @@
         gap: 8px;
         padding-bottom: 6px;
         border-bottom: 2px solid var(--rc-border);
-        margin-bottom: 6px;
     }
     .report-logo, .rc-logo-placeholder {
-        width: 50px; height: 50px; object-fit: contain; flex-shrink: 0;
-        border-radius: 8px;
+        width: 100px; height: 100px; object-fit: contain; flex-shrink: 0;
+        border-radius: 10px;
     }
     .rc-logo-placeholder {
         display: flex; align-items: center; justify-content: center;
         background: linear-gradient(135deg, var(--rc-green-dark), var(--rc-green));
-        color: #fff; font-size: 20px; font-weight: 800;
+        color: #fff; font-size: 36px; font-weight: 800;
     }
     .rc-schoolinfo { flex: 1; text-align: center; }
     .rc-schoolinfo h1 {
@@ -234,11 +233,11 @@
     }
     .rc-schoolinfo .rc-address { font-size: 11pt; font-weight: 600; color: var(--rc-text); margin-bottom: 1px; }
     .rc-schoolinfo .rc-contact-line { font-size: 9pt; color: #333; font-weight: 500; }
-    .rc-logo-spacer { width: 50px; flex-shrink: 0; }
+    .rc-logo-spacer { width: 100px; flex-shrink: 0; }
 
     /* Blue banner */
     .rc-banner {
-        background: var(--rc-banner-bg);
+        background: var(--section-accent, var(--rc-banner-bg));
         color: #fff;
         text-align: center;
         font-size: 11pt;
@@ -247,7 +246,6 @@
         text-transform: uppercase;
         padding: 6px 8px;
         border-radius: 6px;
-        margin-bottom: 8px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -258,50 +256,51 @@
         display: grid;
         grid-template-columns: 1.1fr 1fr;
         gap: 16px;
-        margin-bottom: 14px;
     }
     .rc-student-block { display: flex; gap: 12px; align-items: flex-start; }
     .rc-photo-placeholder {
         width: 62px; height: 62px; border-radius: 8px; flex-shrink: 0;
-        background: #EEF1F4; border: 1px solid var(--rc-border);
+        background: linear-gradient(135deg, var(--section-accent, var(--rc-green)), color-mix(in srgb, var(--section-accent, var(--rc-green)) 70%, #000));
+        border: 1px solid var(--section-accent, var(--rc-green));
         display: flex; align-items: center; justify-content: center;
-        font-size: 22px; font-weight: 800; color: #9AA5B1;
+        font-size: 22px; font-weight: 800; color: #fff;
     }
     .rc-student-name { font-size: 14pt; font-weight: 800; margin-bottom: 4px; }
     .rc-detail { font-size: 11pt; margin-bottom: 2px; color: var(--rc-text); }
     .rc-label { font-weight: 800; margin-right: 4px; }
     .rc-label.admno { color: var(--rc-blue); }
     .rc-label.grade { color: var(--rc-green); }
-    .rc-chart-block { border: 1px solid var(--rc-border); border-radius: 8px; padding: 8px; }
+    .rc-chart-block { border: 1px solid var(--section-accent, var(--rc-border)); border-radius: 8px; padding: 8px; }
     .rc-chart-title { font-size: 10pt; font-weight: 700; color: var(--rc-muted); margin-bottom: 4px; text-align: center; }
 
     /* Stat boxes */
     .rc-stats {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-        margin-bottom: 14px;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
     }
     .rc-stat {
         border: 1px solid var(--rc-border);
+        border-top: 3px solid var(--section-accent, var(--rc-blue));
         border-radius: 8px;
         padding: 10px 8px;
         text-align: center;
+        background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, #FAFBFC 100%);
     }
     .rc-stat-label { display: block; font-size: 9pt; font-weight: 700; color: var(--rc-muted); text-transform: uppercase; margin-bottom: 4px; }
     .rc-stat-value { display: block; font-size: 14pt; font-weight: 800; color: var(--rc-text); }
 
     /* Subjects table */
     .table-scroll { width: 100%; overflow-x: auto; }
-    .rc-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; min-width: 480px; }
+    .rc-table { width: 100%; border-collapse: collapse; min-width: 480px; }
     .rc-table thead th {
-        background: var(--rc-green);
+        background: var(--section-accent, var(--rc-green));
         color: #fff;
         font-size: 10pt;
         text-transform: uppercase;
         letter-spacing: 0.03em;
         padding: 7px 6px;
-        border: 1px solid var(--rc-green);
+        border: 1px solid var(--section-accent, var(--rc-green));
         white-space: nowrap;
     }
     .rc-table td { padding: 6px; border: 1px solid var(--rc-border); font-size: 11pt; }
@@ -318,31 +317,44 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 14px;
-        margin-bottom: 14px;
     }
-    .rc-remark-box { border: 1px solid var(--rc-border); border-radius: 8px; padding: 10px; }
-    .rc-remark-title { font-size: 10pt; font-weight: 800; color: var(--rc-green); text-transform: uppercase; margin-bottom: 6px; }
-    .rc-remark-text { font-size: 12pt; font-style: italic; color: #333; min-height: 32px; margin-bottom: 8px; }
+    .rc-remark-box { border: 1px solid var(--rc-border); border-left: 3px solid var(--section-accent, var(--rc-green)); border-radius: 8px; padding: 10px 12px; }
+    .rc-remark-title { font-size: 10pt; font-weight: 700; color: var(--section-accent, var(--rc-green)); margin-bottom: 4px; text-transform: uppercase; }
+    .rc-remark-text { font-size: 12pt; font-style: italic; color: #333; min-height: 72px; margin-bottom: 8px; }
     .rc-signature { font-size: 10pt; font-weight: 700; border-top: 1px solid var(--rc-border); padding-top: 4px; }
 
     /* Grade descriptors */
-    .rc-descriptors { margin-bottom: 14px; }
-    .rc-descriptors-title { font-size: 10pt; font-weight: 800; color: var(--rc-muted); text-transform: uppercase; margin-bottom: 6px; }
+    .rc-descriptors { }
+    .rc-descriptors-title { font-size: 9pt; font-weight: 800; color: #1C1C1E; text-transform: uppercase; margin-bottom: 3px; letter-spacing: 0.04em; }
     .rc-descriptors-table { width: 100%; border-collapse: collapse; }
     .rc-descriptors-table th, .rc-descriptors-table td {
         border: 1px solid var(--rc-border);
-        padding: 6px;
-        font-size: 10pt;
+        padding: 3px 4px;
+        font-size: 9pt;
         text-align: center;
     }
-    .rc-descriptors-table th { background: #F1F5F9; font-weight: 800; }
+    .rc-descriptors-table th { background: #F1F5F9; color: #1C1C1E; font-weight: 800; }
     .rc-descriptors-table td:first-child, .rc-descriptors-table th:first-child {
-        text-align: left; font-weight: 700; background: #F8FAFC;
+        text-align: left; font-weight: 700; background: #F8FAFC; color: #1C1C1E;
     }
 
-    .footer-dates { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; padding-top: 10px; }
-    .date-box { display: flex; justify-content: flex-start; gap: 20px; font-size: 10pt; font-weight: 700; border-bottom: 2px solid var(--rc-green); padding-bottom: 3px; }
-    .system-footer { display: block; margin-top: 16px; text-align: center; width: 100%; font-size: 8pt; color: #bbb; letter-spacing: 4px; text-transform: uppercase; font-weight: bold; }
+    .footer-dates { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-top: 8px; }
+    .date-box { display: flex; justify-content: flex-start; gap: 16px; font-size: 10pt; font-weight: 700; border-bottom: 2px solid var(--section-accent, var(--rc-green)); padding-bottom: 3px; }
+    .system-footer {
+        display: block;
+        text-align: center;
+        margin-top: 16px;
+        padding: 12px;
+        font-family: 'Inter', sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        color: #94a3b8;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    .rc-print-watermark { display: none; }
 
     /* ── Report Card Scroll Container (mobile) ──────────────── */
     .rv-scroll {
@@ -379,56 +391,67 @@
         .rv-shell { display: none !important; }
         body { background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .container-fluid { max-width: 1200px !important; margin: 0 auto !important; padding: 20px !important; }
-        .report-card { margin: 20px auto; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 5px solid var(--section-accent, #3A6AD8); }
+        .report-card { margin: 20px auto; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 7px solid var(--section-accent, #305CDE); }
     }
 
     /* ═══════════════════════════════════════════════════════════
-       PRINT
+       PRINT — matches desktop screen exactly
        ═══════════════════════════════════════════════════════════ */
     @media print {
         .rv-shell, .sidebar, .navbar, .left-menu, .control-panel, .btn-print, .green-header-box, nav, .premium-header-banner, .bottom-nav, .mobile-topbar, .hamburger-btn { display: none !important; }
-        html, body { font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; height: auto !important; max-height: none !important; overflow: visible !important; visibility: visible !important; background: white !important; margin: 0 !important; padding: 0 !important; }
-        #reportCardsContainer { display: block !important; visibility: visible !important; position: relative !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-        .report-card { display: flex !important; page-break-after: always !important; page-break-inside: avoid !important; break-after: page !important; break-inside: avoid !important; margin: 0 auto !important; width: 7.9in !important; height: 10.5in !important; padding: 0.2in 0.3in 0.2in calc(0.3in + 5px) !important; overflow: hidden !important; border: none !important; border-left: 5px solid var(--section-accent, #3A6AD8) !important; position: relative !important; font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; }
-        .report-content { display: flex !important; flex-direction: column !important; height: 100% !important; gap: 0 !important; }
-        .report-logo, .rc-logo-placeholder { width: 50px !important; height: 50px !important; }
-        .rc-logo-spacer { width: 50px !important; }
-        .rc-schoolinfo h1 { font-size: 14pt !important; }
-        .rc-schoolinfo .rc-address { font-size: 11pt !important; }
-        .rc-schoolinfo .rc-contact-line { font-size: 9pt !important; }
-        .rc-header { padding-bottom: 4px !important; margin-bottom: 4px !important; gap: 8px !important; }
-        .rc-banner { padding: 5px 6px !important; margin-bottom: 4px !important; font-size: 11pt !important; }
-        .rc-top-grid { gap: 8px !important; margin-bottom: 4px !important; }
-        .rc-photo-placeholder { width: 44px !important; height: 44px !important; font-size: 16px !important; }
-        .rc-student-name { font-size: 14pt !important; margin-bottom: 2px !important; }
-        .rc-detail { font-size: 11pt !important; margin-bottom: 1px !important; }
-        .rc-chart-title { font-size: 10pt !important; margin-bottom: 2px !important; }
-        .rc-chart-block { padding: 4px !important; }
-        .rc-stats { gap: 4px !important; margin-bottom: 4px !important; }
-        .rc-stat { padding: 4px 3px !important; }
-        .rc-stat-label { font-size: 9pt !important; margin-bottom: 1px !important; }
+        html, body { font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; background: white !important; margin: 0 !important; padding: 0 !important; }
+        .container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }
+        .premium-header-banner { display: block !important; height: 0 !important; max-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; border: none !important; }
+        #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        .report-card {
+            display: flex !important; page-break-inside: avoid !important; break-inside: avoid !important; page-break-after: avoid !important; break-after: avoid !important;
+            margin: 0 !important; width: 7.9in !important; max-height: 11.4in !important; overflow: visible !important; border: none !important;
+            border-left: 7px solid var(--section-accent, #305CDE) !important; position: relative !important;
+            font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; box-sizing: border-box !important;
+            padding: 0.28in 0.4in !important; line-height: 1.2 !important;
+        }
+        .report-card + .report-card { page-break-before: always !important; break-before: always !important; }
+        .report-content { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 10px !important; }
+        /* logo — image, not text — enlarged for a more professional header */
+        .report-logo, .rc-logo-placeholder { width: 105px !important; height: 105px !important; }
+        .rc-logo-spacer { width: 105px !important; }
+        .rc-logo-placeholder { font-size: 36px !important; }
+        .rc-schoolinfo h1 { font-size: 17pt !important; margin: 0 0 3px !important; }
+        .rc-schoolinfo .rc-address { font-size: 12pt !important; margin-bottom: 2px !important; }
+        .rc-schoolinfo .rc-contact-line { font-size: 9.5pt !important; }
+        .rc-header { gap: 12px !important; padding-bottom: 10px !important; border-bottom: 2px solid var(--rc-border) !important; }
+        .rc-banner { padding: 7px 8px !important; font-size: 11pt !important; }
+        .rc-top-grid { gap: 16px !important; }
+        .rc-photo-placeholder { width: 58px !important; height: 58px !important; font-size: 22px !important; border-radius: 8px !important; }
+        .rc-student-name { font-size: 14pt !important; margin-bottom: 4px !important; }
+        .rc-detail { font-size: 11pt !important; margin-bottom: 3px !important; }
+        .rc-chart-title { font-size: 10pt !important; margin-bottom: 4px !important; }
+        .rc-chart-block { padding: 7px !important; }
+        /* canvas is an image, not text — shrink its rendered box, aspect ratio preserved */
+        .rc-chart-block canvas { height: 105px !important; width: auto !important; max-width: 100% !important; }
+        .rc-stats { gap: 8px !important; }
+        .rc-stat { padding: 9px 8px !important; border-top: 3px solid var(--section-accent, var(--rc-blue)) !important; }
+        .rc-stat-label { font-size: 9pt !important; margin-bottom: 3px !important; }
         .rc-stat-value { font-size: 14pt !important; }
-        .table-scroll { overflow: hidden !important; }
-        .rc-table td { padding: 3px !important; font-size: 11pt !important; }
-        .rc-table thead th { padding: 4px 3px !important; font-size: 10pt !important; }
-        .rc-table { margin-bottom: 4px !important; }
-        .rc-remarks-grid { gap: 6px !important; margin-bottom: 4px !important; }
-        .rc-remark-box { padding: 5px !important; }
-        .rc-remark-title { font-size: 10pt !important; margin-bottom: 2px !important; }
-        .rc-remark-text { font-size: 12pt !important; min-height: 16px !important; margin-bottom: 3px !important; }
-        .rc-signature { font-size: 10pt !important; padding-top: 2px !important; }
-        .rc-descriptors { margin-bottom: 4px !important; }
-        .rc-descriptors-title { font-size: 10pt !important; margin-bottom: 2px !important; }
-        .rc-descriptors-table th, .rc-descriptors-table td { padding: 2px !important; font-size: 10pt !important; }
-        .footer-dates { padding-top: 2px !important; gap: 20px !important; margin-top: auto !important; margin-bottom: 4px !important; }
-        .date-box { font-size: 10pt !important; padding-bottom: 1px !important; }
-        .system-footer { display: block !important; font-size: 8pt !important; text-align: center !important; pointer-events: none !important; background: transparent !important; margin: 0 !important; padding-bottom: 0.1in !important; color: #bbb !important; letter-spacing: 3px !important; text-transform: uppercase !important; font-weight: bold !important; }
+        .table-scroll { overflow: visible !important; }
+        .rc-table td { padding: 4px 6px !important; font-size: 11pt !important; line-height: 1.15 !important; }
+        .rc-table thead th { padding: 5px 6px !important; font-size: 10pt !important; }
+        .rc-remarks-grid { gap: 14px !important; }
+        .rc-remark-box { padding: 9px 12px !important; }
+        .rc-remark-title { font-size: 10pt !important; margin-bottom: 4px !important; color: var(--section-accent, var(--rc-green)) !important; }
+        .rc-remark-text { font-size: 12pt !important; min-height: 36px !important; margin-bottom: 6px !important; line-height: 1.2 !important; }
+        .rc-signature { font-size: 10pt !important; padding-top: 4px !important; }
+        .rc-descriptors-title { font-size: 9pt !important; margin-bottom: 3px !important; }
+        .rc-descriptors-table th, .rc-descriptors-table td { padding: 3px 4px !important; font-size: 9pt !important; }
+        .footer-dates { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 30px !important; padding-top: 8px !important; margin-top: auto !important; }
+        .date-box { font-size: 10pt !important; padding-bottom: 3px !important; border-bottom: 2px solid var(--section-accent, var(--rc-green)) !important; }
+        .system-footer { display: none !important; }
+        .rc-print-watermark { display: block !important; position: fixed !important; bottom: 0.25in !important; left: 0 !important; right: 0 !important; text-align: center !important; font-family: 'Times New Roman', Times, serif !important; font-size: 9pt !important; font-weight: 700 !important; color: #475569 !important; text-transform: uppercase !important; letter-spacing: 0.5pt !important; }
         .rc-table, .rc-table th, .rc-table td, .rc-stat, .rc-descriptors-table, .rc-descriptors-table th, .rc-descriptors-table td { border-color: #000 !important; }
-        .report-card:last-child { page-break-after: auto !important; break-after: auto !important; }
         @page { size: A4 portrait; margin: 0; }
     }
 
-    .report-card, #reportCardsContainer, div[class*="card"] { border: none !important; border-image: none !important; outline: none !important; box-shadow: none !important; }
+    .rv-card-container, .rv-card-scroll, #reportCardsContainer { border: none !important; border-image: none !important; outline: none !important; box-shadow: none !important; }
     @media (min-width: 769px) { .report-card { box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important; } }
 </style>
 
@@ -506,6 +529,7 @@
                         </div>
 
                         <div class="rc-stats">
+                            <div class="rc-stat"><span class="rc-stat-label">Position</span><span class="rc-stat-value">{{ student_data.position|default:"-" }}{% if student_data.class_count %}<small style="font-size:8pt;color:var(--rc-muted);">/{{ student_data.class_count }}</small>{% endif %}</span></div>
                             <div class="rc-stat"><span class="rc-stat-label">Performance Level</span><span class="rc-stat-value">{{ student_data.overall_plv }}</span></div>
                             <div class="rc-stat"><span class="rc-stat-label">Total Marks</span><span class="rc-stat-value">{{ student_data.total_marks }}/{{ student_data.max_total_marks }}</span></div>
                             <div class="rc-stat"><span class="rc-stat-label">Total Points</span><span class="rc-stat-value">{{ student_data.total_points }}/{{ student_data.max_total_points }}</span></div>
@@ -570,7 +594,8 @@
                             <div class="date-box"><span>CLOSING DATE:</span><span>{% if student_data.closing_date %}{{ student_data.closing_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
                             <div class="date-box"><span>OPENING DATE:</span><span>{% if student_data.opening_date %}{{ student_data.opening_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
                         </div>
-                        <div class="system-footer">— GENERATED BY EDUNEXUS EXAM MANAGEMENT SYSTEM —</div>
+                        <div class="system-footer">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
+                        <div class="rc-print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
                     </div>
                 </div>
             </div>
@@ -632,6 +657,7 @@
                 </div>
 
                 <div class="rc-stats">
+                    <div class="rc-stat"><span class="rc-stat-label">Position</span><span class="rc-stat-value">{{ student_data.position|default:"-" }}{% if student_data.class_count %}<small style="font-size:8pt;color:var(--rc-muted);">/{{ student_data.class_count }}</small>{% endif %}</span></div>
                     <div class="rc-stat"><span class="rc-stat-label">Performance Level</span><span class="rc-stat-value">{{ student_data.overall_plv }}</span></div>
                     <div class="rc-stat"><span class="rc-stat-label">Total Marks</span><span class="rc-stat-value">{{ student_data.total_marks }}/{{ student_data.max_total_marks }}</span></div>
                     <div class="rc-stat"><span class="rc-stat-label">Total Points</span><span class="rc-stat-value">{{ student_data.total_points }}/{{ student_data.max_total_points }}</span></div>
@@ -696,7 +722,8 @@
                     <div class="date-box"><span>CLOSING DATE:</span><span>{% if student_data.closing_date %}{{ student_data.closing_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
                     <div class="date-box"><span>OPENING DATE:</span><span>{% if student_data.opening_date %}{{ student_data.opening_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
                 </div>
-                <div class="system-footer">— GENERATED BY EDUNEXUS EXAM MANAGEMENT SYSTEM —</div>
+                <div class="system-footer">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
+                <div class="rc-print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
             </div>
         </div>
         {% endfor %}
@@ -735,7 +762,7 @@
     });
 
     async function downloadPDF() {
-        const reportCards = document.querySelectorAll('.report-card');
+        const reportCards = document.querySelectorAll('#reportCardsContainer .report-card');
         if (reportCards.length === 0) { alert("No report cards found."); return; }
         for (let i = 0; i < reportCards.length; i++) {
             const card = reportCards[i];

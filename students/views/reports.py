@@ -244,11 +244,11 @@ def results_list(request):
 
     # Section accent colors for branding header
     section_colors = {
-        'JSS':           '#3A6AD8',
-        'PRIMARY':       '#047857',
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
-    section_accent = section_colors.get(section, '#3A6AD8')
+    section_accent = section_colors.get(section, '#305CDE')
 
     return render(request, template, {
         'broadsheet':      broadsheet,
@@ -570,6 +570,18 @@ def individual_report(request, student_id):
     if not opening_date and marks_list and marks_list[0].frozen_opening_date:
         opening_date = marks_list[0].frozen_opening_date
 
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if student.school_section == 'PRIMARY' and student.sub_section == 'LOWER':
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif student.school_section == 'PRIMARY':
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors['JSS']
+
     return render(request, 'students/individual_report_card.html', {
         'student':             student,
         'marks':               marks_list,
@@ -592,6 +604,7 @@ def individual_report(request, student_id):
         'selected_term':       term,
         'selected_assessment': ASSESSMENT_MAP.get(assessment, assessment),
         'today':               datetime.date.today(),
+        'section_accent':      section_accent,
         'student_marks_list':  [{
             'student': student, 'marks': marks_list,
             'total_marks': total_marks, 'total_points': total_points,
@@ -834,9 +847,22 @@ def bulk_report_cards(request):
             'closing_date':        closing_date,
             'opening_date':        opening_date,
             'position':            position,
+            'class_count':         total_class_count,
         })
 
     student_marks_list.sort(key=lambda x: (x['position'] == 0, x['position']))
+
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if is_lower_primary:
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif is_primary:
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors['JSS']
 
     return render(request, 'students/bulk_report_cards.html', {
         'student_marks_list': student_marks_list,
@@ -846,4 +872,5 @@ def bulk_report_cards(request):
         'class_count':        total_class_count,
         'closing_date':       master_comment.closing_date if master_comment else None,
         'opening_date':       master_comment.opening_date if master_comment else None,
+        'section_accent':     section_accent,
     })

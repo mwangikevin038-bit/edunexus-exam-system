@@ -5,6 +5,7 @@ load_dotenv()
 Django settings for EduNexus Exam System.
 """
 import os
+import multiprocessing
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
@@ -17,11 +18,9 @@ def env_csv(name, default=""):
 # ==============================================================================
 # SECURITY — READ FROM ENVIRONMENT, NEVER HARDCODE
 # ==============================================================================
-# In production, set these as environment variables.
-# For local dev, create a .env file and load with python-dotenv.
 SECRET_KEY = os.environ.get(
     'DJANGO_SECRET_KEY',
-    'django-insecure-CHANGE-THIS-BEFORE-PRODUCTION'  # dev fallback only
+    'django-insecure-CHANGE-THIS-BEFORE-PRODUCTION'
 )
 
 import hashlib, hmac
@@ -39,13 +38,14 @@ LOCAL_ALLOWED_HOSTS = [
     '.localhost',
     '127.0.0.1',
     '192.168.36.186',
+    '192.168.48.107',
     '192.168.52.230',
     '192.168.30.230',
     '192.168.29.91',
     '10.161.194.230',
     '192.168.112.230',
     '192.168.1.101',
-    '192.168.1.100',
+    '192.168.1.102',
     '192.168.39.127',
     '192.168.75.230',
     '192.168.242.230',
@@ -83,6 +83,7 @@ INSTALLED_APPS = [
 # ==============================================================================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'students.security.middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -136,6 +137,7 @@ CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'edunexus-security-ratelimit',
+        'TIMEOUT': 300,
     },
     'csv_upload': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -152,11 +154,13 @@ RATELIMIT_DISABLE = os.environ.get('RATELIMIT_DISABLE', 'False') == 'True'
 # ==============================================================================
 # SESSION SECURITY
 # ==============================================================================
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Store sessions in DB
-SESSION_COOKIE_HTTPONLY = True        # JS cannot read session cookie
-SESSION_COOKIE_SAMESITE = 'Lax'      # CSRF protection
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
-SESSION_COOKIE_AGE = 60 * 60 * 8     # 8 hours
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+SESSION_CACHE_ALIAS = 'default'
+SESSION_SAVE_EVERY_REQUEST = False
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14  # 2 weeks
 
 
 # ==============================================================================
@@ -187,15 +191,6 @@ SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False       # JS must read csrftoken cookie for AJAX CSRF
 
-# Store sessions in Redis (not the DB) - 5-10x faster for auth.
-# Falls back to DB-backed sessions if Redis is unavailable.
-SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
-SESSION_CACHE_ALIAS = 'default'
-# Only save the session if it actually changed. Big DB write reduction.
-SESSION_SAVE_EVERY_REQUEST = False
-# Sessions expire after 2 weeks of inactivity
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
-
 # ==============================================================================
 # SECURITY HEADERS
 # ==============================================================================
@@ -221,12 +216,13 @@ else:
 # ==============================================================================
 CSRF_TRUSTED_ORIGINS = [
     'http://*.localhost:8000',
+    'http://192.168.48.107:8000',
     'http://192.168.36.186:8000',
     'http://192.168.30.230:8000',
     'http://192.168.29.91:8000',
     'http://10.161.194.230:8000',
     'http://192.168.112.230:8000',
-    'http://192.168.1.100:8000',
+    'http://192.168.1.102:8000',
     'http://192.168.39.127:8000',
     'http://192.168.242.230:8000',
     'http://localhost:8000',
@@ -252,10 +248,14 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'school_exam_db'),
         'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),   # never hardcode
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 60 if not DEBUG else 0,
+        'CONN_MAX_AGE': 600,
+        'CONN_HEALTH_CHECKS': True,
+        'OPTIONS': {
+            'connect_timeout': 5,
+        },
     },
 }
 
@@ -324,8 +324,10 @@ TEMPLATES = [
                 'students.context_processors.school_context',
             ],
             'loaders': [
-                'django.template.loaders.filesystem.Loader',
-                'django.template.loaders.app_directories.Loader',
+                ('django.template.loaders.cached.Loader', [
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader',
+                ]),
             ],
         },
     },
@@ -375,6 +377,10 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

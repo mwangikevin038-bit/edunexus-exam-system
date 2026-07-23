@@ -77,6 +77,7 @@ from .faculty import (  # noqa: F401
     manage_master_comments,
     manage_headteacher_comments,
     manage_faculty_matrix,
+    faculty_grade_streams,
     learner_profile,
 )
 

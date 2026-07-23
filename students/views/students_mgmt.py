@@ -322,15 +322,15 @@ def class_lists(request):
         grades_for_section = GRADE_CHOICES
 
     section_colors = {
-        'JSS':           '#3A6AD8',
-        'PRIMARY':       '#047857',
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
     # Use LOWER_PRIMARY color when a Grade 1-3 stream is selected
     if selected_grade in LOWER_PRIMARY_GRADE_CHOICES:
         section_accent = section_colors['LOWER_PRIMARY']
     else:
-        section_accent = section_colors.get(section, '#3A6AD8')
+        section_accent = section_colors.get(section, '#305CDE')
 
     return render(request, 'students/class_lists.html', {
         'students':         students,

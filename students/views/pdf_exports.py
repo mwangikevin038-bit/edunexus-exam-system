@@ -396,11 +396,11 @@ def download_classlist_pdf(request):
     section = get_request_school_section(request)
 
     section_colors = {
-        'JSS':           '#3A6AD8',
-        'PRIMARY':       '#047857',
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
-    section_accent = section_colors.get(section, '#3A6AD8')
+    section_accent = section_colors.get(section, '#305CDE')
 
     # Reuse the same context-building logic as class_lists view
     view_mode = request.GET.get('view_mode', 'teacher')

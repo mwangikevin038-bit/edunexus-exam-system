@@ -183,19 +183,23 @@ def school_admin_dashboard(request):
 
     # --- Missing marks tracer ---
     all_assignments      = assignment_qs.select_related('teacher_profile__user', 'subject').all()
+
+    # Batch-fetch all submissions for active exam (ONE query instead of N)
+    submission_map = {}
+    if active_exam:
+        active_submissions = submission_qs.filter(
+            exam_name=active_exam.name,
+            term=active_exam.term,
+            year=active_exam.year,
+        ).select_related('teacher_profile__user', 'subject')
+        for sub in active_submissions:
+            key = (sub.teacher_id, sub.subject_id, sub.class_name, sub.stream)
+            submission_map[key] = sub
+
     missing_entries_feed = []
     for assignment in all_assignments:
-        submission = None
-        if active_exam:
-            submission = submission_qs.filter(
-                teacher=assignment.teacher_profile,
-                subject=assignment.subject,
-                class_name=assignment.class_name,
-                stream=assignment.stream,
-                exam_name=active_exam.name,
-                term=active_exam.term,
-                year=active_exam.year,
-            ).first()
+        sub_key = (assignment.teacher_profile_id, assignment.subject_id, assignment.class_name, assignment.stream)
+        submission = submission_map.get(sub_key)
 
         if not submission or submission.status in ["returned"]:
             missing_entries_feed.append({
@@ -225,15 +229,22 @@ def school_admin_dashboard(request):
             year=active_exam.year,
             status="published",
         )
+        # Instead of Q-filter explosion, collect unique (class, stream, subject) tuples
+        # and use a single __in filter with tuples
+        published_tuples = set()
         for submission in published_submissions:
-            published_mark_filter |= Q(
-                student__class_name=submission.class_name,
-                student__stream=submission.stream,
-                subject=submission.subject,
-                exam_type=active_exam.name,
-                term=active_exam.term,
-                year=active_exam.year,
-            )
+            published_tuples.add((submission.class_name, submission.stream, submission.subject_id))
+        
+        if published_tuples:
+            from django.db.models import Q
+            tuple_filter = Q()
+            for cls, strm, subj_id in published_tuples:
+                tuple_filter |= Q(
+                    student__class_name=cls,
+                    student__stream=strm,
+                    subject_id=subj_id,
+                )
+            published_mark_filter = tuple_filter
 
     published_marks = mark_qs.filter(published_mark_filter)
     grade_average_map = {

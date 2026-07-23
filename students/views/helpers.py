@@ -553,22 +553,20 @@ def get_students_ordered(grade, stream):
     """
     Return students filtered by grade and stream, ordered by admission number.
     Non-numeric admission numbers are sorted to the end.
+    Uses a single query with Coalesce for efficient ordering.
     """
-    from django.db.models import Value, CharField
-    numeric = (
-        Student.objects
-        .filter(class_name=grade, stream=stream)
-        .filter(admission_no__regex=r'^[0-9]+$')
-        .annotate(adm_int=Cast('admission_no', IntegerField()))
-        .order_by('adm_int')
+    from django.db.models import Value, CharField, Case, When, Q
+    from django.db.models.functions import Lower
+    students = Student.objects.filter(
+        class_name=grade, stream=stream
+    ).order_by(
+        Case(
+            When(admission_no__regex=r'^[0-9]+$', then=Value(0)),
+            default=Value(1),
+        ),
+        'admission_no'
     )
-    non_numeric = (
-        Student.objects
-        .filter(class_name=grade, stream=stream)
-        .exclude(admission_no__regex=r'^[0-9]+$')
-        .order_by('admission_no')
-    )
-    return list(numeric) + list(non_numeric)
+    return list(students)
 
 
 def get_subject_students(grade, stream, subject):
@@ -607,6 +605,7 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
         marks = marks.filter(school=school)
     if subject_code in RELIGION_SUBJECTS:
         religion_tag = RELIGION_TAG.get(subject_code, '')
+        # Use exists() check efficiently — cache in local var
         religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag)
         if school:
             religion_filter['school'] = school
@@ -618,4 +617,13 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
 def get_religion_aware_student_count(class_name, stream, subject):
     """Return the count of students eligible for the given subject."""
     subject_code = subject.code if hasattr(subject, 'code') else subject
-    return len(get_subject_students(class_name, stream, subject_code))
+    students = Student.objects.filter(class_name=class_name, stream=stream)
+    if subject_code in RELIGION_SUBJECTS:
+        religion_tag = RELIGION_TAG.get(subject_code, '')
+        school = get_current_school()
+        religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag)
+        if school:
+            religion_filter['school'] = school
+        if Student.objects.filter(**religion_filter).exists():
+            students = students.filter(religion=religion_tag)
+    return students.count()

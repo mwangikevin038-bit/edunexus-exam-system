@@ -24,12 +24,7 @@ LOWER_PRIMARY_SUBJECTS = [
     ("ELA", "English Language Activities"),
     ("KLA", "Kiswahili Language Activities"),
     ("MA", "Mathematical Activities"),
-    ("ENV", "Environmental Activities"),
-    ("HYG", "Hygiene and Nutrition Activities"),
-    ("CRE", "Christian Religious Education Activities"),
-    ("IRE", "Islamic Religious Education Activities"),
-    ("HRE", "Hindu Religious Education Activities"),
-    ("CRA", "Creative Activities"),
+    ("ILA", "Integrated Learning Area"),
 ]
 
 LOWER_PRIMARY_GRADES = ["Grade 1", "Grade 2", "Grade 3"]
@@ -82,9 +77,9 @@ class Command(BaseCommand):
                 _, was_created = Subject.objects.get_or_create(
                     school=school,
                     code=code,
-                    school_section="LOWER_PRIMARY",
+                    school_section="PRIMARY",
                     grade=grade,
-                    defaults={"name": name, "is_active": True},
+                    defaults={"name": name, "is_active": True, "sub_section": "LOWER"},
                 )
                 if was_created:
                     created += 1

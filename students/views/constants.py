@@ -133,22 +133,14 @@ def validate_rows_for_section(rows, section, class_field='class_name'):
 
 
 LOWER_PRIMARY_SUBJECT_SHORT_MAP = {
-    'ELA': 'ELA', 'LIT': 'LIT', 'ENV': 'ENV', 'HYG': 'HYG',
-    'CRE': 'CRE', 'IRE': 'IRE', 'HRE': 'HRE', 'MA': 'MA',
-    'KLA': 'KLA', 'CRA': 'CRA',
+    'ELA': 'ELA', 'KLA': 'KLA', 'MA': 'MA', 'ILA': 'ILA',
 }
 
 LOWER_PRIMARY_SUBJECT_NAMES = {
     'ELA': 'English Language Activities',
-    'LIT': 'Literacy Activities',
-    'ENV': 'Environmental Activities',
-    'HYG': 'Hygiene and Nutrition Activities',
-    'CRE': 'Christian Religious Education Activities',
-    'IRE': 'Islamic Religious Education Activities',
-    'HRE': 'Hindu Religious Education Activities',
-    'MA': 'Mathematical Activities',
     'KLA': 'Kiswahili Language Activities',
-    'CRA': 'Creative Activities',
+    'MA': 'Mathematical Activities',
+    'ILA': 'Integrated Learning Area',
 }
 
 # ── Grade/Stream/Term ────────────────────────────────────────────────────────

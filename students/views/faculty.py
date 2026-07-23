@@ -565,8 +565,9 @@ def manage_faculty_matrix(request):
             if teacher_section == 'BOTH':
                 pass  # cross-section teacher can teach anywhere
             elif teacher_section == 'PRIMARY' and section in ('LOWER_PRIMARY', 'PRIMARY'):
-                expected_sub = 'LOWER' if section == 'LOWER_PRIMARY' else 'UPPER'
-                if teacher_sub == expected_sub or teacher_sub == '':
+                # Derive expected sub from the grade, not the workspace
+                _, expected_sub = section_for_class(grade)
+                if teacher_sub == (expected_sub or '').upper() or teacher_sub == '' or teacher_sub is None:
                     pass
                 else:
                     messages.error(request,
@@ -585,7 +586,7 @@ def manage_faculty_matrix(request):
             if section == 'LOWER_PRIMARY':
                 sub_section = 'LOWER'
             elif section == 'PRIMARY':
-                sub_section = 'UPPER'
+                _, sub_section = section_for_class(grade)
 
             SubjectAssignment.objects.update_or_create(
                 school=school,
@@ -622,31 +623,28 @@ def manage_faculty_matrix(request):
     # Section summary (for the page header cards) - counts are school-wide,
     # independent of the workspace filter, so the admin always sees
     # distribution across all 3 sections.
-    section_summary = {
-        'LOWER_PRIMARY': Teacher.objects.filter(
-            school=school, is_active=True, school_section='PRIMARY', sub_section='LOWER'
-        ).count(),
-        'PRIMARY': Teacher.objects.filter(
-            school=school, is_active=True, school_section='PRIMARY', sub_section='UPPER'
-        ).count(),
-        'JSS': Teacher.objects.filter(
-            school=school, is_active=True, school_section='JSS'
-        ).count(),
-        'BOTH': Teacher.objects.filter(
-            school=school, is_active=True, school_section='BOTH'
-        ).count(),
-    }
-    section_summary['TOTAL'] = sum(section_summary.values())
+    # Single aggregation query instead of 4 separate COUNT queries
+    from django.db.models import Count, Q
+    counts = Teacher.all_objects.filter(school=school, is_active=True).aggregate(
+        LOWER_PRIMARY=Count('id', filter=Q(school_section='PRIMARY', sub_section='LOWER')),
+        PRIMARY=Count('id', filter=Q(school_section='PRIMARY', sub_section='UPPER')),
+        JSS=Count('id', filter=Q(school_section='JSS')),
+        BOTH=Count('id', filter=Q(school_section='BOTH')),
+    )
+    section_summary = counts
+    section_summary['TOTAL'] = sum(counts.values())
 
-    teachers = Teacher.objects.filter(school=school).select_related('user').filter(is_active=True)
-    assignments = SubjectAssignment.objects.filter(school=school).select_related('teacher_profile__user').all()
+    # Use all_objects to bypass SchoolScopedManager — we explicitly filter
+    # by school and sub_section below, and PRIMARY workspace needs BOTH.
+    teachers = Teacher.all_objects.filter(school=school).select_related('user').filter(is_active=True)
+    assignments = SubjectAssignment.all_objects.filter(school=school).select_related('teacher_profile__user').all()
 
     if section == 'LOWER_PRIMARY':
         teachers = teachers.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', None])
         assignments = assignments.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
-        teachers = teachers.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['UPPER', None])
-        assignments = assignments.filter(school_section='PRIMARY', sub_section='UPPER')
+        teachers = teachers.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', 'UPPER', None])
+        assignments = assignments.filter(school_section='PRIMARY', sub_section__in=['LOWER', 'UPPER'])
     elif section == 'JSS':
         teachers = teachers.filter(school_section__in=['JSS', 'BOTH'])
         assignments = assignments.filter(school_section='JSS')
@@ -665,7 +663,7 @@ def manage_faculty_matrix(request):
         return '—'
 
     teacher_assignment_count = dict(
-        SubjectAssignment.objects.filter(school=school)
+        SubjectAssignment.all_objects.filter(school=school)
         .values('teacher_profile_id').annotate(n=Count('id'))
         .values_list('teacher_profile_id', 'n')
     )
@@ -682,7 +680,7 @@ def manage_faculty_matrix(request):
     if section == 'LOWER_PRIMARY':
         db_grades = Grade.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').order_by('order')
     elif section == 'PRIMARY':
-        db_grades = Grade.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').order_by('order')
+        db_grades = Grade.all_objects.filter(school=school, school_section='PRIMARY', sub_section__in=['LOWER', 'UPPER']).order_by('order')
     else:
         db_grades = Grade.all_objects.filter(school=school, school_section=section).order_by('order')
     grades_for_section = [g.name for g in db_grades]
@@ -697,19 +695,29 @@ def manage_faculty_matrix(request):
 
     # Subjects: from school's Subject table
     if section == 'LOWER_PRIMARY':
-        subjects_for_section = Subject.objects.filter(school=school, school_section='LOWER_PRIMARY', is_active=True).order_by('grade', 'code')
+        subjects_for_section = Subject.objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER', is_active=True).order_by('grade', 'code')
     elif section == 'PRIMARY':
-        subjects_for_section = Subject.objects.filter(school=school, school_section='PRIMARY', is_active=True).order_by('grade', 'code')
+        subjects_for_section = Subject.objects.filter(school=school, school_section='PRIMARY', sub_section__in=['LOWER', 'UPPER'], is_active=True).order_by('grade', 'code')
     else:
         subjects_for_section = Subject.objects.filter(school=school, school_section=section, is_active=True).order_by('grade', 'code')
 
     # Human label for the current workspace (for the allocation breadcrumb)
     section_breadcrumb_label = {
         'LOWER_PRIMARY': 'Lower Primary (Grades 1-3)',
-        'PRIMARY':       'Upper Primary (Grades 4-6)',
+        'PRIMARY':       'Primary (Grades 1-6)',
         'JSS':           'Junior Secondary (Grades 7-9)',
         'BOTH':          'All Sections',
     }.get(section, section)
+
+    # Grade streams and reassign targets for PRIMARY must cover both sub-sections
+    if section == 'PRIMARY':
+        lower_gs = _get_grade_streams(school, 'LOWER_PRIMARY')
+        upper_gs = _get_grade_streams(school, 'PRIMARY')
+        all_grade_streams = lower_gs + upper_gs
+        reassign_qs = Teacher.all_objects.filter(school=school, is_active=True, school_section__in=['PRIMARY', 'BOTH'])
+    else:
+        all_grade_streams = _get_grade_streams(school, section)
+        reassign_qs = section_target_qs(school, section)
 
     return render(request, 'students/manage_faculty.html', {
         'assignments':        assignments,
@@ -718,12 +726,23 @@ def manage_faculty_matrix(request):
         'subjects':           subjects_for_section,
         'grades':             grades_for_section,
         'streams':            streams_for_section,
-        'reassign_targets':   section_target_qs(school, section),
-        'grade_streams':      _get_grade_streams(school, section),
+        'reassign_targets':   reassign_qs,
+        'grade_streams':      all_grade_streams,
         'section':            section,
         'section_breadcrumb_label': section_breadcrumb_label,
         'section_summary':    section_summary,
     })
+
+
+@login_required(login_url='login')
+def faculty_grade_streams(request):
+    """AJAX endpoint: returns grade_streams options for a given section."""
+    from django.http import JsonResponse
+    section = request.GET.get('section', 'JSS')
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'options': []})
+    return JsonResponse({'options': _get_grade_streams(school, section)})
 
 
 @login_required(login_url='login')
