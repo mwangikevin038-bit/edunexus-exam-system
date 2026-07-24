@@ -1390,7 +1390,7 @@
                   {% endif %}
                 </div>
                 <div class="assignments-grid">
-                  {% regroup teacher.assignments.all|dictsort:"subject.name" by subject as grouped_assignments %}
+                  {% regroup teacher._filtered_assignments|dictsort:"subject.name" by subject as grouped_assignments %}
                   {% if grouped_assignments %}
                     {% for group in grouped_assignments %}
                       <div class="assignment-group" id="group-{{ teacher.id }}-{{ group.grouper.id }}">

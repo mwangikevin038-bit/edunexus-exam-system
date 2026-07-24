@@ -690,7 +690,7 @@ def manage_faculty_matrix(request):
     for a in assignments:
         teacher_id_to_assignments[a.teacher_profile_id].append(a)
     for t in teachers_list:
-        t.assignments = teacher_id_to_assignments.get(t.id, [])
+        t._filtered_assignments = teacher_id_to_assignments.get(t.id, [])
 
     # Pull grades from DB (school's actual class structure)
     from ..models import Grade, Stream, Subject
