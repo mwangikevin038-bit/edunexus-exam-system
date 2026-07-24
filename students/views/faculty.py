@@ -682,6 +682,16 @@ def manage_faculty_matrix(request):
         t.last_login         = t.user.last_login if t.user_id else None
         t.section_label      = _section_label(t)
 
+    # Pre-attach filtered assignments to each teacher so the template uses
+    # these instead of teacher.assignments.all (which hits SchoolScopedManager
+    # and loses LOWER primary assignments in PRIMARY workspace).
+    from collections import defaultdict
+    teacher_id_to_assignments = defaultdict(list)
+    for a in assignments:
+        teacher_id_to_assignments[a.teacher_profile_id].append(a)
+    for t in teachers_list:
+        t.assignments = teacher_id_to_assignments.get(t.id, [])
+
     # Pull grades from DB (school's actual class structure)
     from ..models import Grade, Stream, Subject
 
