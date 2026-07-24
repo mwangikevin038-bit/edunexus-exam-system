@@ -536,7 +536,15 @@ def manage_faculty_matrix(request):
                 return redirect('manage_faculty_matrix')
 
             teacher = Teacher.all_objects.filter(id=teacher_id, school=school).first()
-            subject = Subject.all_objects.filter(id=subject_id, school=school).first()
+            # Resolve subject by code + grade (dropdown is deduplicated, so the
+            # subject_id is from the first grade — we need the correct one).
+            chosen_subject = Subject.all_objects.filter(id=subject_id, school=school).first()
+            if chosen_subject:
+                subject = Subject.all_objects.filter(
+                    school=school, code=chosen_subject.code, grade=grade, is_active=True
+                ).first() or chosen_subject
+            else:
+                subject = None
             if not teacher:
                 messages.error(request, "Please pick a teacher.")
                 return redirect('manage_faculty_matrix')
@@ -695,12 +703,22 @@ def manage_faculty_matrix(request):
 
     # Subjects: use all_objects to bypass SchoolScopedManager which forces
     # sub_section='UPPER' in PRIMARY workspace — we need BOTH LOWER and UPPER.
+    # Deduplicate by code since the same subject exists per grade but the
+    # dropdown picks subject + grade separately.
     if section == 'LOWER_PRIMARY':
         subjects_for_section = Subject.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER', is_active=True).order_by('grade', 'code')
     elif section == 'PRIMARY':
         subjects_for_section = Subject.all_objects.filter(school=school, school_section='PRIMARY', sub_section__in=['LOWER', 'UPPER'], is_active=True).order_by('grade', 'code')
     else:
         subjects_for_section = Subject.all_objects.filter(school=school, school_section=section, is_active=True).order_by('grade', 'code')
+
+    seen_codes = set()
+    unique_subjects = []
+    for s in subjects_for_section:
+        if s.code not in seen_codes:
+            seen_codes.add(s.code)
+            unique_subjects.append(s)
+    subjects_for_section = unique_subjects
 
     # Human label for the current workspace (for the allocation breadcrumb)
     section_breadcrumb_label = {
