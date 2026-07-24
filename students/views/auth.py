@@ -210,7 +210,7 @@ def custom_password_change(request):
                 pass
             # Update must_change_password on SchoolAdmin profile
             try:
-                admin = SchoolAdmin.all_objects.get(user=user)
+                admin = SchoolAdmin.objects.get(user=user)
                 if admin.must_change_password:
                     admin.must_change_password = False
                     admin.save(update_fields=['must_change_password'])
