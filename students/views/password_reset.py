@@ -151,14 +151,14 @@ class SecurePasswordResetConfirmView(PasswordResetConfirmView):
             # Clear must_change_password on Teacher profile to prevent forced-change loop
             from ..models import Teacher, SchoolAdmin
             try:
-                teacher = Teacher.objects.get(user=user)
+                teacher = Teacher.all_objects.get(user=user)
                 if teacher.must_change_password:
                     teacher.must_change_password = False
                     teacher.save(update_fields=['must_change_password'])
             except Teacher.DoesNotExist:
                 pass
             try:
-                admin = SchoolAdmin.objects.get(user=user)
+                admin = SchoolAdmin.all_objects.get(user=user)
                 if admin.must_change_password:
                     admin.must_change_password = False
                     admin.save(update_fields=['must_change_password'])

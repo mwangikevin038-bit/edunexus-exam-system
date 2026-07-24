@@ -195,25 +195,32 @@ def custom_password_change(request):
     if request.method == 'POST':
         form = StrongPasswordChangeForm(user=request.user, data=request.POST)
         if form.is_valid():
+            user = request.user
             form.save()
             # Clear the force_password_change session flag
             request.session.pop('force_password_change', None)
-            # Update must_change_password on Teacher profile if it exists
+            # Update must_change_password on Teacher profile — use all_objects
+            # to bypass SchoolScopedManager which may filter out the record
             try:
-                teacher = Teacher.objects.get(user=request.user)
+                teacher = Teacher.all_objects.get(user=user)
                 if teacher.must_change_password:
                     teacher.must_change_password = False
                     teacher.save(update_fields=['must_change_password'])
             except Teacher.DoesNotExist:
                 pass
-            # Update must_change_password on SchoolAdmin profile if it exists
+            # Update must_change_password on SchoolAdmin profile
             try:
-                admin = SchoolAdmin.objects.get(user=request.user)
+                admin = SchoolAdmin.all_objects.get(user=user)
                 if admin.must_change_password:
                     admin.must_change_password = False
                     admin.save(update_fields=['must_change_password'])
             except SchoolAdmin.DoesNotExist:
                 pass
+            # Re-login to refresh the session auth hash — otherwise Django
+            # invalidates the session on the next request because the
+            # password changed but the stored auth hash is stale.
+            from django.contrib.auth import login as auth_login
+            auth_login(request, user)
             messages.success(request, "Your password has been changed successfully.")
             return redirect('home_alt')
     else:
