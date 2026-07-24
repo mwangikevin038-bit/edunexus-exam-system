@@ -191,7 +191,7 @@ def school_admin_dashboard(request):
             exam_name=active_exam.name,
             term=active_exam.term,
             year=active_exam.year,
-        ).select_related('teacher_profile__user', 'subject')
+        ).select_related('teacher__user', 'subject')
         for sub in active_submissions:
             key = (sub.teacher_id, sub.subject_id, sub.class_name, sub.stream)
             submission_map[key] = sub
@@ -236,7 +236,6 @@ def school_admin_dashboard(request):
             published_tuples.add((submission.class_name, submission.stream, submission.subject_id))
         
         if published_tuples:
-            from django.db.models import Q
             tuple_filter = Q()
             for cls, strm, subj_id in published_tuples:
                 tuple_filter |= Q(
