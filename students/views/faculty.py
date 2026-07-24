@@ -705,6 +705,8 @@ def manage_faculty_matrix(request):
     # sub_section='UPPER' in PRIMARY workspace — we need BOTH LOWER and UPPER.
     # Deduplicate by code since the same subject exists per grade but the
     # dropdown picks subject + grade separately.
+    # Sort by SUBJECT_DISPLAY_ORDER so the dropdown matches marksheets/report cards.
+    from .constants import SUBJECT_DISPLAY_ORDER
     if section == 'LOWER_PRIMARY':
         subjects_for_section = Subject.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER', is_active=True).order_by('grade', 'code')
     elif section == 'PRIMARY':
@@ -714,7 +716,7 @@ def manage_faculty_matrix(request):
 
     seen_codes = set()
     unique_subjects = []
-    for s in subjects_for_section:
+    for s in sorted(subjects_for_section, key=lambda x: SUBJECT_DISPLAY_ORDER.get(x.code, 99)):
         if s.code not in seen_codes:
             seen_codes.add(s.code)
             unique_subjects.append(s)
