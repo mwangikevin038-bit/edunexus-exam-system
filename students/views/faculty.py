@@ -455,9 +455,9 @@ def manage_faculty_matrix(request):
             if action == 'delete_subject_group':
                 teacher_id = request.POST.get('teacher_id')
                 subject_id = request.POST.get('subject_id')
-                teacher = Teacher.objects.filter(id=teacher_id, school=school).first()
+                teacher = Teacher.all_objects.filter(id=teacher_id, school=school).first()
                 from ..models import Subject
-                subject = Subject.objects.filter(id=subject_id, school=school).first()
+                subject = Subject.all_objects.filter(id=subject_id, school=school).first()
                 if not teacher or not subject:
                     messages.error(request, "Teacher or subject not found.")
                     return redirect('manage_faculty_matrix')
@@ -484,10 +484,10 @@ def manage_faculty_matrix(request):
                 if not new_teacher_id:
                     messages.error(request, "Please pick a teacher to reassign to.")
                     return redirect('manage_faculty_matrix')
-                from_teacher = Teacher.objects.filter(id=teacher_id, school=school).first()
-                to_teacher   = Teacher.objects.filter(id=new_teacher_id, school=school).first()
+                from_teacher = Teacher.all_objects.filter(id=teacher_id, school=school).first()
+                to_teacher   = Teacher.all_objects.filter(id=new_teacher_id, school=school).first()
                 from ..models import Subject
-                subject = Subject.objects.filter(id=subject_id, school=school).first()
+                subject = Subject.all_objects.filter(id=subject_id, school=school).first()
                 if not (from_teacher and to_teacher and subject):
                     messages.error(request, "Teacher or subject not found.")
                     return redirect('manage_faculty_matrix')
@@ -535,8 +535,8 @@ def manage_faculty_matrix(request):
                     f"Grade '{grade}' is not part of the {section} workspace.")
                 return redirect('manage_faculty_matrix')
 
-            teacher = Teacher.objects.filter(id=teacher_id, school=school).first()
-            subject = Subject.objects.filter(id=subject_id, school=school).first()
+            teacher = Teacher.all_objects.filter(id=teacher_id, school=school).first()
+            subject = Subject.all_objects.filter(id=subject_id, school=school).first()
             if not teacher:
                 messages.error(request, "Please pick a teacher.")
                 return redirect('manage_faculty_matrix')
@@ -693,13 +693,14 @@ def manage_faculty_matrix(request):
         db_streams = Stream.all_objects.filter(school=school, school_section=section).select_related('grade').order_by('grade__order', 'name')
     streams_for_section = list(dict.fromkeys(s.name for s in db_streams))
 
-    # Subjects: from school's Subject table
+    # Subjects: use all_objects to bypass SchoolScopedManager which forces
+    # sub_section='UPPER' in PRIMARY workspace — we need BOTH LOWER and UPPER.
     if section == 'LOWER_PRIMARY':
-        subjects_for_section = Subject.objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER', is_active=True).order_by('grade', 'code')
+        subjects_for_section = Subject.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER', is_active=True).order_by('grade', 'code')
     elif section == 'PRIMARY':
-        subjects_for_section = Subject.objects.filter(school=school, school_section='PRIMARY', sub_section__in=['LOWER', 'UPPER'], is_active=True).order_by('grade', 'code')
+        subjects_for_section = Subject.all_objects.filter(school=school, school_section='PRIMARY', sub_section__in=['LOWER', 'UPPER'], is_active=True).order_by('grade', 'code')
     else:
-        subjects_for_section = Subject.objects.filter(school=school, school_section=section, is_active=True).order_by('grade', 'code')
+        subjects_for_section = Subject.all_objects.filter(school=school, school_section=section, is_active=True).order_by('grade', 'code')
 
     # Human label for the current workspace (for the allocation breadcrumb)
     section_breadcrumb_label = {
@@ -797,7 +798,7 @@ def learner_profile(request, student_id):
             if previous_religion != updated_student.religion and updated_student.religion in ["CRE", "IRE"]:
                 opposite_code = OPPOSITE_RELIGION_SUBJECT.get(updated_student.religion)
                 if opposite_code:
-                    opposite = Subject.objects.filter(
+                    opposite = Subject.all_objects.filter(
                         school=student.school, code=opposite_code,
                         school_section=student.school_section,
                         grade=student.class_name,
@@ -836,7 +837,7 @@ def learner_profile(request, student_id):
         subject_mapping = PRIMARY_SUBJECT_NAMES
         short_mapping = PRIMARY_SUBJECT_SHORT_MAP
     else:
-        subject_mapping = {s.code: s.name for s in Subject.objects.filter(school=student.school)}
+        subject_mapping = {s.code: s.name for s in Subject.all_objects.filter(school=student.school)}
         short_mapping = SUBJECT_SHORT_MAP
     exam_groups = {}
     subject_trends = {}
