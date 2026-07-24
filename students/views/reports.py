@@ -24,6 +24,7 @@ from .constants import (
     PRIMARY_PERF_LEVELS,
     PRIMARY_SUBJECT_NAMES,
     PRIMARY_SUBJECT_SHORT_MAP,
+    SUBJECT_DISPLAY_ORDER,
     SUBJECT_SHORT_MAP,
     TERM_CHOICES,
     get_streams_for_school,
@@ -415,7 +416,9 @@ def individual_report(request, student_id):
         exam_type=db_assessment,
         subject__in=published_subjects_qs,
         school_section=student.school_section,
-    ).order_by('subject__code')
+    )
+    # Sort marks by SUBJECT_DISPLAY_ORDER instead of alphabetical
+    marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
     total_marks  = sum(m.score  for m in marks if m.score)
     total_points = sum(m.points for m in marks if m.points)
 
@@ -686,7 +689,7 @@ def bulk_report_cards(request):
             exam_type=db_assessment,
             subject__in=published_subjects_qs,
             school_section=sample.school_section,
-        ).order_by('subject__code'),
+        ),
         to_attr='cached_marks',
     )
     selected_students = selected_students_base.prefetch_related(marks_prefetch)
@@ -751,7 +754,7 @@ def bulk_report_cards(request):
 
     student_marks_list = []
     for student in selected_students:
-        marks        = student.cached_marks
+        marks        = sorted(student.cached_marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
         total_marks  = sum(m.score  for m in marks if m.score)
         total_points = sum(m.points for m in marks if m.points)
 
