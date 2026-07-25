@@ -977,7 +977,7 @@ class Exam(SchoolScopedModel):
     integrity_checksum = models.CharField(max_length=64, editable=False, blank=True, default="")
 
     class Meta:
-        unique_together = ('school', 'name', 'term', 'year', 'school_section')
+        unique_together = ('school', 'name', 'term', 'year', 'school_section', 'sub_section')
         ordering = ['-year', 'term', 'name']
 
     def save(self, *args, **kwargs):
