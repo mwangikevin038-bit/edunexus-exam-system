@@ -159,7 +159,11 @@ class SchoolScopedAuthBackend(ModelBackend):
         if request is not None:
             request.session['school_id'] = school.pk
             request.session['school_code'] = school.code
-            request.session['school_section'] = teacher.school_section
+            # Distinguish Lower Primary from Upper Primary in the session
+            if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER':
+                request.session['school_section'] = 'LOWER_PRIMARY'
+            else:
+                request.session['school_section'] = teacher.school_section
             request.session.cycle_key()
 
         logger.info(
