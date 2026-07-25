@@ -198,19 +198,23 @@ def grading_configuration(request):
             )
         configs[section_key] = config
 
-    # Also load the UPPER and LOWER primary configs (used by the Primary workspace)
+    # Also load the LOWER_PRIMARY config (used by the Primary workspace)
+    # Try both school_section values since lower primary may exist as either
     primary_upper = GradingConfig.all_objects.filter(
         school=school, school_section='PRIMARY', sub_section='UPPER'
     ).first()
     primary_lower = GradingConfig.all_objects.filter(
+        school=school, school_section='LOWER_PRIMARY'
+    ).first() or GradingConfig.all_objects.filter(
         school=school, school_section='PRIMARY', sub_section='LOWER'
     ).first()
     configs['PRIMARY_UPPER'] = primary_upper
     configs['PRIMARY_LOWER'] = primary_lower
 
     # The active_config is the one shown on the page (based on active_section)
-    if active_section in ('PRIMARY', 'LOWER_PRIMARY'):
-        # For primary workspaces, default to the UPPER scale (more common)
+    if active_section == 'LOWER_PRIMARY':
+        active_config = primary_lower or primary_upper or configs.get('LOWER_PRIMARY')
+    elif active_section == 'PRIMARY':
         active_config = primary_upper or primary_lower or configs.get('PRIMARY')
     else:
         active_config = configs.get(active_section, configs.get('PRIMARY'))
@@ -261,7 +265,8 @@ def grading_configuration(request):
     subject_overlaps = _detect_overlaps(active_config.subject_scale or [], 'min_score', 'max_score')
     total_overlaps   = _detect_overlaps(active_config.total_scale or [],   'min_marks', 'max_marks')
 
-    return render(request, 'students/grading_configuration.html', {
+    from django.http import HttpResponse
+    response = render(request, 'students/grading_configuration.html', {
         'configs': configs,
         'primary_upper': primary_upper,
         'primary_lower': primary_lower,
@@ -274,3 +279,5 @@ def grading_configuration(request):
         'subject_overlaps': subject_overlaps,
         'total_overlaps': total_overlaps,
     })
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response

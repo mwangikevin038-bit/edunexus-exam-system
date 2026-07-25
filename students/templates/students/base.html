@@ -397,16 +397,9 @@
                 <div class="workspace-toggle" style="display:flex; gap:4px;">
                     <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
                         {% csrf_token %}
-                        <input type="hidden" name="section" value="LOWER_PRIMARY">
-                        <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'LOWER_PRIMARY' %}active{% endif %}">
-                            <i class="ph ph-pencil-simple"></i> Lower Primary
-                        </button>
-                    </form>
-                    <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
-                        {% csrf_token %}
                         <input type="hidden" name="section" value="PRIMARY">
-                        <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}active{% endif %}">
-                            <i class="ph ph-book"></i> Upper Primary
+                        <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'PRIMARY' or request.session.workspace_section == 'LOWER_PRIMARY' or not request.session.workspace_section %}active{% endif %}">
+                            <i class="ph ph-book"></i> Primary
                         </button>
                     </form>
                     <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">

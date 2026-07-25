@@ -2002,16 +2002,16 @@
                         </div>
                     </div>
                     <div class="rs-dist-bar"
-                         data-ee="{{ item.distribution.EE1|default:0|add:item.distribution.EE2|default:0 }}"
-                         data-me="{{ item.distribution.ME1|default:0|add:item.distribution.ME2|default:0 }}"
-                         data-ae="{{ item.distribution.AE1|default:0|add:item.distribution.AE2|default:0 }}"
-                         data-be="{{ item.distribution.BE1|default:0|add:item.distribution.BE2|default:0 }}">
+                         data-ee="{{ item.distribution.EE|default:0 }}"
+                         data-me="{{ item.distribution.ME|default:0 }}"
+                         data-ae="{{ item.distribution.AE|default:0 }}"
+                         data-be="{{ item.distribution.BE|default:0 }}">
                     </div>
                     <div class="rs-dist-legend">
-                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-ee"></span> EE {{ item.distribution.EE1|default:0|add:item.distribution.EE2|default:0 }}</span>
-                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-me"></span> ME {{ item.distribution.ME1|default:0|add:item.distribution.ME2|default:0 }}</span>
-                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-ae"></span> AE {{ item.distribution.AE1|default:0|add:item.distribution.AE2|default:0 }}</span>
-                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-be"></span> BE {{ item.distribution.BE1|default:0|add:item.distribution.BE2|default:0 }}</span>
+                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-ee"></span> EE {{ item.distribution.EE|default:0 }}</span>
+                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-me"></span> ME {{ item.distribution.ME|default:0 }}</span>
+                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-ae"></span> AE {{ item.distribution.AE|default:0 }}</span>
+                        <span class="rs-dist-item"><span class="rs-dist-dot rs-dist-be"></span> BE {{ item.distribution.BE|default:0 }}</span>
                     </div>
                 </div>
                 {% endfor %}

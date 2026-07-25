@@ -888,7 +888,7 @@
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                <a class="review-btn" href="{% url 'review_stream_submission' %}?exam_id={{ group.exam_id }}&class_name={{ group.class_name|urlencode }}&stream={{ group.stream|urlencode }}">
+                                                <a class="review-btn" href="{% url 'review_submission' %}?assignment_id={{ row.assignment.id }}&exam_id={{ group.exam_id }}">
                                                     View
                                                 </a>
                                             </td>

@@ -484,6 +484,11 @@ class Mark(SchoolScopedModel):
                 config = GradingConfig.all_objects.filter(
                     school=self.school, school_section=self.school_section
                 ).first()
+            # Fallback: try LOWER_PRIMARY section for Lower Primary marks
+            if not config and self.sub_section == 'LOWER':
+                config = GradingConfig.all_objects.filter(
+                    school=self.school, school_section='LOWER_PRIMARY'
+                ).first()
             if config and config.subject_scale:
                 return config.get_subject_level(score)
 
@@ -1315,12 +1320,19 @@ class GradingConfig(SchoolScopedModel):
     @classmethod
     def get_default_total_scale(cls, section):
         """Return default total marks scale for a section."""
-        if section in ('LOWER_PRIMARY', 'PRIMARY'):
+        if section == 'LOWER_PRIMARY':
             return [
                 {"level": "EE", "min_marks": 300, "max_marks": 400, "points": 4},
                 {"level": "ME", "min_marks": 200, "max_marks": 299, "points": 3},
                 {"level": "AE", "min_marks": 100, "max_marks": 199, "points": 2},
                 {"level": "BE", "min_marks": 0,   "max_marks": 99,  "points": 1},
+            ]
+        if section == 'PRIMARY':
+            return [
+                {"level": "EE", "min_marks": 600, "max_marks": 800, "points": 4},
+                {"level": "ME", "min_marks": 400, "max_marks": 599, "points": 3},
+                {"level": "AE", "min_marks": 200, "max_marks": 399, "points": 2},
+                {"level": "BE", "min_marks": 0,   "max_marks": 199, "points": 1},
             ]
         return [
             {"level": "EE1", "min_marks": 720, "max_marks": 800, "points": 8},

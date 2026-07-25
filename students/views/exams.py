@@ -574,7 +574,8 @@ def manage_exams(request):
             exam.save()
 
             messages.success(request, "Assessment status has been updated.")
-            redirect_url = f"{reverse('manage_exams')}?sub={active_sub}" if active_sub else reverse('manage_exams')
+            post_sub = request.POST.get("sub", "").strip().upper()
+            redirect_url = f"{reverse('manage_exams')}?sub={post_sub}" if post_sub else reverse('manage_exams')
             return redirect(redirect_url)
 
         if action_type == "delete_exam":
@@ -583,7 +584,8 @@ def manage_exams(request):
             exam.delete()
 
             messages.success(request, "Assessment has been deleted.")
-            redirect_url = f"{reverse('manage_exams')}?sub={active_sub}" if active_sub else reverse('manage_exams')
+            post_sub = request.POST.get("sub", "").strip().upper()
+            redirect_url = f"{reverse('manage_exams')}?sub={post_sub}" if post_sub else reverse('manage_exams')
             return redirect(redirect_url)
 
     # -----------------------------
@@ -846,6 +848,10 @@ def review_stream_submission(request):
             exam_db_section = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
             exams = exams.filter(school_section=exam_db_section)
             pairs = pairs.filter(school_section=exam_db_section)
+            if section == 'LOWER_PRIMARY':
+                pairs = pairs.filter(sub_section='LOWER')
+            elif section == 'PRIMARY':
+                pairs = pairs.filter(sub_section='UPPER')
         for pair in pairs:
             _, totals = get_stream_submission_summary(pair["class_name"], pair["stream"], exam)
             stream_cards.append({
@@ -864,6 +870,27 @@ def review_stream_submission(request):
         .values_list("class_name", "stream")
         .distinct()
     )
+    section = get_request_school_section(request)
+    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
+        exam_db_section = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
+        valid_pairs_filtered = set(
+            SubjectAssignment.all_objects.filter(school=school, school_section=exam_db_section)
+            .values_list("class_name", "stream")
+            .distinct()
+        )
+        if section == 'LOWER_PRIMARY':
+            valid_pairs_filtered = set(
+                SubjectAssignment.all_objects.filter(school=school, school_section=exam_db_section, sub_section='LOWER')
+                .values_list("class_name", "stream")
+                .distinct()
+            )
+        elif section == 'PRIMARY':
+            valid_pairs_filtered = set(
+                SubjectAssignment.all_objects.filter(school=school, school_section=exam_db_section, sub_section='UPPER')
+                .values_list("class_name", "stream")
+                .distinct()
+            )
+        valid_pairs = valid_pairs_filtered
     if (class_name, stream) not in valid_pairs:
         messages.error(request, "Select a valid class stream.")
         return redirect("manage_exams")
@@ -2009,6 +2036,9 @@ def save_mark(request):
             maximum_marks=maximum_marks,
             score=0,
             is_absent=True,
+            primary_raw_score='AB',
+            primary_performance_point='AB',
+            primary_descriptor='AB',
         )
         return JsonResponse({'ok': True, 'absent': True})
 
@@ -2021,12 +2051,17 @@ def save_mark(request):
         return JsonResponse({'error': 'Score exceeds total marks'}, status=400)
 
     Mark.all_objects.filter(**_mark_lookup).delete()
+    percentage = round((raw_score / maximum_marks) * 100)
+    pp_level, pp_points = _get_primary_performance(percentage) if assignment.school_section == 'PRIMARY' else ('', '')
     Mark.all_objects.create(
         **_mark_lookup,
         raw_score=raw_score,
         maximum_marks=maximum_marks,
-        score=round((raw_score / maximum_marks) * 100),
+        score=percentage,
         is_absent=False,
+        primary_raw_score=str(raw_score),
+        primary_performance_point=str(pp_points) if pp_points else '',
+        primary_descriptor=pp_level,
     )
 
     if assignment.subject.code in RELIGION_SUBJECTS:

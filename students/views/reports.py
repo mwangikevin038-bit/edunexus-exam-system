@@ -10,7 +10,7 @@ import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Prefetch, Sum
+from django.db.models import Avg, Prefetch, Q, Sum
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 
@@ -373,6 +373,10 @@ def _grading_config_for(school, section, sub_section):
         config = GradingConfig.all_objects.filter(
             school=school, school_section=section, sub_section__isnull=True,
         ).first()
+    if not config and section == 'PRIMARY' and sub_section == 'LOWER':
+        config = GradingConfig.all_objects.filter(
+            school=school, school_section='LOWER_PRIMARY',
+        ).first()
     return config
 
 
@@ -456,6 +460,17 @@ def individual_report(request, student_id):
         ).select_related('teacher_profile__user', 'subject')
         if a.subject
     }
+    # Class teacher name for this class/stream — determined by assigned_task field
+    from ..models import Teacher
+    class_teacher_name = ""
+    ct_q = Teacher.all_objects.filter(
+        school=school,
+        assigned_task__icontains=student.class_name,
+    ).filter(
+        Q(assigned_task__icontains=student.stream),
+    ).select_related('user').first()
+    if ct_q:
+        class_teacher_name = ct_q.get_full_title()
     marks_list = list(marks)
     for mark in marks_list:
         mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
@@ -619,6 +634,7 @@ def individual_report(request, student_id):
             'grade_descriptors': grade_descriptors,
             'chart_data_json': chart_data_json,
             'class_teacher_remark': class_teacher_remark,
+            'class_teacher_name':   class_teacher_name,
             'headteacher_comment': headteacher_comment,
             'closing_date': closing_date,
             'opening_date': opening_date,
@@ -737,6 +753,18 @@ def bulk_report_cards(request):
         ).select_related('teacher_profile__user')
     }
 
+    # Class teacher name for this class/stream — determined by assigned_task field
+    from ..models import Teacher
+    class_teacher_name = ""
+    ct_q = Teacher.all_objects.filter(
+        school=school,
+        assigned_task__icontains=sample.class_name,
+    ).filter(
+        Q(assigned_task__icontains=sample.stream),
+    ).select_related('user').first()
+    if ct_q:
+        class_teacher_name = ct_q.get_full_title()
+
     master_comment = ClassTeacherMasterComment.objects.filter(
         school=school,
         year=year, term=term, grade=sample.class_name,
@@ -846,6 +874,7 @@ def bulk_report_cards(request):
             'grade_descriptors':   grade_descriptors,
             'chart_data_json':     chart_data_json,
             'class_teacher_remark': class_teacher_remark,
+            'class_teacher_name':   class_teacher_name,
             'headteacher_comment': headteacher_comment,
             'closing_date':        closing_date,
             'opening_date':        opening_date,
