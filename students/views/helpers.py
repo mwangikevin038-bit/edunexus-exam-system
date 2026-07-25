@@ -272,19 +272,11 @@ def get_learner_contexts_for_user(user):
             filters |= Q(class_name=item["class_name"], stream=item["stream"])
         qs = student_qs.filter(filters).values("class_name", "stream").annotate(learner_count=Count("id"))
     else:
-        assignment_qs = SubjectAssignment.objects.all()
-        if section == 'LOWER_PRIMARY':
-            assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='LOWER')
-        elif section == 'PRIMARY':
-            assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='UPPER')
-        elif section == 'JSS':
-            assignment_qs = assignment_qs.filter(school_section='JSS')
-        assignments = assignment_qs.filter(teacher_profile=teacher)
-        allowed_pairs = assignments.values("class_name", "stream").distinct()
-        filters = Q(pk__isnull=True)
-        for item in allowed_pairs:
-            filters |= Q(class_name=item["class_name"], stream=item["stream"])
-        qs = student_qs.filter(filters).values("class_name", "stream").annotate(learner_count=Count("id"))
+        # Teachers see ALL students in their sub-section for Class Lists.
+        # student_qs is already scoped by SchoolScopedManager to the correct sub-section.
+        # No need to further restrict by assignment pairs — that restriction applies
+        # only to marks/exams, not to viewing the learner directory.
+        qs = student_qs.values("class_name", "stream").annotate(learner_count=Count("id"))
 
     contexts = list(qs.order_by("class_name", "stream"))
     for item in contexts:
