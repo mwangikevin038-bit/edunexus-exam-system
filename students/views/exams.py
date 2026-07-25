@@ -596,7 +596,7 @@ def manage_exams(request):
     if section == 'PRIMARY' and active_sub not in ('LOWER', 'UPPER'):
         active_sub = 'LOWER'  # default to Lower Primary
 
-    exams = Exam.objects.filter(school=school)
+    exams = Exam.all_objects.filter(school=school)
     if section == 'LOWER_PRIMARY':
         exams = exams.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
@@ -619,7 +619,7 @@ def manage_exams(request):
                 selected_exam = None
 
     if not selected_exam:
-        selected_exam = Exam.objects.filter(school=school, status="active")
+        selected_exam = Exam.all_objects.filter(school=school, status="active")
         if section == 'LOWER_PRIMARY':
             selected_exam = selected_exam.filter(school_section='PRIMARY', sub_section='LOWER')
         elif section == 'PRIMARY':
@@ -788,8 +788,8 @@ def manage_exams(request):
 
     # Add sub-section counts when in PRIMARY workspace
     if section == 'PRIMARY':
-        lower_count = Exam.objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').count()
-        upper_count = Exam.objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').count()
+        lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').count()
+        upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').count()
         context["lower_exam_count"] = lower_count
         context["upper_exam_count"] = upper_count
 
