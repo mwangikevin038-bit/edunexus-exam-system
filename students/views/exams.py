@@ -1471,6 +1471,8 @@ def select_exam_primary(request):
     active_exams = Exam.objects.filter(
         school=school, status='active', school_section=exam_section
     ).order_by('-year', 'term', 'name')
+    if exam_sub_section:
+        active_exams = active_exams.filter(sub_section=exam_sub_section)
 
     selected_assignment = None
     selected_exam = None
@@ -1636,12 +1638,12 @@ def select_exam_primary(request):
                         term=selected_exam.term,
                         exam_type=selected_exam.name,
                         year=selected_exam.year,
+                        school_section=exam_section,
+                        sub_section=exam_sub_section,
                     )
                     Mark.all_objects.filter(**_mark_lookup).delete()
                     Mark.all_objects.create(
                         **_mark_lookup,
-                        school_section=exam_section,
-                        sub_section=exam_sub_section,
                         raw_score=None,
                         maximum_marks=maximum_marks,
                         score=0,
@@ -1677,12 +1679,12 @@ def select_exam_primary(request):
                     term=selected_exam.term,
                     exam_type=selected_exam.name,
                     year=selected_exam.year,
+                    school_section=exam_section,
+                    sub_section=exam_sub_section,
                 )
                 Mark.all_objects.filter(**_mark_lookup).delete()
                 Mark.all_objects.create(
                     **_mark_lookup,
-                    school_section=exam_section,
-                    sub_section=exam_sub_section,
                     raw_score=raw_score,
                     maximum_marks=maximum_marks,
                     score=percentage,
@@ -1898,6 +1900,7 @@ def clear_mark(request):
             exam_type=exam.name,
             year=exam.year,
             school_section=assignment.school_section,
+            sub_section=assignment.sub_section,
         ).count()
         if remaining == 0:
             submission.delete()

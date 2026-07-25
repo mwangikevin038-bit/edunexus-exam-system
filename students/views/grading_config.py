@@ -56,11 +56,28 @@ def grading_configuration(request):
         ws = get_request_school_section(request)
         active_section = ws if ws in SECTION_MAP else 'PRIMARY'
 
+    # Determine which sections this user can access
+    is_both_admin = request.session.get('school_section') == 'BOTH'
+    current_ws = get_request_school_section(request)
+    if is_both_admin:
+        available_sections = list(SECTION_MAP.keys())
+    elif current_ws == 'JSS':
+        available_sections = ['JSS']
+    elif current_ws == 'LOWER_PRIMARY':
+        available_sections = ['LOWER_PRIMARY']
+    elif current_ws == 'PRIMARY':
+        available_sections = ['LOWER_PRIMARY', 'PRIMARY']
+    else:
+        available_sections = list(SECTION_MAP.keys())
+
     if request.method == 'POST':
         action = request.POST.get('action')
 
         if action == 'save_subject_scale':
             section = request.POST.get('section', active_section)
+            if section not in available_sections:
+                messages.error(request, "You do not have access to that section.")
+                return redirect(request.path)
             sub_section = request.POST.get('sub_section', '').strip() or None
             try:
                 scale_data = json.loads(request.POST.get('scale_data', '[]'))
@@ -81,6 +98,9 @@ def grading_configuration(request):
 
         elif action == 'save_total_scale':
             section = request.POST.get('section', active_section)
+            if section not in available_sections:
+                messages.error(request, "You do not have access to that section.")
+                return redirect(request.path)
             sub_section = request.POST.get('sub_section', '').strip() or None
             try:
                 scale_data = json.loads(request.POST.get('scale_data', '[]'))
@@ -101,6 +121,9 @@ def grading_configuration(request):
 
         elif action == 'reset_subject_scale':
             section = request.POST.get('section', active_section)
+            if section not in available_sections:
+                messages.error(request, "You do not have access to that section.")
+                return redirect(request.path)
             sub_section = request.POST.get('sub_section', '').strip() or None
             default_scale = GradingConfig.get_default_subject_scale(section)
             config, _ = GradingConfig.all_objects.update_or_create(
@@ -117,6 +140,9 @@ def grading_configuration(request):
 
         elif action == 'reset_total_scale':
             section = request.POST.get('section', active_section)
+            if section not in available_sections:
+                messages.error(request, "You do not have access to that section.")
+                return redirect(request.path)
             sub_section = request.POST.get('sub_section', '').strip() or None
             default_scale = GradingConfig.get_default_total_scale(section)
             config, _ = GradingConfig.all_objects.update_or_create(
@@ -138,6 +164,8 @@ def grading_configuration(request):
             except (TypeError, ValueError):
                 return JsonResponse({'error': 'Invalid score.'}, status=400)
             section = request.POST.get('section', active_section)
+            if section not in available_sections:
+                return JsonResponse({'error': 'Access denied.'}, status=403)
             sub_section = request.POST.get('sub_section', '').strip() or None
             # Try sub-section-specific config first
             config = None
@@ -212,9 +240,12 @@ def grading_configuration(request):
     from ..models import Mark
     marks_in_use = {}
     for section_key in SECTION_MAP:
-        marks_in_use[section_key] = Mark.all_objects.filter(
-            school=school, school_section=section_key
-        ).count()
+        if section_key in available_sections:
+            marks_in_use[section_key] = Mark.all_objects.filter(
+                school=school, school_section=section_key
+            ).count()
+        else:
+            marks_in_use[section_key] = 0
 
     # Sanity-check the active config: detect overlapping ranges
     def _detect_overlaps(scale, key_min, key_max):

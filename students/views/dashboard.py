@@ -39,6 +39,13 @@ def profile_view(request):
         'class_name', 'stream', 'subject__code'
     ) if teacher else SubjectAssignment.objects.none()
     section = get_request_school_section(request)
+    # Scope assignments to current workspace section
+    if section == 'LOWER_PRIMARY':
+        assignments = assignments.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif section == 'PRIMARY':
+        assignments = assignments.filter(school_section='PRIMARY', sub_section='UPPER')
+    elif section == 'JSS':
+        assignments = assignments.filter(school_section='JSS')
     submissions = MarkSubmission.objects.filter(teacher=teacher)
     if section == 'LOWER_PRIMARY':
         submissions = submissions.filter(school_section='PRIMARY', sub_section='LOWER')
@@ -70,7 +77,7 @@ def dashboard(request):
     if user_has_main_school_admin_override(request.user):
         return redirect('school_admin_dashboard')
 
-    assignments = SubjectAssignment.objects.filter(school=school, teacher_profile=teacher).order_by(
+    assignments_qs = SubjectAssignment.objects.filter(school=school, teacher_profile=teacher).order_by(
         'class_name', 'stream', 'subject__code'
     ) if teacher and school else SubjectAssignment.objects.none()
     active_exams = Exam.objects.filter(school=school, status='active').order_by('-year', 'term', 'name') if school else Exam.objects.none()
@@ -84,7 +91,7 @@ def dashboard(request):
         submissions = submissions.filter(school_section='JSS')
     class_scope = get_class_teacher_scope(teacher)
 
-    active_sheet_count = assignments.count() * active_exams.count()
+    active_sheet_count = assignments_qs.count() * active_exams.count()
     submitted_count = submissions.filter(status__in=['submitted', 'approved', 'published']).count()
     returned_count = submissions.filter(status='returned').count()
     published_count = submissions.filter(status='published').count()
@@ -92,10 +99,60 @@ def dashboard(request):
     recent_submissions = submissions.order_by('-submitted_at', '-reviewed_at')[:6]
     published_contexts = get_published_contexts_for_user(request.user)
 
+    assignments = list(assignments_qs[:6])
+
+    active_exam = active_exams.first()
+    if active_exam and assignments:
+        marks_filter = dict(
+            school=school,
+            exam_type=active_exam.name,
+            term=active_exam.term,
+            year=active_exam.year,
+            subject__in=[a.subject_id for a in assignments],
+        )
+        if section == 'LOWER_PRIMARY':
+            marks_filter['school_section'] = 'PRIMARY'
+            marks_filter['sub_section'] = 'LOWER'
+        elif section == 'PRIMARY':
+            marks_filter['school_section'] = 'PRIMARY'
+            marks_filter['sub_section'] = 'UPPER'
+        elif section == 'JSS':
+            marks_filter['school_section'] = 'JSS'
+
+        mark_entries = (
+            Mark.objects.filter(**marks_filter)
+            .values('subject_id', 'student__class_name', 'student__stream')
+            .annotate(student_count=Count('student_id', distinct=True))
+        )
+        mark_map = {}
+        for entry in mark_entries:
+            key = (entry['subject_id'], entry['student__class_name'], entry['student__stream'])
+            mark_map[key] = entry['student_count']
+
+        student_counts = (
+            Student.objects.filter(school=school)
+            .values('class_name', 'stream')
+            .annotate(cnt=Count('id'))
+        )
+        student_count_map = {(s['class_name'], s['stream']): s['cnt'] for s in student_counts}
+
+        for assignment in assignments:
+            mark_key = (assignment.subject_id, assignment.class_name, assignment.stream)
+            marks_entered = mark_map.get(mark_key, 0)
+            total_students = student_count_map.get((assignment.class_name, assignment.stream), 0)
+            assignment.marks_entered = marks_entered
+            assignment.total_students = total_students
+            assignment.progress_pct = round((marks_entered / total_students) * 100) if total_students else 0
+    else:
+        for assignment in assignments:
+            assignment.marks_entered = 0
+            assignment.total_students = 0
+            assignment.progress_pct = 0
+
     return render(request, 'students/dashboard.html', {
         'teacher': teacher,
-        'assignments': assignments[:6],
-        'assignment_count': assignments.count(),
+        'assignments': assignments,
+        'assignment_count': assignments_qs.count(),
         'active_exam_count': active_exams.count(),
         'active_sheet_count': active_sheet_count,
         'submitted_count': submitted_count,

@@ -397,9 +397,16 @@
                 <div class="workspace-toggle" style="display:flex; gap:4px;">
                     <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
                         {% csrf_token %}
+                        <input type="hidden" name="section" value="LOWER_PRIMARY">
+                        <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'LOWER_PRIMARY' %}active{% endif %}">
+                            <i class="ph ph-pencil-simple"></i> Lower Primary
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
+                        {% csrf_token %}
                         <input type="hidden" name="section" value="PRIMARY">
                         <button type="submit" class="workspace-btn {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}active{% endif %}">
-                            <i class="ph ph-book"></i> Primary
+                            <i class="ph ph-book"></i> Upper Primary
                         </button>
                     </form>
                     <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
@@ -553,6 +560,12 @@
             <div class="mobile-menu-body">
                 {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
                     <div class="mobile-menu-section">
+                        <div class="mobile-menu-section-label">Reports</div>
+                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'report_card_select' %}active{% endif %}" href="{% url 'report_card_select' %}">
+                            <i class="ph ph-certificate"></i> Report Cards
+                        </a>
+                    </div>
+                    <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">Staff</div>
                         <a class="mobile-menu-link {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active{% endif %}" href="{% url 'manage_faculty_matrix' %}">
                             <i class="ph ph-users-three"></i> Faculty
@@ -589,9 +602,16 @@
                     <div class="mobile-menu-section-label">Workspace</div>
                     <form method="post" action="{% url 'switch_workspace' %}">
                         {% csrf_token %}
+                        <input type="hidden" name="section" value="LOWER_PRIMARY">
+                        <button type="submit" class="mobile-menu-link" style="width:100%; border:none; background:transparent; text-align:left;">
+                            <i class="ph ph-pencil-simple"></i> Lower Primary
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'switch_workspace' %}">
+                        {% csrf_token %}
                         <input type="hidden" name="section" value="PRIMARY">
                         <button type="submit" class="mobile-menu-link" style="width:100%; border:none; background:transparent; text-align:left;">
-                            <i class="ph ph-book"></i> Primary
+                            <i class="ph ph-book"></i> Upper Primary
                         </button>
                     </form>
                     <form method="post" action="{% url 'switch_workspace' %}">

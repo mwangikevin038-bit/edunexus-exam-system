@@ -288,12 +288,88 @@
             min-width: 700px;
         }
     }
+
+    /* ===== MOBILE REPORT CARDS ===== */
+    @media (max-width: 768px) {
+        .reports-page {
+            padding: var(--space-3);
+            padding-top: calc(var(--mobile-topbar) + var(--space-3));
+            padding-bottom: calc(var(--bottomnav-height) + var(--space-3));
+        }
+
+        .reports-hero {
+            padding: var(--space-4);
+            border-left-width: 4px;
+            border-radius: var(--radius-lg);
+        }
+
+        .hero-title h1 {
+            font-size: var(--text-xl);
+        }
+
+        .hero-row {
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: var(--space-2);
+        }
+
+        .summary-card {
+            padding: var(--space-3);
+            border-radius: var(--radius-lg);
+        }
+
+        .reports-table-card {
+            min-width: 0;
+            border-radius: var(--radius-lg);
+        }
+
+        /* Transform student list into cards */
+        .student-report-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .student-report-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            background: var(--en-bg-elevated);
+            border: 1px solid var(--en-border);
+            border-radius: var(--radius-lg);
+            align-items: center;
+        }
+
+        .student-report-row td {
+            border: none;
+            padding: 0;
+        }
+
+        .student-report-actions {
+            display: flex;
+            gap: var(--space-2);
+        }
     }
 </style>
 
 {# ── DESKTOP VIEW (hidden on mobile via rc-mobile.css) ── #}
 <div class="rd-desktop">
 <div class="reports-page">
+    <!-- iOS 17 Segmented Control -->
+    <div class="segmented-control" style="margin-bottom: 24px; background: #f1f5f9; border-radius: 12px; padding: 3px; display: flex;">
+        <a href="{% url 'results_list' %}" style="flex:1; text-align:center; padding:10px 16px; font-size:14px; font-weight:700; color:#64748b; border-radius:10px; text-decoration:none; transition:all 0.2s;">
+            <i class="ph ph-chart-bar" style="margin-right:4px;"></i> Published
+        </a>
+        <a href="{% url 'report_card_select' %}" style="flex:1; text-align:center; padding:10px 16px; font-size:14px; font-weight:700; color:#0f172a; background:#fff; border-radius:10px; text-decoration:none; box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+            <i class="ph ph-certificate" style="margin-right:4px;"></i> Report Cards
+        </a>
+    </div>
+
     <section class="reports-hero">
         <div class="hero-row">
             <div class="hero-title">

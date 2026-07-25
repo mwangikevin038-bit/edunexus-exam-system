@@ -160,8 +160,13 @@
         <div style="display: flex; gap: 5px;">
             <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
                 {% csrf_token %}
+                <input type="hidden" name="section" value="LOWER_PRIMARY">
+                <button type="submit" style="border: 1px solid {% if request.session.workspace_section == 'LOWER_PRIMARY' %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'LOWER_PRIMARY' %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'LOWER_PRIMARY' %}#fff{% else %}#64748b{% endif %}; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; cursor: pointer;">Lower Primary</button>
+            </form>
+            <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
+                {% csrf_token %}
                 <input type="hidden" name="section" value="PRIMARY">
-                <button type="submit" style="border: 1px solid {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#fff{% else %}#64748b{% endif %}; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; cursor: pointer;">Primary</button>
+                <button type="submit" style="border: 1px solid {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#e2e8f0{% endif %}; background: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#0f172a{% else %}#fff{% endif %}; color: {% if request.session.workspace_section == 'PRIMARY' or not request.session.workspace_section %}#fff{% else %}#64748b{% endif %}; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; cursor: pointer;">Upper Primary</button>
             </form>
             <form method="post" action="{% url 'switch_workspace' %}" style="display:inline;">
                 {% csrf_token %}

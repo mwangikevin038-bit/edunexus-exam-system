@@ -310,10 +310,10 @@
                         </div>
                         <div class="dash-class-progress">
                             <div class="dash-progress-bar">
-                                <div class="dash-progress-fill" style="width: 0%"></div>
+                                <div class="dash-progress-fill" style="width: {{ assignment.progress_pct }}%"></div>
                             </div>
                             <div class="dash-class-stats">
-                                <span class="dash-class-stat"><strong>0</strong> exams entered</span>
+                                <span class="dash-class-stat"><strong>{{ assignment.marks_entered }}</strong> / {{ assignment.total_students }} exams entered</span>
                                 <a class="dash-class-capture"
                                    href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
                                     Capture <i class="ph ph-arrow-right"></i>
@@ -500,10 +500,10 @@
                 </div>
                 <div class="dash-class-progress-dt">
                     <div class="dash-progress-bar-dt">
-                        <div class="dash-progress-fill-dt" style="width: 0%"></div>
+                        <div class="dash-progress-fill-dt" style="width: {{ assignment.progress_pct }}%"></div>
                     </div>
                     <div class="dash-class-stats-dt">
-                        <span class="dash-class-stat-dt"><strong>0</strong> exams entered</span>
+                        <span class="dash-class-stat-dt"><strong>{{ assignment.marks_entered }}</strong> / {{ assignment.total_students }} exams entered</span>
                         <a class="dash-class-capture-dt"
                            href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
                             Capture <i class="ph ph-arrow-right"></i>

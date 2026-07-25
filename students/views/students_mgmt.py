@@ -199,6 +199,13 @@ def admin_add_student(request):
             target_class = request.POST.get('target_class')
             confirm = request.POST.get('confirm_delete')
             if source_class and target_class:
+                # Validate source_class belongs to current workspace section
+                if section == 'LOWER_PRIMARY' and source_class not in LOWER_PRIMARY_GRADE_CHOICES:
+                    messages.error(request, f"{source_class} is not in your Lower Primary workspace.")
+                    return redirect('/school-admin/registration/?tab=overview')
+                elif section == 'PRIMARY' and source_class not in PRIMARY_GRADE_CHOICES:
+                    messages.error(request, f"{source_class} is not in your Upper Primary workspace.")
+                    return redirect('/school-admin/registration/?tab=overview')
                 cohort        = Student.objects.filter(school=school, class_name=source_class)
                 affected_count = cohort.count()
                 if affected_count > 0:
@@ -227,6 +234,13 @@ def admin_add_student(request):
         .select_related('guardian')
         .annotate(adm_int=Cast('admission_no', IntegerField()))
     )
+    # Scope directory to current workspace section
+    if section == 'LOWER_PRIMARY':
+        base_query = base_query.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif section == 'PRIMARY':
+        base_query = base_query.filter(school_section='PRIMARY', sub_section='UPPER')
+    elif section == 'JSS':
+        base_query = base_query.filter(school_section='JSS')
     if active_tab == 'directory':
         search_term = request.GET.get('q', '').strip()
         if search_term:

@@ -575,12 +575,15 @@ def manage_faculty_matrix(request):
             elif teacher_section == 'PRIMARY' and section in ('LOWER_PRIMARY', 'PRIMARY'):
                 # Derive expected sub from the grade, not the workspace
                 _, expected_sub = section_for_class(grade)
-                if teacher_sub == (expected_sub or '').upper() or teacher_sub == '' or teacher_sub is None:
-                    pass
-                else:
+                if expected_sub and teacher_sub and teacher_sub != expected_sub.upper():
                     messages.error(request,
                         f"{teacher.get_full_title()} is posted to a different section "
                         f"and cannot be assigned here.")
+                    return redirect('manage_faculty_matrix')
+                if expected_sub and not teacher_sub:
+                    messages.error(request,
+                        f"{teacher.get_full_title()} has no sub-section assigned. "
+                        f"Update their profile before assigning to {grade}.")
                     return redirect('manage_faculty_matrix')
             elif teacher_section == 'JSS' and section == 'JSS':
                 pass
