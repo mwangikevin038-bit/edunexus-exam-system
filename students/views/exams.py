@@ -818,13 +818,13 @@ def review_stream_submission(request):
     # Determine the exam section (Exams don't have LOWER_PRIMARY, they use PRIMARY)
     exam_section_filter = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
 
-    exam = Exam.objects.filter(school=school, id=exam_id).first() if exam_id else None
+    exam = Exam.all_objects.filter(school=school, id=exam_id).first() if exam_id else None
     if exam and exam.school_section != exam_section_filter:
         exam = None
     if not exam:
-        exam = Exam.objects.filter(school=school, status="active", school_section=exam_section_filter).order_by("-year", "term", "name").first()
+        exam = Exam.all_objects.filter(school=school, status="active", school_section=exam_section_filter).order_by("-year", "term", "name").first()
     if not exam:
-        exam = Exam.objects.filter(school=school, school_section=exam_section_filter).order_by("-year", "term", "name").first()
+        exam = Exam.all_objects.filter(school=school, school_section=exam_section_filter).order_by("-year", "term", "name").first()
     if not exam:
         messages.error(request, "Create an assessment first before reviewing stream submissions.")
         return redirect("manage_exams")
@@ -833,10 +833,10 @@ def review_stream_submission(request):
     stream = request.GET.get("stream") or request.POST.get("stream")
 
     if not class_name or not stream:
-        exams = Exam.objects.filter(school=school).order_by("-year", "term", "name")
+        exams = Exam.all_objects.filter(school=school).order_by("-year", "term", "name")
         stream_cards = []
         pairs = (
-            SubjectAssignment.objects.filter(school=school)
+            SubjectAssignment.all_objects.filter(school=school)
             .values("class_name", "stream")
             .distinct()
             .order_by("class_name", "stream")
@@ -860,7 +860,7 @@ def review_stream_submission(request):
         })
 
     valid_pairs = set(
-        SubjectAssignment.objects.filter(school=school)
+        SubjectAssignment.all_objects.filter(school=school)
         .values_list("class_name", "stream")
         .distinct()
     )

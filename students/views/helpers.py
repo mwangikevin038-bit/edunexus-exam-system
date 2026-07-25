@@ -110,7 +110,7 @@ def get_stream_submission_summary(class_name, stream, exam):
         assignment_filters['school'] = school
 
     assignments = (
-        SubjectAssignment.objects.filter(**assignment_filters)
+        SubjectAssignment.all_objects.filter(**assignment_filters)
         .select_related("teacher_profile", "teacher_profile__user", "subject")
         .order_by("subject__code")
     )
