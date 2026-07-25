@@ -220,7 +220,7 @@ def custom_password_change(request):
             # invalidates the session on the next request because the
             # password changed but the stored auth hash is stale.
             from django.contrib.auth import login as auth_login
-            auth_login(request, user)
+            auth_login(request, user, backend=user.backend)
             messages.success(request, "Your password has been changed successfully.")
             return redirect('home_alt')
     else:
