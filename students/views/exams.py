@@ -17,6 +17,7 @@ from django.db.models import Avg, IntegerField
 from django.db.models.functions import Cast
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from .constants import (
@@ -533,12 +534,15 @@ def manage_exams(request):
             status = request.POST.get("status", "active")
             section = get_request_school_section(request)
 
+            # Support sub-section toggle in PRIMARY workspace
+            post_sub = request.POST.get('active_sub', '').strip().upper()
+
             if section == 'LOWER_PRIMARY':
                 exam_db_section = 'PRIMARY'
                 exam_sub_section = 'LOWER'
             elif section == 'PRIMARY':
                 exam_db_section = 'PRIMARY'
-                exam_sub_section = 'UPPER'
+                exam_sub_section = post_sub if post_sub in ('LOWER', 'UPPER') else 'LOWER'
             else:
                 exam_db_section = 'JSS'
                 exam_sub_section = None
@@ -559,7 +563,8 @@ def manage_exams(request):
             else:
                 messages.error(request, "Please provide assessment name, term, and year.")
 
-            return redirect("manage_exams")
+            redirect_url = f"{reverse('manage_exams')}?sub={post_sub}" if post_sub else reverse('manage_exams')
+            return redirect(redirect_url)
 
         if action_type == "toggle_status":
             exam_id = request.POST.get("exam_id")
@@ -569,7 +574,8 @@ def manage_exams(request):
             exam.save()
 
             messages.success(request, "Assessment status has been updated.")
-            return redirect("manage_exams")
+            redirect_url = f"{reverse('manage_exams')}?sub={active_sub}" if active_sub else reverse('manage_exams')
+            return redirect(redirect_url)
 
         if action_type == "delete_exam":
             exam_id = request.POST.get("exam_id")
@@ -577,17 +583,24 @@ def manage_exams(request):
             exam.delete()
 
             messages.success(request, "Assessment has been deleted.")
-            return redirect("manage_exams")
+            redirect_url = f"{reverse('manage_exams')}?sub={active_sub}" if active_sub else reverse('manage_exams')
+            return redirect(redirect_url)
 
     # -----------------------------
     # Exam registry
     # -----------------------------
     section = get_request_school_section(request)
+
+    # In PRIMARY workspace, support sub-section toggle via ?sub=LOWER|UPPER
+    active_sub = request.GET.get('sub', '').strip().upper()
+    if section == 'PRIMARY' and active_sub not in ('LOWER', 'UPPER'):
+        active_sub = 'LOWER'  # default to Lower Primary
+
     exams = Exam.objects.filter(school=school)
     if section == 'LOWER_PRIMARY':
         exams = exams.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
-        exams = exams.filter(school_section='PRIMARY', sub_section='UPPER')
+        exams = exams.filter(school_section='PRIMARY', sub_section=active_sub)
     elif section == 'JSS':
         exams = exams.filter(school_section='JSS')
     exams = exams.order_by("-year", "term", "name")
@@ -598,9 +611,9 @@ def manage_exams(request):
     if selected_exam_id:
         selected_exam = Exam.objects.filter(school=school, id=selected_exam_id).first()
         if selected_exam:
-            if section == 'LOWER_PRIMARY' and selected_exam.school_section != 'PRIMARY':
+            if section == 'LOWER_PRIMARY' and selected_exam.sub_section != 'LOWER':
                 selected_exam = None
-            elif section == 'PRIMARY' and selected_exam.school_section != 'PRIMARY':
+            elif section == 'PRIMARY' and selected_exam.sub_section != active_sub:
                 selected_exam = None
             elif section == 'JSS' and selected_exam.school_section != 'JSS':
                 selected_exam = None
@@ -610,7 +623,7 @@ def manage_exams(request):
         if section == 'LOWER_PRIMARY':
             selected_exam = selected_exam.filter(school_section='PRIMARY', sub_section='LOWER')
         elif section == 'PRIMARY':
-            selected_exam = selected_exam.filter(school_section='PRIMARY', sub_section='UPPER')
+            selected_exam = selected_exam.filter(school_section='PRIMARY', sub_section=active_sub)
         elif section == 'JSS':
             selected_exam = selected_exam.filter(school_section='JSS')
         selected_exam = selected_exam.order_by("-year", "term", "name").first()
@@ -643,7 +656,7 @@ def manage_exams(request):
         if section == 'LOWER_PRIMARY':
             assignments = assignments.filter(school_section='PRIMARY', sub_section='LOWER')
         elif section == 'PRIMARY':
-            assignments = assignments.filter(school_section='PRIMARY', sub_section='UPPER')
+            assignments = assignments.filter(school_section='PRIMARY', sub_section=active_sub)
         elif section == 'JSS':
             assignments = assignments.filter(school_section='JSS')
 
@@ -769,7 +782,16 @@ def manage_exams(request):
         "current_year": current_year,
         "terms": TERM_CHOICES,
         "status_choices": status_choices,
+        "section": section,
+        "active_sub": active_sub,
     }
+
+    # Add sub-section counts when in PRIMARY workspace
+    if section == 'PRIMARY':
+        lower_count = Exam.objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').count()
+        upper_count = Exam.objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').count()
+        context["lower_exam_count"] = lower_count
+        context["upper_exam_count"] = upper_count
 
     return render(request, "students/manage_exams.html", context)
 

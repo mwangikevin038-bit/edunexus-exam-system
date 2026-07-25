@@ -627,6 +627,31 @@
             {% endfor %}
         {% endif %}
 
+        {% if section == 'PRIMARY' %}
+        <div class="sub-section-tabs" style="display:flex; gap:8px; margin-bottom:24px;">
+            <a href="?sub=LOWER" class="sub-section-tab" style="flex:1; display:flex; align-items:center; gap:12px; padding:16px 20px; border-radius:14px; text-decoration:none; cursor:pointer; transition:all 0.2s; border:2px solid transparent; {% if active_sub == 'LOWER' %}border-color:#B45309; background:#FFFBEB;{% else %}background:#fff; border-color:#e2e8f0;{% endif %}">
+                <div style="width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; {% if active_sub == 'LOWER' %}background:#B45309; color:#fff;{% else %}background:#f1f5f9; color:#64748b;{% endif %}">
+                    <i class="bi bi-book-half"></i>
+                </div>
+                <div>
+                    <div style="font-size:15px; font-weight:900; color:#0f172a;">Lower Primary</div>
+                    <div style="font-size:12px; font-weight:700; color:#64748b;">Grades 1 - 3</div>
+                </div>
+                <span style="margin-left:auto; background:{% if active_sub == 'LOWER' %}#B45309; color:#fff;{% else %}#f1f5f9; color:#475569;{% endif %}; padding:4px 12px; border-radius:999px; font-size:13px; font-weight:900;">{{ lower_exam_count }}</span>
+            </a>
+            <a href="?sub=UPPER" class="sub-section-tab" style="flex:1; display:flex; align-items:center; gap:12px; padding:16px 20px; border-radius:14px; text-decoration:none; cursor:pointer; transition:all 0.2s; border:2px solid transparent; {% if active_sub == 'UPPER' %}border-color:#00674F; background:#ECFDF5;{% else %}background:#fff; border-color:#e2e8f0;{% endif %}">
+                <div style="width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; {% if active_sub == 'UPPER' %}background:#00674F; color:#fff;{% else %}background:#f1f5f9; color:#64748b;{% endif %}">
+                    <i class="bi bi-book"></i>
+                </div>
+                <div>
+                    <div style="font-size:15px; font-weight:900; color:#0f172a;">Upper Primary</div>
+                    <div style="font-size:12px; font-weight:700; color:#64748b;">Grades 4 - 6</div>
+                </div>
+                <span style="margin-left:auto; background:{% if active_sub == 'UPPER' %}#00674F; color:#fff;{% else %}#f1f5f9; color:#475569;{% endif %}; padding:4px 12px; border-radius:999px; font-size:13px; font-weight:900;">{{ upper_exam_count }}</span>
+            </a>
+        </div>
+        {% endif %}
+
         <div class="summary-grid">
             <div class="summary-card">
                 <span>Total Sheets</span>
@@ -676,6 +701,9 @@
                     <form method="POST">
                         {% csrf_token %}
                         <input type="hidden" name="action_type" value="create_exam">
+                        {% if section == 'PRIMARY' %}
+                        <input type="hidden" name="active_sub" value="{{ active_sub }}">
+                        {% endif %}
 
                         <label class="admin-label">Assessment Name</label>
                         <input type="text" name="exam_name" class="admin-input" placeholder="e.g. Opener Assessment, Mid Term Exam" required>
