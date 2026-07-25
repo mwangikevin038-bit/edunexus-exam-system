@@ -25,9 +25,8 @@ from ..security import user_has_main_school_admin_override
 
 
 def generate_default_password():
-    """Generate a random 12-character alphanumeric password for new teachers."""
-    alphabet = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(alphabet) for _ in range(12))
+    """Generate a random 8-digit numeric password for new teachers."""
+    return ''.join(secrets.choice(string.digits) for _ in range(8))
 
 
 def get_published_subject_codes(class_name, stream, year, term, exam_name):
@@ -454,7 +453,23 @@ def calculate_report_plv(total_points, total_marks, sub_section=None):
             ).first()
             if config and config.total_scale:
                 return config.get_total_level(mks)[0] if mks else '-'
-        config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
+        # Use the same 2-step lookup as _get_grading_scale_json()
+        if section == 'LOWER_PRIMARY':
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='PRIMARY', sub_section='LOWER'
+            ).first()
+            if not config:
+                config = GradingConfig.all_objects.filter(
+                    school=school, school_section='LOWER_PRIMARY', sub_section__isnull=True
+                ).first()
+        elif section == 'PRIMARY':
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='PRIMARY', sub_section='UPPER'
+            ).first()
+        else:
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='JSS', sub_section__isnull=True
+            ).first()
         if config and config.total_scale:
             return config.get_total_level(mks)[0] if mks else '-'
 
@@ -511,9 +526,23 @@ def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None):
                 school=school, school_section=section, sub_section=sub_section
             ).first()
         if not config:
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section=section
-            ).first()
+            # Use the same 2-step lookup as _get_grading_scale_json()
+            if section == 'LOWER_PRIMARY':
+                config = GradingConfig.all_objects.filter(
+                    school=school, school_section='PRIMARY', sub_section='LOWER'
+                ).first()
+                if not config:
+                    config = GradingConfig.all_objects.filter(
+                        school=school, school_section='LOWER_PRIMARY', sub_section__isnull=True
+                    ).first()
+            elif section == 'PRIMARY':
+                config = GradingConfig.all_objects.filter(
+                    school=school, school_section='PRIMARY', sub_section='UPPER'
+                ).first()
+            else:
+                config = GradingConfig.all_objects.filter(
+                    school=school, school_section='JSS', sub_section__isnull=True
+                ).first()
         if config and config.subject_scale:
             mean = total_marks / assessed_subjects
             level, _ = config.get_subject_level(mean)

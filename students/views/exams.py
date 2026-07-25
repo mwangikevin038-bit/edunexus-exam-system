@@ -1372,7 +1372,24 @@ def _get_primary_performance(percentage):
     section = get_current_school_section()
 
     if school and section:
-        config = GradingConfig.all_objects.filter(school=school, school_section=section).first()
+        # Use the same 2-step lookup as _get_grading_scale_json()
+        if section == 'LOWER_PRIMARY':
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='PRIMARY', sub_section='LOWER'
+            ).first()
+            if not config:
+                config = GradingConfig.all_objects.filter(
+                    school=school, school_section='LOWER_PRIMARY', sub_section__isnull=True
+                ).first()
+        elif section == 'PRIMARY':
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='PRIMARY', sub_section='UPPER'
+            ).first()
+        else:
+            config = GradingConfig.all_objects.filter(
+                school=school, school_section='JSS', sub_section__isnull=True
+            ).first()
+
         if config and config.subject_scale:
             return config.get_subject_level(percentage)
 
