@@ -230,6 +230,9 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
             return 'BOTH'
         teacher = Teacher.all_objects.filter(user=user).first()
         if teacher:
+            # Distinguish Lower Primary from Upper Primary
+            if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER':
+                return 'LOWER_PRIMARY'
             return teacher.school_section
         return 'BOTH'
 
