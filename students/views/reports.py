@@ -91,7 +91,9 @@ def results_list(request):
     is_primary = section == 'PRIMARY' or is_lower_primary
 
     active_sub = request.GET.get('sub', '').strip().upper()
-    if is_primary and active_sub not in ('LOWER', 'UPPER'):
+    if is_lower_primary:
+        active_sub = 'LOWER'
+    elif is_primary and active_sub not in ('LOWER', 'UPPER'):
         active_sub = request.session.get('active_sub', 'UPPER')
     if is_primary and active_sub not in ('LOWER', 'UPPER'):
         active_sub = 'UPPER'
@@ -315,7 +317,9 @@ def report_card_select(request):
     is_primary = section == 'PRIMARY' or is_lower_primary
 
     active_sub = request.GET.get('sub', '').strip().upper()
-    if is_primary and active_sub not in ('LOWER', 'UPPER'):
+    if is_lower_primary:
+        active_sub = 'LOWER'
+    elif is_primary and active_sub not in ('LOWER', 'UPPER'):
         active_sub = request.session.get('active_sub', 'UPPER')
     if is_primary and active_sub not in ('LOWER', 'UPPER'):
         active_sub = 'UPPER'

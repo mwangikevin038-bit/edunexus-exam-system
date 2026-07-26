@@ -1459,6 +1459,7 @@
                         data-phone="{{ teacher.phone_number|default:'' }}"
                         data-email="{{ teacher.email|default:'' }}"
                         data-section="{{ teacher.section_label|default:'' }}"
+                        data-assigned-task="{{ teacher.assigned_task|default:'Teacher' }}"
                         data-section-token="{% if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER' %}LOWER_PRIMARY{% elif teacher.school_section == 'PRIMARY' and teacher.sub_section == 'UPPER' %}PRIMARY{% elif teacher.school_section == 'JSS' %}JSS{% else %}BOTH{% endif %}"
                         onclick="handleEditClick(this)">
                   <i class="bi bi-pencil-square"></i> Edit
@@ -1575,7 +1576,7 @@
           <div>
             <label class="form-field-label">Assigned Role</label>
             <select name="assigned_task" class="form-field-input">
-              <option value="Teacher" selected>Regular Teacher</option>
+              <option value="Teacher">Regular Teacher</option>
               {% for role in grade_streams %}
                 <option value="{{ role }}">{{ role }}</option>
               {% endfor %}
@@ -1651,7 +1652,8 @@
     const email = buttonElement.getAttribute('data-email');
     const sectionLabel = buttonElement.getAttribute('data-section');
     const sectionToken = buttonElement.getAttribute('data-section-token');
-    openEditModal(id, title, fullName, tscNumber, phoneNumber, email, sectionLabel, sectionToken);
+    const assignedTask = buttonElement.getAttribute('data-assigned-task');
+    openEditModal(id, title, fullName, tscNumber, phoneNumber, email, sectionLabel, sectionToken, assignedTask);
   }
 
   function selectSection(token) {
@@ -1705,7 +1707,7 @@
     modal.style.display = "flex";
   }
 
-  function openEditModal(id, title, fullName, tscNumber, phoneNumber, email, sectionLabel, sectionToken) {
+  function openEditModal(id, title, fullName, tscNumber, phoneNumber, email, sectionLabel, sectionToken, assignedTask) {
     const modal = document.getElementById("facultyModal");
     document.getElementById("modal_action_type").value = "edit_profile";
     document.getElementById("modal_teacher_id").value = id;
@@ -1717,6 +1719,12 @@
     const emailField = document.querySelector('input[name="email"]');
     if (emailField) emailField.value = email || "";
     document.getElementById("emailNotice").style.display = "none";
+
+    // Pre-select the assigned_task dropdown
+    const assignedTaskSelect = document.querySelector('select[name="assigned_task"]');
+    if (assignedTaskSelect) {
+      assignedTaskSelect.value = assignedTask || 'Teacher';
+    }
 
     // Hide the picker, show the locked chip
     document.getElementById("sectionPicker").style.display = "none";

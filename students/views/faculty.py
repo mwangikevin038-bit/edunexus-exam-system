@@ -415,7 +415,8 @@ def manage_faculty_matrix(request):
                     teacher.tsc_number    = new_tsc
                     teacher.phone_number  = phone_number
                     teacher.email         = email
-                    teacher.assigned_task = request.POST.get('assigned_task', 'Teacher')
+                    if 'assigned_task' in request.POST:
+                        teacher.assigned_task = request.POST.get('assigned_task', teacher.assigned_task)
                     teacher.save()
 
                 messages.success(request, f"Demographics updated for {teacher.get_full_title()}.")

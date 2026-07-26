@@ -851,7 +851,9 @@ def review_stream_submission(request):
         section = get_request_school_section(request)
 
         active_sub = request.GET.get('sub', '').strip().upper()
-        if section == 'PRIMARY' and active_sub not in ('LOWER', 'UPPER'):
+        if section == 'LOWER_PRIMARY':
+            active_sub = 'LOWER'
+        elif section == 'PRIMARY' and active_sub not in ('LOWER', 'UPPER'):
             active_sub = request.session.get('active_sub', 'UPPER')
         if section == 'PRIMARY' and active_sub not in ('LOWER', 'UPPER'):
             active_sub = 'UPPER'
