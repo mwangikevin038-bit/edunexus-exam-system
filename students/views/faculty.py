@@ -858,7 +858,7 @@ def learner_profile(request, student_id):
         )
 
     marks = (
-        Mark.objects.filter(student=student)
+        Mark.all_objects.filter(student=student)
         .order_by('year', 'term', 'exam_type', 'subject')
     )
     is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
@@ -892,7 +892,7 @@ def learner_profile(request, student_id):
         if mark.is_absent:
             level_value, points_value = "AB", 0
         elif is_primary:
-            level_value, points_value = _get_primary_performance(mark.score or 0)
+            level_value, points_value = _get_primary_performance(mark.score or 0, school=student.school, section=student.school_section, sub_section=student.sub_section)
         else:
             level_value, points_value = get_performance_level(mark.score)
         exam_groups[key]["marks"].append({

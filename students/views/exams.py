@@ -596,7 +596,12 @@ def manage_exams(request):
     # In PRIMARY workspace, support sub-section toggle via ?sub=LOWER|UPPER
     active_sub = request.GET.get('sub', '').strip().upper()
     if section == 'PRIMARY' and active_sub not in ('LOWER', 'UPPER'):
+        active_sub = request.session.get('active_sub', 'LOWER')
+    if section == 'PRIMARY' and active_sub not in ('LOWER', 'UPPER'):
         active_sub = 'LOWER'  # default to Lower Primary
+    if section == 'PRIMARY':
+        request.session['active_sub'] = active_sub
+        request.session.modified = True
 
     exams = Exam.all_objects.filter(school=school)
     if section == 'LOWER_PRIMARY':
@@ -611,7 +616,7 @@ def manage_exams(request):
     selected_exam = None
 
     if selected_exam_id:
-        selected_exam = Exam.objects.filter(school=school, id=selected_exam_id).first()
+        selected_exam = Exam.all_objects.filter(school=school, id=selected_exam_id).first()
         if selected_exam:
             if section == 'LOWER_PRIMARY' and selected_exam.sub_section != 'LOWER':
                 selected_exam = None
@@ -650,7 +655,7 @@ def manage_exams(request):
 
     if selected_exam:
         assignments = (
-            SubjectAssignment.objects
+            SubjectAssignment.all_objects
             .filter(school=school)
             .select_related("teacher_profile", "teacher_profile__user")
             .order_by("class_name", "stream", "subject__code")
@@ -663,7 +668,7 @@ def manage_exams(request):
             assignments = assignments.filter(school_section='JSS')
 
         # Batch-fetch ALL submissions for this exam (ONE query instead of N)
-        all_submissions = MarkSubmission.objects.filter(
+        all_submissions = MarkSubmission.all_objects.filter(
             school=school,
             exam_name=selected_exam.name,
             term=selected_exam.term,
@@ -844,6 +849,16 @@ def review_stream_submission(request):
             .order_by("class_name", "stream")
         )
         section = get_request_school_section(request)
+
+        active_sub = request.GET.get('sub', '').strip().upper()
+        if section == 'PRIMARY' and active_sub not in ('LOWER', 'UPPER'):
+            active_sub = request.session.get('active_sub', 'UPPER')
+        if section == 'PRIMARY' and active_sub not in ('LOWER', 'UPPER'):
+            active_sub = 'UPPER'
+        if section == 'PRIMARY':
+            request.session['active_sub'] = active_sub
+            request.session.modified = True
+
         if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
             exam_db_section = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
             exams = exams.filter(school_section=exam_db_section)
@@ -851,7 +866,7 @@ def review_stream_submission(request):
             if section == 'LOWER_PRIMARY':
                 pairs = pairs.filter(sub_section='LOWER')
             elif section == 'PRIMARY':
-                pairs = pairs.filter(sub_section='UPPER')
+                pairs = pairs.filter(sub_section=active_sub)
         for pair in pairs:
             _, totals = get_stream_submission_summary(pair["class_name"], pair["stream"], exam)
             stream_cards.append({
@@ -859,38 +874,27 @@ def review_stream_submission(request):
                 "stream": pair["stream"],
                 "totals": totals,
             })
-        return render(request, "students/stream_review_list.html", {
+
+        context = {
             "exam": exam,
             "exams": exams,
             "stream_cards": stream_cards,
-        })
+            "section": section,
+            "active_sub": active_sub,
+        }
+        if section == 'PRIMARY':
+            lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').count()
+            upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').count()
+            context["lower_exam_count"] = lower_count
+            context["upper_exam_count"] = upper_count
+        return render(request, "students/stream_review_list.html", context)
 
+    section = get_request_school_section(request)
     valid_pairs = set(
         SubjectAssignment.all_objects.filter(school=school)
         .values_list("class_name", "stream")
         .distinct()
     )
-    section = get_request_school_section(request)
-    if section in ('LOWER_PRIMARY', 'PRIMARY', 'JSS'):
-        exam_db_section = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
-        valid_pairs_filtered = set(
-            SubjectAssignment.all_objects.filter(school=school, school_section=exam_db_section)
-            .values_list("class_name", "stream")
-            .distinct()
-        )
-        if section == 'LOWER_PRIMARY':
-            valid_pairs_filtered = set(
-                SubjectAssignment.all_objects.filter(school=school, school_section=exam_db_section, sub_section='LOWER')
-                .values_list("class_name", "stream")
-                .distinct()
-            )
-        elif section == 'PRIMARY':
-            valid_pairs_filtered = set(
-                SubjectAssignment.all_objects.filter(school=school, school_section=exam_db_section, sub_section='UPPER')
-                .values_list("class_name", "stream")
-                .distinct()
-            )
-        valid_pairs = valid_pairs_filtered
     if (class_name, stream) not in valid_pairs:
         messages.error(request, "Select a valid class stream.")
         return redirect("manage_exams")
@@ -1410,19 +1414,21 @@ PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
 LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
 
-def _get_primary_performance(percentage):
+def _get_primary_performance(percentage, school=None, section=None, sub_section=None):
     """Return (descriptor, points) for a primary percentage score.
     Uses the school's GradingConfig from the DB. NO hardcoded fallback."""
     import logging
     from ..models import GradingConfig
     from ..school_scope import get_current_school, get_current_school_section
 
-    school = get_current_school()
-    section = get_current_school_section()
+    if not school:
+        school = get_current_school()
+    if not section:
+        section = get_current_school_section()
 
     if school and section:
         # Use the same 2-step lookup as _get_grading_scale_json()
-        if section == 'LOWER_PRIMARY':
+        if section == 'LOWER_PRIMARY' or (section == 'PRIMARY' and sub_section == 'LOWER'):
             config = GradingConfig.all_objects.filter(
                 school=school, school_section='PRIMARY', sub_section='LOWER'
             ).first()
@@ -1487,7 +1493,7 @@ def select_exam_primary(request):
         exam_sub_section = None
 
     assignments = (
-        SubjectAssignment.objects
+        SubjectAssignment.all_objects
         .filter(school=school, teacher_profile=teacher, school_section=exam_section)
         .select_related('teacher_profile__user')
         .order_by('class_name', 'stream', 'subject__code')
@@ -1495,7 +1501,7 @@ def select_exam_primary(request):
     if exam_sub_section:
         assignments = assignments.filter(sub_section=exam_sub_section)
 
-    active_exams = Exam.objects.filter(
+    active_exams = Exam.all_objects.filter(
         school=school, status='active', school_section=exam_section
     ).order_by('-year', 'term', 'name')
     if exam_sub_section:
@@ -1697,7 +1703,7 @@ def select_exam_primary(request):
                     )
 
                 percentage = round((raw_score / maximum_marks) * 100)
-                descriptor, points = _get_primary_performance(percentage)
+                descriptor, points = _get_primary_performance(percentage, school=school, section=section, sub_section=exam_sub_section)
 
                 _mark_lookup = dict(
                     school=school,
@@ -2052,7 +2058,7 @@ def save_mark(request):
 
     Mark.all_objects.filter(**_mark_lookup).delete()
     percentage = round((raw_score / maximum_marks) * 100)
-    pp_level, pp_points = _get_primary_performance(percentage) if assignment.school_section == 'PRIMARY' else ('', '')
+    pp_level, pp_points = _get_primary_performance(percentage, school=school, section=assignment.school_section, sub_section=assignment.sub_section) if assignment.school_section == 'PRIMARY' else ('', '')
     Mark.all_objects.create(
         **_mark_lookup,
         raw_score=raw_score,

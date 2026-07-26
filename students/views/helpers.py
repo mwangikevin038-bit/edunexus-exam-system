@@ -29,7 +29,7 @@ def generate_default_password():
     return ''.join(secrets.choice(string.digits) for _ in range(8))
 
 
-def get_published_subject_codes(class_name, stream, year, term, exam_name):
+def get_published_subject_codes(class_name, stream, year, term, exam_name, sub_section=None):
     """
     Return subject codes that have been formally published by the school admin.
     Official analysis and report cards should only use these finalized sheets.
@@ -46,7 +46,13 @@ def get_published_subject_codes(class_name, stream, year, term, exam_name):
     )
     if school:
         filters['school'] = school
-    if section == 'LOWER_PRIMARY':
+    if sub_section == 'LOWER':
+        filters['school_section'] = 'PRIMARY'
+        filters['sub_section'] = 'LOWER'
+    elif sub_section == 'UPPER':
+        filters['school_section'] = 'PRIMARY'
+        filters['sub_section'] = 'UPPER'
+    elif section == 'LOWER_PRIMARY':
         filters['school_section'] = 'PRIMARY'
         filters['sub_section'] = 'LOWER'
     elif section == 'PRIMARY':
@@ -55,11 +61,11 @@ def get_published_subject_codes(class_name, stream, year, term, exam_name):
     elif section == 'JSS':
         filters['school_section'] = 'JSS'
     return set(
-        MarkSubmission.objects.filter(**filters).values_list("subject__code", flat=True)
+        MarkSubmission.all_objects.filter(**filters).values_list("subject__code", flat=True)
     )
 
 
-def get_published_contexts_for_user(user, require_class_teacher=False):
+def get_published_contexts_for_user(user, require_class_teacher=False, sub_section=None):
     """
     Return all published assessment contexts visible to any logged-in user.
     Results lists are read-only and visible to every authenticated teacher.
@@ -67,10 +73,15 @@ def get_published_contexts_for_user(user, require_class_teacher=False):
     """
     school = get_current_school()
     section = get_current_school_section()
-    qs = MarkSubmission.objects.filter(status="published")
+    qs = MarkSubmission.all_objects.filter(status="published")
     if school:
         qs = qs.filter(school=school)
-    if section == 'LOWER_PRIMARY':
+
+    if sub_section == 'LOWER':
+        qs = qs.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif sub_section == 'UPPER':
+        qs = qs.filter(school_section='PRIMARY', sub_section='UPPER')
+    elif section == 'LOWER_PRIMARY':
         qs = qs.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
         qs = qs.filter(school_section='PRIMARY', sub_section='UPPER')
@@ -139,6 +150,7 @@ def get_stream_submission_summary(class_name, stream, exam):
             term=exam.term,
             year=exam.year,
             school_section=assignment.school_section,
+            sub_section=assignment.sub_section,
         )
         if school:
             submission_filters['school'] = school
@@ -160,7 +172,7 @@ def get_stream_submission_summary(class_name, stream, exam):
         absent_count = marks_qs.filter(is_absent=True).count()
         missing_count = max(expected_count - captured_count, 0)
 
-        submission = MarkSubmission.objects.filter(
+        submission = MarkSubmission.all_objects.filter(
             teacher=assignment.teacher_profile,
             **submission_filters,
         ).first()
@@ -491,17 +503,13 @@ def calculate_broadsheet_plv(total_marks, total_points, sub_section=None):
     return calculate_report_plv(total_points, total_marks, sub_section)
 
 
-def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None):
+def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None, school=None, section=None):
     """
-    Primary broadsheet PLV based on the school's GradingConfig.
+    Primary broadsheet PLV based on the school's GradingConfig.total_scale.
 
-    For primary, PLV is computed from the **mean percentage** across
-    assessed subjects (via subject_scale). This works correctly for any
-    number of subjects (4 in Grade 1-3, 5 in Grade 5, 7-9 in Grade 6).
-
-    The total_scale (absolute marks) is intentionally NOT used for primary
-    because the configured range (e.g. 0-400) only fits a 4-subject class.
-    It is used for JSS where the total scale (0-800) matches the 8 subjects.
+    PLV is computed from the **total marks** against the configured total_scale
+    ranges (e.g. 0-400 for 4-subject Lower Primary). This connects directly
+    to the grading config set up in the admin section.
 
     Lookup order:
       1. Sub-section-specific config (PRIMARY/LOWER or PRIMARY/UPPER)
@@ -515,18 +523,18 @@ def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None):
     if not assessed_subjects or not total_marks:
         return '-'
 
-    school = get_current_school()
-    section = get_current_school_section()
+    if not school:
+        school = get_current_school()
+    if not section:
+        section = get_current_school_section()
 
     if school and section:
-        # Try sub-section-specific config first
         config = None
         if sub_section:
             config = GradingConfig.all_objects.filter(
                 school=school, school_section=section, sub_section=sub_section
             ).first()
         if not config:
-            # Use the same 2-step lookup as _get_grading_scale_json()
             if section == 'LOWER_PRIMARY':
                 config = GradingConfig.all_objects.filter(
                     school=school, school_section='PRIMARY', sub_section='LOWER'
@@ -543,9 +551,8 @@ def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None):
                 config = GradingConfig.all_objects.filter(
                     school=school, school_section='JSS', sub_section__isnull=True
                 ).first()
-        if config and config.subject_scale:
-            mean = total_marks / assessed_subjects
-            level, _ = config.get_subject_level(mean)
+        if config and config.total_scale:
+            level, _ = config.get_total_level(total_marks)
             if level and level != '-':
                 return level
 
@@ -586,7 +593,7 @@ def get_students_ordered(grade, stream):
     """
     from django.db.models import Value, CharField, Case, When, Q
     from django.db.models.functions import Lower
-    students = Student.objects.filter(
+    students = Student.all_objects.filter(
         class_name=grade, stream=stream
     ).order_by(
         Case(
@@ -622,7 +629,7 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
     """
     subject_code = subject.code if hasattr(subject, 'code') else subject
     school = get_current_school()
-    marks = Mark.objects.filter(
+    marks = Mark.all_objects.filter(
         student__class_name=class_name,
         student__stream=stream,
         subject=subject,
@@ -634,11 +641,10 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
         marks = marks.filter(school=school)
     if subject_code in RELIGION_SUBJECTS:
         religion_tag = RELIGION_TAG.get(subject_code, '')
-        # Use exists() check efficiently — cache in local var
         religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag)
         if school:
             religion_filter['school'] = school
-        if Student.objects.filter(**religion_filter).exists():
+        if Student.all_objects.filter(**religion_filter).exists():
             marks = marks.filter(student__religion=religion_tag)
     return marks
 
@@ -646,13 +652,13 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
 def get_religion_aware_student_count(class_name, stream, subject):
     """Return the count of students eligible for the given subject."""
     subject_code = subject.code if hasattr(subject, 'code') else subject
-    students = Student.objects.filter(class_name=class_name, stream=stream)
+    students = Student.all_objects.filter(class_name=class_name, stream=stream)
     if subject_code in RELIGION_SUBJECTS:
         religion_tag = RELIGION_TAG.get(subject_code, '')
         school = get_current_school()
         religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag)
         if school:
             religion_filter['school'] = school
-        if Student.objects.filter(**religion_filter).exists():
+        if Student.all_objects.filter(**religion_filter).exists():
             students = students.filter(religion=religion_tag)
     return students.count()

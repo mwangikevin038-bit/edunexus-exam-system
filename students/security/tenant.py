@@ -128,16 +128,20 @@ def get_school_object_or_403(model, request, *, using="objects", **lookup):
     if obj is not None and user_section == "PRIMARY":
         obj_sub = getattr(obj, "sub_section", None)
         if obj_sub is not None and obj_sub != "UPPER":
-            logger.warning(
-                "SUB-SECTION IDOR blocked: model=%s record_sub_section=%s user_section=%s "
-                "user_id=%s path=%s",
-                model.__name__,
-                obj_sub,
-                user_section,
-                getattr(request.user, "pk", None),
-                request.path,
-            )
-            raise PermissionDenied("Cross sub-section access is forbidden.")
+            user = getattr(request, "user", None)
+            if not (user and user.is_authenticated and _is_platform_superuser(request)):
+                from .roles import user_has_main_school_admin_override
+                if not user_has_main_school_admin_override(user):
+                    logger.warning(
+                        "SUB-SECTION IDOR blocked: model=%s record_sub_section=%s user_section=%s "
+                        "user_id=%s path=%s",
+                        model.__name__,
+                        obj_sub,
+                        user_section,
+                        getattr(request.user, "pk", None),
+                        request.path,
+                    )
+                    raise PermissionDenied("Cross sub-section access is forbidden.")
 
     if obj is not None:
         return obj

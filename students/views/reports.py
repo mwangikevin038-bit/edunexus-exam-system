@@ -89,6 +89,16 @@ def results_list(request):
     section = get_request_school_section(request)
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
+
+    active_sub = request.GET.get('sub', '').strip().upper()
+    if is_primary and active_sub not in ('LOWER', 'UPPER'):
+        active_sub = request.session.get('active_sub', 'UPPER')
+    if is_primary and active_sub not in ('LOWER', 'UPPER'):
+        active_sub = 'UPPER'
+    if is_primary:
+        request.session['active_sub'] = active_sub
+        request.session.modified = True
+
     if is_lower_primary:
         grade_choices = LOWER_PRIMARY_GRADE_CHOICES
     elif is_primary:
@@ -96,8 +106,11 @@ def results_list(request):
     else:
         grade_choices = GRADE_CHOICES
 
-    published_contexts = get_published_contexts_for_user(request.user)
+    published_contexts = get_published_contexts_for_user(request.user, sub_section=active_sub if is_primary else None)
     selected_context = get_selected_context(request, published_contexts) if request.GET.get("context") else None
+
+    if not selected_context and published_contexts:
+        selected_context = published_contexts[0]
 
     year = str(selected_context["year"]) if selected_context else None
     term = selected_context["term"] if selected_context else None
@@ -107,7 +120,7 @@ def results_list(request):
     selected_context_key = selected_context["context_key"] if selected_context else ""
 
     # Use the correct subject map for the workspace section
-    if is_lower_primary:
+    if is_lower_primary or (is_primary and active_sub == 'LOWER'):
         subject_map = LOWER_PRIMARY_SUBJECT_SHORT_MAP
     elif is_primary:
         subject_map = PRIMARY_SUBJECT_SHORT_MAP
@@ -134,12 +147,12 @@ def results_list(request):
 
     if year and term and grade and stream and exam_type:
         show_table = True
-        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type)
+        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None)
         published_subject_count = len(published_subject_codes)
 
         # Get Subject objects for published subjects and keep stable display labels.
         from ..models import Subject
-        published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
+        published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
         subject_label_map = {
             s.code: (subject_map.get(s.code) or s.name or s.code)
             for s in published_subjects_qs
@@ -157,11 +170,11 @@ def results_list(request):
 
         # Map assigned teachers for this grade/stream
         teacher_map = {}
-        sa_qs = SubjectAssignment.objects.filter(school=school, class_name=grade, stream=stream).select_related('teacher_profile__user', 'subject')
+        sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream=stream).select_related('teacher_profile__user', 'subject')
         if section == 'LOWER_PRIMARY':
             sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='LOWER')
         elif section == 'PRIMARY':
-            sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='UPPER')
+            sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section=active_sub)
         elif section == 'JSS':
             sa_qs = sa_qs.filter(school_section='JSS')
         for a in sa_qs:
@@ -174,7 +187,7 @@ def results_list(request):
         # Prefetch all relevant marks in one query (only published subject codes)
         marks_prefetch = Prefetch(
             'marks',
-            queryset=Mark.objects.filter(
+            queryset=Mark.all_objects.filter(
                 school=school,
                 year=year,
                 term=term,
@@ -183,7 +196,7 @@ def results_list(request):
             ).order_by('subject', '-date_recorded', '-id'),
             to_attr='cached_marks',
         )
-        students = Student.objects.filter(
+        students = Student.all_objects.filter(
             school=school,
             class_name=grade,
             stream=stream,
@@ -206,7 +219,7 @@ def results_list(request):
                     if m.is_absent:
                         row_scores.append({'score': 'AB', 'level': 'AB'})
                     else:
-                        level, points = _get_primary_performance(m.score) if is_primary else get_performance_level(m.score)
+                        level, points = _get_primary_performance(m.score, school=school, section=section, sub_section=active_sub if is_primary else None) if is_primary else get_performance_level(m.score)
                         row_scores.append({'score': m.score, 'level': level})
                         total_marks  += m.score
                         total_points += points
@@ -224,7 +237,7 @@ def results_list(request):
                 'scores':  row_scores,
                 'tps':     total_points,
                 'total':   total_marks,
-                'plv':     calculate_primary_plv(total_marks, assessed_subjects) if is_primary else calculate_broadsheet_plv(total_marks, total_points),
+                'plv':     calculate_primary_plv(total_marks, assessed_subjects, sub_section=active_sub if is_primary else None, school=school, section=section) if is_primary else calculate_broadsheet_plv(total_marks, total_points),
             })
 
         broadsheet.sort(key=lambda x: (-x['total'], -x['tps']))
@@ -249,7 +262,12 @@ def results_list(request):
         'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
-    section_accent = section_colors.get(section, '#305CDE')
+    if grade and grade in LOWER_PRIMARY_GRADE_CHOICES:
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif is_primary:
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors.get(section, '#305CDE')
 
     return render(request, template, {
         'broadsheet':      broadsheet,
@@ -275,6 +293,8 @@ def results_list(request):
         'terms':           TERM_CHOICES,
         'grades':          grade_choices,
         'streams':         get_streams_for_school(school, section),
+        'section':         section,
+        'active_sub':      active_sub,
     })
 
 
@@ -293,6 +313,16 @@ def report_card_select(request):
     section = get_request_school_section(request)
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
+
+    active_sub = request.GET.get('sub', '').strip().upper()
+    if is_primary and active_sub not in ('LOWER', 'UPPER'):
+        active_sub = request.session.get('active_sub', 'UPPER')
+    if is_primary and active_sub not in ('LOWER', 'UPPER'):
+        active_sub = 'UPPER'
+    if is_primary:
+        request.session['active_sub'] = active_sub
+        request.session.modified = True
+
     if is_lower_primary:
         grade_choices = LOWER_PRIMARY_GRADE_CHOICES
     elif is_primary:
@@ -304,12 +334,15 @@ def report_card_select(request):
         messages.error(request, "Report cards are available to administrators and assigned class teachers only.")
         return redirect('results_list')
 
-    published_contexts = get_published_contexts_for_user(request.user, require_class_teacher=True)
+    published_contexts = get_published_contexts_for_user(request.user, require_class_teacher=True, sub_section=active_sub if is_primary else None)
     if not is_admin_view and not published_contexts:
         messages.error(request, "No published report cards are available for your class yet.")
         return redirect('results_list')
 
     selected_context = get_selected_context(request, published_contexts) if request.GET.get("context") else None
+
+    if not selected_context and published_contexts:
+        selected_context = published_contexts[0]
 
     grade = selected_context["class_name"] if selected_context else None
     stream = selected_context["stream"] if selected_context else None
@@ -329,17 +362,17 @@ def report_card_select(request):
         sa_filter['sub_section'] = 'LOWER'
     elif is_primary:
         sa_filter['school_section'] = 'PRIMARY'
-        sa_filter['sub_section'] = 'UPPER'
+        sa_filter['sub_section'] = active_sub
     else:
         sa_filter['school_section'] = 'JSS'
-    total_required_subjects = SubjectAssignment.objects.filter(**sa_filter).values(
+    total_required_subjects = SubjectAssignment.all_objects.filter(**sa_filter).values(
         "subject__code"
     ).distinct().count() if selected_context else 0
 
     # Use Primary template when in Primary workspace
     template = 'students/report_card_select_primary.html' if is_primary else 'students/report_card_select.html'
 
-    return render(request, template, {
+    context_data = {
         'students':           students,
         'selected_grade':     grade,
         'selected_stream':    stream,
@@ -361,7 +394,17 @@ def report_card_select(request):
         'is_primary':         is_primary,
         'access_label':       "School-wide report cards" if is_admin_view else "Class teacher report cards",
         'class_teacher_scope': class_teacher_scope,
-    })
+        'section':            section,
+        'active_sub':         active_sub,
+        'section_accent':     '#B45309' if (is_primary and active_sub == 'LOWER') else ('#00674F' if is_primary else '#305CDE'),
+    }
+    if is_primary:
+        from ..models import Exam
+        school_obj = get_request_school(request)
+        context_data['lower_exam_count'] = Exam.all_objects.filter(school=school_obj, school_section='PRIMARY', sub_section='LOWER', status='active').count()
+        context_data['upper_exam_count'] = Exam.all_objects.filter(school=school_obj, school_section='PRIMARY', sub_section='UPPER', status='active').count()
+
+    return render(request, template, context_data)
 
 
 def _grading_config_for(school, section, sub_section):
@@ -392,7 +435,7 @@ def individual_report(request, student_id):
         messages.error(request, "School context is required.")
         return redirect('report_card_select')
 
-    student = get_school_object_or_403(Student, request, id=student_id)
+    student = get_school_object_or_403(Student, request, using="all_objects", id=student_id)
     if not user_can_access_class_stream(request.user, student.class_name, student.stream, require_class_teacher=True):
         messages.error(request, "You are not allowed to open report cards for this class stream.")
         return redirect('report_card_select')
@@ -401,18 +444,23 @@ def individual_report(request, student_id):
     term       = request.GET.get('term', 'Term 1')
     assessment = request.GET.get('assessment', 'opener')
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
+
+    # Determine sub_section from grade for Lower Primary filtering
+    student_sub_section = 'LOWER' if student.class_name in LOWER_PRIMARY_GRADE_CHOICES else ('UPPER' if student.school_section == 'PRIMARY' else None)
+
     published_subject_codes = get_published_subject_codes(
         student.class_name,
         student.stream,
         year,
         term,
         db_assessment,
+        sub_section=student_sub_section,
     )
     from ..models import Subject
-    published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
+    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
 
     # Fetch marks for this student
-    marks        = Mark.objects.filter(
+    marks        = Mark.all_objects.filter(
         school=school,
         student=student,
         year=year,
@@ -428,7 +476,7 @@ def individual_report(request, student_id):
 
     # Class position via single aggregation query
     class_scores = (
-        Mark.objects.filter(
+        Mark.all_objects.filter(
             school=school,
             student__class_name=student.class_name, student__stream=student.stream,
             year=year, term=term, exam_type=db_assessment,
@@ -454,7 +502,7 @@ def individual_report(request, student_id):
         subject_mapping = {s.code: s.name for s in published_subjects_qs}
     teacher_map = {
         a.subject.code: a.teacher_profile.get_full_title()
-        for a in SubjectAssignment.objects.filter(
+        for a in SubjectAssignment.all_objects.filter(
             school=school,
             class_name=student.class_name, stream=student.stream
         ).select_related('teacher_profile__user', 'subject')
@@ -481,7 +529,7 @@ def individual_report(request, student_id):
 
     # ── Class average per subject (drives the Dev. column + chart) ─────────
     class_subject_avgs = (
-        Mark.objects.filter(
+        Mark.all_objects.filter(
             school=school,
             student__class_name=student.class_name, student__stream=student.stream,
             year=year, term=term, exam_type=db_assessment,
@@ -520,7 +568,7 @@ def individual_report(request, student_id):
     })
 
     # PLV and class teacher remark
-    overall_plv = calculate_primary_plv(total_marks, sum(1 for m in marks if m.score)) if is_primary else calculate_report_plv(total_points, total_marks)
+    overall_plv = calculate_primary_plv(total_marks, sum(1 for m in marks if m.score), sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks)
     master_comment = ClassTeacherMasterComment.objects.filter(
         school=school,
         year=year, term=term, grade=student.class_name,
@@ -554,7 +602,7 @@ def individual_report(request, student_id):
                         m.frozen_class_teacher_comment = live_ct
                         m.frozen_closing_date = master_comment.closing_date
                         m.frozen_opening_date = master_comment.opening_date
-                Mark.objects.filter(id__in=[m.id for m in marks_list]).update(
+                Mark.all_objects.filter(id__in=[m.id for m in marks_list]).update(
                     frozen_class_teacher_comment=live_ct,
                     frozen_closing_date=master_comment.closing_date,
                     frozen_opening_date=master_comment.opening_date,
@@ -574,7 +622,7 @@ def individual_report(request, student_id):
                 for m in marks_list:
                     if not m.frozen_headteacher_comment:
                         m.frozen_headteacher_comment = live_ht
-                Mark.objects.filter(id__in=[m.id for m in marks_list]).update(
+                Mark.all_objects.filter(id__in=[m.id for m in marks_list]).update(
                     frozen_headteacher_comment=live_ht,
                 )
         elif marks_list and marks_list[0].frozen_headteacher_comment:
@@ -687,8 +735,9 @@ def bulk_report_cards(request):
             year,
             term,
             db_assessment,
+            sub_section=sample.sub_section if is_primary else None,
         )
-    published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
+    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
     if is_lower_primary:
         subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
     elif is_primary:
@@ -698,7 +747,7 @@ def bulk_report_cards(request):
 
     marks_prefetch = Prefetch(
         'marks',
-        queryset=Mark.objects.filter(
+        queryset=Mark.all_objects.filter(
             school=school,
             year=year,
             term=term,
@@ -715,7 +764,7 @@ def bulk_report_cards(request):
 
     # Class-wide leaderboard in one query
     class_scores = (
-        Mark.objects.filter(
+        Mark.all_objects.filter(
             school=school,
             student__class_name=sample.class_name, student__stream=sample.stream,
             year=year, term=term, exam_type=db_assessment,
@@ -728,7 +777,7 @@ def bulk_report_cards(request):
 
     # Class average per subject (shared across the whole batch — same class/stream)
     class_subject_avgs = (
-        Mark.objects.filter(
+        Mark.all_objects.filter(
             school=school,
             student__class_name=sample.class_name, student__stream=sample.stream,
             year=year, term=term, exam_type=db_assessment,
@@ -747,7 +796,7 @@ def bulk_report_cards(request):
     # Teacher map for this class
     teacher_map = {
         a.subject.code: a.teacher_profile.get_full_title()
-        for a in SubjectAssignment.objects.filter(
+        for a in SubjectAssignment.all_objects.filter(
             school=school,
             class_name=sample.class_name, stream=sample.stream
         ).select_related('teacher_profile__user')
@@ -791,7 +840,7 @@ def bulk_report_cards(request):
             mark.teacher_name = teacher_map.get(mark.subject.code, '—')
             if is_primary and not mark.is_absent:
                 pct = mark.score or 0
-                mark.performance_level, mark.points = _get_primary_performance(pct)
+                mark.performance_level, mark.points = _get_primary_performance(pct, school=school, section=student.school_section, sub_section=student.sub_section)
             class_avg = class_avg_map.get(mark.subject.code)
             mark.class_average = class_avg
             if class_avg is not None and mark.score is not None and not mark.is_absent:
@@ -815,7 +864,7 @@ def bulk_report_cards(request):
         except ValueError:
             position = 0
 
-        overall_plv          = calculate_primary_plv(total_marks, sum(1 for m in marks if m.score)) if sample.school_section == 'PRIMARY' else calculate_report_plv(total_points, total_marks)
+        overall_plv          = calculate_primary_plv(total_marks, sum(1 for m in marks if m.score), sub_section=sample.sub_section, school=school, section=sample.school_section) if sample.school_section == 'PRIMARY' else calculate_report_plv(total_points, total_marks)
         class_teacher_remark = ""
         headteacher_comment = ""
         closing_date = None
@@ -830,7 +879,7 @@ def bulk_report_cards(request):
                     class_teacher_remark = live_ct
                 else:
                     class_teacher_remark = live_ct
-                    Mark.objects.filter(id__in=[m.id for m in marks]).update(
+                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
                         frozen_class_teacher_comment=live_ct,
                         frozen_closing_date=master_comment.closing_date,
                         frozen_opening_date=master_comment.opening_date,
@@ -847,7 +896,7 @@ def bulk_report_cards(request):
                     headteacher_comment = live_ht
                 else:
                     headteacher_comment = live_ht
-                    Mark.objects.filter(id__in=[m.id for m in marks]).update(
+                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
                         frozen_headteacher_comment=live_ht,
                     )
             elif marks and marks[0].frozen_headteacher_comment:

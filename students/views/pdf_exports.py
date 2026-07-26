@@ -78,9 +78,23 @@ def download_broadsheet_pdf(request):
         messages.error(request, "School context is required.")
         return redirect('welcome_page')
 
+    # ── Determine workspace section first ────────────────────────────────────
+    section = get_request_school_section(request)
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
+
+    active_sub = request.GET.get('sub', '').strip().upper()
+    if is_primary and active_sub not in ('LOWER', 'UPPER'):
+        active_sub = request.session.get('active_sub', 'UPPER')
+    if is_primary and active_sub not in ('LOWER', 'UPPER'):
+        active_sub = 'UPPER'
+
     # ── 1. Rebuild exact same data context as results_list ────────────────────
-    published_contexts = get_published_contexts_for_user(request.user)
+    published_contexts = get_published_contexts_for_user(request.user, sub_section=active_sub if is_primary else None)
     selected_context   = get_selected_context(request, published_contexts) if request.GET.get("context") else None
+
+    if not selected_context and published_contexts:
+        selected_context = published_contexts[0]
 
     year      = str(selected_context["year"])   if selected_context else None
     term      = selected_context["term"]         if selected_context else None
@@ -88,10 +102,6 @@ def download_broadsheet_pdf(request):
     stream    = selected_context["stream"]        if selected_context else None
     exam_type = selected_context["exam_name"]     if selected_context else None
 
-    # ── Determine workspace section early for primary-aware grading ─────────
-    section = get_request_school_section(request)
-    is_lower_primary = section == 'LOWER_PRIMARY'
-    is_primary = section == 'PRIMARY' or is_lower_primary
     if is_lower_primary:
         subject_map = LOWER_PRIMARY_SUBJECT_SHORT_MAP
     elif is_primary:
@@ -116,10 +126,10 @@ def download_broadsheet_pdf(request):
     published_subjects      = []
 
     if year and term and grade and stream and exam_type:
-        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type)
+        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None)
         published_subject_count = len(published_subject_codes)
         from ..models import Subject
-        published_subjects_qs = Subject.objects.filter(school=school, code__in=published_subject_codes)
+        published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
 
         # Always show ALL subjects as columns (even without marks yet).
         subject_label_map = {
@@ -137,7 +147,7 @@ def download_broadsheet_pdf(request):
                 'teacher_name': '—',
             })
 
-        for a in SubjectAssignment.objects.filter(
+        for a in SubjectAssignment.all_objects.filter(
             school=school, class_name=grade, stream=stream
         ).select_related('teacher_profile__user', 'subject'):
             code = a.subject.code if a.subject else None
@@ -152,14 +162,14 @@ def download_broadsheet_pdf(request):
 
         marks_prefetch = Prefetch(
             'marks',
-            queryset=Mark.objects.filter(
+            queryset=Mark.all_objects.filter(
                 school=school,
                 year=year, term=term, exam_type=exam_type,
                 subject__in=published_subjects_qs,
             ).order_by('subject', '-date_recorded', '-id'),
             to_attr='cached_marks',
         )
-        students      = Student.objects.filter(school=school, class_name=grade, stream=stream).prefetch_related(marks_prefetch)
+        students      = Student.all_objects.filter(school=school, class_name=grade, stream=stream).prefetch_related(marks_prefetch)
         student_count = students.count()
 
         for student in students:
@@ -177,7 +187,7 @@ def download_broadsheet_pdf(request):
                     if m.is_absent:
                         row_scores.append({'score': 'AB', 'level': 'AB'})
                     else:
-                        level, points = _get_primary_performance(m.score) if is_primary else get_performance_level(m.score)
+                        level, points = _get_primary_performance(m.score, school=school, section=section, sub_section=active_sub if is_primary else None) if is_primary else get_performance_level(m.score)
                         row_scores.append({'score': m.score, 'level': level})
                         total_marks  += m.score
                         total_points += points
@@ -195,7 +205,7 @@ def download_broadsheet_pdf(request):
                 'scores':  row_scores,
                 'tps':     total_points,
                 'total':   total_marks,
-                'plv':     calculate_primary_plv(total_marks, assessed_subjects) if is_primary else calculate_broadsheet_plv(total_marks, total_points),
+                'plv':     calculate_primary_plv(total_marks, assessed_subjects, sub_section=active_sub if is_primary else None, school=school, section=section) if is_primary else calculate_broadsheet_plv(total_marks, total_points),
             })
 
         broadsheet.sort(key=lambda x: (-x['total'], -x['tps']))

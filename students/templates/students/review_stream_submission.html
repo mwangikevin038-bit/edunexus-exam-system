@@ -190,7 +190,7 @@
 
 <div class="stream-review-page">
     <div class="stream-review-shell">
-        <a href="{% url 'manage_exams' %}?exam_id={{ exam.id }}" class="back-link">Back to Assessment Control</a>
+        <a href="{% url 'manage_exams' %}?exam_id={{ exam.id }}{% if request.GET.sub %}&sub={{ request.GET.sub }}{% endif %}" class="back-link">Back to Assessment Control</a>
 
         {% if messages %}
             {% for message in messages %}

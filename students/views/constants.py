@@ -133,7 +133,7 @@ def validate_rows_for_section(rows, section, class_field='class_name'):
 
 
 LOWER_PRIMARY_SUBJECT_SHORT_MAP = {
-    'ELA': 'ELA', 'KLA': 'KLA', 'MA': 'MA', 'ILA': 'ILA',
+    'ELA': 'ENG', 'KLA': 'KISW', 'MA': 'MATH', 'ILA': 'ILA',
 }
 
 LOWER_PRIMARY_SUBJECT_NAMES = {
@@ -191,9 +191,11 @@ SUBJECT_DISPLAY_ORDER = {
     # JSS codes
     '901': 1, '902': 2, '903': 3, '905': 4, '906': 5,
     '907': 6, '908': 7, '909': 8, '911': 9, '912': 10,
-    # Primary codes
+    # Upper Primary codes
     'ENG': 1, 'KIS': 2, 'MAT': 3, 'SCI': 4, 'AGR': 5,
     'SOC': 6, 'CRE': 7, 'IRE': 8, 'CAS': 9,
+    # Lower Primary codes — English, Maths, Kiswahili, Integrated
+    'ELA': 1, 'MA': 2, 'KLA': 3, 'ILA': 4,
 }
 
 
