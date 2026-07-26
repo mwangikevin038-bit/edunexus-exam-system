@@ -330,7 +330,8 @@ def manage_faculty_matrix(request):
 
                 # Send welcome email with credentials
                 try:
-                    login_url = f"{request.scheme}://{request.get_host()}/login/"
+                    site_url = getattr(settings, 'SITE_URL', f"{request.scheme}://{request.get_host()}")
+                    login_url = f"{site_url}/login/"
                     email_context = {
                         'teacher_name': f"{title} {full_name}",
                         'username': login_username,
@@ -345,6 +346,12 @@ def manage_faculty_matrix(request):
                         body=html_message,
                         from_email=settings.DEFAULT_FROM_EMAIL,
                         to=[email_address],
+                        headers={
+                            'Reply-To': settings.DEFAULT_FROM_EMAIL,
+                            'Precedence': 'bulk',
+                            'List-Unsubscribe': f'<{site_url}/login/>',
+                            'X-Auto-Response-Suppress': 'All',
+                        },
                     )
                     email.content_subtype = 'html'
                     email.send(fail_silently=False)

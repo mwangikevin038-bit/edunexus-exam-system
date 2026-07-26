@@ -14,6 +14,7 @@ import logging
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
+from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.views import (
     PasswordResetView,
@@ -43,28 +44,13 @@ class StrongPasswordResetForm(PasswordResetForm):
 class StrongSetPasswordForm(SetPasswordForm):
     """
     Set password form with strong password validation.
-    Enforces: 8+ chars, uppercase, lowercase, digit, special char, no 3+ repeats.
+    Uses centralized validation from students.security.passwords.
     """
 
     def clean_new_password1(self):
+        from ..security.passwords import password_validation_errors
         password = self.cleaned_data.get('new_password1')
-        errors = []
-
-        if len(password) < 8:
-            errors.append("Password must be at least 8 characters long.")
-        if not re.search(r'[A-Z]', password):
-            errors.append("Password must contain at least one uppercase letter.")
-        if not re.search(r'[a-z]', password):
-            errors.append("Password must contain at least one lowercase letter.")
-        if not re.search(r'\d', password):
-            errors.append("Password must contain at least one digit.")
-        if not re.search(r'[!@#$%^&*(),.?\":{}|<>\-_=+\[\]\\;\'`~]', password):
-            errors.append("Password must contain at least one special character.")
-        if re.search(r'(.)\1{2,}', password):
-            errors.append("Password must not contain 3 or more repeated characters.")
-        if password.lower() in ['password', '12345678', 'qwerty', 'admin123', 'letmein']:
-            errors.append("Password is too common. Please choose a stronger password.")
-
+        errors = password_validation_errors(password, user=getattr(self, 'user', None))
         if errors:
             raise ValidationError(errors)
         return password
@@ -81,12 +67,37 @@ class RateLimitedPasswordResetView(PasswordResetView):
     email_template_name = 'email/password_reset_email.txt'
     html_email_template_name = 'email/password_reset_email.html'
     subject_template_name = 'email/password_reset_subject.txt'
-    from_email = 'EDUNEXUS <noreply@edunexus.system>'
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'EDUNEXUS Portal <edunexus.system@gmail.com>')
     success_url = '/forgot-password/done/'
 
     RATE_LIMIT_KEY = 'password_reset_attempts'
     RATE_LIMIT_MAX = 3
     RATE_LIMIT_WINDOW = 900  # 15 minutes
+
+    def send_mail(self, subject_template_name, email_template_name,
+                  context, from_email, to_email,
+                  html_email_template_name=None):
+        from django.core.mail import EmailMessage
+        from django.template.loader import render_to_string
+        subject = render_to_string(subject_template_name, context)
+        subject = ''.join(subject.splitlines())
+        html_body = render_to_string(html_email_template_name or email_template_name, context)
+        text_body = render_to_string(email_template_name, context)
+        site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+        email = EmailMessage(
+            subject=subject,
+            body=html_body,
+            from_email=from_email,
+            to=[to_email],
+            headers={
+                'Reply-To': from_email,
+                'Precedence': 'bulk',
+                'List-Unsubscribe': f'<{site_url}/login/>',
+                'X-Auto-Response-Suppress': 'All',
+            },
+        )
+        email.content_subtype = 'html'
+        email.send(fail_silently=True)
 
     def form_valid(self, form):
         email = form.cleaned_data.get('email', '').lower().strip()
@@ -164,6 +175,13 @@ class SecurePasswordResetConfirmView(PasswordResetConfirmView):
                     admin.save(update_fields=['must_change_password'])
             except SchoolAdmin.DoesNotExist:
                 pass
+
+            # Invalidate other sessions (security)
+            from ..security.passwords import invalidate_other_sessions, send_password_changed_email
+            invalidate_other_sessions(user)
+
+            # Send notification email (best-effort)
+            send_password_changed_email(user, request=self.request)
 
             # Log the password reset completion
             logger.info(

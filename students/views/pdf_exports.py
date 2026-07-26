@@ -13,7 +13,7 @@ import traceback
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
 from django.http import HttpResponse
@@ -22,12 +22,13 @@ from django.template.loader import render_to_string
 from django.utils.text import slugify
 from playwright.sync_api import sync_playwright
 
-from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
+from .constants import ASSESSMENT_MAP, GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_NAMES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_DISPLAY_ORDER, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
 from .reports import PRIMARY_ORDERED_LEVELS
 from .exams import _get_primary_performance
 from .helpers import (
     calculate_broadsheet_plv,
     calculate_primary_plv,
+    calculate_report_plv,
     get_class_teacher_scope,
     get_learner_contexts_for_user,
     get_performance_level,
@@ -35,11 +36,17 @@ from .helpers import (
     get_published_subject_codes,
     get_selected_context,
     get_teacher_for_user,
+    user_can_access_class_stream,
 )
 from ..models import Mark, Student, SubjectAssignment
-from ..security import get_request_school, get_request_school_section, rate_limit, user_has_main_school_admin_override
+from ..security import get_request_school, get_request_school_section, get_school_object_or_403, rate_limit, user_has_main_school_admin_override
 
 logger = logging.getLogger('pdf_export')
+
+# Limit concurrent Playwright browser instances to prevent RAM exhaustion.
+# Each Chromium instance uses ~200-500MB. With 2 max, peak RAM is ~1GB.
+import threading
+_pdf_semaphore = threading.Semaphore(2)
 
 
 def _embed_logo_base64(template_html, request):
@@ -330,6 +337,7 @@ def download_broadsheet_pdf(request):
     _playwright_error = [None]
 
     def _generate_pdf():
+        _pdf_semaphore.acquire()
         try:
             import asyncio, sys
             if sys.platform == 'win32':
@@ -359,6 +367,8 @@ def download_broadsheet_pdf(request):
                 _playwright_result['pdf'] = pdf_bytes
         except Exception as e:
             _playwright_error[0] = e
+        finally:
+            _pdf_semaphore.release()
 
     t = threading.Thread(target=_generate_pdf, daemon=True)
     t.start()
@@ -650,6 +660,7 @@ def download_classlist_pdf(request):
     else:
         patched_html = pdf_base_tag + pdf_css + template_html
 
+    _pdf_semaphore.acquire()
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -681,11 +692,407 @@ def download_classlist_pdf(request):
         logger.error('Class list PDF generation failed: %s\n%s', str(e), traceback.format_exc())
         messages.error(request, "PDF generation failed. Please try again.")
         return redirect('class_lists')
+    finally:
+        _pdf_semaphore.release()
 
     slug_grade  = slugify(selected_grade  or "class")
     slug_stream = slugify(selected_stream or "stream")
     year = datetime.date.today().year
     filename = f"{slug_grade}_{slug_stream}_Class_List_{year}.pdf"
+
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+# ==============================================================================
+# download_individual_report_pdf
+# ==============================================================================
+
+@login_required(login_url='login')
+@rate_limit("report_download", max_requests=10, window_seconds=60)
+def download_individual_report_pdf(request, student_id):
+    """
+    Server-side PDF for individual report cards.
+    Reuses the same data context as individual_report() and renders
+    via Playwright with emulate_media('print') for high-quality output.
+    """
+    import traceback as _traceback
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "School context is required.")
+        return redirect('report_card_select')
+
+    student = get_school_object_or_403(Student, request, using="all_objects", id=student_id)
+    if not user_can_access_class_stream(request.user, student.class_name, student.stream, require_class_teacher=True):
+        messages.error(request, "You are not allowed to open report cards for this class stream.")
+        return redirect('report_card_select')
+
+    year       = request.GET.get('year', datetime.date.today().year)
+    term       = request.GET.get('term', 'Term 1')
+    assessment = request.GET.get('assessment', 'opener')
+    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
+
+    from .reports import _grading_config_for
+
+    student_sub_section = 'LOWER' if student.class_name in LOWER_PRIMARY_GRADE_CHOICES else ('UPPER' if student.school_section == 'PRIMARY' else None)
+
+    published_subject_codes = get_published_subject_codes(
+        student.class_name, student.stream, year, term, db_assessment,
+        sub_section=student_sub_section,
+    )
+    from ..models import Subject
+    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+
+    marks = Mark.all_objects.filter(
+        school=school, student=student, year=year, term=term,
+        exam_type=db_assessment, subject__in=published_subjects_qs,
+        school_section=student.school_section,
+    )
+    marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
+    total_marks  = sum(m.score  for m in marks if m.score)
+    total_points = sum(m.points for m in marks if m.points)
+
+    class_scores = (
+        Mark.all_objects.filter(
+            school=school,
+            student__class_name=student.class_name, student__stream=student.stream,
+            year=year, term=term, exam_type=db_assessment,
+            subject__in=published_subjects_qs,
+        )
+        .values('student_id').annotate(total_score=Sum('score')).order_by('-total_score')
+    )
+    sorted_ids  = [item['student_id'] for item in class_scores]
+    class_count = len(sorted_ids)
+    try:
+        position = sorted_ids.index(student.id) + 1
+    except ValueError:
+        position = 0
+
+    is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
+    is_primary = student.school_section == 'PRIMARY'
+    if is_lower_primary:
+        subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
+    elif is_primary:
+        subject_mapping = PRIMARY_SUBJECT_NAMES
+    else:
+        subject_mapping = {s.code: s.name for s in published_subjects_qs}
+
+    teacher_map = {
+        a.subject.code: a.teacher_profile.get_full_title()
+        for a in SubjectAssignment.all_objects.filter(
+            school=school, class_name=student.class_name, stream=student.stream
+        ).select_related('teacher_profile__user', 'subject')
+        if a.subject
+    }
+
+    from ..models import Teacher
+    class_teacher_name = ""
+    ct_q = Teacher.all_objects.filter(
+        school=school, assigned_task__icontains=student.class_name,
+    ).filter(
+        Q(assigned_task__icontains=student.stream),
+    ).select_related('user').first()
+    if ct_q:
+        class_teacher_name = ct_q.get_full_title()
+
+    marks_list = list(marks)
+    for mark in marks_list:
+        mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
+        mark.teacher_name = teacher_map.get(mark.subject.code, '\u2014')
+        if is_primary and not mark.is_absent:
+            pct = mark.score or 0
+            mark.performance_level, mark.points = _get_primary_performance(pct)
+
+    class_subject_avgs = (
+        Mark.all_objects.filter(
+            school=school,
+            student__class_name=student.class_name, student__stream=student.stream,
+            year=year, term=term, exam_type=db_assessment,
+            subject__in=published_subjects_qs,
+        )
+        .exclude(is_absent=True)
+        .values('subject__code')
+        .annotate(avg_score=Avg('score'))
+    )
+    class_avg_map = {row['subject__code']: round(row['avg_score'], 1) for row in class_subject_avgs}
+
+    for mark in marks_list:
+        class_avg = class_avg_map.get(mark.subject.code)
+        mark.class_average = class_avg
+        if class_avg is not None and mark.score is not None and not mark.is_absent:
+            mark.deviation = round(mark.score - class_avg, 1)
+        else:
+            mark.deviation = None
+
+    grading_config = _grading_config_for(school, student.school_section, student.sub_section)
+    grade_descriptors = grading_config.subject_scale if grading_config else []
+
+    assessed_subjects   = sum(1 for m in marks_list if m.score is not None and not m.is_absent)
+    max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
+    mean_points         = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
+    max_total_marks     = assessed_subjects * 100
+    max_total_points    = assessed_subjects * max_points_per_subj
+
+    chart_data_json = json.dumps({
+        'labels':    [m.subject_name for m in marks_list if not m.is_absent],
+        'student':   [m.score for m in marks_list if not m.is_absent],
+        'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
+    })
+
+    overall_plv = calculate_primary_plv(total_marks, assessed_subjects, sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks)
+
+    from ..models import ClassTeacherMasterComment, SchoolHeadteacherComment
+    master_comment = ClassTeacherMasterComment.objects.filter(
+        school=school, year=year, term=term, grade=student.class_name,
+        stream=student.stream, exam_type=db_assessment,
+    ).first()
+    school_ht_comment = SchoolHeadteacherComment.objects.filter(
+        school=school, year=year, term=term, exam_type=db_assessment,
+        school_section=student.school_section,
+    ).first()
+
+    class_teacher_remark = ""
+    headteacher_comment = ""
+    closing_date = None
+    opening_date = None
+    freeze_threshold = datetime.timedelta(days=30)
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    if master_comment and overall_plv != '-':
+        ct_comment_field = f"comment_{overall_plv.lower()}"
+        live_ct = getattr(master_comment, ct_comment_field, "") or ""
+        if live_ct.strip():
+            age = now - (master_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if master_comment.last_modified.tzinfo is None else master_comment.last_modified)
+            class_teacher_remark = live_ct
+            if age >= freeze_threshold:
+                for m in marks_list:
+                    if not m.frozen_class_teacher_comment:
+                        m.frozen_class_teacher_comment = live_ct
+                        m.frozen_closing_date = master_comment.closing_date
+                        m.frozen_opening_date = master_comment.opening_date
+                Mark.all_objects.filter(id__in=[m.id for m in marks_list]).update(
+                    frozen_class_teacher_comment=live_ct,
+                    frozen_closing_date=master_comment.closing_date,
+                    frozen_opening_date=master_comment.opening_date,
+                )
+        elif marks_list and marks_list[0].frozen_class_teacher_comment:
+            class_teacher_remark = marks_list[0].frozen_class_teacher_comment
+
+    if school_ht_comment and overall_plv != '-':
+        ht_comment_field = f"ht_comment_{overall_plv.lower()}"
+        live_ht = getattr(school_ht_comment, ht_comment_field, "") or ""
+        if live_ht.strip():
+            age = now - (school_ht_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if school_ht_comment.last_modified.tzinfo is None else school_ht_comment.last_modified)
+            headteacher_comment = live_ht
+            if age >= freeze_threshold:
+                for m in marks_list:
+                    if not m.frozen_headteacher_comment:
+                        m.frozen_headteacher_comment = live_ht
+                Mark.all_objects.filter(id__in=[m.id for m in marks_list]).update(
+                    frozen_headteacher_comment=live_ht,
+                )
+        elif marks_list and marks_list[0].frozen_headteacher_comment:
+            headteacher_comment = marks_list[0].frozen_headteacher_comment
+
+    if master_comment:
+        closing_date = master_comment.closing_date
+        opening_date = master_comment.opening_date
+    if not closing_date and marks_list and marks_list[0].frozen_closing_date:
+        closing_date = marks_list[0].frozen_closing_date
+    if not opening_date and marks_list and marks_list[0].frozen_opening_date:
+        opening_date = marks_list[0].frozen_opening_date
+
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if student.school_section == 'PRIMARY' and student.sub_section == 'LOWER':
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif student.school_section == 'PRIMARY':
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors['JSS']
+
+    # ── Render template ───────────────────────────────────────────────────────
+    template_html = render_to_string('students/individual_report_card.html', {
+        'student':             student,
+        'marks':               marks_list,
+        'total_marks':         total_marks,
+        'total_points':        total_points,
+        'position':            position,
+        'class_count':         class_count,
+        'overall_plv':         overall_plv,
+        'mean_points':         mean_points,
+        'mean_points_max':     max_points_per_subj,
+        'max_total_marks':     max_total_marks,
+        'max_total_points':    max_total_points,
+        'grade_descriptors':   grade_descriptors,
+        'chart_data_json':     chart_data_json,
+        'class_teacher_remark': class_teacher_remark,
+        'headteacher_comment': headteacher_comment,
+        'closing_date':        closing_date,
+        'opening_date':        opening_date,
+        'selected_year':       year,
+        'selected_term':       term,
+        'selected_assessment': ASSESSMENT_MAP.get(assessment, assessment),
+        'today':               datetime.date.today(),
+        'section_accent':      section_accent,
+        'student_marks_list':  [{
+            'student': student, 'marks': marks_list,
+            'total_marks': total_marks, 'total_points': total_points,
+            'overall_plv': overall_plv,
+            'mean_points': mean_points,
+            'mean_points_max': max_points_per_subj,
+            'max_total_marks': max_total_marks,
+            'max_total_points': max_total_points,
+            'grade_descriptors': grade_descriptors,
+            'chart_data_json': chart_data_json,
+            'class_teacher_remark': class_teacher_remark,
+            'class_teacher_name':   class_teacher_name,
+            'headteacher_comment': headteacher_comment,
+            'closing_date': closing_date,
+            'opening_date': opening_date,
+            'position': position, 'class_count': class_count,
+        }],
+    }, request=request)
+
+    template_html = _embed_logo_base64(template_html, request)
+
+    # ── PDF overrides: hide screen chrome, force print styles ─────────────────
+    pdf_css = """
+<style id="pdf-override">
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .rv-shell, .rv-header, .rv-hero, .rv-actions, .rv-scroll,
+  .sidebar, .sidebar-overlay, nav, header, .mobile-topbar, .hamburger-btn,
+  .global-loader-overlay, .bottom-nav, .d-print-none, .topbar,
+  .btn-print, .btn-print-action { display: none !important; visibility: hidden !important; height: 0 !important; overflow: hidden !important; }
+  html, body { margin: 0 !important; padding: 0 !important; background: white !important; overflow: visible !important; }
+  .container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }
+  #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+  .report-card {
+    display: flex !important; page-break-inside: avoid !important; break-inside: avoid !important;
+    margin: 0 auto !important; width: 7.9in !important; max-height: none !important; overflow: visible !important;
+    border: none !important; border-left: 12px solid var(--section-accent, #305CDE) !important;
+    position: relative !important; font-family: 'Times New Roman', Times, serif !important;
+    font-size: 12pt !important; box-sizing: border-box !important;
+    padding: 0.12in 0.4in 0.2in !important; line-height: 1.2 !important;
+  }
+  .report-card + .report-card { page-break-before: always !important; }
+  .report-content { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 8px !important; }
+  .report-logo, .rc-logo-placeholder { width: 78px !important; height: 78px !important; }
+  .rc-logo-spacer { width: 78px !important; }
+  .rc-logo-placeholder { font-size: 30px !important; }
+  .rc-schoolinfo h1 { font-size: 16pt !important; margin: 0 0 2px !important; }
+  .rc-schoolinfo .rc-tagline { font-size: 8pt !important; margin-bottom: 3px !important; }
+  .rc-schoolinfo .rc-address { font-size: 11pt !important; margin-bottom: 1px !important; }
+  .rc-schoolinfo .rc-contact-line { font-size: 9pt !important; }
+  .rc-header { gap: 12px !important; padding-bottom: 7px !important; border-bottom: 3px solid var(--section-accent, var(--rc-green)) !important; }
+  .rc-banner { padding: 6px 8px !important; font-size: 11pt !important; }
+  .rc-top-grid { gap: 16px !important; }
+  .rc-photo-placeholder { width: 58px !important; height: 58px !important; font-size: 22px !important; border-radius: 8px !important; }
+  .rc-student-name { font-size: 14pt !important; margin-bottom: 4px !important; }
+  .rc-detail { font-size: 11pt !important; margin-bottom: 3px !important; }
+  .rc-chart-title { font-size: 10pt !important; margin-bottom: 4px !important; }
+  .rc-chart-block { padding: 7px !important; }
+  .rc-chart-block canvas { height: 100px !important; width: auto !important; max-width: 100% !important; }
+  .rc-stats { gap: 8px !important; }
+  .rc-stat { padding: 8px 8px !important; border-top: 3px solid var(--section-accent, var(--rc-blue)) !important; }
+  .rc-stat-label { font-size: 9pt !important; margin-bottom: 3px !important; }
+  .rc-stat-value { font-size: 14pt !important; }
+  .table-scroll { overflow: visible !important; }
+  .rc-table td { padding: 4px 6px !important; font-size: 11pt !important; line-height: 1.15 !important; }
+  .rc-table thead th { padding: 5px 6px !important; font-size: 10pt !important; }
+  .rc-remarks-grid { gap: 14px !important; }
+  .rc-remark-box { padding: 9px 12px !important; }
+  .rc-remark-title { font-size: 10pt !important; margin-bottom: 4px !important; color: var(--section-accent, var(--rc-green)) !important; }
+  .rc-remark-author { font-size: 10pt !important; font-weight: 700 !important; color: #000000 !important; margin-bottom: 5px !important; }
+  .rc-remark-text { font-size: 12pt !important; min-height: 30px !important; margin-bottom: 6px !important; line-height: 1.2 !important; }
+  .rc-signature { font-size: 10pt !important; padding-top: 4px !important; }
+  .rc-descriptors-title { font-size: 9pt !important; margin-bottom: 3px !important; }
+  .rc-descriptors-table th, .rc-descriptors-table td { padding: 3px 4px !important; font-size: 9pt !important; }
+  .footer-dates { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 30px !important; padding-top: 8px !important; margin-top: auto !important; }
+  .date-box { font-size: 10pt !important; padding-bottom: 3px !important; border-bottom: 2px solid var(--section-accent, var(--rc-green)) !important; }
+  .date-box strong { font-size: 9pt !important; }
+</style>
+"""
+
+    pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
+    if '</head>' in template_html:
+        patched_html = template_html.replace('</head>', pdf_base_tag + pdf_css + '</head>', 1)
+    else:
+        patched_html = pdf_base_tag + pdf_css + template_html
+
+    # ── Playwright PDF rendering ──────────────────────────────────────────────
+    import threading
+
+    _playwright_result = {}
+    _playwright_error = [None]
+
+    def _generate_pdf():
+        _pdf_semaphore.acquire()
+        try:
+            import asyncio, sys
+            if sys.platform == 'win32':
+                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                pg = browser.new_page()
+                pg.set_viewport_size({"width": 1200, "height": 900})
+                pg.emulate_media(media="print")
+                pg.set_content(patched_html, wait_until="networkidle")
+                pg.wait_for_function("document.fonts.ready")
+                pg.wait_for_timeout(500)
+
+                # Wait for Chart.js canvases to finish rendering
+                pg.wait_for_function("""
+                    () => {
+                        const canvases = document.querySelectorAll('canvas[id^="chart-"]');
+                        return canvases.length === 0 || Array.from(canvases).every(c => c.width > 0 && c.height > 0);
+                    }
+                """, timeout=5000)
+                pg.wait_for_timeout(300)
+
+                pdf_bytes = pg.pdf(
+                    format="A4",
+                    landscape=False,
+                    print_background=True,
+                    display_header_footer=False,
+                    margin={
+                        "top":    "0.5in",
+                        "right":  "0.3in",
+                        "bottom": "0.5in",
+                        "left":   "0.3in",
+                    },
+                )
+                browser.close()
+                _playwright_result['pdf'] = pdf_bytes
+        except Exception as e:
+            _playwright_error[0] = e
+        finally:
+            _pdf_semaphore.release()
+
+    t = threading.Thread(target=_generate_pdf, daemon=True)
+    t.start()
+    t.join(timeout=90)
+
+    if _playwright_error[0] is not None:
+        e = _playwright_error[0]
+        logger.error('Individual report PDF failed: %s\n%s', str(e), _traceback.format_exc())
+        messages.error(request, "PDF generation failed. Please try again.")
+        return redirect('individual_report', student_id=student_id)
+
+    if 'pdf' not in _playwright_result:
+        logger.error('Individual report PDF timed out after 90 seconds')
+        messages.error(request, "PDF generation timed out. Please try again.")
+        return redirect('individual_report', student_id=student_id)
+
+    pdf_bytes = _playwright_result['pdf']
+
+    student_name = slugify(f"{student.first_name}_{student.last_name}" if student.first_name or student.last_name else student.admission_number)
+    filename = f"{student_name}_Report_Card_{year}_{slugify(term)}.pdf"
 
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'

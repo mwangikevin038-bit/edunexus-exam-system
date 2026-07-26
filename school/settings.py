@@ -94,7 +94,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'students.security.middleware.ForcePasswordChangeMiddleware',
     'axes.middleware.AxesMiddleware',
-    'students.security.middleware.SessionSchoolValidator',
     'students.school_scope.CurrentSchoolMiddleware',
     'students.security.middleware.TenantIsolationMiddleware',
     'students.security.middleware.SecurityAuditMiddleware',
@@ -401,6 +400,9 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = f'EDUNEXUS Portal <{EMAIL_HOST_USER}>'
 EMAIL_CHARSET = 'utf-8'
 DEFAULT_CHARSET = 'utf-8'
+
+# Public URL used in email links (password reset, welcome credentials, etc.)
+SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000').rstrip('/')
 
 
 # ==============================================================================

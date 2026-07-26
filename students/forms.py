@@ -184,24 +184,9 @@ class StrongPasswordChangeForm(PasswordChangeForm):
         })
 
     def clean_new_password1(self):
+        from .security.passwords import password_validation_errors
         password = self.cleaned_data.get('new_password1')
-        errors = []
-
-        if len(password) < 8:
-            errors.append("Password must be at least 8 characters long.")
-        if not re.search(r'[A-Z]', password):
-            errors.append("Password must contain at least one uppercase letter.")
-        if not re.search(r'[a-z]', password):
-            errors.append("Password must contain at least one lowercase letter.")
-        if not re.search(r'\d', password):
-            errors.append("Password must contain at least one digit.")
-        if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', password):
-            errors.append("Password must contain at least one special character (!@#$%^&* etc.).")
-        if re.search(r'(.)\1{2,}', password):
-            errors.append("Password must not contain 3 or more repeated characters.")
-        if password.lower() in ['password', '12345678', 'qwerty']:
-            errors.append("Password is too common. Please choose a stronger password.")
-
+        errors = password_validation_errors(password, user=self.user)
         if errors:
             raise forms.ValidationError(errors)
         return password

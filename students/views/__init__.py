@@ -86,6 +86,7 @@ from .faculty import (  # noqa: F401
 from .pdf_exports import (  # noqa: F401
     download_broadsheet_pdf,
     download_classlist_pdf,
+    download_individual_report_pdf,
 )
 
 # ── Class/stream management ──────────────────────────────────────────────────

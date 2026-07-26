@@ -221,6 +221,14 @@ def custom_password_change(request):
             # password changed but the stored auth hash is stale.
             from django.contrib.auth import login as auth_login
             auth_login(request, user, backend=user.backend)
+
+            # Invalidate other sessions (security)
+            from ..security.passwords import invalidate_other_sessions, send_password_changed_email
+            invalidate_other_sessions(user, keep_session_key=request.session.session_key)
+
+            # Send notification email (best-effort)
+            send_password_changed_email(user, request=request)
+
             messages.success(request, "Your password has been changed successfully.")
             return redirect('home_alt')
     else:

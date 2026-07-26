@@ -31,6 +31,7 @@ urlpatterns = [
     path('results/download-pdf/', views.download_broadsheet_pdf, name='download_broadsheet_pdf'),
     path('report-cards/', views.report_card_select, name='report_card_select'),
     path('report/<int:student_id>/', views.individual_report, name='individual_report'),
+    path('report/<int:student_id>/download-pdf/', views.download_individual_report_pdf, name='download_individual_report_pdf'),
     path('bulk-reports/', views.bulk_report_cards, name='bulk_report_cards'),
 
     # ── Comments ──────────────────────────────────────────────────────────

@@ -22,6 +22,8 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
 
+from django.conf import settings
+
 from ..models import PasswordHistory, School, SchoolAdmin, Teacher
 
 logger = logging.getLogger("students.security.password")
@@ -186,23 +188,31 @@ def send_password_changed_email(user, *, request=None):
     if not user or not user.email:
         return False
     try:
-        from_email = 'EDUNEXUS <noreply@edunexus.system>'
+        from django.core.mail import EmailMessage
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'EDUNEXUS Portal <edunexus.system@gmail.com>')
+        site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
         context = {
             'user': user,
             'timestamp': timezone.now(),
             'ip': request.META.get('REMOTE_ADDR') if request else None,
-            'login_url': 'http://localhost:8000/login/',
+            'login_url': f'{site_url}/login/',
         }
         html = render_to_string('email/password_changed.html', context)
         text = render_to_string('email/password_changed.txt', context)
-        send_mail(
+        email = EmailMessage(
             subject='Your EDUNEXUS password was changed',
-            message=text,
+            body=html,
             from_email=from_email,
-            recipient_list=[user.email],
-            html_message=html,
-            fail_silently=True,
+            to=[user.email],
+            headers={
+                'Reply-To': from_email,
+                'Precedence': 'bulk',
+                'List-Unsubscribe': f'<{site_url}/login/>',
+                'X-Auto-Response-Suppress': 'All',
+            },
         )
+        email.content_subtype = 'html'
+        email.send(fail_silently=True)
         return True
     except Exception:
         logger.exception("Could not send password-changed email to %s", user.email)
