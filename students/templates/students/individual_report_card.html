@@ -81,7 +81,7 @@
     .rv-hero {
         margin: 12px 16px 0;
         padding: 16px;
-        background: linear-gradient(135deg, #0f5a35 0%, #1a7d47 50%, #24E55E 120%);
+        background: linear-gradient(135deg, color-mix(in srgb, var(--section-accent) 70%, #000) 0%, var(--section-accent) 50%, color-mix(in srgb, var(--section-accent) 80%, #fff) 120%);
         border-radius: 16px;
         color: #FFFFFF;
         position: relative;
@@ -167,9 +167,9 @@
     .rv-btn:active { transform: scale(0.97); }
 
     .rv-btn-green {
-        background: linear-gradient(135deg, #199E41, #24E55E);
+        background: linear-gradient(135deg, color-mix(in srgb, var(--section-accent) 85%, #000), var(--section-accent));
         color: #FFFFFF;
-        box-shadow: 0 4px 14px rgba(36, 229, 94, 0.3);
+        box-shadow: 0 4px 14px color-mix(in srgb, var(--section-accent) 30%, transparent);
     }
 
     .rv-btn-ghost {
@@ -474,7 +474,7 @@
     @media (min-width: 769px) { .report-card { box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important; } }
 </style>
 
-<div class="rv-shell">
+<div class="rv-shell" style="--section-accent: {{ section_accent }};">
     <div class="rv-header">
         <div class="rv-header-left">
             <button class="rv-back" onclick="history.back()">
