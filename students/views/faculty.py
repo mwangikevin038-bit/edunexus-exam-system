@@ -107,11 +107,8 @@ def manage_master_comments(request):
 
     comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
         school=school, year=year, term=term, grade=grade, stream=stream, exam_type=db_assessment,
-        defaults={'school_section': section},
+        defaults={'school_section': 'PRIMARY' if is_primary else 'JSS'},
     )
-    if comment_obj.school_section != section:
-        comment_obj.school_section = section
-        comment_obj.save(update_fields=['school_section'])
 
     if request.method == "POST":
         if is_primary:
@@ -170,7 +167,7 @@ def manage_headteacher_comments(request):
 
     comment_obj, _ = SchoolHeadteacherComment.objects.get_or_create(
         school=school, year=year, term=term, exam_type=db_assessment,
-        school_section=section,
+        school_section='PRIMARY' if is_primary else 'JSS',
     )
 
     if request.method == "POST":
