@@ -399,6 +399,7 @@
         margin: 0;
         border-radius: 0;
         min-width: 7.9in;
+        border-left: 12px solid var(--section-accent, #305CDE);
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -510,7 +511,7 @@
         {% for student_data in student_marks_list %}
         <div class="rv-card-container">
             <div class="rv-card-scroll">
-                <div class="report-card">
+                <div class="report-card" style="--section-accent: {{ section_accent }};">
                     <div class="report-content">
                         <div class="rc-header">
                             {% if request.school.logo %}
@@ -753,6 +754,7 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -788,15 +790,21 @@
         const origHTML = btn ? btn.innerHTML : '';
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner"></i> Generating PDF...'; }
         try {
-            const url = "{% url 'download_individual_report_pdf' student_id=student.id %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}";
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = '';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            var card = document.querySelector('.rv-card-scroll .report-card');
+            if (!card) card = document.querySelector('#reportCardsContainer .report-card');
+            if (!card) { alert('No report card found.'); return; }
+            var nameEl = card.querySelector('.rc-student-name');
+            var studentName = nameEl ? nameEl.textContent.trim().replace(/\s+/g, '_') : 'Report_Card';
+            await html2pdf().set({
+                margin: [0.3, 0, 0.3, 0],
+                filename: studentName + '_Report_Card.pdf',
+                image: { type: 'jpeg', quality: 0.95 },
+                html2canvas: { scale: 1.5, useCORS: true, scrollX: 0, scrollY: 0, logging: false },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            }).from(card).save();
         } catch (e) {
-            alert('Failed to download PDF. Please try again.');
+            console.error('PDF error:', e);
+            alert('Failed to generate PDF. Please try again.');
         } finally {
             if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
         }
