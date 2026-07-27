@@ -371,7 +371,7 @@
         </a>
     </div>
 
-    {% if section == 'PRIMARY' %}
+    {% if can_switch_sub %}
     <div style="display:flex; gap:8px; margin-bottom:24px;">
         <a href="?sub=LOWER{% if selected_context_key %}&context={{ selected_context_key }}{% endif %}" style="flex:1; display:flex; align-items:center; gap:12px; padding:16px 20px; border-radius:14px; text-decoration:none; cursor:pointer; transition:all 0.2s; border:2px solid transparent; {% if active_sub == 'LOWER' %}border-color:#B45309; background:#FFFBEB;{% else %}background:#fff; border-color:#e2e8f0;{% endif %}">
             <div style="width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; {% if active_sub == 'LOWER' %}background:#B45309; color:#fff;{% else %}background:#f1f5f9; color:#64748b;{% endif %}">
@@ -560,7 +560,7 @@
             </a>
         </div>
 
-        {% if section == 'PRIMARY' %}
+        {% if can_switch_sub %}
         <div style="display:flex; gap:8px; margin-bottom:16px; padding:0 4px;">
             <a href="?sub=LOWER{% if selected_context_key %}&context={{ selected_context_key }}{% endif %}" style="flex:1; display:flex; align-items:center; gap:8px; padding:12px 14px; border-radius:12px; text-decoration:none; border:2px solid transparent; {% if active_sub == 'LOWER' %}border-color:#B45309; background:#FFFBEB;{% else %}background:#fff; border-color:#e2e8f0;{% endif %}">
                 <div style="width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; {% if active_sub == 'LOWER' %}background:#B45309; color:#fff;{% else %}background:#f1f5f9; color:#64748b;{% endif %}">
@@ -883,15 +883,21 @@ function searchTable() {
 }
 
 function toggleAll(source) {
-    document.querySelectorAll('.student-check').forEach(checkbox => {
-        checkbox.checked = source.checked;
+    document.querySelectorAll('.student-row').forEach(function(row) {
+        if (row.style.display !== 'none') {
+            var cb = row.querySelector('.student-check');
+            if (cb) cb.checked = source.checked;
+        }
     });
 }
 
 function printSelectedReports() {
     var selectedIds = [];
-    document.querySelectorAll('.student-check:checked').forEach(function(cb) {
-        if (selectedIds.indexOf(cb.value) === -1) selectedIds.push(cb.value);
+    document.querySelectorAll('.student-row').forEach(function(row) {
+        if (row.style.display !== 'none') {
+            var cb = row.querySelector('.student-check:checked');
+            if (cb && selectedIds.indexOf(cb.value) === -1) selectedIds.push(cb.value);
+        }
     });
     if (selectedIds.length === 0) {
         alert('Please select at least one learner first.');

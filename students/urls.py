@@ -24,6 +24,7 @@ urlpatterns = [
     path('select-exam-primary/', views.select_exam_primary, name='select_exam_primary'),
     path('api/clear-mark/', views.clear_mark, name='clear_mark'),
     path('api/save-mark/', views.save_mark, name='save_mark'),
+    path('api/update-maximum-marks/', views.update_maximum_marks, name='update_maximum_marks'),
     path('api/return-sheet/', views.return_mark_sheet, name='return_mark_sheet'),
 
     # ── Results & reports ─────────────────────────────────────────────────

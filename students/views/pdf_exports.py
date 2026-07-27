@@ -6,9 +6,14 @@ applying screen-emulated CSS overrides so the output matches the web view.
 """
 
 import base64
+import asyncio
+import contextlib
 import datetime
 import logging
 import mimetypes
+import sys
+import threading
+import time
 import traceback
 
 from django.contrib import messages
@@ -43,10 +48,214 @@ from ..security import get_request_school, get_request_school_section, get_schoo
 
 logger = logging.getLogger('pdf_export')
 
+
+# ==============================================================================
+# BULLETPROOF PLAYWRIGHT PDF INFRASTRUCTURE
+# ==============================================================================
+# DO NOT modify this section unless you are fixing a Playwright breakage.
+# All 3 PDF views (broadsheet, class list, individual report) use
+# _generate_pdf() as their single entry point. This ensures:
+#   - Consistent retry / cleanup / error handling
+#   - Concurrency limited to 2 browsers (RAM safety)
+#   - Event loop policy restored for Windows compatibility
+#   - Browser always closed even on error
+#   - Startup verification fails fast if Chromium is missing
+# ==============================================================================
+
 # Limit concurrent Playwright browser instances to prevent RAM exhaustion.
 # Each Chromium instance uses ~200-500MB. With 2 max, peak RAM is ~1GB.
-import threading
 _pdf_semaphore = threading.Semaphore(2)
+
+# Verified once at import time — False means Chromium is not installed.
+_playwright_ok = True
+
+
+_playwright_checked = False
+
+
+def _verify_playwright():
+    """
+    Lazily verify Playwright and Chromium are installed on first PDF request.
+    Sets _playwright_ok = False on failure so all subsequent calls fail fast.
+    Only runs once per process.
+    """
+    global _playwright_ok, _playwright_checked
+    if _playwright_checked:
+        return
+    _playwright_checked = True
+    try:
+        with _playwright_session(), sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+        logger.info("[pdf] Playwright Chromium verified OK")
+    except Exception as e:
+        _playwright_ok = False
+        logger.error(
+            "[pdf] Playwright verification FAILED: %s\n"
+            "[pdf] Run: pip install playwright && python -m playwright install chromium",
+            str(e),
+        )
+
+
+@contextlib.contextmanager
+def _playwright_session():
+    """
+    Context manager that temporarily restores ProactorEventLoopPolicy
+    before launching Playwright, then restores the original policy.
+
+    Django Channels/Daphne overrides the Windows event loop policy to
+    SelectorEventLoop, which does not support subprocess creation.
+    Playwright needs ProactorEventLoop to spawn Chromium.
+    """
+    if sys.platform != "win32":
+        yield
+        return
+
+    original_policy = asyncio.get_event_loop_policy()
+    try:
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        yield
+    finally:
+        asyncio.set_event_loop_policy(original_policy)
+
+
+def _generate_pdf(
+    patched_html,
+    *,
+    viewport=None,
+    landscape=False,
+    margin=None,
+    wait_for_charts=False,
+    wait_for_logo_selector=None,
+    timeout=90,
+    retries=2,
+):
+    """
+    Bulletproof Playwright PDF generation — single entry point for all views.
+
+    - Acquires semaphore to limit concurrency (max 2 browsers).
+    - Runs in a dedicated thread with a timeout.
+    - Retries up to `retries` times on transient failures.
+    - ALWAYS closes the browser, even on error.
+    - Thread-safe result passing via dict.
+
+    Returns:
+        bytes: The PDF content.
+
+    Raises:
+        TimeoutError: If all attempts time out.
+        RuntimeError: If Playwright is not available or all attempts fail.
+    """
+    if not _playwright_ok:
+        raise RuntimeError(
+            "Playwright Chromium is not installed. "
+            "Run: pip install playwright && python -m playwright install chromium"
+        )
+
+    _verify_playwright()
+
+    if viewport is None:
+        viewport = {"width": 1200, "height": 900}
+
+    if margin is None:
+        margin = {"top": "0.5in", "right": "0.3in", "bottom": "0.5in", "left": "0.3in"}
+
+    last_error = None
+
+    for attempt in range(retries + 1):
+        _pdf_semaphore.acquire()
+        try:
+            result = {}
+            error_holder = [None]
+
+            def _generate():
+                try:
+                    with _playwright_session(), sync_playwright() as pw:
+                        browser = pw.chromium.launch(headless=True)
+                        try:
+                            pg = browser.new_page()
+                            pg.set_viewport_size(viewport)
+                            pg.emulate_media(media="print")
+                            pg.set_content(patched_html, wait_until="networkidle")
+
+                            # Wait for web fonts to load
+                            try:
+                                pg.wait_for_function("document.fonts.ready", timeout=5000)
+                            except Exception:
+                                pass  # Fonts may be unavailable — continue anyway
+
+                            # Wait for Chart.js canvases if present
+                            if wait_for_charts:
+                                try:
+                                    pg.wait_for_function("""
+                                        () => {
+                                            const c = document.querySelectorAll('canvas[id^="chart-"]');
+                                            return c.length === 0 || Array.from(c).every(x => x.width > 0 && x.height > 0);
+                                        }
+                                    """, timeout=5000)
+                                    pg.wait_for_timeout(300)
+                                except Exception:
+                                    pass
+
+                            # Wait for a specific image to finish loading (e.g. school logo)
+                            if wait_for_logo_selector:
+                                try:
+                                    pg.wait_for_function(f"""
+                                        () => {{
+                                            const el = document.querySelector('{wait_for_logo_selector}');
+                                            return !el || (el.complete && el.naturalWidth > 0);
+                                        }}
+                                    """, timeout=5000)
+                                except Exception:
+                                    pass
+
+                            # Small extra delay for CSS paint
+                            pg.wait_for_timeout(200)
+
+                            result['pdf'] = pg.pdf(
+                                format="A4",
+                                landscape=landscape,
+                                print_background=True,
+                                display_header_footer=False,
+                                margin=margin,
+                            )
+                        finally:
+                            browser.close()
+                except Exception as e:
+                    error_holder[0] = e
+
+            t = threading.Thread(target=_generate, daemon=True)
+            t.start()
+            t.join(timeout=timeout)
+
+            if error_holder[0] is not None:
+                last_error = error_holder[0]
+                logger.warning(
+                    "[pdf] Attempt %d/%d failed: %s",
+                    attempt + 1, retries + 1, str(last_error),
+                )
+                if attempt < retries:
+                    time.sleep(1)
+                    continue
+                break
+
+            if 'pdf' not in result:
+                last_error = TimeoutError(f"PDF generation timed out after {timeout}s")
+                logger.warning(
+                    "[pdf] Attempt %d/%d timed out", attempt + 1, retries + 1,
+                )
+                if attempt < retries:
+                    time.sleep(1)
+                    continue
+                break
+
+            return result['pdf']
+
+        finally:
+            _pdf_semaphore.release()
+
+    # All attempts exhausted
+    raise RuntimeError(f"PDF generation failed after {retries + 1} attempts: {last_error}")
 
 
 def _embed_logo_base64(template_html, request):
@@ -327,66 +536,17 @@ def download_broadsheet_pdf(request):
         patched_html = pdf_base_tag + pdf_css + template_html
 
     # ── 4. Playwright — PRINT media so template's @media print CSS activates ──
-    #
-    # Run Playwright in a dedicated thread with its own event loop to avoid
-    # conflicts with Django's dev server auto-reloader on Windows (Python 3.13+).
-    #
-    import threading
-
-    _playwright_result = {}
-    _playwright_error = [None]
-
-    def _generate_pdf():
-        _pdf_semaphore.acquire()
-        try:
-            import asyncio, sys
-            if sys.platform == 'win32':
-                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                pg      = browser.new_page()
-                pg.set_viewport_size({"width": 1200, "height": 900})
-                pg.emulate_media(media="print")
-                pg.set_content(patched_html, wait_until="networkidle")
-                pg.wait_for_function("document.fonts.ready")
-                pg.wait_for_timeout(500)
-
-                pdf_bytes = pg.pdf(
-                    format="A4",
-                    landscape=True,
-                    print_background=True,
-                    display_header_footer=False,
-                    margin={
-                        "top":    "0.5in",
-                        "right":  "0.3in",
-                        "bottom": "0.5in",
-                        "left":   "0.3in",
-                    },
-                )
-                browser.close()
-                _playwright_result['pdf'] = pdf_bytes
-        except Exception as e:
-            _playwright_error[0] = e
-        finally:
-            _pdf_semaphore.release()
-
-    t = threading.Thread(target=_generate_pdf, daemon=True)
-    t.start()
-    t.join(timeout=90)
-
-    if _playwright_error[0] is not None:
-        e = _playwright_error[0]
-        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-        logger.error('PDF generation failed: %s\n%s', str(e), tb_str)
+    try:
+        pdf_bytes = _generate_pdf(
+            patched_html,
+            viewport={"width": 1200, "height": 900},
+            landscape=True,
+            margin={"top": "0.5in", "right": "0.3in", "bottom": "0.5in", "left": "0.3in"},
+        )
+    except Exception as e:
+        logger.error('PDF generation failed: %s\n%s', str(e), traceback.format_exc())
         messages.error(request, "PDF generation failed. Please try again.")
         return redirect('results_list')
-
-    if 'pdf' not in _playwright_result:
-        logger.error('PDF generation timed out after 90 seconds')
-        messages.error(request, "PDF generation timed out. Please try again.")
-        return redirect('results_list')
-
-    pdf_bytes = _playwright_result['pdf']
 
     # ── 5. Return as download ──────────────────────────────────────────────────
     slug_grade  = slugify(grade  or "class")
@@ -479,45 +639,45 @@ def download_classlist_pdf(request):
 
     template_html = _embed_logo_base64(template_html, request)
 
-    pdf_css = """
+    pdf_css = f"""
 <style id="pdf-override">
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
 
-  html, body {
+  html, body {{
     margin: 0 !important; padding: 0 !important;
     background: #ffffff !important;
     font-family: "Times New Roman", Times, serif !important;
     font-size: 12pt !important; color: #000 !important;
     width: 100% !important;
     overflow: visible !important;
-  }
+  }}
 
   /* Hide all screen chrome */
   .sidebar, nav, header, .hamburger-btn, .sidebar-overlay,
   .directory-hero, .summary-grid, .toolbar, .mode-tabs,
-  .no-print, .context-strip, .access-pill, .empty-state {
+  .no-print, .context-strip, .access-pill, .empty-state {{
     display: none !important;
     visibility: hidden !important;
-  }
+  }}
 
   /* Kill sidebar layout offset */
-  body > *, .main-content, main, [class*="content"], [class*="wrapper"] {
+  body > *, .main-content, main, [class*="content"], [class*="wrapper"] {{
     margin-left: 0 !important;
     padding-left: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     transform: none !important;
     position: static !important;
-  }
+  }}
 
-  .directory-page {
+  .directory-page {{
     padding: 0 !important;
     background: #ffffff !important;
     min-height: unset !important;
     width: 100% !important;
-  }
+  }}
 
-  .register-sheet {
+  .register-sheet {{
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -526,35 +686,35 @@ def download_classlist_pdf(request):
     max-height: none !important;
     height: auto !important;
     background: #ffffff !important;
-  }
+  }}
 
-  .sheet-heading {
+  .sheet-heading {{
     text-align: left;
     margin-bottom: 10pt !important;
-  }
+  }}
 
-  .sheet-letterhead {
+  .sheet-letterhead {{
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
     gap: 18px !important;
     margin-bottom: 8pt !important;
     padding-bottom: 8pt !important;
-    border-bottom: 4px solid #9be816 !important;
-  }
+    border-bottom: 4px solid {section_accent} !important;
+  }}
 
-  .sheet-logo {
+  .sheet-logo {{
     height: 122px !important;
     width: 122px !important;
     object-fit: contain !important;
     flex: 0 0 122px !important;
-  }
+  }}
 
-  .sheet-heading-copy {
+  .sheet-heading-copy {{
     min-width: 0 !important;
-  }
+  }}
 
-  .sheet-heading h2 {
+  .sheet-heading h2 {{
     font-family: "Times New Roman", Times, serif !important;
     font-size: 25pt !important;
     font-weight: 900 !important;
@@ -562,17 +722,17 @@ def download_classlist_pdf(request):
     color: #000 !important;
     text-transform: uppercase !important;
     margin: 0 0 6pt !important;
-  }
+  }}
 
-  .sheet-heading p {
+  .sheet-heading p {{
     font-family: "Times New Roman", Times, serif !important;
     font-size: 12pt !important;
     color: #111 !important;
     margin: 0 !important;
     text-transform: uppercase !important;
-  }
+  }}
 
-  .register-table {
+  .register-table {{
     width: 100% !important;
     min-width: 0 !important;
     border-collapse: collapse !important;
@@ -581,9 +741,9 @@ def download_classlist_pdf(request):
     table-layout: fixed !important;
     font-family: "Times New Roman", Times, serif !important;
     font-size: 12pt !important;
-  }
+  }}
 
-  .register-table th {
+  .register-table th {{
     background: #f2f2f2 !important;
     color: #000 !important;
     font-weight: 700 !important;
@@ -592,9 +752,9 @@ def download_classlist_pdf(request):
     border: 1.5px solid #000 !important;
     text-align: left !important;
     line-height: 1.05 !important;
-  }
+  }}
 
-  .register-table td {
+  .register-table td {{
     padding: 3pt 5pt !important;
     border: 1.5px solid #000 !important;
     color: #000 !important;
@@ -602,45 +762,45 @@ def download_classlist_pdf(request):
     font-size: 12pt !important;
     line-height: 1.05 !important;
     vertical-align: middle !important;
-  }
+  }}
 
   .teacher-register th:nth-child(1),
-  .teacher-register td:nth-child(1) { width: 8% !important; }
+  .teacher-register td:nth-child(1) {{ width: 8% !important; }}
   .teacher-register th:nth-child(2),
-  .teacher-register td:nth-child(2) { width: 23% !important; }
+  .teacher-register td:nth-child(2) {{ width: 23% !important; }}
   .teacher-register th:nth-child(3),
-  .teacher-register td:nth-child(3) { width: 14% !important; }
+  .teacher-register td:nth-child(3) {{ width: 14% !important; }}
   .teacher-register th:nth-child(n+4),
-  .teacher-register td:nth-child(n+4) {
+  .teacher-register td:nth-child(n+4) {{
     width: 3.6% !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
-  }
+  }}
 
-  .register-table a {
+  .register-table a {{
     color: #000 !important;
     text-decoration: none !important;
-  }
+  }}
 
-  .register-table tr {
+  .register-table tr {{
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-  }
+  }}
 
-  .grid-cell {
+  .grid-cell {{
     width: 24px !important;
     height: 21pt !important;
     background: #ffffff !important;
-  }
+  }}
 
-  .print-watermark-footer {
+  .print-watermark-footer {{
     display: none !important;
     visibility: hidden !important;
-  }
+  }}
 
-  @page {
+  @page {{
     margin: 0.62in 0.38in 0.72in 0.5in;
-    @bottom-center {
+    @bottom-center {{
       content: "GENERATED FROM EDUNEXUS EXAM SYSTEM @2026";
       font-family: "Times New Roman", Times, serif;
       font-size: 10pt;
@@ -648,8 +808,8 @@ def download_classlist_pdf(request):
       color: rgba(0, 0, 0, 0.55);
       text-transform: uppercase;
       letter-spacing: 0.4pt;
-    }
-  }
+    }}
+  }}
 </style>
 """
 
@@ -660,40 +820,18 @@ def download_classlist_pdf(request):
     else:
         patched_html = pdf_base_tag + pdf_css + template_html
 
-    _pdf_semaphore.acquire()
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            pg = browser.new_page()
-            pg.set_viewport_size({"width": 794, "height": 1123})
-            pg.emulate_media(media="print")
-            pg.set_content(patched_html, wait_until="networkidle")
-            pg.wait_for_function("""
-                () => {
-                    const logo = document.querySelector('.sheet-logo');
-                    return !logo || (logo.complete && logo.naturalWidth > 0);
-                }
-            """, timeout=5000)
-
-            pdf_bytes = pg.pdf(
-                format="A4",
-                landscape=False,
-                print_background=True,
-                display_header_footer=False,
-                margin={
-                    "top":    "0.62in",
-                    "right":  "0.38in",
-                    "bottom": "0.72in",
-                    "left":   "0.5in",
-                },
-            )
-            browser.close()
+        pdf_bytes = _generate_pdf(
+            patched_html,
+            viewport={"width": 794, "height": 1123},
+            landscape=False,
+            margin={"top": "0.62in", "right": "0.38in", "bottom": "0.72in", "left": "0.5in"},
+            wait_for_logo_selector='.sheet-logo',
+        )
     except Exception as e:
         logger.error('Class list PDF generation failed: %s\n%s', str(e), traceback.format_exc())
         messages.error(request, "PDF generation failed. Please try again.")
         return redirect('class_lists')
-    finally:
-        _pdf_semaphore.release()
 
     slug_grade  = slugify(selected_grade  or "class")
     slug_stream = slugify(selected_stream or "stream")
@@ -717,7 +855,6 @@ def download_individual_report_pdf(request, student_id):
     Reuses the same data context as individual_report() and renders
     via Playwright with emulate_media('print') for high-quality output.
     """
-    import traceback as _traceback
 
     school = get_request_school(request)
     if not school:
@@ -1025,71 +1162,18 @@ def download_individual_report_pdf(request, student_id):
     else:
         patched_html = pdf_base_tag + pdf_css + template_html
 
-    # ── Playwright PDF rendering ──────────────────────────────────────────────
-    import threading
-
-    _playwright_result = {}
-    _playwright_error = [None]
-
-    def _generate_pdf():
-        _pdf_semaphore.acquire()
-        try:
-            import asyncio, sys
-            if sys.platform == 'win32':
-                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                pg = browser.new_page()
-                pg.set_viewport_size({"width": 1200, "height": 900})
-                pg.emulate_media(media="print")
-                pg.set_content(patched_html, wait_until="networkidle")
-                pg.wait_for_function("document.fonts.ready")
-                pg.wait_for_timeout(500)
-
-                # Wait for Chart.js canvases to finish rendering
-                pg.wait_for_function("""
-                    () => {
-                        const canvases = document.querySelectorAll('canvas[id^="chart-"]');
-                        return canvases.length === 0 || Array.from(canvases).every(c => c.width > 0 && c.height > 0);
-                    }
-                """, timeout=5000)
-                pg.wait_for_timeout(300)
-
-                pdf_bytes = pg.pdf(
-                    format="A4",
-                    landscape=False,
-                    print_background=True,
-                    display_header_footer=False,
-                    margin={
-                        "top":    "0.5in",
-                        "right":  "0.3in",
-                        "bottom": "0.5in",
-                        "left":   "0.3in",
-                    },
-                )
-                browser.close()
-                _playwright_result['pdf'] = pdf_bytes
-        except Exception as e:
-            _playwright_error[0] = e
-        finally:
-            _pdf_semaphore.release()
-
-    t = threading.Thread(target=_generate_pdf, daemon=True)
-    t.start()
-    t.join(timeout=90)
-
-    if _playwright_error[0] is not None:
-        e = _playwright_error[0]
-        logger.error('Individual report PDF failed: %s\n%s', str(e), _traceback.format_exc())
+    try:
+        pdf_bytes = _generate_pdf(
+            patched_html,
+            viewport={"width": 1200, "height": 900},
+            landscape=False,
+            margin={"top": "0.5in", "right": "0.3in", "bottom": "0.5in", "left": "0.3in"},
+            wait_for_charts=True,
+        )
+    except Exception as e:
+        logger.error('Individual report PDF failed: %s\n%s', str(e), traceback.format_exc())
         messages.error(request, "PDF generation failed. Please try again.")
         return redirect('individual_report', student_id=student_id)
-
-    if 'pdf' not in _playwright_result:
-        logger.error('Individual report PDF timed out after 90 seconds')
-        messages.error(request, "PDF generation timed out. Please try again.")
-        return redirect('individual_report', student_id=student_id)
-
-    pdf_bytes = _playwright_result['pdf']
 
     student_name = slugify(f"{student.first_name}_{student.last_name}" if student.first_name or student.last_name else student.admission_number)
     filename = f"{student_name}_Report_Card_{year}_{slugify(term)}.pdf"

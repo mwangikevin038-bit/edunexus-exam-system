@@ -49,28 +49,48 @@ def _send_complete(upload_id, data):
             pass
 
 
-@shared_task(max_retries=2, default_retry_delay=10)
-def process_csv_upload(upload_id, school_id, rows_json, section='JSS'):
+@shared_task(bind=True, max_retries=2, default_retry_delay=10)
+def process_csv_upload(self, upload_id, school_id, rows_json, section='JSS'):
     """
     Main background task. Receives the full mapped CSV payload as a JSON list.
     Processes in chunks of CHUNK_SIZE to keep memory low.
-
-    Note: previously used `bind=True` which triggers a Celery 5.6.x
-    worker bug (`_loc` not initialized in fast_trace_task, raises
-    "not enough values to unpack"). We don't use `self` here, so
-    `bind=True` was unnecessary.
     """
-    from students.models import Grade, Guardian, School, Stream, Student
-
     total = len(rows_json)
+
+    try:
+        from students.models import Grade, Guardian, School, Stream, Student
+    except Exception as e:
+        _send_complete(upload_id, {
+            "status": "error", "processed": 0, "total": total,
+            "created": 0, "updated": 0, "skipped": total,
+            "errors": [f"Import error: {e}"],
+            "message": f"Failed to start: {e}",
+        })
+        return {"status": "error", "errors": [str(e)]}
+
+    try:
+        _run_csv_upload(upload_id, school_id, rows_json, section, total)
+    except Exception as e:
+        logger.exception("process_csv_upload CRASHED: %s", e)
+        _send_complete(upload_id, {
+            "status": "error",
+            "processed": 0, "total": total,
+            "created": 0, "updated": 0, "skipped": total,
+            "errors": [f"Unexpected worker error: {e}"],
+            "message": f"Worker crashed: {e}",
+        })
+        return {"status": "error", "errors": [str(e)]}
+
+
+def _run_csv_upload(upload_id, school_id, rows_json, section, total):
+    from students.models import Grade, School, Stream, Student
+
     processed = 0
     created = 0
     updated = 0
     skipped = 0
     errors = []
 
-    # ✅ FIX 3: Write "started" to cache immediately so the UI stops
-    #           showing "Connecting to background worker..." right away
     _send_progress(upload_id, {
         "status": "processing",
         "processed": 0,
@@ -88,12 +108,8 @@ def process_csv_upload(upload_id, school_id, rows_json, section='JSS'):
         errors.append(f"School with id={school_id} does not exist.")
         _send_complete(upload_id, {
             "status": "error",
-            "processed": 0,
-            "total": total,
-            "created": 0,
-            "updated": 0,
-            "skipped": total,
-            "errors": errors,
+            "processed": 0, "total": total,
+            "created": 0, "updated": 0, "skipped": total, "errors": errors,
             "message": "School not found. Upload aborted.",
         })
         return {"status": "error", "errors": errors}
@@ -312,7 +328,7 @@ def _process_chunk(school, chunk, offset, section,
                         sub_section_val = 'LOWER' if grade_num <= 3 else 'UPPER'
                     except (ValueError, AttributeError):
                         pass
-                    next_no = _next_admission_number(school, school_section=section, sub_section=sub_section_val)
+                    next_no = _next_admission_number(school, school_section=section)
                     Student.all_objects.create(
                         school=school,
                         admission_no=f"{next_no:03}",
@@ -336,22 +352,42 @@ def _process_chunk(school, chunk, offset, section,
     return created, updated, skipped, errors
 
 
-def _next_admission_number(school, school_section=None, sub_section=None):
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║  ADMISSION NUMBER — SINGLE SOURCE OF TRUTH                              ║
+# ║  DO NOT duplicate this function. All callers must import from here.      ║
+# ║  Run tests/test_admission_numbers.py to verify after any change.         ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+def _next_admission_number(school, school_section=None):
     """Get the next available admission number for a school.
 
-    Scoped by school_section so PRIMARY and JSS each have their own
-    independent number series. For PRIMARY, always counts BOTH LOWER
-    and UPPER sub-sections since they share one number series.
+    ADMISSION NUMBER RULES (DO NOT CHANGE):
+    ─────────────────────────────────────────
+    • PRIMARY section: both LOWER and UPPER sub-sections share ONE number series.
+      Example: if highest is 344, next is 345 regardless of sub-section.
+    • JSS section: has its OWN independent number series.
+      Example: if highest JSS is 450, next JSS is 451.
+    • Numbers are 3-digit zero-padded (e.g. "001", "345", "450").
+    • The school_section parameter must be the DB value ('PRIMARY' or 'JSS'),
+      NOT the workspace token ('LOWER_PRIMARY'). Callers must normalize first.
     """
     from students.models import Student
 
+    # SAFETY: Normalize workspace token to DB value (defensive)
+    if school_section == 'LOWER_PRIMARY':
+        school_section = 'PRIMARY'
+
+    # Base query: only numeric admission numbers
     qs = Student.all_objects.filter(school=school, admission_no__regex=r'^[0-9]+$')
-    if school_section is not None:
-        qs = qs.filter(school_section=school_section)
-    if school_section == 'JSS':
-        qs = qs.filter(sub_section__isnull=True)
-    elif school_section in ('PRIMARY', 'LOWER_PRIMARY'):
-        qs = qs.filter(sub_section__in=['LOWER', 'UPPER', None, ''])
+
+    if school_section == 'PRIMARY':
+        # PRIMARY = both sub-sections share one series
+        qs = qs.filter(school_section='PRIMARY', sub_section__in=['LOWER', 'UPPER', None, ''])
+    elif school_section == 'JSS':
+        # JSS = independent series, no sub_section
+        qs = qs.filter(school_section='JSS', sub_section__isnull=True)
+    else:
+        # Unknown section — return 1 as safe fallback
+        return 1
 
     last = qs.order_by("-admission_no").values_list("admission_no", flat=True).first()
     if last and last.isdigit():

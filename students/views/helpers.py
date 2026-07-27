@@ -304,11 +304,18 @@ def get_learner_contexts_for_user(user):
     return contexts
 
 
+_teacher_user_cache = {}  # user_pk -> Teacher or None
+
+
 def get_teacher_for_user(user):
-    """Return the Teacher instance linked to the given user, or None."""
+    """Return the Teacher instance linked to the given user, or None.
+    Cached per user_pk to avoid repeated DB hits in the same request."""
     if not user.is_authenticated:
         return None
-    return Teacher.objects.filter(user=user).first()
+    pk = user.pk
+    if pk not in _teacher_user_cache:
+        _teacher_user_cache[pk] = Teacher.objects.filter(user=user).first()
+    return _teacher_user_cache[pk]
 
 
 def get_class_teacher_scope(teacher):
@@ -385,19 +392,28 @@ def user_can_edit_learner_profile(user, student):
     )
 
 
+_grading_config_cache = {}  # (school_id, section, sub_section) -> GradingConfig or None
+
+
+def _get_grading_config(school, section, sub_section=None):
+    """Fetch and cache a GradingConfig by (school, section, sub_section)."""
+    if not school or not section:
+        return None
+    key = (school.pk, section, sub_section)
+    if key not in _grading_config_cache:
+        from ..models import GradingConfig
+        _grading_config_cache[key] = GradingConfig.all_objects.filter(
+            school=school, school_section=section, sub_section=sub_section
+        ).first()
+    return _grading_config_cache[key]
+
+
 def get_performance_level(score, sub_section=None):
     """
     Return (performance_level, points) for a converted 100% score.
-    Uses the school's GradingConfig from the DB. NO hardcoded fallback.
-
-    Looks up by (school_section, sub_section) so LOWER and UPPER primary
-    can have different scales. Pass sub_section explicitly when calling
-    from a context that knows it (e.g. iterating marks for a class).
-
-    If config is missing, logs an error and returns ('NO CONFIG', 0).
+    Uses cached GradingConfig lookups to avoid repeated DB hits.
     """
     import logging
-    from ..models import GradingConfig
     from ..school_scope import get_current_school, get_current_school_section
 
     score = max(0, min(100, round(score or 0)))
@@ -406,37 +422,24 @@ def get_performance_level(score, sub_section=None):
     section = get_current_school_section()
 
     if school and section:
-        # Try the sub-section-specific config first
         if sub_section:
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section=section, sub_section=sub_section
-            ).first()
+            config = _get_grading_config(school, section, sub_section)
             if config and config.subject_scale:
                 return config.get_subject_level(score)
-        # Fallback to the section-wide config
-        config = GradingConfig.all_objects.filter(
-            school=school, school_section=section
-        ).first()
+        config = _get_grading_config(school, section)
         if config and config.subject_scale:
             return config.get_subject_level(score)
-        # For LOWER_PRIMARY, also try PRIMARY/LOWER as fallback
         if section == 'LOWER_PRIMARY':
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='PRIMARY', sub_section='LOWER'
-            ).first()
+            config = _get_grading_config(school, 'PRIMARY', 'LOWER')
             if config and config.subject_scale:
                 return config.get_subject_level(score)
-        # For PRIMARY (upper), also try PRIMARY/UPPER as fallback
         if section == 'PRIMARY':
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='PRIMARY', sub_section='UPPER'
-            ).first()
+            config = _get_grading_config(school, 'PRIMARY', 'UPPER')
             if config and config.subject_scale:
                 return config.get_subject_level(score)
 
     logging.getLogger("students.helpers").error(
-        "GradingConfig missing for school_id=%s section=%s sub_section=%s. "
-        "Configure it at /school-admin/grading-config/.",
+        "GradingConfig missing for school_id=%s section=%s sub_section=%s.",
         getattr(school, 'id', None), section, sub_section,
     )
     return 'NO CONFIG', 0

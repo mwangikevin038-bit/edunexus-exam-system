@@ -70,3 +70,7 @@ docker-compose.override.yml
 node_modules/
 *.apk
 *.aab
+
+# ── Runtime / Binaries ─────────────────────────────────────────────────────
+cloudflared.exe
+redis_data/

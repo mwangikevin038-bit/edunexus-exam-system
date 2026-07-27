@@ -2,6 +2,9 @@
 Enterprise security framework for EduNexus multi-tenant exam system.
 """
 
+import logging
+from django.core.cache import cache
+
 from .roles import (
     Role,
     get_user_role,
@@ -23,17 +26,40 @@ from .tenant import (
 )
 from .ratelimit import rate_limit
 
+logger = logging.getLogger("students.security")
+
+_SCHOOL_ID_CACHE_TTL = 3600  # 1 hour
+
 
 def get_user_school_id(user):
     """
     Return the user's true school_id from their profile, or None.
-    
-    Checks school_admin_profile, teacher_profile, student_profile,
-    and guardian_profile in order of priority.
+    Cached in LocMemCache for 1 hour to avoid repeated DB queries.
+    Falls back to DB if cache is unavailable.
     """
     if user is None:
         return None
-    
+
+    cache_key = f"user_school_id:{user.pk}"
+    try:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+    except Exception:
+        logger.debug("Cache read failed for %s, falling back to DB", cache_key)
+
+    school_id = _resolve_user_school_id(user)
+
+    try:
+        cache.set(cache_key, school_id, _SCHOOL_ID_CACHE_TTL)
+    except Exception:
+        logger.debug("Cache write failed for %s", cache_key)
+
+    return school_id
+
+
+def _resolve_user_school_id(user):
+    """Resolve school_id from user profile via DB. Never caches."""
     try:
         if hasattr(user, "school_admin_profile") and user.school_admin_profile.school_id:
             return user.school_admin_profile.school_id
@@ -57,36 +83,31 @@ def get_user_school_id(user):
     return None
 
 
+def invalidate_user_school_cache(user_pk):
+    """Call when a user's school assignment changes (e.g. role reassignment)."""
+    try:
+        cache.delete(f"user_school_id:{user_pk}")
+    except Exception:
+        pass
+
+
 def get_user_school_object(user):
     """
     Return the user's school object from their profile, or None.
-    
-    Similar to get_user_school_id but returns the School instance.
+    Uses cached school_id to avoid redundant DB lookups.
     """
     if user is None:
         return None
-    
+
+    school_id = get_user_school_id(user)
+    if school_id is None:
+        return None
+
+    from students.models import School
     try:
-        if hasattr(user, "school_admin_profile") and user.school_admin_profile.school_id:
-            return user.school_admin_profile.school
-    except Exception:
-        pass
-    try:
-        if hasattr(user, "teacher_profile") and user.teacher_profile.school_id:
-            return user.teacher_profile.school
-    except Exception:
-        pass
-    try:
-        if hasattr(user, "student_profile") and user.student_profile.school_id:
-            return user.student_profile.school
-    except Exception:
-        pass
-    try:
-        if hasattr(user, "guardian_profile") and user.guardian_profile.school_id:
-            return user.guardian_profile.school
-    except Exception:
-        pass
-    return None
+        return School.objects.get(pk=school_id)
+    except School.DoesNotExist:
+        return None
 
 
 __all__ = [
@@ -94,6 +115,7 @@ __all__ = [
     "get_user_role",
     "get_user_school_id",
     "get_user_school_object",
+    "invalidate_user_school_cache",
     "role_required",
     "school_admin_required",
     "user_has_main_school_admin_override",

@@ -91,6 +91,50 @@ class SchoolScopedManager(models.Manager):
     def get_for_school(self, school, **kwargs):
         return self.using(self._db).filter(school=school, **kwargs)
 
+
+# ---------------------------------------------------------------------------
+# School object cache — avoids repeated School.objects.get() per request
+# ---------------------------------------------------------------------------
+_SCHOOL_OBJ_CACHE_TTL = 3600  # 1 hour
+
+
+def _get_cached_school(school_id):
+    """Return a cached School instance by pk, or fetch from DB."""
+    if school_id is None:
+        return None
+    try:
+        from django.core.cache import cache
+        cache_key = f"school_obj:{school_id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+    except Exception:
+        pass
+
+    from students.models import School
+    try:
+        school = School.objects.filter(pk=school_id).first()
+    except Exception:
+        return None
+
+    try:
+        from django.core.cache import cache
+        cache.set(cache_key, school, _SCHOOL_OBJ_CACHE_TTL)
+    except Exception:
+        pass
+
+    return school
+
+
+def invalidate_school_cache(school_id):
+    """Call when school data changes (e.g. school settings updated)."""
+    try:
+        from django.core.cache import cache
+        cache.delete(f"school_obj:{school_id}")
+    except Exception:
+        pass
+
+
 class CurrentSchoolMiddleware(MiddlewareMixin):
     def process_request(self, request):
         request.school = None
@@ -110,7 +154,7 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
             and labels[0] not in {"www", "localhost", ""}
         )
 
-        # Resolve the tenant only from an exact subdomain match.
+        # ── 1. Subdomain resolution (rare path) ──────────────────────────
         try:
             from students.models import School
             if is_subdomain_request:
@@ -127,18 +171,18 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
             request.school = None
             request.school_resolution_failed = is_subdomain_request
 
-        # Non-subdomain requests: validate session school_id against user's actual school.
+        # ── 2. Non-subdomain: validate session school_id (fast path) ─────
         if not request.school and not is_subdomain_request:
             session_school_id = request.session.get("school_id") if hasattr(request, "session") else None
             if session_school_id:
                 try:
-                    from students.models import School
-                    school_from_session = School.objects.filter(pk=session_school_id).first()
+                    school_from_session = _get_cached_school(session_school_id)
                     if school_from_session:
-                        # Validate against user's profile if authenticated
                         user = getattr(request, "user", None)
                         if user and user.is_authenticated:
-                            actual_school_id = self._get_user_school_id(user)
+                            # Use cached get_user_school_id (LocMemCache, 1hr TTL)
+                            from students.security import get_user_school_id
+                            actual_school_id = get_user_school_id(user)
                             if actual_school_id is not None and actual_school_id != session_school_id:
                                 logger.warning(
                                     "Session school_id mismatch corrected: "
@@ -147,7 +191,7 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
                                 )
                                 request.session["school_id"] = actual_school_id
                                 request.session.modified = True
-                                request.school = School.objects.filter(pk=actual_school_id).first()
+                                request.school = _get_cached_school(actual_school_id)
                             else:
                                 request.school = school_from_session
                         else:
@@ -155,49 +199,25 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
                 except Exception:
                     request.school = None
 
-        # Final non-subdomain fallback for already-authenticated users only.
+        # ── 3. Final fallback: query user profile (cached via get_user_school_id) ──
         if not request.school and not is_subdomain_request and getattr(request, "user", None) and request.user.is_authenticated:
             try:
-                # ── Check SchoolAdmin first ──────────────────────────────
-                from students.models import SchoolAdmin
-                school_admin = SchoolAdmin.objects.select_related("school").filter(
-                    user=request.user,
-                    is_active=True,
-                ).first()
-                if school_admin and school_admin.school_id:
-                    request.school = school_admin.school
-
-                # ── Then Teacher ──────────────────────────────────────────────
-                if not request.school:
-                    from students.models import Teacher
-                    teacher = Teacher.all_objects.select_related("school").filter(user=request.user).first()
-                    if teacher and teacher.school_id:
-                        request.school = teacher.school
-
-                # ── Then Student ──────────────────────────────────────────────
-                if not request.school:
-                    from students.models import Student
-                    student = Student.objects.select_related("school").filter(user=request.user).first()
-                    if student and student.school_id:
-                        request.school = student.school
-
+                from students.security import get_user_school_id
+                school_id = get_user_school_id(request.user)
+                if school_id:
+                    request.school = _get_cached_school(school_id)
             except Exception:
                 pass
 
         request._current_school_token = set_current_school(request.school)
 
         # ── Inject school_section into ContextVar for global query isolation ──
-        # The session's school_section is ONLY trusted for admin / BOTH
-        # users. For teachers, the section is ALWAYS re-derived from their
-        # profile so a forged or stale session value can never grant
-        # cross-section visibility.
         user = getattr(request, "user", None)
         is_authenticated = bool(user and user.is_authenticated)
         user_authoritative = self._get_user_school_section(user) if is_authenticated else "BOTH"
 
         section = None
         if is_authenticated and user_authoritative == "BOTH":
-            # Admin / superuser: trust session so workspace toggle works.
             if hasattr(request, "session"):
                 section = request.session.get("school_section")
                 if section == "BOTH":
@@ -209,20 +229,18 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
                         request.session["workspace_section"] = "PRIMARY"
                         request.session.modified = True
         if not section:
-            # Teachers (and unauthenticated requests during the resolution
-            # phase) get their section from the profile, NEVER from session.
             section = user_authoritative
         request._current_school_section_token = set_current_school_section(section or "BOTH")
 
     @staticmethod
     def _get_user_school_id(user):
-        """Return the user's true school_id from their profile, or None."""
+        """Return the user's true school_id from their profile, or None. Cached."""
         from students.security import get_user_school_id
         return get_user_school_id(user)
 
     @staticmethod
     def _get_user_school_section(user):
-        """Return the user's school_section from their profile, or None."""
+        """Return the user's school_section from their profile, or None. Cached."""
         if not user or not user.is_authenticated or user.is_superuser:
             return 'BOTH'
         from students.models import Teacher, SchoolAdmin
@@ -230,7 +248,6 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
             return 'BOTH'
         teacher = Teacher.all_objects.filter(user=user).first()
         if teacher:
-            # Distinguish Lower Primary from Upper Primary
             if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER':
                 return 'LOWER_PRIMARY'
             return teacher.school_section

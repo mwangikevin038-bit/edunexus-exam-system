@@ -136,7 +136,8 @@
                                        class="js-maximum-marks"
                                        value="{{ current_maximum_marks|default:100 }}"
                                        min="1" max="500"
-                                       {% if is_locked or is_submitted %}readonly{% endif %}>
+                                       {% if is_locked or is_submitted %}readonly{% endif %}
+                                       onchange="recalculateMaxMarks(this)">
                                 <span>pts</span>
                             </div>
                         </span>
@@ -649,6 +650,26 @@
             if (data.ok) location.reload();
             else alert(data.error || 'Could not return sheet');
         }).catch(function() { alert('Network error'); });
+    };
+
+    window.recalculateMaxMarks = function(input) {
+        var newMax = parseInt(input.value, 10);
+        if (!newMax || newMax < 1) return;
+        var a = document.querySelector('input[name="assignment_id"]');
+        var e = document.querySelector('input[name="exam_id"]');
+        if (!a || !e) return;
+        var fd = new FormData();
+        fd.append('assignment_id', a.value);
+        fd.append('exam_id', e.value);
+        fd.append('new_maximum_marks', newMax);
+        postJSON('{% url "update_maximum_marks" %}', fd).then(function(data) {
+            if (data.ok) {
+                showToast('Total marks updated to ' + newMax + '. ' + data.updated + ' marks recalculated. Reloading...', 'success');
+                setTimeout(function(){ location.reload(); }, 800);
+            } else {
+                showToast(data.error || 'Could not recalculate', 'error');
+            }
+        }).catch(function() { showToast('Network error', 'error'); });
     };
 })();
 </script>

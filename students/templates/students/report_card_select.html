@@ -832,15 +832,21 @@ function searchTable() {
 }
 
 function toggleAll(source) {
-    document.querySelectorAll('.student-check').forEach(checkbox => {
-        checkbox.checked = source.checked;
+    document.querySelectorAll('.student-row').forEach(function(row) {
+        if (row.style.display !== 'none') {
+            var cb = row.querySelector('.student-check');
+            if (cb) cb.checked = source.checked;
+        }
     });
 }
 
 function printSelectedReports() {
     var selectedIds = [];
-    document.querySelectorAll('.student-check:checked').forEach(function(cb) {
-        if (selectedIds.indexOf(cb.value) === -1) selectedIds.push(cb.value);
+    document.querySelectorAll('.student-row').forEach(function(row) {
+        if (row.style.display !== 'none') {
+            var cb = row.querySelector('.student-check:checked');
+            if (cb && selectedIds.indexOf(cb.value) === -1) selectedIds.push(cb.value);
+        }
     });
     if (selectedIds.length === 0) {
         alert('Please select at least one learner first.');

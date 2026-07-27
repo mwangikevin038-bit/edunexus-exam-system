@@ -78,7 +78,8 @@ def results_list(request):
     Workspace-aware: uses Primary grades/template when in Primary workspace.
     """
     is_admin_view = user_has_main_school_admin_override(request.user)
-    class_teacher_scope = get_class_teacher_scope(get_teacher_for_user(request.user))
+    teacher = get_teacher_for_user(request.user)
+    class_teacher_scope = get_class_teacher_scope(teacher)
 
     school = get_request_school(request)
     if not school:
@@ -90,13 +91,34 @@ def results_list(request):
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
 
+    # ── Sub-section access control ──────────────────────────────────────
+    # Determine what sub-sections this user is allowed to see.
+    # Admins/both-access: can switch freely.  Section-scoped teachers: locked.
+    teacher_sub_section = None
+    if is_admin_view:
+        can_switch_sub = True
+    elif teacher and teacher.school_section == 'PRIMARY' and teacher.sub_section:
+        can_switch_sub = False
+        teacher_sub_section = teacher.sub_section  # 'LOWER' or 'UPPER'
+    elif teacher and teacher.school_section == 'BOTH':
+        can_switch_sub = True
+    elif is_lower_primary:
+        can_switch_sub = False
+        teacher_sub_section = 'LOWER'
+    else:
+        can_switch_sub = True
+
     active_sub = request.GET.get('sub', '').strip().upper()
     if is_lower_primary:
         active_sub = 'LOWER'
-    elif is_primary and active_sub not in ('LOWER', 'UPPER'):
-        active_sub = request.session.get('active_sub', 'UPPER')
-    if is_primary and active_sub not in ('LOWER', 'UPPER'):
-        active_sub = 'UPPER'
+    elif is_primary:
+        # Enforce teacher's sub-section lock
+        if not can_switch_sub and teacher_sub_section:
+            active_sub = teacher_sub_section
+        elif active_sub not in ('LOWER', 'UPPER'):
+            active_sub = request.session.get('active_sub', 'UPPER')
+        if active_sub not in ('LOWER', 'UPPER'):
+            active_sub = 'UPPER'
     if is_primary:
         request.session['active_sub'] = active_sub
         request.session.modified = True
@@ -297,6 +319,7 @@ def results_list(request):
         'streams':         get_streams_for_school(school, section),
         'section':         section,
         'active_sub':      active_sub,
+        'can_switch_sub':  can_switch_sub,
     })
 
 
@@ -316,13 +339,31 @@ def report_card_select(request):
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
 
+    # ── Sub-section access control ──────────────────────────────────────
+    teacher_sub_section = None
+    if is_admin_view:
+        can_switch_sub = True
+    elif teacher and teacher.school_section == 'PRIMARY' and teacher.sub_section:
+        can_switch_sub = False
+        teacher_sub_section = teacher.sub_section
+    elif teacher and teacher.school_section == 'BOTH':
+        can_switch_sub = True
+    elif is_lower_primary:
+        can_switch_sub = False
+        teacher_sub_section = 'LOWER'
+    else:
+        can_switch_sub = True
+
     active_sub = request.GET.get('sub', '').strip().upper()
     if is_lower_primary:
         active_sub = 'LOWER'
-    elif is_primary and active_sub not in ('LOWER', 'UPPER'):
-        active_sub = request.session.get('active_sub', 'UPPER')
-    if is_primary and active_sub not in ('LOWER', 'UPPER'):
-        active_sub = 'UPPER'
+    elif is_primary:
+        if not can_switch_sub and teacher_sub_section:
+            active_sub = teacher_sub_section
+        elif active_sub not in ('LOWER', 'UPPER'):
+            active_sub = request.session.get('active_sub', 'UPPER')
+        if active_sub not in ('LOWER', 'UPPER'):
+            active_sub = 'UPPER'
     if is_primary:
         request.session['active_sub'] = active_sub
         request.session.modified = True
@@ -400,6 +441,7 @@ def report_card_select(request):
         'class_teacher_scope': class_teacher_scope,
         'section':            section,
         'active_sub':         active_sub,
+        'can_switch_sub':     can_switch_sub,
         'section_accent':     '#B45309' if (is_primary and active_sub == 'LOWER') else ('#00674F' if is_primary else '#305CDE'),
     }
     if is_primary:
@@ -411,8 +453,16 @@ def report_card_select(request):
     return render(request, template, context_data)
 
 
+_grading_config_cache = {}  # (school_id, section, sub_section) -> GradingConfig or None
+
+
 def _grading_config_for(school, section, sub_section):
-    """Fetch the GradingConfig for a section/sub_section, falling back gracefully."""
+    """Fetch the GradingConfig for a section/sub_section, with per-request caching."""
+    if not school:
+        return None
+    key = (school.pk, section, sub_section)
+    if key in _grading_config_cache:
+        return _grading_config_cache[key]
     config = GradingConfig.all_objects.filter(
         school=school, school_section=section, sub_section=sub_section,
     ).first()
@@ -424,6 +474,7 @@ def _grading_config_for(school, section, sub_section):
         config = GradingConfig.all_objects.filter(
             school=school, school_section='LOWER_PRIMARY',
         ).first()
+    _grading_config_cache[key] = config
     return config
 
 
@@ -713,7 +764,7 @@ def bulk_report_cards(request):
     assessment    = request.GET.get('assessment', 'opener')
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
 
-    selected_students_base = Student.objects.filter(id__in=student_ids, school=school)
+    selected_students_base = Student.all_objects.filter(id__in=student_ids, school=school)
     sample = selected_students_base.first()
     if sample and not user_can_access_class_stream(request.user, sample.class_name, sample.stream, require_class_teacher=True):
         messages.error(request, "You are not allowed to print bulk report cards for this class stream.")
@@ -803,7 +854,7 @@ def bulk_report_cards(request):
         for a in SubjectAssignment.all_objects.filter(
             school=school,
             class_name=sample.class_name, stream=sample.stream
-        ).select_related('teacher_profile__user')
+        ).select_related('teacher_profile__user', 'subject')
     }
 
     # Class teacher name for this class/stream — determined by assigned_task field

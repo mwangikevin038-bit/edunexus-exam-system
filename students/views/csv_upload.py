@@ -1,14 +1,12 @@
 """
 Premium CSV student onboarding views.
 
-Handles CSV file upload via a wizard UI, dispatches processing to
-a Celery background worker (or runs synchronously), and provides
-a polling fallback endpoint for upload progress tracking.
+Dispatches processing to a Celery worker via Redis.
+Progress is tracked purely through Redis cache.
 """
 
 import uuid as _uuid
 import json
-import threading
 import logging
 
 from django.contrib.auth.decorators import login_required
@@ -20,10 +18,6 @@ from django.views.decorators.http import require_POST
 from ..security import get_request_school, get_request_school_section, school_admin_required
 
 logger = logging.getLogger("students.csv_upload")
-
-# In-memory store for sync processing results (fallback when Celery/WS unavailable)
-_upload_results = {}
-_upload_lock = threading.Lock()
 
 
 def _json_safe_view(view_func):
@@ -37,19 +31,11 @@ def _json_safe_view(view_func):
     return wrapper
 
 
-# ==============================================================================
-# premium_csv_upload_page
-# ==============================================================================
-
 @login_required(login_url='login')
 @school_admin_required
 def premium_csv_upload_page(request):
     return render(request, 'students/premium_csv_upload.html')
 
-
-# ==============================================================================
-# csv_upload_api
-# ==============================================================================
 
 @csrf_exempt
 @_json_safe_view
@@ -71,10 +57,6 @@ def csv_upload_api(request):
     if len(rows) > 10000:
         return JsonResponse({"status": "error", "error": "Maximum 10,000 rows per upload."}, status=400)
 
-    # ── SECTION GUARD: pre-dispatch strict validation ─────────────────────
-    # When admin is in PRIMARY workspace, accept BOTH LOWER (Grades 1-3)
-    # and UPPER (Grades 4-6) — they're the same institution, two sub-sections.
-    # HARD-CODED to avoid any stale .pyc cache issues.
     PRIMARY_ALL = {'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'}
     JSS_ALL = {'Grade 7', 'Grade 8', 'Grade 9'}
     LOWER_PRIMARY_ONLY = {'Grade 1', 'Grade 2', 'Grade 3'}
@@ -95,7 +77,6 @@ def csv_upload_api(request):
             "error": f"Unknown workspace section {section!r}. Pick a valid workspace before uploading.",
         }, status=400)
 
-    # Case-insensitive check
     allowed_lower = {a.lower() for a in allowed}
     offending = set()
     for row in rows:
@@ -106,7 +87,6 @@ def csv_upload_api(request):
             offending.add(cls)
 
     if offending:
-        # Build the same error format the user is used to
         sample_errors = [
             f"Row {i+2}: class '{r.get('class_name','')}' does not belong to workspace '{section}'. Allowed: {sorted(allowed)}"
             for i, r in enumerate(rows[:20])
@@ -123,29 +103,44 @@ def csv_upload_api(request):
 
     upload_id = _uuid.uuid4().hex
 
+    DB_SECTION_MAP = {
+        'LOWER_PRIMARY': 'PRIMARY',
+        'PRIMARY': 'PRIMARY',
+        'JSS': 'JSS',
+    }
+    db_section = DB_SECTION_MAP.get(section, section)
+
+    # Write initial progress to Redis so the polling endpoint can read it
+    from django.core.cache import caches
+    csv_cache = caches["csv_upload"]
+    csv_cache.set(f"csv_progress_{upload_id}", {
+        "status": "processing",
+        "processed": 0, "total": len(rows),
+        "created": 0, "updated": 0, "skipped": 0,
+        "errors": [],
+        "message": "Queued for processing...",
+    }, timeout=600)
+
     from ..tasks import process_csv_upload as celery_task
-    from ..csv_tasks import run_csv_upload_sync
     try:
-        celery_task.delay(upload_id, school.pk, rows, section)
-    except Exception as celery_err:
-        logger.warning("Celery unavailable, processing synchronously: %s", celery_err)
-
-        def _run_sync():
-            result = run_csv_upload_sync(upload_id, school.pk, rows, section)
-            with _upload_lock:
-                _upload_results[upload_id] = result
-
-        thread = threading.Thread(target=_run_sync, daemon=True)
-        thread.start()
-
-    with _upload_lock:
-        _upload_results[upload_id] = {
-            "status": "processing",
+        celery_task.apply_async(
+            args=[upload_id, school.pk, rows, db_section],
+            queue='csv_upload',
+        )
+    except Exception as e:
+        logger.exception("Celery dispatch failed: %s", e)
+        csv_cache.set(f"csv_result_{upload_id}", {
+            "status": "error",
             "processed": 0, "total": len(rows),
-            "created": 0, "updated": 0, "skipped": 0,
-            "errors": [],
-            "message": "Processing in background thread...",
-        }
+            "created": 0, "updated": 0, "skipped": len(rows),
+            "errors": [f"Could not start background worker: {e}"],
+            "message": f"Background worker unavailable: {e}",
+        }, timeout=600)
+        csv_cache.delete(f"csv_progress_{upload_id}")
+        return JsonResponse({
+            "status": "error",
+            "error": f"Could not start background worker. Ensure Celery is running. Error: {e}",
+        }, status=503)
 
     return JsonResponse({
         "status": "ok",
@@ -155,10 +150,6 @@ def csv_upload_api(request):
     })
 
 
-# ==============================================================================
-# csv_upload_progress
-# ==============================================================================
-
 @csrf_exempt
 @_json_safe_view
 def csv_upload_progress(request):
@@ -166,30 +157,23 @@ def csv_upload_progress(request):
     if not upload_id:
         return JsonResponse({"status": "error", "error": "Missing upload_id"}, status=400)
 
-    # Check the csv_upload cache (written by tasks.py)
-    try:
-        from django.core.cache import caches
-        csv_cache = caches["csv_upload"]
-        result = csv_cache.get(f"csv_result_{upload_id}")
-        if result:
-            return JsonResponse(result)
-        progress = csv_cache.get(f"csv_progress_{upload_id}")
-        if progress:
-            return JsonResponse(progress)
-    except Exception:
-        pass
+    from django.core.cache import caches
+    csv_cache = caches["csv_upload"]
 
-    # Fallback to in-memory results (sync thread)
-    with _upload_lock:
-        result = _upload_results.get(upload_id)
-
+    # Check for completed result first
+    result = csv_cache.get(f"csv_result_{upload_id}")
     if result:
         return JsonResponse(result)
 
+    # Check for in-progress updates
+    progress = csv_cache.get(f"csv_progress_{upload_id}")
+    if progress:
+        return JsonResponse(progress)
+
     return JsonResponse({
-        "status": "processing",
+        "status": "error",
         "processed": 0, "total": 0,
         "created": 0, "updated": 0, "skipped": 0,
-        "errors": [],
-        "message": "Waiting for progress data...",
+        "errors": ["Upload ID not found. It may have expired."],
+        "message": "No progress data found for this upload.",
     })

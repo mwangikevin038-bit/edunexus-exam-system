@@ -252,7 +252,10 @@ def select_exam(request):
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
 
-            maximum_marks = current_maximum_marks
+            try:
+                maximum_marks = int(request.POST.get('maximum_marks', current_maximum_marks))
+            except (ValueError, TypeError):
+                maximum_marks = current_maximum_marks
 
             missing_students = []
             saved_count = 0
@@ -930,6 +933,16 @@ def review_stream_submission(request):
             target_submission.admin_note = admin_note
             target_submission.reviewed_at = timezone.now()
             target_submission.save()
+
+            # Unlock the assessment so the teacher can edit the returned sheet
+            AssessmentLock.objects.filter(
+                school=school,
+                year=exam.year,
+                term=exam.term,
+                grade=class_name,
+                exam_type=exam.name,
+            ).update(is_locked=False)
+
             messages.success(
                 request,
                 f"{target_row['subject_name']} has been returned to {target_row['teacher_name']} without affecting the other subjects."
@@ -941,6 +954,16 @@ def review_stream_submission(request):
                 submission.admin_note = admin_note
                 submission.reviewed_at = timezone.now()
                 submission.save()
+
+            # Unlock the assessment so teachers can edit returned sheets
+            AssessmentLock.objects.filter(
+                school=school,
+                year=exam.year,
+                term=exam.term,
+                grade=class_name,
+                exam_type=exam.name,
+            ).update(is_locked=False)
+
             messages.success(request, f"{class_name} {stream} has been returned to teachers for correction.")
 
         elif action_type == "approve_stream":
@@ -1144,6 +1167,15 @@ def review_submission(request):
             submission.admin_note = admin_note
             submission.reviewed_at = timezone.now()
             submission.save()
+
+            # Unlock the assessment so the teacher can edit the returned sheet
+            AssessmentLock.objects.filter(
+                school=school,
+                year=exam.year,
+                term=exam.term,
+                grade=assignment.class_name,
+                exam_type=exam.name,
+            ).update(is_locked=False)
 
             messages.success(request, "Assessment sheet has been returned to the teacher for correction.")
 
@@ -1418,9 +1450,9 @@ LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
 def _get_primary_performance(percentage, school=None, section=None, sub_section=None):
     """Return (descriptor, points) for a primary percentage score.
-    Uses the school's GradingConfig from the DB. NO hardcoded fallback."""
+    Uses cached GradingConfig lookups to avoid repeated DB hits."""
     import logging
-    from ..models import GradingConfig
+    from .helpers import _get_grading_config
     from ..school_scope import get_current_school, get_current_school_section
 
     if not school:
@@ -1429,23 +1461,14 @@ def _get_primary_performance(percentage, school=None, section=None, sub_section=
         section = get_current_school_section()
 
     if school and section:
-        # Use the same 2-step lookup as _get_grading_scale_json()
         if section == 'LOWER_PRIMARY' or (section == 'PRIMARY' and sub_section == 'LOWER'):
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='PRIMARY', sub_section='LOWER'
-            ).first()
+            config = _get_grading_config(school, 'PRIMARY', 'LOWER')
             if not config:
-                config = GradingConfig.all_objects.filter(
-                    school=school, school_section='LOWER_PRIMARY', sub_section__isnull=True
-                ).first()
+                config = _get_grading_config(school, 'LOWER_PRIMARY', None)
         elif section == 'PRIMARY':
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='PRIMARY', sub_section='UPPER'
-            ).first()
+            config = _get_grading_config(school, 'PRIMARY', 'UPPER')
         else:
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='JSS', sub_section__isnull=True
-            ).first()
+            config = _get_grading_config(school, 'JSS', None)
 
         if config and config.subject_scale:
             return config.get_subject_level(percentage)
@@ -1622,7 +1645,10 @@ def select_exam_primary(request):
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
 
-            maximum_marks = current_maximum_marks
+            try:
+                maximum_marks = int(request.POST.get('maximum_marks', current_maximum_marks))
+            except (ValueError, TypeError):
+                maximum_marks = current_maximum_marks
 
             missing_students = []
             saved_count = 0
@@ -2085,6 +2111,93 @@ def save_mark(request):
             ).delete()
 
     return JsonResponse({'ok': True, 'saved': True})
+
+
+@login_required(login_url='login')
+@tenant_read_only_required
+def update_maximum_marks(request):
+    """
+    AJAX endpoint: recalculate ALL existing marks for a subject/exam when
+    the teacher changes the maximum_marks field.
+    POST: assignment_id, exam_id, new_maximum_marks
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    if not user_can_mutate_marks(request.user):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    try:
+        teacher = get_school_object_or_403(Teacher, request, user=request.user)
+    except (PermissionDenied, Http404):
+        return JsonResponse({'error': 'No teacher profile'}, status=403)
+
+    assignment_id = request.POST.get('assignment_id')
+    exam_id = request.POST.get('exam_id')
+    new_maximum = request.POST.get('new_maximum_marks')
+
+    if not all([assignment_id, exam_id, new_maximum]):
+        return JsonResponse({'error': 'Missing parameters'}, status=400)
+
+    try:
+        new_maximum = int(new_maximum)
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Invalid maximum marks'}, status=400)
+
+    if new_maximum < 1 or new_maximum > 500:
+        return JsonResponse({'error': 'Maximum marks must be between 1 and 500'}, status=400)
+
+    school = get_request_school(request)
+
+    try:
+        assignment = SubjectAssignment.objects.get(id=assignment_id, school=school, teacher_profile=teacher)
+    except SubjectAssignment.DoesNotExist:
+        return JsonResponse({'error': 'Assignment not found'}, status=404)
+
+    try:
+        exam = Exam.objects.get(id=exam_id, school=school, status='active')
+    except Exam.DoesNotExist:
+        return JsonResponse({'error': 'Exam not found'}, status=404)
+
+    submission = MarkSubmission.objects.filter(
+        school=school, teacher=teacher, subject=assignment.subject,
+        class_name=assignment.class_name, stream=assignment.stream,
+        exam_name=exam.name, term=exam.term, year=exam.year,
+        school_section=assignment.school_section,
+    ).first()
+
+    if submission and submission.status in ('submitted', 'approved', 'published'):
+        return JsonResponse({'error': 'Sheet is submitted — cannot change total marks now.'}, status=403)
+
+    _mark_filter = dict(
+        school=school,
+        subject=assignment.subject,
+        term=exam.term,
+        exam_type=exam.name,
+        year=exam.year,
+        school_section=assignment.school_section,
+    )
+    if assignment.sub_section:
+        _mark_filter['sub_section'] = assignment.sub_section
+
+    marks = Mark.all_objects.filter(**_mark_filter)
+    updated = 0
+    for mark in marks:
+        if mark.is_absent:
+            mark.maximum_marks = new_maximum
+            mark.save(update_fields=['maximum_marks'])
+            updated += 1
+            continue
+        raw = mark.raw_score if mark.raw_score is not None else mark.score
+        if raw is not None:
+            new_pct = round((raw / new_maximum) * 100)
+            mark.maximum_marks = new_maximum
+            mark.score = new_pct
+            mark.raw_score = raw
+            mark.save(update_fields=['maximum_marks', 'score', 'raw_score'])
+            updated += 1
+
+    return JsonResponse({'ok': True, 'updated': updated, 'new_maximum': new_maximum})
 
 
 @login_required(login_url='login')

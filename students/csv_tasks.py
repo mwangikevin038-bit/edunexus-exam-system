@@ -3,19 +3,86 @@ Synchronous fallback for CSV student onboarding.
 
 Runs when Celery/Redis is unavailable. Uses all_objects (bypassing
 multi-tenant scoping) since there is no request context in background threads.
+
+Progress is stored in an in-memory dict (_progress_store) so the HTTP
+polling endpoint works WITHOUT Redis or WebSocket. Redis/WebSocket are
+used as best-effort extras when available.
 """
 
 import logging
+import threading
 
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
-from django.core.cache import caches
 from django.db import transaction
 
 logger = logging.getLogger("students.csv_tasks")
 
 CHUNK_SIZE = 100
-csv_cache = caches["csv_upload"]
+
+# ── In-memory progress store (sync-fallback only) ──────────────────────────
+# This dict is module-level so csv_upload.py can import and read it directly
+# via HTTP polling — no Redis or WebSocket needed.
+_progress_store = {}
+_progress_lock = threading.Lock()
+
+
+def get_sync_progress(upload_id):
+    """Read progress from the in-memory store. Called by csv_upload_progress."""
+    with _progress_lock:
+        return _progress_store.get(upload_id)
+
+
+def _set_sync_progress(upload_id, data):
+    """Write progress to the in-memory store."""
+    with _progress_lock:
+        _progress_store[upload_id] = data
+
+
+def _clear_sync_progress(upload_id):
+    """Remove progress entry after completion."""
+    with _progress_lock:
+        _progress_store.pop(upload_id, None)
+
+
+# ── Best-effort Redis + WebSocket push (non-blocking) ──────────────────────
+def _try_redis_and_ws(upload_id, data, is_complete=False):
+    """Best-effort push to Redis cache and WebSocket. Never crashes."""
+    try:
+        from django.core.cache import caches
+        csv_cache = caches["csv_upload"]
+        csv_cache.set(
+            f"csv_result_{upload_id}" if is_complete else f"csv_progress_{upload_id}",
+            data,
+            timeout=600,
+        )
+        if is_complete:
+            csv_cache.delete(f"csv_progress_{upload_id}")
+    except Exception:
+        pass
+
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        channel_layer = get_channel_layer()
+        if channel_layer is not None:
+            event_type = "upload_complete" if is_complete else "upload_progress"
+            async_to_sync(channel_layer.group_send)(
+                f"upload_{upload_id}",
+                {"type": event_type, "data": data},
+            )
+    except Exception:
+        pass
+
+
+def _send_progress(upload_id, data):
+    """Push progress to in-memory store (primary) and Redis/WS (best-effort)."""
+    _set_sync_progress(upload_id, data)
+    _try_redis_and_ws(upload_id, data, is_complete=False)
+
+
+def _send_complete(upload_id, data):
+    """Push completion to in-memory store (primary) and Redis/WS (best-effort)."""
+    _set_sync_progress(upload_id, data)
+    _try_redis_and_ws(upload_id, data, is_complete=True)
 
 
 def _derive_sub_section(class_name):
@@ -25,35 +92,6 @@ def _derive_sub_section(class_name):
     if class_name in ('Grade 4', 'Grade 5', 'Grade 6'):
         return 'UPPER'
     return None
-
-
-def _send_progress(upload_id, data):
-    """Push a progress event to the cache and WebSocket group."""
-    csv_cache.set(f"csv_progress_{upload_id}", data, timeout=600)
-    channel_layer = get_channel_layer()
-    if channel_layer is not None:
-        try:
-            async_to_sync(channel_layer.group_send)(
-                f"upload_{upload_id}",
-                {"type": "upload_progress", "data": data},
-            )
-        except Exception:
-            pass
-
-
-def _send_complete(upload_id, data):
-    """Push the final completion event to the cache and WebSocket group."""
-    csv_cache.set(f"csv_result_{upload_id}", data, timeout=600)
-    csv_cache.delete(f"csv_progress_{upload_id}")
-    channel_layer = get_channel_layer()
-    if channel_layer is not None:
-        try:
-            async_to_sync(channel_layer.group_send)(
-                f"upload_{upload_id}",
-                {"type": "upload_complete", "data": data},
-            )
-        except Exception:
-            pass
 
 
 def run_csv_upload_sync(upload_id, school_id, rows_json, section='JSS'):
@@ -374,24 +412,7 @@ def _process_chunk(school, chunk, offset, section,
     return created, updated, skipped, errors
 
 
-def _next_admission_number(school, school_section=None, sub_section=None):
-    """Get the next available admission number for a school.
-
-    Scoped by school_section so PRIMARY and JSS each have their own
-    independent number series. For PRIMARY, always counts BOTH LOWER
-    and UPPER sub-sections since they share one number series.
-    """
-    from students.models import Student
-
-    qs = Student.all_objects.filter(school=school, admission_no__regex=r'^[0-9]+$')
-    if school_section is not None:
-        qs = qs.filter(school_section=school_section)
-    if school_section == 'JSS':
-        qs = qs.filter(sub_section__isnull=True)
-    elif school_section in ('PRIMARY', 'LOWER_PRIMARY'):
-        qs = qs.filter(sub_section__in=['LOWER', 'UPPER', None, ''])
-
-    last = qs.order_by("-admission_no").values_list("admission_no", flat=True).first()
-    if last and last.isdigit():
-        return int(last) + 1
-    return qs.count() + 1
+def _next_admission_number(school, school_section=None):
+    """DEPRECATED: Use students.tasks._next_admission_number instead."""
+    from students.tasks import _next_admission_number as _canonical
+    return _canonical(school, school_section=school_section)
