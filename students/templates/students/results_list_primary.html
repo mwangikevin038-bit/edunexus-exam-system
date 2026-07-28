@@ -1634,9 +1634,13 @@
         }
         .table-analysis { border: none !important; }
         .table-analysis tbody tr:last-child td { border-bottom: none !important; }
-        .summary-table tr, .table-analysis tr {
+        .summary-table tr {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+        }
+        .table-analysis tr {
+            page-break-inside: auto !important;
+            break-inside: auto !important;
         }
         .analysis-page-container h3 {
             font-family: 'Times New Roman', Times, serif !important;
