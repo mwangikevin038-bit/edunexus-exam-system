@@ -189,7 +189,17 @@ def _generate_pdf(
                             if wait_for_charts:
                                 try:
                                     pg.wait_for_function("() => typeof Chart !== 'undefined'", timeout=15000)
-                                    pg.wait_for_timeout(2500)
+                                    pg.wait_for_function("""
+                                        () => {
+                                            const canvases = document.querySelectorAll('canvas[id^="chart-"]');
+                                            if (canvases.length === 0) return true;
+                                            return Array.from(canvases).every(c => {
+                                                try { const ctx = c.getContext('2d'); return ctx && c.width > 0 && c.height > 0; }
+                                                catch(e) { return false; }
+                                            });
+                                        }
+                                    """, timeout=20000)
+                                    pg.wait_for_timeout(500)
                                 except Exception:
                                     pass
 
@@ -214,6 +224,7 @@ def _generate_pdf(
                                 print_background=True,
                                 display_header_footer=False,
                                 margin=margin,
+                                prefer_css_page_size=True,
                             )
                         finally:
                             browser.close()
@@ -255,7 +266,7 @@ def _generate_pdf(
 
 
 def _embed_logo_base64(template_html, request):
-    """Replace the school logo <img> src with a base64 data URI for PDF reliability."""
+    """Replace ALL school logo <img> src with a base64 data URI for PDF reliability."""
     try:
         school_logo = getattr(getattr(request, "school", None), "logo", None)
         if school_logo:
@@ -263,11 +274,8 @@ def _embed_logo_base64(template_html, request):
             logo_type = mimetypes.guess_type(logo_url)[0] or "image/png"
             with school_logo.open("rb") as logo_file:
                 logo_data = base64.b64encode(logo_file.read()).decode("ascii")
-            template_html = template_html.replace(
-                f'src="{logo_url}"',
-                f'src="data:{logo_type};base64,{logo_data}"',
-                1,
-            )
+            data_uri = f'data:{logo_type};base64,{logo_data}'
+            template_html = template_html.replace(f'src="{logo_url}"', f'src="{data_uri}"')
     except Exception:
         logger.warning("Failed to embed school logo as base64", exc_info=True)
     return template_html
@@ -1116,9 +1124,11 @@ def download_individual_report_pdf(request, student_id):
 <style id="pdf-override">
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .rv-shell, .rv-header, .rv-hero, .rv-actions, .rv-scroll,
-  .sidebar, .sidebar-overlay, nav, header, .mobile-topbar, .hamburger-btn,
+  .sidebar, .sidebar-overlay, .sidebar-header, .sidebar-footer, .sidebar-nav, .sidebar-user, nav, header, .mobile-topbar, .hamburger-btn,
   .global-loader-overlay, .bottom-nav, .d-print-none, .topbar,
-  .btn-print, .btn-print-action { display: none !important; visibility: hidden !important; height: 0 !important; overflow: hidden !important; }
+  .btn-print, .btn-print-action,
+  .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header, .mobile-menu-backdrop,
+  .system-footer {{ display: none !important; visibility: hidden !important; height: 0 !important; overflow: hidden !important; }}
   html, body { margin: 0 !important; padding: 0 !important; background: white !important; overflow: visible !important; }
   .container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }
   #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
@@ -1178,7 +1188,7 @@ def download_individual_report_pdf(request, student_id):
     try:
         pdf_bytes = _generate_pdf(
             patched_html,
-            viewport={"width": 1200, "height": 900},
+            viewport={"width": 794, "height": 1123},
             landscape=False,
             margin={"top": "0.5in", "right": "0.3in", "bottom": "0.5in", "left": "0.3in"},
             wait_for_charts=True,
@@ -1501,12 +1511,12 @@ def download_bulk_report_pdf(request):
     try:
         pdf_bytes = _generate_pdf(
             patched_html,
-            viewport={"width": 900, "height": 1200},
+            viewport={"width": 794, "height": 1123},
             landscape=False,
             margin={"top": "0.12in", "right": "0.35in", "bottom": "0.4in", "left": "0.35in"},
             wait_for_charts=True,
             timeout=300,
-            retries=1,
+            retries=2,
         )
     except Exception as e:
         logger.error('Bulk report PDF failed: %s\n%s', str(e), traceback.format_exc())

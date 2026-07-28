@@ -287,6 +287,7 @@
     .rc-label.admno { color: var(--rc-blue); }
     .rc-label.grade { color: var(--rc-green); }
     .rc-chart-block { border: 1px solid var(--section-accent, var(--rc-border)); border-radius: 8px; padding: 8px; }
+    .rc-chart-block canvas { width: 280px !important; height: 130px !important; }
     .rc-chart-title { font-size: 10pt; font-weight: 700; color: var(--rc-muted); margin-bottom: 4px; text-align: center; }
 
     /* Stat boxes */
@@ -416,7 +417,7 @@
        PRINT — matches desktop screen exactly
        ═══════════════════════════════════════════════════════════ */
     @media print {
-        .rv-shell, .sidebar, .navbar, .left-menu, .control-panel, .btn-print, .green-header-box, nav, .premium-header-banner, .bottom-nav, .mobile-topbar, .hamburger-btn { display: none !important; }
+        .rv-shell, .sidebar, .sidebar-overlay, .sidebar-header, .sidebar-footer, .sidebar-nav, .sidebar-user, .navbar, .left-menu, .control-panel, .btn-print, .green-header-box, nav, .premium-header-banner, .bottom-nav, .mobile-topbar, .hamburger-btn, .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header, .mobile-menu-backdrop, .system-footer { display: none !important; }
         html, body { font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; background: white !important; margin: 0 !important; padding: 0 !important; }
         .container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }
         .premium-header-banner { display: none !important; height: 0 !important; max-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; border: none !important; }
@@ -542,7 +543,7 @@
                             </div>
                             <div class="rc-chart-block">
                                 <div class="rc-chart-title">Subject Performance – Student vs Class</div>
-                                <canvas id="chart-m-{{ forloop.counter }}" width="280" height="130"></canvas>
+                                <canvas id="chart-m-{{ forloop.counter }}" width="560" height="260"></canvas>
                                 <script type="application/json" id="chart-data-m-{{ forloop.counter }}">{{ student_data.chart_data_json|safe }}</script>
                             </div>
                         </div>
@@ -672,7 +673,7 @@
                     </div>
                     <div class="rc-chart-block">
                         <div class="rc-chart-title">Subject Performance – Student vs Class</div>
-                        <canvas id="chart-d-{{ forloop.counter }}" width="280" height="130"></canvas>
+                        <canvas id="chart-d-{{ forloop.counter }}" width="560" height="260"></canvas>
                         <script type="application/json" id="chart-data-d-{{ forloop.counter }}">{{ student_data.chart_data_json|safe }}</script>
                     </div>
                 </div>
@@ -772,6 +773,7 @@
                 },
                 options: {
                     responsive: false,
+                    devicePixelRatio: 2,
                     plugins: { legend: { display: true, position: 'top', labels: { font: { size: 9 } } } },
                     scales: {
                         y: { beginAtZero: true, max: 100, ticks: { font: { size: 8 } } },
