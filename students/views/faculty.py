@@ -304,7 +304,7 @@ def manage_faculty_matrix(request):
             if User.objects.filter(username=login_username).exists():
                 messages.error(request, f"A user with login '{login_username}' is already registered.")
                 return redirect('manage_faculty_matrix')
-            if Teacher.objects.filter(school=school, tsc_number=tsc_number).exists():
+            if Teacher.all_objects.filter(school=school, tsc_number=tsc_number).exists():
                 messages.error(request, f"A teacher with TSC Number '{tsc_number}' already exists.")
                 return redirect('manage_faculty_matrix')
 
@@ -382,7 +382,7 @@ def manage_faculty_matrix(request):
             school = get_request_school(request)
             try:
                 with transaction.atomic():
-                    teacher      = Teacher.objects.get(id=request.POST.get('teacher_id'), school=school)
+                    teacher      = Teacher.all_objects.get(id=request.POST.get('teacher_id'), school=school)
                     full_name    = request.POST.get('full_name', '').strip()
                     phone_number = request.POST.get('phone_number', '').strip()
                     email        = request.POST.get('email', '').strip()
@@ -400,7 +400,7 @@ def manage_faculty_matrix(request):
                         messages.error(request, "TSC number must be digits only.")
                         return redirect('manage_faculty_matrix')
                     # TSC must be unique within the school
-                    if Teacher.objects.filter(school=school, tsc_number=new_tsc).exclude(pk=teacher.pk).exists():
+                    if Teacher.all_objects.filter(school=school, tsc_number=new_tsc).exclude(pk=teacher.pk).exists():
                         messages.error(request,
                             f"Another teacher already has TSC Number '{new_tsc}'.")
                         return redirect('manage_faculty_matrix')
@@ -443,7 +443,7 @@ def manage_faculty_matrix(request):
             school = get_request_school(request)
             try:
                 with transaction.atomic():
-                    teacher = Teacher.objects.get(id=request.POST.get('teacher_id'), school=school)
+                    teacher = Teacher.all_objects.get(id=request.POST.get('teacher_id'), school=school)
                     name    = teacher.get_full_title()
                     teacher.user.delete()   # CASCADE removes Teacher record too
                 messages.success(request, f"'{name}' and their login account were deleted.")
