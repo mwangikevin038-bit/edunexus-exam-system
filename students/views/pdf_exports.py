@@ -12,6 +12,7 @@ import datetime
 import json
 import logging
 import mimetypes
+import os
 import sys
 import threading
 import time
@@ -177,6 +178,8 @@ def _generate_pdf(
                             pg = browser.new_page()
                             pg.set_viewport_size(viewport)
                             pg.emulate_media(media="print")
+                            # Log console errors for debugging
+                            pg.on("console", lambda msg: logger.warning("[pdf] console %s: %s", msg.type, msg.text) if msg.type == "error" else None)
                             pg.set_content(patched_html, wait_until="networkidle")
 
                             # Wait for web fonts to load
@@ -189,6 +192,18 @@ def _generate_pdf(
                             if wait_for_charts:
                                 try:
                                     pg.wait_for_function("() => typeof Chart !== 'undefined'", timeout=15000)
+                                except Exception:
+                                    # Chart.js may not have loaded from <script src> — inject directly from disk
+                                    try:
+                                        chart_js_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'js', 'chart.umd.min.js')
+                                        if os.path.exists(chart_js_path):
+                                            with open(chart_js_path, 'r', encoding='utf-8') as f:
+                                                chart_js_source = f.read()
+                                            pg.evaluate(chart_js_source)
+                                            pg.wait_for_function("() => typeof Chart !== 'undefined'", timeout=5000)
+                                    except Exception:
+                                        pass
+                                try:
                                     pg.wait_for_function("""
                                         () => {
                                             const canvases = document.querySelectorAll('canvas[id^="chart-"]');
