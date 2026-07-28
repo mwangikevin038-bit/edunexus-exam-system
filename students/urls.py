@@ -34,6 +34,7 @@ urlpatterns = [
     path('report/<int:student_id>/', views.individual_report, name='individual_report'),
     path('report/<int:student_id>/download-pdf/', views.download_individual_report_pdf, name='download_individual_report_pdf'),
     path('bulk-reports/', views.bulk_report_cards, name='bulk_report_cards'),
+    path('bulk-reports/download-pdf/', views.download_bulk_report_pdf, name='download_bulk_report_pdf'),
 
     # ── Comments ──────────────────────────────────────────────────────────
     path('manage-master-comments/', views.manage_master_comments, name='manage_master_comments'),

@@ -307,6 +307,14 @@ def get_learner_contexts_for_user(user):
 _teacher_user_cache = {}  # user_pk -> Teacher or None
 
 
+def clear_teacher_cache(user_pk=None):
+    """Invalidate the teacher cache. Call after updating a teacher profile."""
+    if user_pk is not None:
+        _teacher_user_cache.pop(user_pk, None)
+    else:
+        _teacher_user_cache.clear()
+
+
 def get_teacher_for_user(user):
     """Return the Teacher instance linked to the given user, or None.
     Cached per user_pk to avoid repeated DB hits in the same request."""
@@ -338,9 +346,12 @@ def get_class_teacher_scope(teacher):
     all_grades = Grade.all_objects.filter(school=school).values_list("name", flat=True)
     all_streams = Stream.all_objects.filter(school=school).values_list("name", flat=True)
 
+    # Use exact matching — "Class Teacher" + space + grade + space + stream
+    prefix = "Class Teacher "
+    remainder = task[len(prefix):] if task.startswith(prefix) else task
     for grade in all_grades:
         for stream in all_streams:
-            if grade in task and stream in task:
+            if remainder == f"{grade} {stream}":
                 return grade, stream
     return None
 

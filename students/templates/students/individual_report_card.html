@@ -497,12 +497,12 @@
     </div>
 
     <div class="rv-actions">
-        <button class="rv-btn rv-btn-ghost" onclick="window.print()">
+        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}&mode=inline" target="_blank" class="rv-btn rv-btn-ghost" style="text-decoration:none;text-align:center;">
             <i class="ph ph-printer"></i> Print
-        </button>
-        <button class="rv-btn rv-btn-green" onclick="downloadPDF()">
+        </a>
+        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="rv-btn rv-btn-green" style="text-decoration:none;text-align:center;">
             <i class="ph ph-file-pdf"></i> Download PDF
-        </button>
+        </a>
     </div>
 
     <div class="rv-scroll">
@@ -634,7 +634,7 @@
             </p>
         </div>
         <div style="background:#f0fdf4;border:1px solid #dcfce7;color:#166534;font-family:system-ui,-apple-system,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:8px 16px;border-radius:9999px;">Individual View</div>
-        <button onclick="downloadPDF()" class="btn-print" style="background:#111827;color:#fff;border:0;padding:10px 16px;border-radius:8px;font-weight:800;text-transform:uppercase;">Download PDF</button>
+        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="btn-print" style="background:#111827;color:#fff;border:0;padding:10px 16px;border-radius:8px;font-weight:800;text-transform:uppercase;text-decoration:none;">Download PDF</a>
     </div>
 
     <div id="reportCardsContainer">
@@ -752,7 +752,6 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -782,30 +781,5 @@
             });
         });
     });
-
-    async function downloadPDF() {
-        const btn = document.querySelector('.rv-btn-green');
-        const origHTML = btn ? btn.innerHTML : '';
-        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner"></i> Generating PDF...'; }
-        try {
-            var card = document.querySelector('.rv-card-scroll .report-card');
-            if (!card) card = document.querySelector('#reportCardsContainer .report-card');
-            if (!card) { alert('No report card found.'); return; }
-            var nameEl = card.querySelector('.rc-student-name');
-            var studentName = nameEl ? nameEl.textContent.trim().replace(/\s+/g, '_') : 'Report_Card';
-            await html2pdf().set({
-                margin: [0.3, 0, 0.3, 0],
-                filename: studentName + '_Report_Card.pdf',
-                image: { type: 'jpeg', quality: 0.95 },
-                html2canvas: { scale: 1.5, useCORS: true, scrollX: 0, scrollY: 0, logging: false },
-                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-            }).from(card).save();
-        } catch (e) {
-            console.error('PDF error:', e);
-            alert('Failed to generate PDF. Please try again.');
-        } finally {
-            if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
-        }
-    }
 </script>
 {% endblock %}

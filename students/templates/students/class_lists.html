@@ -952,6 +952,12 @@
                     <input class="lm-search" id="lmLearnerSearch" type="search"
                            placeholder="Search learner..." oninput="filterLmLearners()">
                 </div>
+
+                {# ── PDF Download ───────────────────────────── #}
+                <a href="{% url 'download_classlist_pdf' %}?context={{ selected_context_key|urlencode }}&view_mode={{ current_view_mode }}"
+                   class="lm-pdf-btn" style="display:block;text-align:center;padding:10px 16px;margin:8px 14px;background:#111827;color:#fff;border-radius:10px;font-weight:700;font-size:13px;text-decoration:none;">
+                    <i class="ph ph-file-pdf" style="margin-right:6px;"></i> Download PDF
+                </a>
             </header>
 
             <!-- SCROLLABLE BODY -->
@@ -1056,9 +1062,9 @@
             <div class="toolbar-inner">
                 <input id="learnerSearch" class="search-box" type="search" placeholder="Search learner by name or admission number..." onkeyup="filterLearners()">
                 <div class="toolbar-actions">
-                    <button class="btn-print" onclick="window.print()">
+                    <a class="btn-print" href="{% url 'download_classlist_pdf' %}?context={{ selected_context_key|urlencode }}&view_mode={{ current_view_mode }}&mode=inline" target="_blank">
                         <i class="bi bi-printer"></i> Print
-                    </button>
+                    </a>
                     <a class="btn-print btn-green"
                         href="{% url 'download_classlist_pdf' %}?context={{ selected_context_key|urlencode }}&view_mode={{ current_view_mode }}">
                         <i class="bi bi-download"></i> PDF
@@ -1151,5 +1157,4 @@ function filterLmLearners() {
     });
 }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 {% endblock %}

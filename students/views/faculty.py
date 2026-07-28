@@ -45,6 +45,7 @@ from ..forms import StudentEditForm
 from .helpers import (
     calculate_primary_plv,
     calculate_report_plv,
+    clear_teacher_cache,
     generate_default_password,
     get_class_teacher_scope,
     get_performance_level,
@@ -324,9 +325,12 @@ def manage_faculty_matrix(request):
                         school=school,
                         school_section=db_section,
                         sub_section=db_sub,
-                        assigned_task='Teacher', subjects_taught='', classes='',
+                        assigned_task=request.POST.get('assigned_task', 'Teacher'),
+                        subjects_taught='', classes='',
                         must_change_password=True,
                     )
+
+                clear_teacher_cache(new_user.pk)
 
                 # Send welcome email with credentials
                 try:
@@ -423,6 +427,7 @@ def manage_faculty_matrix(request):
                         teacher.assigned_task = request.POST.get('assigned_task', teacher.assigned_task)
                     teacher.save()
 
+                clear_teacher_cache(teacher.user_id)
                 messages.success(request, f"Demographics updated for {teacher.get_full_title()}.")
             except Teacher.DoesNotExist:
                 messages.error(request, "Teacher record not found.")
@@ -748,14 +753,16 @@ def manage_faculty_matrix(request):
         'BOTH':          'All Sections',
     }.get(section, section)
 
-    # Grade streams and reassign targets for PRIMARY must cover both sub-sections
+    # Grade streams: ALWAYS include all sections so edit modal can show
+    # the teacher's current assigned_task even if it's from a different section
+    lower_gs = _get_grade_streams(school, 'LOWER_PRIMARY')
+    upper_gs = _get_grade_streams(school, 'PRIMARY')
+    jss_gs = _get_grade_streams(school, 'JSS')
+    all_grade_streams = lower_gs + upper_gs + jss_gs
+
     if section == 'PRIMARY':
-        lower_gs = _get_grade_streams(school, 'LOWER_PRIMARY')
-        upper_gs = _get_grade_streams(school, 'PRIMARY')
-        all_grade_streams = lower_gs + upper_gs
         reassign_qs = Teacher.all_objects.filter(school=school, is_active=True, school_section__in=['PRIMARY', 'BOTH'])
     else:
-        all_grade_streams = _get_grade_streams(school, section)
         reassign_qs = section_target_qs(school, section)
 
     return render(request, 'students/manage_faculty.html', {

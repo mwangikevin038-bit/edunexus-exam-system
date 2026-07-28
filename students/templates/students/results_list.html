@@ -2,6 +2,9 @@
 {% load static %}
 
 {% block extra_head %}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="stylesheet" href="{% static 'css/results-mobile.css' %}">
 {% endblock %}
 
@@ -1695,15 +1698,12 @@
 
     /* ═══ FINAL @media print — MUST be last to override all mobile rules ═══ */
     @media print {
-        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        * { print-color-adjust: auto !important; -webkit-print-color-adjust: auto !important; }
         html { background: #ffffff !important; background-image: none !important; }
 
         /* JSS dual-view: hide mobile shell COMPLETELY, show desktop broadsheet */
         .rs-shell, .rs-shell *, .rs-shell *::before, .rs-shell *::after {
-            display: none !important; visibility: hidden !important; height: 0 !important;
-            overflow: hidden !important; position: fixed !important; top: -99999px !important;
-            left: -99999px !important; width: 0 !important; max-height: 0 !important;
-            margin: 0 !important; padding: 0 !important; border: none !important;
+            display: none !important;
         }
         .rd-desktop { display: block !important; visibility: visible !important; position: static !important; height: auto !important; overflow: visible !important; }
 
@@ -1812,13 +1812,11 @@
         }
         .table-analysis tbody tr td {
             background: #ffffff !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
         }
-        .table-analysis tbody tr td.tps-col  { background: #9AD725 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        .table-analysis tbody tr td.total-col { background: #9AD725 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        .table-analysis tbody tr td.plv-col  { background: #F4C400 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        .table-analysis tbody tr td.lv-col  { background: #EDF4FC !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .table-analysis tbody tr td.tps-col  { background: #9AD725 !important; color: #000 !important; }
+        .table-analysis tbody tr td.total-col { background: #9AD725 !important; color: #000 !important; }
+        .table-analysis tbody tr td.plv-col  { background: #F4C400 !important; color: #000 !important; }
+        .table-analysis tbody tr td.lv-col  { background: #EDF4FC !important; color: #305CDE !important; }
 
         /* Kill ALL backgrounds — force pure white everywhere */
         html, body, .app-shell, .app-content, .main-content {
@@ -2011,7 +2009,7 @@
         .summary-table colgroup col:nth-child(11) { width: 75px !important; }
         .summary-table colgroup col:nth-child(12) { width: 95px !important; }
         .summary-table th {
-            background-color: #B6B6B5 !important;
+            background-color: #B6B6B5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
             color: #000000 !important;
             font-weight: 800 !important;
             text-transform: uppercase !important;
@@ -2034,10 +2032,10 @@
         .summary-table td.sub-lbl { text-align: left !important; font-weight: 800 !important; padding-left: 10px !important; color: #000000 !important; }
         .summary-table td.teacher-col { text-align: left !important; font-weight: 600 !important; padding-left: 8px !important; color: #374151 !important; white-space: nowrap !important; }
         .mean-score-col { background-color: #ffffff !important; font-weight: 700 !important; color: var(--bs-charcoal) !important; }
-        .badge-ee { background-color: #dcfce7 !important; color: #166534 !important; font-weight: 700 !important; }
-        .badge-me { background-color: #fef9c3 !important; color: #854d0e !important; font-weight: 700 !important; }
-        .badge-ae { background-color: #ffedd5 !important; color: #9a3412 !important; font-weight: 700 !important; }
-        .badge-be { background-color: #fee2e2 !important; color: #991b1b !important; font-weight: 700 !important; }
+        .badge-ee { background-color: #dcfce7 !important; color: #166534 !important; font-weight: 700 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .badge-me { background-color: #fef9c3 !important; color: #854d0e !important; font-weight: 700 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .badge-ae { background-color: #ffedd5 !important; color: #9a3412 !important; font-weight: 700 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .badge-be { background-color: #fee2e2 !important; color: #991b1b !important; font-weight: 700 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         .mobile-summary-row, .mobile-subject-grid, .mobile-subject-chip, .expand-hint { display: none !important; }
         @page {
             size: A4 landscape;
@@ -2121,9 +2119,11 @@
     <!-- ===================== BROADSHEET VIEW ===================== -->
     {% if show_table %}
     <div class="d-print-none d-flex justify-content-end mb-3">
-        <button onclick="window.print()" class="btn-print-action">
+        <a href="{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}&mode=inline" 
+            target="_blank"
+            class="btn-print-action">
             <i class="bi bi-printer-fill me-2"></i> PRINT BROADSHEET
-        </button>
+        </a>
         <a href="{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}" 
             class="btn-print-action" 
             style="margin-left: 10px; text-decoration: none; display: inline-flex; align-items: center;">
@@ -2403,9 +2403,9 @@
 
             {# ── Actions ── #}
             <div class="rs-actions">
-                <button onclick="window.print()" class="rs-action-btn primary">
+                <a href="{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}&mode=inline" target="_blank" class="rs-action-btn primary">
                     <i class="ph ph-printer"></i> Print
-                </button>
+                </a>
                 <a href="{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}" class="rs-action-btn secondary">
                     <i class="ph ph-download-simple"></i> PDF
                 </a>

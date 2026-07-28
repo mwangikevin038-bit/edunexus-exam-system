@@ -86,6 +86,7 @@ from .faculty import (  # noqa: F401
 # ── PDF export views ─────────────────────────────────────────────────────────
 from .pdf_exports import (  # noqa: F401
     download_broadsheet_pdf,
+    download_bulk_report_pdf,
     download_classlist_pdf,
     download_individual_report_pdf,
 )
