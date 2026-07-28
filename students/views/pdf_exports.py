@@ -178,8 +178,6 @@ def _generate_pdf(
                             pg = browser.new_page()
                             pg.set_viewport_size(viewport)
                             pg.emulate_media(media="print")
-                            # Log console errors for debugging
-                            pg.on("console", lambda msg: logger.warning("[pdf] console %s: %s", msg.type, msg.text) if msg.type == "error" else None)
                             pg.set_content(patched_html, wait_until="networkidle")
 
                             # Wait for web fonts to load
@@ -195,8 +193,9 @@ def _generate_pdf(
                                 except Exception:
                                     # Chart.js may not have loaded from <script src> — inject directly from disk
                                     try:
-                                        chart_js_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'js', 'chart.umd.min.js')
-                                        if os.path.exists(chart_js_path):
+                                        from django.contrib.staticfiles.finders import find as static_find
+                                        chart_js_path = static_find('js/chart.umd.min.js')
+                                        if chart_js_path and os.path.exists(chart_js_path):
                                             with open(chart_js_path, 'r', encoding='utf-8') as f:
                                                 chart_js_source = f.read()
                                             pg.evaluate(chart_js_source)
@@ -239,7 +238,6 @@ def _generate_pdf(
                                 print_background=True,
                                 display_header_footer=False,
                                 margin=margin,
-                                prefer_css_page_size=True,
                             )
                         finally:
                             browser.close()
@@ -271,7 +269,19 @@ def _generate_pdf(
                     continue
                 break
 
-            return result['pdf']
+            pdf_bytes = result['pdf']
+            if not pdf_bytes or len(pdf_bytes) < 1000:
+                last_error = ValueError(f"PDF too small ({len(pdf_bytes or b'')} bytes) — charts likely failed to render")
+                logger.warning(
+                    "[pdf] Attempt %d/%d produced empty/tiny PDF (%d bytes)",
+                    attempt + 1, retries + 1, len(pdf_bytes or b''),
+                )
+                if attempt < retries:
+                    time.sleep(1)
+                    continue
+                break
+
+            return pdf_bytes
 
         finally:
             _pdf_semaphore.release()
