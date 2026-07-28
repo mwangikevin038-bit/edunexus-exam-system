@@ -1145,7 +1145,7 @@ def download_individual_report_pdf(request, student_id):
   .report-logo, .rc-logo-placeholder { width: 78px !important; height: 78px !important; }
   .rc-logo-spacer { width: 78px !important; }
   .rc-logo-placeholder { font-size: 30px !important; }
-  .rc-schoolinfo h1 { font-size: 16pt !important; margin: 0 0 2px !important; }
+  .rc-schoolinfo h1 { font-size: 16pt !important; margin: 0 0 2px !important; color: var(--section-accent, var(--rc-green-dark)) !important; }
   .rc-schoolinfo .rc-tagline { font-size: 8pt !important; margin-bottom: 3px !important; }
   .rc-schoolinfo .rc-address { font-size: 11pt !important; margin-bottom: 1px !important; }
   .rc-schoolinfo .rc-contact-line { font-size: 9pt !important; }
@@ -1465,7 +1465,7 @@ def download_bulk_report_pdf(request):
   .report-logo, .rc-logo-placeholder {{ width: 78px !important; height: 78px !important; }}
   .rc-logo-spacer {{ width: 78px !important; }}
   .rc-logo-placeholder {{ font-size: 30px !important; }}
-  .rc-schoolinfo h1 {{ font-size: 16pt !important; margin: 0 0 2px !important; }}
+  .rc-schoolinfo h1 {{ font-size: 16pt !important; margin: 0 0 2px !important; color: {section_accent} !important; }}
   .rc-schoolinfo .rc-tagline {{ font-size: 8pt !important; margin-bottom: 3px !important; }}
   .rc-schoolinfo .rc-address {{ font-size: 11pt !important; margin-bottom: 1px !important; }}
   .rc-schoolinfo .rc-contact-line {{ font-size: 9pt !important; }}
