@@ -158,7 +158,7 @@ if __name__ == '__main__':
             host=host,
             port=port,
             threads=threads,
-            channel_timeout=120,
+            channel_timeout=1200,
             cleanup_interval=30,
             max_request_body_size=10 * 1024 * 1024,
             recv_bytes=65536,

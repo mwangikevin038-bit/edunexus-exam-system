@@ -45,14 +45,16 @@ LOCAL_ALLOWED_HOSTS = [
     '192.168.62.11',
     '192.168.29.91',
     '10.209.98.230',
+    '10.231.220.230',
     '192.168.112.230',
     '192.168.1.101',
     '192.168.1.102',
     '192.168.39.127',
     '192.168.75.230',
-    '192.168.242.230',
+    '192.168.19.230',
     '10.227.19.230',
     '192.168.40.20',
+    '192.168.37.183',
     'edunexus.local',
 ]
 
@@ -111,6 +113,9 @@ MIDDLEWARE = [
 # ==============================================================================
 # AUTHENTICATION
 # ==============================================================================
+LOGIN_URL = '/login/'
+LOGOUT_REDIRECT_URL = '/login/'
+
 AUTHENTICATION_BACKENDS = [
     # django-axes must wrap the real backend
     'axes.backends.AxesStandaloneBackend',
@@ -136,8 +141,12 @@ DATA_INTEGRITY_KEY = os.environ.get('DATA_INTEGRITY_KEY', SECRET_KEY)
 # ==============================================================================
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'edunexus-security-ratelimit',
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/1"),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'edunexus',
         'TIMEOUT': 300,
     },
     'csv_upload': {
@@ -227,7 +236,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://192.168.112.230:8000',
     'http://192.168.1.102:8000',
     'http://192.168.39.127:8000',
-    'http://192.168.242.230:8000',
+    'http://192.168.19.230:8000',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
@@ -429,6 +438,13 @@ LOGGING = {
             'backupCount': 5,
             'formatter': 'security',
         },
+        'pdf_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'server_err.log',
+            'maxBytes': 5 * 1024 * 1024,  # 5 MB
+            'backupCount': 3,
+            'formatter': 'security',
+        },
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'security',
@@ -457,6 +473,11 @@ LOGGING = {
         },
         'axes': {
             'handlers': ['security_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'pdf_export': {
+            'handlers': ['pdf_file', 'console'],
             'level': 'WARNING',
             'propagate': False,
         },

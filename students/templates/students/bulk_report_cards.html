@@ -3,6 +3,13 @@
 
 {% block content %}
 <style>
+    /* ── Force print colors ── */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     /* ═══════════════════════════════════════════════════════════
@@ -538,7 +545,7 @@
         #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
         .report-card {
             display: flex !important; page-break-after: always !important; break-after: always !important;
-            margin: 0 !important; width: 7.4in !important; max-height: 10.5in !important; overflow: hidden !important; border: none !important;
+            margin: 0 !important; width: 7.4in !important; border: none !important;
             border-left: 12px solid var(--section-accent, #305CDE) !important; position: relative !important;
             font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; box-sizing: border-box !important;
             padding: 0.12in 0.35in 0.2in !important;

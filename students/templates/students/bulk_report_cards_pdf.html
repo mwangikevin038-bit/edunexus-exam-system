@@ -1,0 +1,484 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Report Cards</title>
+    <style>
+        /* ── Force print colors & hide screen chrome ── */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        .sidebar, .sidebar-overlay, .sidebar-header, .sidebar-footer, .sidebar-nav, .sidebar-user,
+        nav, header, .mobile-topbar, .hamburger-btn, .global-loader-overlay, .bottom-nav,
+        .d-print-none, .topbar, .btn-print, .btn-print-action, .control-panel, .button-group,
+        .date-picker-group, .rv-badge, .rv-header, .rv-hero, .rv-actions, .rv-shell,
+        .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header, .mobile-menu-backdrop {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ── Report Card Base (all sizes) ── */
+        :root {
+            --rc-green: #16A34A;
+            --rc-green-dark: #0F5A35;
+            --rc-blue: #2563EB;
+            --rc-blue-light: #EFF6FF;
+            --rc-banner-bg: linear-gradient(90deg, #1E4FD6, #2F6FED);
+            --rc-border: #D9DEE3;
+            --rc-text: #1C1C1E;
+            --rc-muted: #64748B;
+            --rc-up: #16A34A;
+            --rc-down: #DC2626;
+        }
+
+        .report-card {
+            background: white;
+            width: 7.4in;
+            padding: 0.16in 0.35in 0.25in;
+            position: relative;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 12pt;
+            color: var(--rc-text);
+            display: flex;
+            flex-direction: column;
+            border: none;
+            flex-shrink: 0;
+        }
+
+        .report-content { display: flex; flex-direction: column; flex: 1; gap: 8px; }
+
+        /* Header: logo + centered school info */
+        .rc-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding-bottom: 8px;
+            margin-bottom: 2px;
+            position: relative;
+            border-bottom: 3px solid var(--section-accent, var(--rc-green));
+        }
+        .rc-header::after {
+            content: '';
+            position: absolute;
+            left: 0; right: 0; bottom: -3px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--section-accent, var(--rc-green)) 0%, var(--rc-blue) 55%, transparent 100%);
+        }
+        .report-logo, .rc-logo-placeholder {
+            width: 88px; height: 88px; object-fit: contain; flex-shrink: 0;
+            border-radius: 10px;
+        }
+        .rc-logo-placeholder {
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, var(--rc-green-dark), var(--rc-green));
+            color: #fff; font-size: 32px; font-weight: 800;
+            box-shadow: 0 2px 6px rgba(15,90,53,0.25);
+        }
+        .rc-schoolinfo { flex: 1; text-align: center; }
+        .rc-schoolinfo h1 {
+            font-size: 16pt; font-weight: 800; color: var(--section-accent, var(--rc-green-dark));
+            text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 2px;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+        }
+        .rc-schoolinfo .rc-tagline {
+            font-size: 8.5pt; font-weight: 700; color: var(--section-accent, var(--rc-green));
+            text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 4px;
+        }
+        .rc-schoolinfo .rc-address { font-size: 11pt; font-weight: 600; color: var(--rc-text); margin-bottom: 1px; }
+        .rc-schoolinfo .rc-contact-line { font-size: 9pt; color: #333; font-weight: 500; }
+        .rc-logo-spacer { width: 88px; flex-shrink: 0; }
+
+        /* Blue banner */
+        .rc-banner {
+            background: var(--section-accent, var(--rc-banner-bg));
+            color: #fff;
+            text-align: center;
+            font-size: 11pt;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            padding: 6px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-shadow: 0 2px 6px rgba(37,99,235,0.18);
+        }
+
+        /* Top grid: student block + chart */
+        .rc-top-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 16px;
+        }
+        .rc-student-block { display: flex; gap: 12px; align-items: flex-start; }
+        .rc-photo-placeholder {
+            width: 62px; height: 62px; border-radius: 8px; flex-shrink: 0;
+            background: linear-gradient(135deg, var(--section-accent, var(--rc-green)), color-mix(in srgb, var(--section-accent, var(--rc-green)) 70%, #000));
+            border: 1px solid var(--section-accent, var(--rc-green));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 800; color: #fff;
+        }
+        .rc-student-name { font-size: 14pt; font-weight: 800; margin-bottom: 4px; }
+        .rc-detail { font-size: 11pt; margin-bottom: 2px; color: var(--rc-text); }
+        .rc-label { font-weight: 800; margin-right: 4px; }
+        .rc-label.admno { color: var(--rc-blue); }
+        .rc-label.grade { color: var(--rc-green); }
+        .rc-chart-block { border: 1px solid var(--section-accent, var(--rc-border)); border-radius: 8px; padding: 8px; }
+        .rc-chart-block canvas { width: 280px !important; height: 130px !important; }
+        .rc-chart-title { font-size: 10pt; font-weight: 700; color: var(--rc-muted); margin-bottom: 4px; text-align: center; }
+
+        /* Stat boxes */
+        .rc-stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+        .rc-stat {
+            border: 1px solid var(--rc-border);
+            border-top: 3px solid var(--section-accent, var(--rc-blue));
+            border-radius: 8px;
+            padding: 10px 8px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, #FAFBFC 100%);
+        }
+        .rc-stat-label { display: block; font-size: 9pt; font-weight: 700; color: var(--rc-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .rc-stat-value { display: block; font-size: 14pt; font-weight: 800; color: var(--rc-text); }
+
+        /* Subjects table */
+        .table-scroll { width: 100%; overflow-x: auto; }
+        .rc-table { width: 100%; border-collapse: collapse; min-width: 480px; }
+        .rc-table thead th {
+            background: var(--section-accent, var(--rc-green));
+            color: #fff;
+            font-size: 10pt;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 7px 6px;
+            border: 1px solid var(--section-accent, var(--rc-green));
+            white-space: nowrap;
+        }
+        .rc-table td { padding: 6px; border: 1px solid var(--rc-border); font-size: 11pt; }
+        .rc-table tbody tr:nth-child(even) { background: #FAFBFC; }
+        .rc-subj { font-weight: 700; }
+        .rc-center { text-align: center; }
+        .rc-grade { font-weight: 800; color: var(--rc-blue); }
+        .rc-teacher { font-style: italic; font-weight: 600; padding-left: 10px !important; }
+        .rc-dev-up { color: var(--rc-up); font-weight: 700; }
+        .rc-dev-down { color: var(--rc-down); font-weight: 700; }
+
+        /* Remarks */
+        .rc-remarks-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .rc-remark-box { border: 1px solid var(--rc-border); border-left: 3px solid var(--section-accent, var(--rc-green)); border-radius: 8px; padding: 10px 12px; }
+        .rc-remark-title { font-size: 10pt; font-weight: 700; color: var(--section-accent, var(--rc-green)); margin-bottom: 4px; text-transform: uppercase; }
+        .rc-remark-text { font-size: 12pt; font-style: italic; color: #333; min-height: 72px; margin-bottom: 8px; }
+        .rc-remark-author { font-size: 10pt; font-weight: 700; color: #000000; margin-bottom: 6px; }
+        .rc-signature { font-size: 10pt; font-weight: 700; border-top: 1px solid var(--rc-border); padding-top: 4px; }
+
+        /* Grade descriptors */
+        .rc-descriptors { }
+        .rc-descriptors-title { font-size: 9pt; font-weight: 800; color: #1C1C1E; text-transform: uppercase; margin-bottom: 3px; letter-spacing: 0.04em; }
+        .rc-descriptors-table { width: 100%; border-collapse: collapse; }
+        .rc-descriptors-table th, .rc-descriptors-table td {
+            border: 1px solid var(--rc-border);
+            padding: 3px 4px;
+            font-size: 9pt;
+            text-align: center;
+        }
+        .rc-descriptors-table th { background: #F1F5F9; color: #1C1C1E; font-weight: 800; }
+        .rc-descriptors-table td:first-child, .rc-descriptors-table th:first-child {
+            text-align: left; font-weight: 700; background: #F8FAFC; color: #1C1C1E;
+        }
+
+        .footer-dates { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-top: 8px; }
+        .date-box { display: flex; justify-content: flex-start; gap: 16px; font-size: 10pt; font-weight: 700; border-bottom: 2px solid var(--section-accent, var(--rc-green)); padding-bottom: 3px; }
+        .system-footer {
+            display: block;
+            text-align: center;
+            margin-top: 16px;
+            padding: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        .rc-print-watermark { display: none; }
+
+        /* ── Desktop — Report card container ── */
+        @media (min-width: 769px) {
+            body { background: #f5f5f5; font-family: 'Times New Roman', Times, serif; }
+            .container-fluid { max-width: 1200px !important; margin: 0 auto !important; padding: 20px !important; }
+            .report-card { margin: 20px auto; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 12px solid var(--section-accent, #305CDE); }
+        }
+
+        /* ── Print ── */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0.12in 0.35in 0.4in 0.35in;
+            }
+
+            html, body { font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; background: white !important; margin: 0 !important; padding: 0 !important; }
+            .container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }
+            #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .report-card {
+                display: flex !important; page-break-after: always !important; break-after: always !important;
+                margin: 0 !important; width: 7.4in !important; border: none !important;
+                border-left: 12px solid var(--section-accent, #305CDE) !important; position: relative !important;
+                font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; box-sizing: border-box !important;
+                padding: 0.12in 0.35in 0.2in !important;
+            }
+            .report-card:last-child { page-break-after: auto !important; break-after: auto !important; }
+            .report-content { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 4px !important; }
+            .report-logo, .rc-logo-placeholder { width: 78px !important; height: 78px !important; }
+            .rc-logo-spacer { width: 78px !important; }
+            .rc-logo-placeholder { font-size: 30px !important; }
+            .rc-schoolinfo h1 { font-size: 16pt !important; margin: 0 0 2px !important; }
+            .rc-schoolinfo .rc-tagline { font-size: 8pt !important; margin-bottom: 3px !important; }
+            .rc-schoolinfo .rc-address { font-size: 11pt !important; margin-bottom: 1px !important; }
+            .rc-schoolinfo .rc-contact-line { font-size: 9pt !important; }
+            .rc-header { gap: 8px !important; padding-bottom: 5px !important; border-bottom: 3px solid var(--section-accent, var(--rc-green)) !important; }
+            .rc-banner { padding: 6px 8px !important; font-size: 11pt !important; }
+            .rc-top-grid { gap: 16px !important; }
+            .rc-photo-placeholder { width: 58px !important; height: 58px !important; font-size: 22px !important; border-radius: 8px !important; }
+            .rc-student-name { font-size: 14pt !important; margin-bottom: 4px !important; }
+            .rc-detail { font-size: 11pt !important; margin-bottom: 3px !important; }
+            .rc-chart-title { font-size: 10pt !important; margin-bottom: 4px !important; }
+            .rc-chart-block { padding: 7px !important; }
+            .rc-chart-block canvas { max-width: 100% !important; }
+            .rc-stats { gap: 4px !important; }
+            .rc-stat { padding: 5px 6px !important; border-top: 2px solid var(--section-accent, var(--rc-blue)) !important; }
+            .rc-stat-label { font-size: 9pt !important; margin-bottom: 3px !important; }
+            .rc-stat-value { font-size: 14pt !important; }
+            .table-scroll { overflow: visible !important; }
+            .rc-table td { padding: 4px 6px !important; font-size: 11pt !important; line-height: 1.15 !important; }
+            .rc-table thead th { padding: 5px 6px !important; font-size: 10pt !important; }
+            .rc-remarks-grid { gap: 10px !important; }
+            .rc-remark-box { padding: 6px 10px !important; }
+            .rc-remark-title { font-size: 10pt !important; margin-bottom: 4px !important; color: var(--section-accent, var(--rc-green)) !important; }
+            .rc-remark-author { font-size: 10pt !important; font-weight: 700 !important; color: #000000 !important; margin-bottom: 5px !important; }
+            .rc-remark-text { font-size: 12pt !important; min-height: 30px !important; margin-bottom: 6px !important; line-height: 1.2 !important; }
+            .rc-signature { font-size: 10pt !important; padding-top: 4px !important; }
+            .rc-descriptors-title { font-size: 9pt !important; margin-bottom: 3px !important; }
+            .rc-descriptors-table th, .rc-descriptors-table td { padding: 3px 4px !important; font-size: 9pt !important; }
+            .footer-dates { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px !important; padding-top: 4px !important; margin-top: auto !important; }
+            .date-box { font-size: 10pt !important; padding-bottom: 3px !important; border-bottom: 2px solid var(--section-accent, var(--rc-green)) !important; }
+            .system-footer { display: none !important; }
+            .rc-print-watermark { display: none !important; }
+            .rc-table, .rc-table th, .rc-table td, .rc-stat, .rc-descriptors-table, .rc-descriptors-table th, .rc-descriptors-table td { border-color: #000 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div id="reportCardsContainer">
+            {% for student_data in student_marks_list %}
+            <div class="report-card" style="--section-accent: {{ section_accent }};">
+                <div class="report-content">
+                    <div class="rc-header">
+                        {% if request.school.logo %}
+                        <img src="{{ request.school.logo.url }}" alt="Logo" class="report-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="rc-logo-placeholder" style="display:none;">{{ request.school.name|truncatechars:1 }}</div>
+                        {% else %}
+                        <div class="rc-logo-placeholder">{{ request.school.name|truncatechars:1 }}</div>
+                        {% endif %}
+                        <div class="rc-schoolinfo">
+                            <h1>{{ request.school.name|upper }}</h1>
+                            <p class="rc-tagline">Excellence &middot; Discipline &middot; Character</p>
+                            <p class="rc-address">Address: {{ request.school.address }}</p>
+                            <p class="rc-contact-line">Tel {{ request.school.phone_number }} &nbsp;|&nbsp; Email {{ request.school.email }}</p>
+                        </div>
+                        <div class="rc-logo-spacer"></div>
+                    </div>
+
+                    <div class="rc-banner">
+                        Academic Report Form &nbsp;–&nbsp; {{ student_data.student.class_name }} &nbsp;–&nbsp;
+                        {% if selected_assessment|lower == 'mid' %}Mid Term Assessment{% elif selected_assessment|lower == 'opener' %}Opener Assessment{% elif selected_assessment|lower == 'end' %}End Term Assessment{% else %}{{ selected_assessment }}{% endif %}
+                        &nbsp;–&nbsp; ({{ selected_year }} {{ selected_term }})
+                    </div>
+
+                    <div class="rc-top-grid">
+                        <div class="rc-student-block">
+                            <div class="rc-photo-placeholder">{{ student_data.student.name|slice:":1" }}</div>
+                            <div>
+                                <div class="rc-student-name">{{ student_data.student.name }}</div>
+                                <div class="rc-detail"><span class="rc-label admno">Admno:</span>{{ student_data.student.admission_no }}</div>
+                                <div class="rc-detail"><span class="rc-label grade">Grade:</span>{{ student_data.student.class_name }} {{ student_data.student.stream }}</div>
+                            </div>
+                        </div>
+                        <div class="rc-chart-block">
+                            <div class="rc-chart-title">Subject Performance – Student vs Class</div>
+                            <canvas id="chart-d-{{ forloop.counter }}" width="560" height="260"></canvas>
+                            <script type="application/json" id="chart-data-d-{{ forloop.counter }}">{{ student_data.chart_data_json|safe }}</script>
+                        </div>
+                    </div>
+
+                    <div class="rc-stats">
+                        <div class="rc-stat"><span class="rc-stat-label">Position</span><span class="rc-stat-value">{{ student_data.position|default:"-" }}{% if student_data.class_count %}<small style="font-size:8pt;color:var(--rc-muted);">/{{ student_data.class_count }}</small>{% endif %}</span></div>
+                        <div class="rc-stat"><span class="rc-stat-label">Performance Level</span><span class="rc-stat-value">{{ student_data.overall_plv }}</span></div>
+                        <div class="rc-stat"><span class="rc-stat-label">Total Marks</span><span class="rc-stat-value">{{ student_data.total_marks }}/{{ student_data.max_total_marks }}</span></div>
+                        <div class="rc-stat"><span class="rc-stat-label">Total Points</span><span class="rc-stat-value">{{ student_data.total_points|default:"-" }}/{{ student_data.max_total_points }}</span></div>
+                        <div class="rc-stat"><span class="rc-stat-label">Mean Points</span><span class="rc-stat-value">{{ student_data.mean_points }}/{{ student_data.mean_points_max }}</span></div>
+                    </div>
+
+                    <div class="table-scroll">
+                    <table class="rc-table">
+                        <thead><tr><th style="text-align:left;">Subjects</th><th>Marks</th><th>Dev.</th><th>Grade</th><th>Teacher</th></tr></thead>
+                        <tbody>
+                            {% for mark in student_data.marks %}
+                                {% if mark.score != None and mark.score != "-" %}
+                                <tr>
+                                    <td class="rc-subj">{{ mark.subject_name }}</td>
+                                    <td class="rc-center">{% if mark.is_absent %}AB{% else %}{{ mark.score }}%{% endif %}</td>
+                                    <td class="rc-center {% if mark.deviation != None %}{% if mark.deviation > 0 %}rc-dev-up{% elif mark.deviation < 0 %}rc-dev-down{% endif %}{% endif %}">{% if mark.deviation != None %}{{ mark.deviation }}{% else %}-{% endif %}</td>
+                                    <td class="rc-center rc-grade">{{ mark.performance_level|default:"-" }}</td>
+                                    <td class="rc-teacher">{{ mark.teacher_name }}</td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+
+                    <div class="rc-remarks-grid">
+                        <div class="rc-remark-box">
+                            <div class="rc-remark-title">Class Teacher Remarks</div>
+                            {% if student_data.class_teacher_name %}<div class="rc-remark-author">{{ student_data.class_teacher_name }}</div>{% endif %}
+                            <div class="rc-remark-text">{{ student_data.class_teacher_remark }}</div>
+                            <div class="rc-signature">Signature: ____________________</div>
+                        </div>
+                        <div class="rc-remark-box">
+                            <div class="rc-remark-title">Principal Remarks</div>
+                            <div class="rc-remark-text">{{ student_data.headteacher_comment }}</div>
+                            <div class="rc-signature">Signature &amp; Stamp: ____________________</div>
+                        </div>
+                    </div>
+
+                    <div class="rc-descriptors">
+                        <div class="rc-descriptors-title">Grade Descriptors</div>
+                        <table class="rc-descriptors-table">
+                            <thead>
+                                <tr>
+                                    <th>Performance Level</th>
+                                    {% for d in student_data.grade_descriptors %}<th>{{ d.level }}</th>{% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Points</td>
+                                    {% for d in student_data.grade_descriptors %}<td>{{ d.points }}</td>{% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Range (%)</td>
+                                    {% for d in student_data.grade_descriptors %}<td>{{ d.min_score }}-{{ d.max_score }}</td>{% endfor %}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="footer-dates">
+                        <div class="date-box"><span>CLOSING DATE:</span><span>{% if student_data.closing_date %}{{ student_data.closing_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
+                        <div class="date-box"><span>OPENING DATE:</span><span>{% if student_data.opening_date %}{{ student_data.opening_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
+                    </div>
+                    <div class="system-footer">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
+                    <div class="rc-print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="{% static 'js/chart.umd.min.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var canvases = document.querySelectorAll('canvas[id^="chart-"]');
+            var totalCharts = canvases.length;
+            var renderedCharts = 0;
+
+            canvases.forEach(function (canvas) {
+                var dataElId = 'chart-data-' + canvas.id.split('chart-')[1];
+                var dataEl = document.getElementById(dataElId);
+                if (!dataEl) { renderedCharts++; checkAllDone(); return; }
+                var payload;
+                try { payload = JSON.parse(dataEl.textContent); } catch (e) { renderedCharts++; checkAllDone(); return; }
+                new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: payload.labels,
+                        datasets: [
+                            { label: 'Student', data: payload.student, borderColor: '#16A34A', backgroundColor: '#16A34A', tension: 0.35, pointRadius: 3 },
+                            { label: 'Class Avg', data: payload.class_avg, borderColor: '#94A3B8', backgroundColor: '#94A3B8', tension: 0.35, pointRadius: 3 }
+                        ]
+                    },
+                    options: {
+                        responsive: false,
+                        devicePixelRatio: 2,
+                        animation: false,
+                        plugins: { legend: { display: true, position: 'top', labels: { font: { size: 9 } } } },
+                        scales: {
+                            y: { beginAtZero: true, max: 100, ticks: { font: { size: 8 } } },
+                            x: { ticks: { font: { size: 8 } } }
+                        }
+                    }
+                });
+                renderedCharts++;
+                checkAllDone();
+            });
+
+            function checkAllDone() {
+                if (renderedCharts >= totalCharts) {
+                    window.allChartsRendered = true;
+                }
+            }
+
+            // If no charts, signal immediately
+            if (totalCharts === 0) {
+                window.allChartsRendered = true;
+            }
+        });
+
+        function convertCanvasesToImages() {
+            document.querySelectorAll('canvas[id^="chart-"]').forEach(function (canvas) {
+                if (canvas.dataset.converted === 'true') return;
+                var img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png');
+                img.style.cssText = 'width:' + canvas.offsetWidth + 'px;height:' + canvas.offsetHeight + 'px;';
+                img.className = canvas.className;
+                canvas.parentNode.replaceChild(img, canvas);
+                canvas.dataset.converted = 'true';
+            });
+        }
+
+        function printReportCards() {
+            convertCanvasesToImages();
+            setTimeout(function() { window.print(); }, 300);
+        }
+
+        window.addEventListener('beforeprint', function () {
+            var notice = document.getElementById('print-a4-notice');
+            if (notice) notice.style.display = 'flex';
+        });
+        window.addEventListener('afterprint', function () {
+            var notice = document.getElementById('print-a4-notice');
+            if (notice) notice.style.display = 'none';
+        });
+    </script>
+</body>
+</html>

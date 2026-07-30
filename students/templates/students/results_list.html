@@ -10,6 +10,13 @@
 
 {% block content %}
 <style>
+    /* ── Force print colors ── */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
     :root { --oraimo-green: #a4e61d; }
 
     .analysis-container {

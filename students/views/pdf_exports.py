@@ -13,17 +13,19 @@ import json
 import logging
 import mimetypes
 import os
+import subprocess
 import sys
 import threading
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Prefetch, Q, Sum
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.utils.text import slugify
@@ -51,6 +53,35 @@ from ..security import get_request_school, get_request_school_section, get_schoo
 logger = logging.getLogger('pdf_export')
 
 
+def _log_pdf_error(view_name, error, context=None):
+    """
+    Log PDF generation errors with full traceback to server_err.log.
+    Includes view name, error type, message, and optional context.
+    """
+    tb = traceback.format_exc()
+    context_str = ""
+    if context:
+        context_str = "\n  Context: " + " | ".join(f"{k}={v}" for k, v in context.items())
+
+    logger.error(
+        "\n"
+        "═══════════════════════════════════════════════════════════════\n"
+        "PDF GENERATION ERROR — %s\n"
+        "═══════════════════════════════════════════════════════════════\n"
+        "View: %s\n"
+        "Error Type: %s\n"
+        "Error Message: %s%s\n"
+        "Full Traceback:\n%s\n"
+        "═══════════════════════════════════════════════════════════════\n",
+        view_name,
+        view_name,
+        type(error).__name__,
+        str(error),
+        context_str,
+        tb,
+    )
+
+
 # ==============================================================================
 # BULLETPROOF PLAYWRIGHT PDF INFRASTRUCTURE
 # ==============================================================================
@@ -65,8 +96,9 @@ logger = logging.getLogger('pdf_export')
 # ==============================================================================
 
 # Limit concurrent Playwright browser instances to prevent RAM exhaustion.
-# Each Chromium instance uses ~200-500MB. With 2 max, peak RAM is ~1GB.
-_pdf_semaphore = threading.Semaphore(2)
+# Each Chromium instance uses ~200-500MB. Configurable via PDF_MAX_CONCURRENT env var.
+_pdf_max_concurrent = int(os.environ.get('PDF_MAX_CONCURRENT', '2'))
+_pdf_semaphore = threading.Semaphore(_pdf_max_concurrent)
 
 # Verified once at import time — False means Chromium is not installed.
 _playwright_ok = True
@@ -102,8 +134,11 @@ def _verify_playwright():
 @contextlib.contextmanager
 def _playwright_session():
     """
-    Context manager that temporarily restores ProactorEventLoopPolicy
-    before launching Playwright, then restores the original policy.
+    Context manager that creates an ISOLATED event loop for this execution.
+
+    Instead of modifying the global asyncio event loop policy (which causes
+    race conditions under concurrent requests), we create a fresh ProactorEventLoop
+    for this thread only and clean it up afterward.
 
     Django Channels/Daphne overrides the Windows event loop policy to
     SelectorEventLoop, which does not support subprocess creation.
@@ -113,12 +148,44 @@ def _playwright_session():
         yield
         return
 
-    original_policy = asyncio.get_event_loop_policy()
+    # Create an isolated event loop for this execution (never touches global policy)
+    loop = asyncio.ProactorEventLoop()
+    asyncio.set_event_loop(loop)
     try:
-        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
         yield
     finally:
-        asyncio.set_event_loop_policy(original_policy)
+        try:
+            loop.close()
+        except Exception:
+            pass
+        # Restore whatever the current thread had before (thread-local)
+        try:
+            old_loop = asyncio._get_running_loop()
+        except AttributeError:
+            old_loop = None
+        if old_loop is None:
+            # No running loop — we can safely unset
+            asyncio.set_event_loop(None)
+
+
+def _kill_chromium_processes():
+    """
+    Hard-kill all orphaned Chromium processes on Windows.
+    Called after timeout or error to prevent zombie browser memory leaks.
+    """
+    if sys.platform != 'win32':
+        return
+    try:
+        # Kill all chromium.exe and chrome.exe processes (Playwright's browser)
+        for proc_name in ('chromium.exe', 'chrome.exe'):
+            subprocess.run(
+                ['taskkill', '/F', '/IM', proc_name],
+                capture_output=True, timeout=5,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+            )
+        logger.info("[pdf] Orphaned Chromium processes cleaned up")
+    except Exception as e:
+        logger.warning("[pdf] Process cleanup failed: %s", str(e))
 
 
 def _generate_pdf(
@@ -136,10 +203,10 @@ def _generate_pdf(
     Bulletproof Playwright PDF generation — single entry point for all views.
 
     - Acquires semaphore to limit concurrency (max 2 browsers).
-    - Runs in a dedicated thread with a timeout.
+    - Runs in a ThreadPoolExecutor with strict timeout.
+    - On timeout/error, HARD-KILLS all Chromium processes (no zombies).
     - Retries up to `retries` times on transient failures.
     - ALWAYS closes the browser, even on error.
-    - Thread-safe result passing via dict.
 
     Returns:
         bytes: The PDF content.
@@ -173,12 +240,37 @@ def _generate_pdf(
             def _generate():
                 try:
                     with _playwright_session(), sync_playwright() as pw:
-                        browser = pw.chromium.launch(headless=True)
+                        browser = pw.chromium.launch(
+                            headless=True,
+                            args=[
+                                '--no-sandbox',
+                                '--disable-dev-shm-usage',
+                                '--disable-service-workers',
+                                '--js-flags="--max-old-space-size=512"',
+                            ],
+                        )
                         try:
-                            pg = browser.new_page()
+                            # Use browser context with device_scale_factor for crisp charts
+                            context = browser.new_context(device_scale_factor=2)
+                            pg = context.new_page()
+
+                            # ── Block service workers to prevent stale cache ──
+                            pg.route("**/sw.js", lambda route: route.abort())
+                            pg.route("**/sw.prod.js", lambda route: route.abort())
+
+                            # Also disable service worker registration via init script
+                            context.add_init_script("""
+                                if (typeof navigator.serviceWorker !== 'undefined') {
+                                    Object.defineProperty(navigator, 'serviceWorker', {
+                                        value: undefined,
+                                        writable: false,
+                                    });
+                                }
+                            """)
+
                             pg.set_viewport_size(viewport)
                             pg.emulate_media(media="print")
-                            pg.set_content(patched_html, wait_until="networkidle")
+                            pg.set_content(patched_html, wait_until="domcontentloaded")
 
                             # Wait for web fonts to load
                             try:
@@ -188,8 +280,9 @@ def _generate_pdf(
 
                             # Wait for Chart.js canvases if present
                             if wait_for_charts:
+                                # Step 1: Wait for Chart.js library to load
                                 try:
-                                    pg.wait_for_function("() => typeof Chart !== 'undefined'", timeout=15000)
+                                    pg.wait_for_function("() => typeof Chart !== 'undefined'", timeout=10000)
                                 except Exception:
                                     # Chart.js may not have loaded from <script src> — inject directly from disk
                                     try:
@@ -202,20 +295,29 @@ def _generate_pdf(
                                             pg.wait_for_function("() => typeof Chart !== 'undefined'", timeout=5000)
                                     except Exception:
                                         pass
+
+                                # Step 2: Wait for all Chart instances to finish rendering
+                                # Uses a dual-check: JS hook flag OR Chart.getChart() DOM verification
                                 try:
                                     pg.wait_for_function("""
                                         () => {
+                                            // Check for explicit JS hook (preferred)
+                                            if (window.allChartsRendered === true) return true;
+                                            // Fallback: verify all canvas charts have data
                                             const canvases = document.querySelectorAll('canvas[id^="chart-"]');
                                             if (canvases.length === 0) return true;
-                                            return Array.from(canvases).every(c => {
-                                                try { const ctx = c.getContext('2d'); return ctx && c.width > 0 && c.height > 0; }
-                                                catch(e) { return false; }
-                                            });
+                                            for (const canvas of canvases) {
+                                                const chart = Chart.getChart(canvas);
+                                                if (!chart || !chart.data || !chart.data.datasets || chart.data.datasets.length === 0) {
+                                                    return false;
+                                                }
+                                            }
+                                            return true;
                                         }
-                                    """, timeout=20000)
-                                    pg.wait_for_timeout(500)
+                                    """, timeout=15000)
                                 except Exception:
-                                    pass
+                                    # Fallback: brief delay if chart detection fails
+                                    pg.wait_for_timeout(500)
 
                             # Wait for a specific image to finish loading (e.g. school logo)
                             if wait_for_logo_selector:
@@ -229,8 +331,8 @@ def _generate_pdf(
                                 except Exception:
                                     pass
 
-                            # Small extra delay for CSS paint
-                            pg.wait_for_timeout(200)
+                            # Final paint delay — minimal since charts are verified
+                            pg.wait_for_timeout(100)
 
                             result['pdf'] = pg.pdf(
                                 format="A4",
@@ -238,22 +340,54 @@ def _generate_pdf(
                                 print_background=True,
                                 display_header_footer=False,
                                 margin=margin,
+                                prefer_css_page_size=True,
                             )
                         finally:
-                            browser.close()
+                            try:
+                                browser.close()
+                            except Exception:
+                                pass
                 except Exception as e:
                     error_holder[0] = e
 
-            t = threading.Thread(target=_generate, daemon=True)
-            t.start()
-            t.join(timeout=timeout)
+            # ── Run with ThreadPoolExecutor + strict timeout ──
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_generate)
+                try:
+                    future.result(timeout=timeout)
+                except FuturesTimeoutError:
+                    # Timeout — hard-kill all Chromium processes
+                    last_error = TimeoutError(f"PDF generation timed out after {timeout}s")
+                    logger.warning(
+                        "[pdf] Attempt %d/%d timed out — killing orphaned processes",
+                        attempt + 1, retries + 1,
+                    )
+                    _kill_chromium_processes()
+                    if attempt < retries:
+                        time.sleep(1)
+                        continue
+                    break
+                except Exception as e:
+                    last_error = e
+                    logger.warning(
+                        "[pdf] Attempt %d/%d failed: %s",
+                        attempt + 1, retries + 1, str(last_error),
+                    )
+                    # Also kill processes on any error to prevent zombies
+                    _kill_chromium_processes()
+                    if attempt < retries:
+                        time.sleep(1)
+                        continue
+                    break
 
+            # Check if the inner function raised an error
             if error_holder[0] is not None:
                 last_error = error_holder[0]
                 logger.warning(
                     "[pdf] Attempt %d/%d failed: %s",
                     attempt + 1, retries + 1, str(last_error),
                 )
+                _kill_chromium_processes()
                 if attempt < retries:
                     time.sleep(1)
                     continue
@@ -264,6 +398,7 @@ def _generate_pdf(
                 logger.warning(
                     "[pdf] Attempt %d/%d timed out", attempt + 1, retries + 1,
                 )
+                _kill_chromium_processes()
                 if attempt < retries:
                     time.sleep(1)
                     continue
@@ -290,6 +425,35 @@ def _generate_pdf(
     raise RuntimeError(f"PDF generation failed after {retries + 1} attempts: {last_error}")
 
 
+def _inject_pdf_css(template_html, pdf_css, base_tag):
+    """
+    Bulletproof CSS injection — never relies on loose string replacement.
+
+    Strategy:
+    1. Try inserting before </head> (standard HTML)
+    2. Try inserting before </body> (fallback)
+    3. Try inserting after <html> (last resort)
+    4. Prepend to document (guaranteed to work)
+    """
+    css_block = base_tag + pdf_css
+
+    # Strategy 1: Insert before </head>
+    if '</head>' in template_html:
+        return template_html.replace('</head>', css_block + '</head>', 1)
+
+    # Strategy 2: Insert before </body>
+    if '</body>' in template_html:
+        return template_html.replace('</body>', css_block + '</body>', 1)
+
+    # Strategy 3: Insert after <html>
+    if '<html' in template_html:
+        idx = template_html.index('<html') + len(template_html[template_html.index('<html'):].split('>')[0]) + 1
+        return template_html[:idx] + css_block + template_html[idx:]
+
+    # Strategy 4: Prepend (guaranteed)
+    return css_block + template_html
+
+
 def _embed_logo_base64(template_html, request):
     """Replace ALL school logo <img> src with a base64 data URI for PDF reliability."""
     try:
@@ -311,7 +475,7 @@ def _embed_logo_base64(template_html, request):
 # ==============================================================================
 
 @login_required(login_url='login')
-@rate_limit("report_download", max_requests=10, window_seconds=60)
+@rate_limit("report_download", max_requests=10, window_seconds=60, methods=["GET", "POST"])
 def download_broadsheet_pdf(request):
     """
     Renders the real results_list.html, injects PDF overrides, and hands it
@@ -320,8 +484,7 @@ def download_broadsheet_pdf(request):
     """
     school = get_request_school(request)
     if not school:
-        messages.error(request, "School context is required.")
-        return redirect('welcome_page')
+        return JsonResponse({'error': 'School context is required.'}, status=400)
 
     # ── Determine workspace section first ────────────────────────────────────
     section = get_request_school_section(request)
@@ -567,11 +730,8 @@ def download_broadsheet_pdf(request):
     # Give Playwright a real origin so relative media/static URLs load in PDFs.
     pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
 
-    # Insert overrides just before </head>
-    if '</head>' in template_html:
-        patched_html = template_html.replace('</head>', pdf_base_tag + pdf_css + '</head>', 1)
-    else:
-        patched_html = pdf_base_tag + pdf_css + template_html
+    # Insert overrides using bulletproof injector
+    patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
     # ── 4. Playwright — PRINT media so template's @media print CSS activates ──
     try:
@@ -582,9 +742,11 @@ def download_broadsheet_pdf(request):
             margin={"top": "0.15in", "right": "0.15in", "bottom": "0.15in", "left": "0.15in"},
         )
     except Exception as e:
-        logger.error('PDF generation failed: %s\n%s', str(e), traceback.format_exc())
-        messages.error(request, "PDF generation failed. Please try again.")
-        return redirect('results_list')
+        _log_pdf_error('download_broadsheet_pdf', e, {
+            'year': year, 'term': term, 'section': section,
+            'grade': grade, 'stream': stream,
+        })
+        return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     # ── 5. Return as download or inline ────────────────────────────────────────
     slug_grade  = slugify(grade  or "class")
@@ -606,7 +768,7 @@ def download_broadsheet_pdf(request):
 # ==============================================================================
 
 @login_required(login_url='login')
-@rate_limit("report_download", max_requests=10, window_seconds=60)
+@rate_limit("report_download", max_requests=10, window_seconds=60, methods=["GET", "POST"])
 def download_classlist_pdf(request):
     """
     Renders the class_lists register sheet and converts it to a
@@ -614,8 +776,7 @@ def download_classlist_pdf(request):
     """
     school = get_request_school(request)
     if not school:
-        messages.error(request, "School context is required.")
-        return redirect('welcome_page')
+        return JsonResponse({'error': 'School context is required.'}, status=400)
 
     section = get_request_school_section(request)
 
@@ -857,10 +1018,7 @@ def download_classlist_pdf(request):
 
     pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
 
-    if '</head>' in template_html:
-        patched_html = template_html.replace('</head>', pdf_base_tag + pdf_css + '</head>', 1)
-    else:
-        patched_html = pdf_base_tag + pdf_css + template_html
+    patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
     try:
         pdf_bytes = _generate_pdf(
@@ -871,9 +1029,11 @@ def download_classlist_pdf(request):
             wait_for_logo_selector='.sheet-logo',
         )
     except Exception as e:
-        logger.error('Class list PDF generation failed: %s\n%s', str(e), traceback.format_exc())
-        messages.error(request, "PDF generation failed. Please try again.")
-        return redirect('class_lists')
+        _log_pdf_error('download_classlist_pdf', e, {
+            'grade': selected_grade, 'stream': selected_stream,
+            'context': selected_key, 'view_mode': view_mode,
+        })
+        return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     slug_grade  = slugify(selected_grade  or "class")
     slug_stream = slugify(selected_stream or "stream")
@@ -894,7 +1054,7 @@ def download_classlist_pdf(request):
 # ==============================================================================
 
 @login_required(login_url='login')
-@rate_limit("report_download", max_requests=10, window_seconds=60)
+@rate_limit("report_download", max_requests=10, window_seconds=60, methods=["GET", "POST"])
 def download_individual_report_pdf(request, student_id):
     """
     Server-side PDF for individual report cards.
@@ -904,13 +1064,13 @@ def download_individual_report_pdf(request, student_id):
 
     school = get_request_school(request)
     if not school:
-        messages.error(request, "School context is required.")
-        return redirect('report_card_select')
+        return JsonResponse({'error': 'School context is required.'}, status=400)
 
     student = get_school_object_or_403(Student, request, using="all_objects", id=student_id)
+    if not student:
+        return JsonResponse({'error': 'Student not found.'}, status=404)
     if not user_can_access_class_stream(request.user, student.class_name, student.stream, require_class_teacher=True):
-        messages.error(request, "You are not allowed to open report cards for this class stream.")
-        return redirect('report_card_select')
+        return JsonResponse({'error': 'You are not allowed to print report cards for this class stream.'}, status=403)
 
     year       = request.GET.get('year', datetime.date.today().year)
     term       = request.GET.get('term', 'Term 1')
@@ -1205,10 +1365,7 @@ def download_individual_report_pdf(request, student_id):
 """
 
     pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
-    if '</head>' in template_html:
-        patched_html = template_html.replace('</head>', pdf_base_tag + pdf_css + '</head>', 1)
-    else:
-        patched_html = pdf_base_tag + pdf_css + template_html
+    patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
     try:
         pdf_bytes = _generate_pdf(
@@ -1219,9 +1376,11 @@ def download_individual_report_pdf(request, student_id):
             wait_for_charts=True,
         )
     except Exception as e:
-        logger.error('Individual report PDF failed: %s\n%s', str(e), traceback.format_exc())
-        messages.error(request, "PDF generation failed. Please try again.")
-        return redirect('individual_report', student_id=student_id)
+        _log_pdf_error('download_individual_report_pdf', e, {
+            'student_id': student_id, 'year': year, 'term': term,
+            'assessment': assessment,
+        })
+        return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     student_name = slugify(f"{student.first_name}_{student.last_name}" if student.first_name or student.last_name else student.admission_number)
     filename = f"{student_name}_Report_Card_{year}_{slugify(term)}.pdf"
@@ -1240,7 +1399,7 @@ def download_individual_report_pdf(request, student_id):
 # ==============================================================================
 
 @login_required(login_url='login')
-@rate_limit("report_download", max_requests=5, window_seconds=60)
+@rate_limit("report_download", max_requests=5, window_seconds=60, methods=["GET", "POST"])
 def download_bulk_report_pdf(request):
     """
     Server-side bulk report card PDF via Playwright.
@@ -1249,8 +1408,7 @@ def download_bulk_report_pdf(request):
     """
     school = get_request_school(request)
     if not school:
-        messages.error(request, "School context is required.")
-        return redirect('report_card_select')
+        return JsonResponse({'error': 'School context is required.'}, status=400)
 
     student_ids   = [sid for sid in request.GET.get('ids', '').split(',') if sid]
     year          = request.GET.get('year', str(datetime.date.today().year))
@@ -1259,18 +1417,15 @@ def download_bulk_report_pdf(request):
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
 
     if not student_ids:
-        messages.error(request, "No students selected for PDF generation.")
-        return redirect('report_card_select')
+        return JsonResponse({'error': 'No students selected for PDF generation.'}, status=400)
 
     selected_students_base = Student.all_objects.filter(id__in=student_ids, school=school)
     sample = selected_students_base.first()
     if not sample:
-        messages.error(request, "No valid students found.")
-        return redirect('report_card_select')
+        return JsonResponse({'error': 'No valid students found.'}, status=404)
 
     if not user_can_access_class_stream(request.user, sample.class_name, sample.stream, require_class_teacher=True):
-        messages.error(request, "You are not allowed to print report cards for this class stream.")
-        return redirect('report_card_select')
+        return JsonResponse({'error': 'You are not allowed to print report cards for this class stream.'}, status=403)
 
     selected_students_base = selected_students_base.filter(class_name=sample.class_name, stream=sample.stream)
 
@@ -1452,7 +1607,7 @@ def download_bulk_report_pdf(request):
     else:
         section_accent = section_colors['JSS']
 
-    template_html = render_to_string('students/bulk_report_cards.html', {
+    template_html = render_to_string('students/bulk_report_cards_pdf.html', {
         'student_marks_list': student_marks_list,
         'selected_year':      year,
         'selected_term':      term,
@@ -1528,25 +1683,28 @@ def download_bulk_report_pdf(request):
 """
 
     pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
-    if '</head>' in template_html:
-        patched_html = template_html.replace('</head>', pdf_base_tag + pdf_css + '</head>', 1)
-    else:
-        patched_html = pdf_base_tag + pdf_css + template_html
+    patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
     try:
+        student_count = len(student_marks_list)
+        per_student_timeout = max(8, 300 // max(student_count, 1))
+        pdf_timeout = max(600, per_student_timeout * student_count + 120)
         pdf_bytes = _generate_pdf(
             patched_html,
             viewport={"width": 794, "height": 1123},
             landscape=False,
             margin={"top": "0.12in", "right": "0.35in", "bottom": "0.4in", "left": "0.35in"},
             wait_for_charts=True,
-            timeout=300,
+            timeout=pdf_timeout,
             retries=2,
         )
     except Exception as e:
-        logger.error('Bulk report PDF failed: %s\n%s', str(e), traceback.format_exc())
-        messages.error(request, "PDF generation failed. Please try again.")
-        return redirect('report_card_select')
+        _log_pdf_error('download_bulk_report_pdf', e, {
+            'student_count': student_count, 'year': year, 'term': term,
+            'assessment': assessment, 'class': sample.class_name,
+            'stream': sample.stream,
+        })
+        return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     grade_slug = slugify(sample.class_name or "class")
     stream_slug = slugify(sample.stream or "stream")

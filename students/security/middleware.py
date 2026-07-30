@@ -168,7 +168,7 @@ class ForcePasswordChangeMiddleware:
     Only allows through: password-change page, logout, static/media, and login.
     """
 
-    EXEMPT_PREFIXES = ("/password-change/", "/logout/", "/static/", "/media/", "/login/", "/super/")
+    EXEMPT_PREFIXES = ("/password-change/", "/logout/", "/static/", "/media/", "/login/", "/super/", "/results/download-pdf/", "/class-lists/download-pdf/", "/bulk-reports/download-pdf/", "/report/")
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -205,19 +205,12 @@ class CloseOldConnectionsMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        return self.get_response(request)
-
-    def process_response(self, request, response):
         try:
+            response = self.get_response(request)
+        except Exception:
             from django.db import close_old_connections
             close_old_connections()
-        except Exception:
-            pass
+            raise
+        from django.db import close_old_connections
+        close_old_connections()
         return response
-
-    def process_exception(self, request, exception):
-        try:
-            from django.db import close_old_connections
-            close_old_connections()
-        except Exception:
-            pass
