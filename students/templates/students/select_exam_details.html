@@ -122,7 +122,7 @@
                     </span>
                 </div>
 
-                <form method="POST" id="marksForm">
+                <form method="POST" id="marksForm" data-submitting="false">
                     {% csrf_token %}
                     <input type="hidden" name="assignment_id" value="{{ selected_assignment.id }}">
                     <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
@@ -383,6 +383,8 @@
             if (data.ok) {
                 row.classList.add('saved-flash');
                 setTimeout(function(){ row.classList.remove('saved-flash'); }, 800);
+                var draftKey = 'offline_mark_' + studentId + '_' + examId.value;
+                try { localStorage.removeItem(draftKey); } catch(ignored) {}
             } else if (data.error) {
                 showToast('Save failed: ' + data.error, 'error');
             }
@@ -408,6 +410,8 @@
         postJSON('{% url "clear_mark" %}', fd).then(function(data) {
             if (data.ok) {
                 updateProgress();
+                var draftKey = 'offline_mark_' + studentId + '_' + examId.value;
+                try { localStorage.removeItem(draftKey); } catch(ignored) {}
             } else if (data.error) {
                 showToast('Clear failed: ' + data.error, 'error');
                 input.dataset.hadValue = '1';
@@ -430,8 +434,12 @@
         if (el2) el2.textContent = scored;
         var submitBtn = document.querySelector('.en-submit-btn');
         if (submitBtn) {
-            if (invalid > 0) submitBtn.setAttribute('disabled', 'disabled');
-            else submitBtn.removeAttribute('disabled');
+            var form = document.getElementById('marksForm');
+            var isSubmitting = form && form.getAttribute('data-submitting') === 'true';
+            if (!isSubmitting) {
+                if (invalid > 0) submitBtn.setAttribute('disabled', 'disabled');
+                else submitBtn.removeAttribute('disabled');
+            }
         }
         var totalStudents = inputs.length;
         var submitBar = document.getElementById('enInlineSubmit');
@@ -530,7 +538,25 @@
     if (container) {
         container.addEventListener('input', function(e) {
             var t = e.target;
-            if (t.classList && t.classList.contains('js-score')) calcScore(t);
+            if (!(t.classList && t.classList.contains('js-score'))) return;
+
+            // Offline draft: persist raw value before debounce/fetch
+            var raw = (t.value || '').trim();
+            if (raw !== '' && raw.toUpperCase() !== 'AB' && isNaN(parseFloat(raw))) return;
+            var row = t.closest('.en-student');
+            var studentId = row ? row.getAttribute('data-student-id') : '';
+            var examIdEl = document.querySelector('input[name="exam_id"]');
+            var examId = examIdEl ? examIdEl.value : '';
+            if (studentId && examId) {
+                var draftKey = 'offline_mark_' + studentId + '_' + examId;
+                try {
+                    localStorage.setItem(draftKey, JSON.stringify({
+                        score: raw, timestamp: Date.now()
+                    }));
+                } catch(ignored) {}
+            }
+
+            calcScore(t);
         });
         container.addEventListener('keydown', function(e) {
             if (e.key !== 'Enter' && e.key !== 'Go' && e.key !== 'Next') return;
@@ -606,15 +632,22 @@
         }
 
         // Wire up the submit button (it's outside the form now)
+        var form = document.getElementById('marksForm');
         var submitBtn = document.getElementById('enSubmitBtn');
-        if (submitBtn) {
+        if (submitBtn && form) {
             submitBtn.addEventListener('click', function() {
+                if (form.getAttribute('data-submitting') === 'true') return false;
+
                 if (document.querySelectorAll('.js-score.is-invalid').length) {
                     showToast('Fix over-max scores before submitting.', 'error');
                     return;
                 }
-                var form = document.getElementById('marksForm');
-                if (!form) return;
+
+                form.setAttribute('data-submitting', 'true');
+                submitBtn.style.pointerEvents = 'none';
+                submitBtn.style.opacity = '0.6';
+                submitBtn.innerHTML = '<i class="ph ph-spinner-gap spinning"></i> Saving...';
+
                 if (Object.keys(saveTimers).length) {
                     flushPendingSaves().finally(function() { form.submit(); });
                 } else {
@@ -623,20 +656,84 @@
             });
         }
 
-        var form = document.getElementById('marksForm');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                if (document.querySelectorAll('.js-score.is-invalid').length) {
-                    e.preventDefault();
-                    showToast('Fix over-max scores before submitting.', 'error');
-                    return false;
+        // Restore submit button if browser restores page from bfcache (back/forward)
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted && form && submitBtn) {
+                form.setAttribute('data-submitting', 'false');
+                submitBtn.style.pointerEvents = 'auto';
+                submitBtn.style.opacity = '1';
+                submitBtn.innerHTML = '<i class="ph ph-cloud-arrow-up"></i> Submit';
+            }
+        });
+
+        // ─── Offline draft re-sync ──────────────────────────────────
+        // When connectivity returns, iterate all localStorage keys
+        // matching offline_mark_* and replay them sequentially.
+        function reflushOfflineDrafts() {
+            var keys = [];
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (k && k.indexOf('offline_mark_') === 0) keys.push(k);
+            }
+            if (!keys.length) return;
+
+            showToast('Back online — resyncing ' + keys.length + ' draft(s)...', 'info');
+
+            var idx = 0;
+            function flushOne() {
+                if (idx >= keys.length) {
+                    showToast('Drafts resynced successfully.', 'success');
+                    return;
                 }
-                if (Object.keys(saveTimers).length) {
-                    e.preventDefault();
-                    flushPendingSaves().finally(function() { form.submit(); });
+                var k = keys[idx++];
+                try {
+                    var entry = JSON.parse(localStorage.getItem(k));
+                    if (!entry || !entry.score) {
+                        localStorage.removeItem(k);
+                        flushOne();
+                        return;
+                    }
+                    // Parse key: offline_mark_{studentId}_{examId}
+                    var parts = k.split('_');
+                    var studentId = parts[2];
+                    var examId = parts.slice(3).join('_');
+
+                    var fd = new FormData();
+                    fd.append('student_id', studentId);
+                    fd.append('assignment_id', '{{ selected_assignment.id|escapejs }}');
+                    fd.append('exam_id', examId);
+                    fd.append('score', entry.score);
+                    var maxEl = document.getElementById('maximumMarks');
+                    fd.append('maximum_marks', maxEl ? (maxEl.value || '100') : '100');
+
+                    postJSON('{% url "save_mark" %}', fd).then(function(data) {
+                        if (data.ok) {
+                            localStorage.removeItem(k);
+                            // Update DOM row visual if visible
+                            var row = document.querySelector('.en-student[data-student-id="' + studentId + '"]');
+                            if (row) {
+                                row.classList.add('saved-flash');
+                                setTimeout(function(){ row.classList.remove('saved-flash'); }, 800);
+                            }
+                        }
+                        flushOne();
+                    }).catch(function() {
+                        // Network still flaky — leave draft in localStorage, stop retrying
+                        showToast('Sync interrupted — drafts preserved for next retry.', 'error');
+                    });
+                } catch(ignored) {
+                    localStorage.removeItem(k);
+                    flushOne();
                 }
-            });
+            }
+            flushOne();
         }
+
+        // Run once on page load in case drafts were left from a prior offline session
+        reflushOfflineDrafts();
+
+        // Listen for connectivity restoration
+        window.addEventListener('online', reflushOfflineDrafts);
     });
 
     window.returnForEdits = function() {

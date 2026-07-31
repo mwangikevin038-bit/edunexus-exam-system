@@ -39,6 +39,8 @@ from .helpers import (
     calculate_broadsheet_plv,
     calculate_primary_plv,
     calculate_report_plv,
+    get_cached_class_averages,
+    get_class_leaderboard,
     get_class_teacher_scope,
     get_learner_contexts_for_user,
     get_performance_level,
@@ -1275,17 +1277,12 @@ def download_individual_report_pdf(request, student_id):
     total_marks  = sum(m.score  for m in marks if m.score)
     total_points = sum(m.points for m in marks if m.points)
 
-    class_scores = (
-        Mark.all_objects.filter(
-            school=school,
-            student__class_name=student.class_name, student__stream=student.stream,
-            year=year, term=term, exam_type=db_assessment,
-            subject__in=published_subjects_qs,
-        )
-        .values('student_id').annotate(total_score=Sum('score')).order_by('-total_score')
+    leaderboard = get_class_leaderboard(
+        school, student.class_name, student.stream,
+        year, term, db_assessment, published_subjects_qs,
     )
-    sorted_ids  = [item['student_id'] for item in class_scores]
-    class_count = len(sorted_ids)
+    sorted_ids  = leaderboard['sorted_ids']
+    class_count = leaderboard['class_count']
     try:
         position = sorted_ids.index(student.id) + 1
     except ValueError:
@@ -1634,26 +1631,17 @@ def download_bulk_report_pdf(request):
     )
     selected_students = selected_students_base.prefetch_related(marks_prefetch)
 
-    class_scores = (
-        Mark.all_objects.filter(
-            school=school, student__class_name=sample.class_name, student__stream=sample.stream,
-            year=year, term=term, exam_type=db_assessment, subject__in=published_subjects_qs,
-        )
-        .values('student_id').annotate(total_score=Sum('score')).order_by('-total_score')
+    leaderboard = get_class_leaderboard(
+        school, sample.class_name, sample.stream,
+        year, term, db_assessment, published_subjects_qs,
     )
-    class_leaderboard = [item['student_id'] for item in class_scores]
-    total_class_count = len(class_leaderboard)
+    class_leaderboard = leaderboard['sorted_ids']
+    total_class_count = leaderboard['class_count']
 
-    class_subject_avgs = (
-        Mark.all_objects.filter(
-            school=school, student__class_name=sample.class_name, student__stream=sample.stream,
-            year=year, term=term, exam_type=db_assessment, subject__in=published_subjects_qs,
-        )
-        .exclude(is_absent=True)
-        .values('subject__code')
-        .annotate(avg_score=Avg('score'))
+    class_avg_map = get_cached_class_averages(
+        school, sample.class_name, sample.stream,
+        year, term, db_assessment, published_subjects_qs,
     )
-    class_avg_map = {row['subject__code']: round(row['avg_score'], 1) for row in class_subject_avgs}
 
     grading_config = _grading_config_for(school, sample.school_section, sample.sub_section)
     grade_descriptors = grading_config.subject_scale if grading_config else []

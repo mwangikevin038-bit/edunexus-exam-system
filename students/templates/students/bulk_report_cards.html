@@ -12,180 +12,6 @@
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    /* ═══════════════════════════════════════════════════════════
-       MOBILE SHELL — iOS 17 Premium
-       ═══════════════════════════════════════════════════════════ */
-    .rv-shell {
-        position: fixed;
-        inset: 0;
-        z-index: 800;
-        display: flex;
-        flex-direction: column;
-        height: 100dvh;
-        background: #F5F7F6;
-        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
-        -webkit-font-smoothing: antialiased;
-    }
-
-    .rv-header {
-        flex-shrink: 0;
-        padding: 12px 16px;
-        padding-top: calc(12px + env(safe-area-inset-top, 0px));
-        background: rgba(245, 247, 246, 0.92);
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        z-index: 10;
-    }
-
-    .rv-header-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-    }
-
-    .rv-back {
-        width: 34px;
-        height: 34px;
-        border: none;
-        border-radius: 10px;
-        background: rgba(36, 229, 94, 0.1);
-        color: #199E41;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        cursor: pointer;
-    }
-
-    .rv-back:active { background: rgba(36, 229, 94, 0.2); }
-
-    .rv-title {
-        font-size: 1rem;
-        font-weight: 800;
-        color: #1C1C1E;
-        letter-spacing: -0.025em;
-    }
-
-    .rv-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.625rem;
-        font-weight: 700;
-        color: #199E41;
-        background: rgba(36, 229, 94, 0.1);
-        padding: 4px 8px;
-        border-radius: 6px;
-        flex-shrink: 0;
-    }
-
-    /* ── Hero Card ──────────────────────────────────────────── */
-    .rv-hero {
-        margin: 12px 16px 0;
-        padding: 16px;
-        background: linear-gradient(135deg, #0f5a35 0%, #1a7d47 50%, #24E55E 120%);
-        border-radius: 16px;
-        color: #FFFFFF;
-        position: relative;
-        overflow: hidden;
-        flex-shrink: 0;
-    }
-
-    .rv-hero::before {
-        content: '';
-        position: absolute;
-        top: -30px;
-        right: -30px;
-        width: 100px;
-        height: 100px;
-        background: rgba(255, 255, 255, 0.08);
-        border-radius: 50%;
-    }
-
-    .rv-hero-name {
-        font-size: 1rem;
-        font-weight: 800;
-        margin-bottom: 2px;
-        position: relative;
-    }
-
-    .rv-hero-sub {
-        font-size: 0.6875rem;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.6);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin-bottom: 12px;
-        position: relative;
-    }
-
-    .rv-hero-pills {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-        position: relative;
-    }
-
-    .rv-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 9px;
-        border-radius: 7px;
-        font-size: 0.625rem;
-        font-weight: 700;
-        background: rgba(255, 255, 255, 0.15);
-        color: rgba(255, 255, 255, 0.9);
-        border: 0.5px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .rv-pill i { font-size: 10px; }
-
-    /* ── Action Bar ─────────────────────────────────────────── */
-    .rv-actions {
-        display: flex;
-        gap: 8px;
-        padding: 12px 16px 0;
-        flex-shrink: 0;
-    }
-
-    .rv-btn {
-        flex: 1;
-        height: 42px;
-        border: none;
-        border-radius: 12px;
-        font-family: inherit;
-        font-weight: 700;
-        font-size: 0.8125rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        transition: all 0.15s;
-        -webkit-tap-highlight-color: transparent;
-    }
-
-    .rv-btn:active { transform: scale(0.97); }
-
-    .rv-btn-green {
-        background: linear-gradient(135deg, #199E41, #24E55E);
-        color: #FFFFFF;
-        box-shadow: 0 4px 14px rgba(36, 229, 94, 0.3);
-    }
-
-    .rv-btn-ghost {
-        background: rgba(142, 142, 147, 0.08);
-        color: #1C1C1E;
-    }
-
-    .rv-btn i { font-size: 15px; }
-
     /* ── Report Card Base (all sizes) — modern redesign, matches individual view ── */
     :root {
         --rc-green: #16A34A;
@@ -295,6 +121,7 @@
     .rc-label.grade { color: var(--rc-green); }
     .rc-chart-block { border: 1px solid var(--section-accent, var(--rc-border)); border-radius: 8px; padding: 8px; }
     .rc-chart-block canvas { width: 280px !important; height: 130px !important; }
+    .rc-rendered-chart-img { width: 100%; height: auto; display: block; }
     .rc-chart-title { font-size: 10pt; font-weight: 700; color: var(--rc-muted); margin-bottom: 4px; text-align: center; }
 
     /* Stat boxes */
@@ -390,128 +217,22 @@
         padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 72px);
     }
 
-    .rv-card-label {
-        font-size: 0.625rem;
-        font-weight: 700;
-        color: #94A3B8;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin-bottom: 8px;
-        padding-left: 2px;
-    }
-
-    .rv-card-container {
-        background: #FFFFFF;
-        border-radius: 14px;
-        border: 1px solid #F1F5F9;
-        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
-        overflow: hidden;
-        margin-bottom: 12px;
-    }
-
-    .rv-card-scroll {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        padding: 0;
-    }
-
-    .rv-card-scroll .report-card {
-        margin: 0;
-        border-radius: 0;
-        min-width: 7.4in;
-    }
-
-    /* ── Student Quick Info (above each card) ───────────────── */
-    .rv-student-bar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 14px;
-        border-bottom: 1px solid #F1F5F9;
-    }
-
-    .rv-avatar {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, #24E55E, #199E41);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #FFFFFF;
-        font-weight: 800;
-        font-size: 0.875rem;
-        flex-shrink: 0;
-    }
-
-    .rv-student-name {
-        font-size: 0.875rem;
-        font-weight: 800;
-        color: #1C1C1E;
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .rv-student-pos {
-        display: flex;
-        align-items: center;
-        gap: 3px;
-        padding: 4px 8px;
-        background: #F8FAFC;
-        border: 1px solid #F1F5F9;
-        border-radius: 8px;
-        font-size: 0.75rem;
-        font-weight: 800;
-        color: #1C1C1E;
-        flex-shrink: 0;
-    }
-
-    .rv-student-pos span {
-        font-size: 0.625rem;
-        font-weight: 600;
-        color: #94A3B8;
-    }
-
-    /* ── Empty State ────────────────────────────────────────── */
-    .rv-empty {
-        text-align: center;
-        padding: 60px 24px;
-    }
-
-    .rv-empty-icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 18px;
-        background: rgba(36, 229, 94, 0.08);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 16px;
-        font-size: 28px;
-        color: #24E55E;
-    }
-
-    .rv-empty-title {
-        font-size: 1rem;
-        font-weight: 800;
-        color: #1C1C1E;
-        margin-bottom: 4px;
-    }
-
-    .rv-empty-text {
-        font-size: 0.8125rem;
-        font-weight: 500;
-        color: #94A3B8;
-    }
-
     /* ═══════════════════════════════════════════════════════════
-       DESKTOP — Original A4 print workspace
+       RESPONSIVE — single card adapts to all screens
        ═══════════════════════════════════════════════════════════ */
-    @media (min-width: 769px) {
-        .rv-shell { display: none !important; }
+    @media (max-width: 800px) {
+        body { background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+        .container-fluid { max-width: 100% !important; margin: 0 !important; padding: 10px !important; }
+        .control-panel { background: linear-gradient(135deg, #1a7d47 0%, #0f5a35 100%); padding: 15px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .control-panel h3 { color: white; font-size: 16px; font-weight: bold; margin-right: auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+        .btn-print { background: linear-gradient(135deg, #1a7d47 0%, #0f5a35 100%); color: white; border: 2px solid white; padding: 10px 20px; border-radius: 5px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+        .report-card { margin: 10px auto; width: 100% !important; max-width: 7.4in; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 8px solid var(--section-accent, #305CDE); overflow-x: auto; }
+        .rc-top-grid { grid-template-columns: 1fr !important; }
+        .rc-chart-block canvas { width: 100% !important; height: auto !important; }
+        .rc-stats { grid-template-columns: repeat(3, 1fr); }
+        .rc-schoolinfo h1 { font-size: 12pt !important; }
+    }
+    @media (min-width: 801px) {
         body { background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .container-fluid { max-width: 1200px !important; margin: 0 auto !important; padding: 20px !important; }
         .control-panel { background: linear-gradient(135deg, #1a7d47 0%, #0f5a35 100%); padding: 25px; margin-bottom: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
@@ -529,10 +250,9 @@
             margin: 0.12in 0.35in 0.4in 0.35in;
         }
 
-        .rv-shell, .sidebar, .sidebar-overlay, .sidebar-header, .sidebar-footer, .sidebar-nav, .sidebar-user, .navbar, .left-menu, .control-panel, .btn-print, .date-picker-group, nav, .bottom-nav, .mobile-topbar, .hamburger-btn, .rv-header, .rv-actions, .rv-card-label, .rv-student-bar, .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header, .mobile-menu-backdrop, .system-footer { display: none !important; }
+        .sidebar, .sidebar-overlay, .sidebar-header, .sidebar-footer, .sidebar-nav, .sidebar-user, .navbar, .left-menu, .control-panel, .btn-print, .date-picker-group, nav, .bottom-nav, .mobile-topbar, .hamburger-btn, .rv-header, .rv-actions, .rv-card-label, .rv-student-bar, .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header, .mobile-menu-backdrop, .system-footer { display: none !important; }
         html, body { font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; background: white !important; margin: 0 !important; padding: 0 !important; }
         .container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }
-        .rv-scroll, .rv-card-container, .rv-card-scroll { display: block !important; visibility: visible !important; }
         #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
         .report-card {
             display: flex !important; page-break-inside: avoid !important; break-inside: avoid !important;
@@ -581,180 +301,8 @@
         .rc-table, .rc-table th, .rc-table td, .rc-stat, .rc-descriptors-table, .rc-descriptors-table th, .rc-descriptors-table td { border-color: #000 !important; }
     }
 
-    .rv-card-container, .rv-card-scroll, #reportCardsContainer { border: none !important; border-image: none !important; outline: none !important; }
+    #reportCardsContainer { border: none !important; border-image: none !important; outline: none !important; }
 </style>
-
-<div class="rv-shell">
-    <div class="rv-header">
-        <div class="rv-header-left">
-            <button class="rv-back" onclick="history.back()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <span class="rv-title">Report Cards</span>
-        </div>
-        <span class="rv-badge">
-            <i class="ph ph-file-pdf" style="font-size:10px;"></i>
-            {{ student_marks_list|length }} card{{ student_marks_list|length|pluralize }}
-        </span>
-    </div>
-
-    <div class="rv-hero">
-        <div class="rv-hero-name">{{ request.school.name }}</div>
-        <div class="rv-hero-sub">{{ request.school.address }}</div>
-        <div class="rv-hero-pills">
-            <span class="rv-pill"><i class="ph ph-calendar-blank"></i> {{ selected_term }} {{ selected_year }}</span>
-            <span class="rv-pill"><i class="ph ph-graduation-cap"></i> {% if selected_assessment|lower == 'mid' %}Mid Term{% elif selected_assessment|lower == 'opener' %}Opener{% elif selected_assessment|lower == 'end' %}End Term{% else %}{{ selected_assessment }}{% endif %}</span>
-        </div>
-    </div>
-
-    <div class="rv-actions">
-        <button type="button" onclick="printAllReportCards(this, event)" class="rv-btn rv-btn-ghost" style="text-decoration:none;text-align:center;">
-            <i class="ph ph-printer"></i> Print
-        </button>
-        <a href="{% url 'download_bulk_report_pdf' %}?{{ request.GET.urlencode }}" class="rv-btn rv-btn-green" style="text-decoration:none;text-align:center;">
-            <i class="ph ph-file-pdf"></i> Download PDF
-        </a>
-    </div>
-    <div style="margin:0 16px;padding:8px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.85);font-size:11px;line-height:1.4;">
-        <strong>Tip:</strong> Set paper size to <strong>A4</strong> in the print dialog to avoid errors.
-    </div>
-
-    <div class="rv-scroll">
-        {% for student_data in student_marks_list %}
-        <div class="rv-card-label">Report Card {{ forloop.counter }} of {{ student_marks_list|length }}</div>
-        <div class="rv-card-container">
-            {# ── Student Quick Bar ── #}
-            <div class="rv-student-bar">
-                <div class="rv-avatar">{{ student_data.student.name|truncatechars:1 }}</div>
-                <div class="rv-student-name">{{ student_data.student.name }}</div>
-                {% if student_data.position %}
-                <div class="rv-student-pos">{{ student_data.position }} <span>/{{ class_count }}</span></div>
-                {% endif %}
-            </div>
-            {# ── Actual A4 Report Card (horizontally scrollable) ── #}
-            <div class="rv-card-scroll">
-                <div class="report-card">
-                    <div class="report-content">
-                        <div class="rc-header">
-                            {% if request.school.logo %}
-                            <img src="{{ request.school.logo.url }}" alt="Logo" class="report-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                            <div class="rc-logo-placeholder" style="display:none;">{{ request.school.name|truncatechars:1 }}</div>
-                            {% else %}
-                            <div class="rc-logo-placeholder">{{ request.school.name|truncatechars:1 }}</div>
-                            {% endif %}
-                            <div class="rc-schoolinfo">
-                                <h1>{{ request.school.name|upper }}</h1>
-                                <p class="rc-tagline">Excellence &middot; Discipline &middot; Character</p>
-                                <p class="rc-address">Address: {{ request.school.address }}</p>
-                                <p class="rc-contact-line">Tel {{ request.school.phone_number }} &nbsp;|&nbsp; Email {{ request.school.email }}</p>
-                            </div>
-                            <div class="rc-logo-spacer"></div>
-                        </div>
-
-                        <div class="rc-banner">
-                            Academic Report Form &nbsp;–&nbsp; {{ student_data.student.class_name }} &nbsp;–&nbsp;
-                            {% if selected_assessment|lower == 'mid' %}Mid Term Assessment{% elif selected_assessment|lower == 'opener' %}Opener Assessment{% elif selected_assessment|lower == 'end' %}End Term Assessment{% else %}{{ selected_assessment }}{% endif %}
-                            &nbsp;–&nbsp; ({{ selected_year }} {{ selected_term }})
-                        </div>
-
-                        <div class="rc-top-grid">
-                            <div class="rc-student-block">
-                                <div class="rc-photo-placeholder">{{ student_data.student.name|slice:":1" }}</div>
-                                <div>
-                                    <div class="rc-student-name">{{ student_data.student.name }}</div>
-                                    <div class="rc-detail"><span class="rc-label admno">Admno:</span>{{ student_data.student.admission_no }}</div>
-                                    <div class="rc-detail"><span class="rc-label grade">Grade:</span>{{ student_data.student.class_name }} {{ student_data.student.stream }}</div>
-                                </div>
-                            </div>
-                            <div class="rc-chart-block">
-                                <div class="rc-chart-title">Subject Performance – Student vs Class</div>
-                                <canvas id="chart-m-{{ forloop.counter }}" width="560" height="260"></canvas>
-                                <script type="application/json" id="chart-data-m-{{ forloop.counter }}">{{ student_data.chart_data_json|safe }}</script>
-                            </div>
-                        </div>
-
-                        <div class="rc-stats">
-                            <div class="rc-stat"><span class="rc-stat-label">Position</span><span class="rc-stat-value">{{ student_data.position|default:"-" }}{% if student_data.class_count %}<small style="font-size:8pt;color:var(--rc-muted);">/{{ student_data.class_count }}</small>{% endif %}</span></div>
-                            <div class="rc-stat"><span class="rc-stat-label">Performance Level</span><span class="rc-stat-value">{{ student_data.overall_plv }}</span></div>
-                            <div class="rc-stat"><span class="rc-stat-label">Total Marks</span><span class="rc-stat-value">{{ student_data.total_marks }}/{{ student_data.max_total_marks }}</span></div>
-                            <div class="rc-stat"><span class="rc-stat-label">Total Points</span><span class="rc-stat-value">{{ student_data.total_points|default:"-" }}/{{ student_data.max_total_points }}</span></div>
-                            <div class="rc-stat"><span class="rc-stat-label">Mean Points</span><span class="rc-stat-value">{{ student_data.mean_points }}/{{ student_data.mean_points_max }}</span></div>
-                        </div>
-
-                        <div class="table-scroll">
-                        <table class="rc-table">
-                            <thead><tr><th style="text-align:left;">Subjects</th><th>Marks</th><th>Dev.</th><th>Grade</th><th>Teacher</th></tr></thead>
-                            <tbody>
-                                {% for mark in student_data.marks %}
-                                    {% if mark.score != None and mark.score != "-" %}
-                                    <tr>
-                                        <td class="rc-subj">{{ mark.subject_name }}</td>
-                                        <td class="rc-center">{% if mark.is_absent %}AB{% else %}{{ mark.score }}%{% endif %}</td>
-                                        <td class="rc-center {% if mark.deviation != None %}{% if mark.deviation > 0 %}rc-dev-up{% elif mark.deviation < 0 %}rc-dev-down{% endif %}{% endif %}">{% if mark.deviation != None %}{{ mark.deviation }}{% else %}-{% endif %}</td>
-                                        <td class="rc-center rc-grade">{{ mark.performance_level|default:"-" }}</td>
-                                        <td class="rc-teacher">{{ mark.teacher_name }}</td>
-                                    </tr>
-                                    {% endif %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        </div>
-
-                        <div class="rc-remarks-grid">
-                            <div class="rc-remark-box">
-                                <div class="rc-remark-title">Class Teacher Remarks</div>
-                                {% if student_data.class_teacher_name %}<div class="rc-remark-author">{{ student_data.class_teacher_name }}</div>{% endif %}
-                                <div class="rc-remark-text">{{ student_data.class_teacher_remark }}</div>
-                                <div class="rc-signature">Signature: ____________________</div>
-                            </div>
-                            <div class="rc-remark-box">
-                                <div class="rc-remark-title">Principal Remarks</div>
-                                <div class="rc-remark-text">{{ student_data.headteacher_comment }}</div>
-                                <div class="rc-signature">Signature &amp; Stamp: ____________________</div>
-                            </div>
-                        </div>
-
-                        <div class="rc-descriptors">
-                            <div class="rc-descriptors-title">Grade Descriptors</div>
-                            <table class="rc-descriptors-table">
-                                <thead>
-                                    <tr>
-                                        <th>Performance Level</th>
-                                        {% for d in student_data.grade_descriptors %}<th>{{ d.level }}</th>{% endfor %}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Points</td>
-                                        {% for d in student_data.grade_descriptors %}<td>{{ d.points }}</td>{% endfor %}
-                                    </tr>
-                                    <tr>
-                                        <td>Range (%)</td>
-                                        {% for d in student_data.grade_descriptors %}<td>{{ d.min_score }}-{{ d.max_score }}</td>{% endfor %}
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="footer-dates">
-                            <div class="date-box"><span>CLOSING DATE:</span><span>{% if student_data.closing_date %}{{ student_data.closing_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
-                            <div class="date-box"><span>OPENING DATE:</span><span>{% if student_data.opening_date %}{{ student_data.opening_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
-                        </div>
-                        <div class="system-footer">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
-                        <div class="rc-print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="rv-empty">
-            <div class="rv-empty-icon"><i class="ph ph-file-text"></i></div>
-            <div class="rv-empty-title">No Report Cards</div>
-            <div class="rv-empty-text">Report cards will appear here once generated.</div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
 
 <div class="container-fluid">
     <div class="control-panel">
@@ -808,8 +356,8 @@
                     </div>
                     <div class="rc-chart-block">
                         <div class="rc-chart-title">Subject Performance – Student vs Class</div>
-                        <canvas id="chart-d-{{ forloop.counter }}" width="560" height="260"></canvas>
-                        <script type="application/json" id="chart-data-d-{{ forloop.counter }}">{{ student_data.chart_data_json|safe }}</script>
+                        <canvas id="chart-{{ forloop.counter }}" width="560" height="260"></canvas>
+                        <script type="application/json" id="chart-data-{{ forloop.counter }}">{{ student_data.chart_data_json|safe }}</script>
                     </div>
                 </div>
 
@@ -890,25 +438,29 @@
 
 <script src="{% static 'js/chart.umd.min.js' %}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('canvas[id^="chart-"]').forEach(function (canvas) {
+    async function renderAllChartsSequentially() {
+        var canvases = Array.from(document.querySelectorAll('canvas[id^="chart-"]'));
+        for (var i = 0; i < canvases.length; i++) {
+            var canvas = canvases[i];
             var dataElId = 'chart-data-' + canvas.id.split('chart-')[1];
             var dataEl = document.getElementById(dataElId);
-            if (!dataEl) return;
+            if (!dataEl) continue;
             var payload;
-            try { payload = JSON.parse(dataEl.textContent); } catch (e) { return; }
-            new Chart(canvas, {
+            try { payload = JSON.parse(dataEl.textContent); } catch (e) { continue; }
+            var chartInstance = new Chart(canvas, {
                 type: 'line',
                 data: {
                     labels: payload.labels,
                     datasets: [
-                        { label: 'Student', data: payload.student, borderColor: '#16A34A', backgroundColor: '#16A34A', tension: 0.35, pointRadius: 3 },
-                        { label: 'Class Avg', data: payload.class_avg, borderColor: '#94A3B8', backgroundColor: '#94A3B8', tension: 0.35, pointRadius: 3 }
+                        { label: 'Student', data: payload.student, borderColor: '#16A34A', backgroundColor: '#16A34A', tension: 0.35 },
+                        { label: 'Class Avg', data: payload.class_avg, borderColor: '#94A3B8', backgroundColor: '#94A3B8', tension: 0.35 }
                     ]
                 },
                 options: {
-                    responsive: false,
-                    devicePixelRatio: 2,
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    devicePixelRatio: 1.5,
+                    animation: false,
                     plugins: { legend: { display: true, position: 'top', labels: { font: { size: 9 } } } },
                     scales: {
                         y: { beginAtZero: true, max: 100, ticks: { font: { size: 8 } } },
@@ -916,25 +468,17 @@
                     }
                 }
             });
-        });
-    });
-
-    function convertCanvasesToImages() {
-        document.querySelectorAll('canvas[id^="chart-"]').forEach(function (canvas) {
-            if (canvas.dataset.converted === 'true') return;
             var img = document.createElement('img');
             img.src = canvas.toDataURL('image/png');
-            img.style.cssText = 'width:' + canvas.offsetWidth + 'px;height:' + canvas.offsetHeight + 'px;';
-            img.className = canvas.className;
-            canvas.parentNode.replaceChild(img, canvas);
-            canvas.dataset.converted = 'true';
-        });
+            img.className = 'rc-rendered-chart-img';
+            img.style.cssText = 'width:100%;height:auto;display:block;';
+            canvas.style.display = 'none';
+            canvas.parentNode.appendChild(img);
+            chartInstance.destroy();
+            await new Promise(function(resolve) { setTimeout(resolve, 15); });
+        }
     }
-
-    function printReportCards() {
-        convertCanvasesToImages();
-        setTimeout(function() { window.print(); }, 300);
-    }
+    document.addEventListener('DOMContentLoaded', renderAllChartsSequentially);
 
     function printAllReportCards(btn, e) {
         if (e) { e.preventDefault(); e.stopPropagation(); }

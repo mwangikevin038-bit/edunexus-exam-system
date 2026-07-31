@@ -10,8 +10,11 @@ import random
 import secrets
 import string
 
-from django.db.models import Count, Q, IntegerField
+from django.core.cache import cache
+from django.db.models import Avg, Count, Q, Sum, IntegerField
 from django.db.models.functions import Cast
+from django.db.models import F
+from django.db.models.fields import FloatField
 
 from .constants import (
     ASSESSMENT_SLUG_MAP,
@@ -22,6 +25,67 @@ from .constants import (
 from ..models import Mark, MarkSubmission, Student, SubjectAssignment, Teacher
 from ..school_scope import get_current_school, get_current_school_section
 from ..security import user_has_main_school_admin_override
+
+
+# ── Cache TTL and key helpers ────────────────────────────────────────────────
+_CACHE_TTL = 3600  # 1 hour
+
+def _leaderboard_cache_key(school_id, class_name, stream, year, term, assessment):
+    return f"lb_{school_id}_{class_name}_{stream}_{year}_{term}_{assessment}"
+
+def _class_avg_cache_key(school_id, class_name, stream, year, term, assessment):
+    return f"avg_{school_id}_{class_name}_{stream}_{year}_{term}_{assessment}"
+
+def invalidate_report_caches(school_id, class_name, stream, year, term, assessment):
+    """Call this whenever marks are uploaded/changed for a class/stream/exam."""
+    cache.delete(_leaderboard_cache_key(school_id, class_name, stream, year, term, assessment))
+    cache.delete(_class_avg_cache_key(school_id, class_name, stream, year, term, assessment))
+
+
+def get_cached_class_averages(school, class_name, stream, year, term, assessment, published_subjects_qs):
+    """
+    Return {subject_code: avg_score} for a class/stream, cached in Redis.
+    Only hits the DB on cache miss.
+    """
+    key = _class_avg_cache_key(school.pk, class_name, stream, year, term, assessment)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    class_subject_avgs = (
+        Mark.all_objects.filter(
+            school=school,
+            student__class_name=class_name,
+            student__stream=stream,
+            year=year, term=term, exam_type=assessment,
+            subject__in=published_subjects_qs,
+        )
+        .exclude(is_absent=True)
+        .values('subject__code')
+        .annotate(avg_score=Avg('score'))
+    )
+    avg_map = {row['subject__code']: round(row['avg_score'], 1) for row in class_subject_avgs}
+    cache.set(key, avg_map, _CACHE_TTL)
+    return avg_map
+
+
+def _resolve_grading_config(school, section, sub_section):
+    """
+    Resolve GradingConfig with a 3-step fallback, using _get_grading_config
+    which already has a per-process dict cache.
+    """
+    config = _get_grading_config(school, section, sub_section)
+    if config:
+        return config
+    if section == 'PRIMARY' and sub_section == 'LOWER':
+        config = _get_grading_config(school, 'PRIMARY', 'LOWER')
+        if not config:
+            config = _get_grading_config(school, 'LOWER_PRIMARY', None)
+    elif section == 'PRIMARY':
+        config = _get_grading_config(school, 'PRIMARY', 'UPPER')
+    else:
+        config = _get_grading_config(school, 'JSS', None)
+    return config
 
 
 def generate_default_password():
@@ -463,7 +527,6 @@ def calculate_report_plv(total_points, total_marks, sub_section=None):
     NO hardcoded fallback — if config is missing, logs error and returns '-'.
     """
     import logging
-    from ..models import GradingConfig
     from ..school_scope import get_current_school, get_current_school_section
 
     pts = total_points or 0
@@ -473,29 +536,7 @@ def calculate_report_plv(total_points, total_marks, sub_section=None):
     section = get_current_school_section()
 
     if school and section:
-        if sub_section:
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section=section, sub_section=sub_section
-            ).first()
-            if config and config.total_scale:
-                return config.get_total_level(mks)[0] if mks else '-'
-        # Use the same 2-step lookup as _get_grading_scale_json()
-        if section == 'LOWER_PRIMARY':
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='PRIMARY', sub_section='LOWER'
-            ).first()
-            if not config:
-                config = GradingConfig.all_objects.filter(
-                    school=school, school_section='LOWER_PRIMARY', sub_section__isnull=True
-                ).first()
-        elif section == 'PRIMARY':
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='PRIMARY', sub_section='UPPER'
-            ).first()
-        else:
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='JSS', sub_section__isnull=True
-            ).first()
+        config = _resolve_grading_config(school, section, sub_section)
         if config and config.total_scale:
             return config.get_total_level(mks)[0] if mks else '-'
 
@@ -531,7 +572,6 @@ def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None, scho
     NO hardcoded fallback.
     """
     import logging
-    from ..models import GradingConfig
     from ..school_scope import get_current_school, get_current_school_section
 
     if not assessed_subjects or not total_marks:
@@ -543,28 +583,7 @@ def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None, scho
         section = get_current_school_section()
 
     if school and section:
-        config = None
-        if sub_section:
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section=section, sub_section=sub_section
-            ).first()
-        if not config:
-            if section == 'LOWER_PRIMARY':
-                config = GradingConfig.all_objects.filter(
-                    school=school, school_section='PRIMARY', sub_section='LOWER'
-                ).first()
-                if not config:
-                    config = GradingConfig.all_objects.filter(
-                        school=school, school_section='LOWER_PRIMARY', sub_section__isnull=True
-                    ).first()
-            elif section == 'PRIMARY':
-                config = GradingConfig.all_objects.filter(
-                    school=school, school_section='PRIMARY', sub_section='UPPER'
-                ).first()
-            else:
-                config = GradingConfig.all_objects.filter(
-                    school=school, school_section='JSS', sub_section__isnull=True
-                ).first()
+        config = _resolve_grading_config(school, section, sub_section)
         if config and config.total_scale:
             level, _ = config.get_total_level(total_marks)
             if level and level != '-':
@@ -676,3 +695,60 @@ def get_religion_aware_student_count(class_name, stream, subject):
         if Student.all_objects.filter(**religion_filter).exists():
             students = students.filter(religion=religion_tag)
     return students.count()
+
+
+def get_class_leaderboard(school, class_name, stream, year, term, assessment, published_subjects_qs):
+    """
+    Return a ranked leaderboard for a class/stream using normalized Mean Score.
+
+    Students taking fewer subjects are no longer penalized — ranking is by
+    average score per subject, with total score as tie-breaker.
+
+    Result is cached in Redis for 1 hour. Call invalidate_report_caches()
+    when marks change to force a refresh.
+
+    Returns:
+        dict with keys:
+            'sorted_ids':   list[int] — student IDs in rank order (best first)
+            'class_count':  int       — total students ranked
+            'scores_map':   dict      — {student_id: {'total': int, 'mean': float, 'count': int}}
+    """
+    key = _leaderboard_cache_key(school.pk, class_name, stream, year, term, assessment)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    class_scores = (
+        Mark.all_objects.filter(
+            school=school,
+            student__class_name=class_name,
+            student__stream=stream,
+            year=year,
+            term=term,
+            exam_type=assessment,
+            subject__in=published_subjects_qs,
+        )
+        .values('student_id')
+        .annotate(
+            total_score=Sum('score'),
+            subject_count=Count('subject_id', distinct=True),
+            mean_score=Avg('score'),
+        )
+        .order_by('-mean_score', '-total_score')
+    )
+
+    sorted_ids = [item['student_id'] for item in class_scores]
+    result = {
+        'sorted_ids': sorted_ids,
+        'class_count': len(sorted_ids),
+        'scores_map': {
+            item['student_id']: {
+                'total': item['total_score'],
+                'mean': round(item['mean_score'], 2) if item['mean_score'] else 0,
+                'count': item['subject_count'],
+            }
+            for item in class_scores
+        },
+    }
+    cache.set(key, result, _CACHE_TTL)
+    return result
