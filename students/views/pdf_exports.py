@@ -15,6 +15,7 @@ import mimetypes
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -25,7 +26,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Prefetch, Q, Sum
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.utils.text import slugify
@@ -99,6 +100,8 @@ def _log_pdf_error(view_name, error, context=None):
 # Each Chromium instance uses ~200-500MB. Configurable via PDF_MAX_CONCURRENT env var.
 _pdf_max_concurrent = int(os.environ.get('PDF_MAX_CONCURRENT', '2'))
 _pdf_semaphore = threading.Semaphore(_pdf_max_concurrent)
+# Maximum seconds a request will wait for the semaphore before failing fast
+_pdf_semaphore_timeout = int(os.environ.get('PDF_SEMAPHORE_TIMEOUT', '120'))
 
 # Verified once at import time — False means Chromium is not installed.
 _playwright_ok = True
@@ -188,6 +191,64 @@ def _kill_chromium_processes():
         logger.warning("[pdf] Process cleanup failed: %s", str(e))
 
 
+class _DisconnectMonitor:
+    """
+    Thread-safe signal that bridges the Django response lifecycle with the
+    background Playwright generation thread.
+
+    Lifecycle:
+      1. View creates monitor, passes to _generate_pdf() and _stream_pdf_from_bytes()
+      2. _generate() periodically calls monitor.abort_if_disconnected() — if the
+         client has disconnected, it raises _ClientDisconnected to abort Playwright
+         immediately instead of running to completion.
+      3. When StreamingHttpResponse.close() fires (client disconnect OR normal
+         completion), it calls monitor.signal_disconnected() which sets the event
+         and hard-kills any still-running Chromium processes.
+      4. The streaming iterator calls monitor.abort_if_disconnected() before every
+         chunk write to detect BrokenPipe before it happens.
+    """
+
+    def __init__(self):
+        self._event = threading.Event()
+        self._browser = None      # mutable reference to active Chromium browser
+        self._lock = threading.Lock()
+
+    def signal_disconnected(self):
+        """Called by response.close() — signals the generation thread to abort."""
+        self._event.set()
+        # Hard-kill any Chromium that's still running
+        browser = self._browser
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
+        _kill_chromium_processes()
+
+    def abort_if_disconnected(self):
+        """Called by _generate() or the streaming iterator — raises if client is gone."""
+        if self._event.is_set():
+            raise _ClientDisconnected("Client disconnected — aborting PDF generation")
+
+    def is_disconnected(self):
+        """Non-raising check. Returns True if the client has disconnected."""
+        return self._event.is_set()
+
+    def set_browser(self, browser):
+        """Store a reference to the active Playwright browser for cleanup."""
+        with self._lock:
+            self._browser = browser
+
+    def clear_browser(self):
+        with self._lock:
+            self._browser = None
+
+
+class _ClientDisconnected(Exception):
+    """Raised inside _generate() when the client disconnects mid-generation."""
+    pass
+
+
 def _generate_pdf(
     patched_html,
     *,
@@ -198,6 +259,7 @@ def _generate_pdf(
     wait_for_logo_selector=None,
     timeout=90,
     retries=2,
+    disconnect_monitor=None,
 ):
     """
     Bulletproof Playwright PDF generation — single entry point for all views.
@@ -205,6 +267,7 @@ def _generate_pdf(
     - Acquires semaphore to limit concurrency (max 2 browsers).
     - Runs in a ThreadPoolExecutor with strict timeout.
     - On timeout/error, HARD-KILLS all Chromium processes (no zombies).
+    - On client disconnect, aborts immediately via disconnect_monitor.
     - Retries up to `retries` times on transient failures.
     - ALWAYS closes the browser, even on error.
 
@@ -214,6 +277,7 @@ def _generate_pdf(
     Raises:
         TimeoutError: If all attempts time out.
         RuntimeError: If Playwright is not available or all attempts fail.
+        _ClientDisconnected: If the client disconnects mid-generation (not retried).
     """
     if not _playwright_ok:
         raise RuntimeError(
@@ -232,7 +296,11 @@ def _generate_pdf(
     last_error = None
 
     for attempt in range(retries + 1):
-        _pdf_semaphore.acquire()
+        if not _pdf_semaphore.acquire(timeout=_pdf_semaphore_timeout):
+            return JsonResponse({
+                'error': 'Server busy: too many PDF requests in progress. Please wait a moment and try again.',
+                'retry_after': _pdf_semaphore_timeout,
+            }, status=503, headers={'Retry-After': str(_pdf_semaphore_timeout)})
         try:
             result = {}
             error_holder = [None]
@@ -249,6 +317,8 @@ def _generate_pdf(
                                 '--js-flags="--max-old-space-size=512"',
                             ],
                         )
+                        if disconnect_monitor:
+                            disconnect_monitor.set_browser(browser)
                         try:
                             # Use browser context with device_scale_factor for crisp charts
                             context = browser.new_context(device_scale_factor=2)
@@ -271,6 +341,10 @@ def _generate_pdf(
                             pg.set_viewport_size(viewport)
                             pg.emulate_media(media="print")
                             pg.set_content(patched_html, wait_until="domcontentloaded")
+
+                            # Check if client disconnected during content load
+                            if disconnect_monitor:
+                                disconnect_monitor.abort_if_disconnected()
 
                             # Wait for web fonts to load
                             try:
@@ -319,6 +393,10 @@ def _generate_pdf(
                                     # Fallback: brief delay if chart detection fails
                                     pg.wait_for_timeout(500)
 
+                            # Check if client disconnected during chart rendering
+                            if disconnect_monitor:
+                                disconnect_monitor.abort_if_disconnected()
+
                             # Wait for a specific image to finish loading (e.g. school logo)
                             if wait_for_logo_selector:
                                 try:
@@ -334,6 +412,10 @@ def _generate_pdf(
                             # Final paint delay — minimal since charts are verified
                             pg.wait_for_timeout(100)
 
+                            # Final disconnect check before generating PDF bytes
+                            if disconnect_monitor:
+                                disconnect_monitor.abort_if_disconnected()
+
                             result['pdf'] = pg.pdf(
                                 format="A4",
                                 landscape=landscape,
@@ -343,6 +425,17 @@ def _generate_pdf(
                                 prefer_css_page_size=True,
                             )
                         finally:
+                            if disconnect_monitor:
+                                disconnect_monitor.clear_browser()
+                            # Explicit teardown: page → context → browser (innermost first)
+                            try:
+                                pg.close()
+                            except Exception:
+                                pass
+                            try:
+                                context.close()
+                            except Exception:
+                                pass
                             try:
                                 browser.close()
                             except Exception:
@@ -383,10 +476,16 @@ def _generate_pdf(
             # Check if the inner function raised an error
             if error_holder[0] is not None:
                 last_error = error_holder[0]
+                # Client disconnect — abort immediately, do NOT retry
+                if isinstance(last_error, _ClientDisconnected):
+                    logger.info("[pdf] Client disconnected during generation — aborting")
+                    _kill_chromium_processes()
+                    raise last_error
                 logger.warning(
                     "[pdf] Attempt %d/%d failed: %s",
                     attempt + 1, retries + 1, str(last_error),
                 )
+                # Also kill processes on any error to prevent zombies
                 _kill_chromium_processes()
                 if attempt < retries:
                     time.sleep(1)
@@ -468,6 +567,83 @@ def _embed_logo_base64(template_html, request):
     except Exception:
         logger.warning("Failed to embed school logo as base64", exc_info=True)
     return template_html
+
+
+def _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition='attachment',
+                           disconnect_monitor=None, gateway_timeout=60):
+    """
+    Write PDF bytes to a temporary disk file, then return a StreamingHttpResponse
+    that streams the file in 64 KB chunks.
+
+    Guarantees:
+      - Temp file is ALWAYS deleted (finally block), even on BrokenPipe / disconnect.
+      - Every chunk write is preceded by a disconnect check — if the client is gone,
+        we stop immediately instead of writing to a dead socket.
+      - A Gateway-Timeout header tells upstream proxies to abort after `gateway_timeout`
+        seconds if the response stalls.
+    """
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+    try:
+        tmp.write(pdf_bytes)
+        tmp.flush()
+        tmp_path = tmp.name
+    finally:
+        tmp.close()
+
+    closed = [False]
+
+    def _cleanup_tmp():
+        if closed[0]:
+            return
+        closed[0] = True
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+    def _file_iterator():
+        try:
+            with open(tmp_path, 'rb') as f:
+                while True:
+                    # Pre-flight: abort if client disconnected
+                    if disconnect_monitor:
+                        disconnect_monitor.abort_if_disconnected()
+
+                    try:
+                        chunk = f.read(65536)  # 64 KB chunks
+                    except (OSError, IOError) as e:
+                        logger.warning("[pdf] Read error during streaming: %s", e)
+                        break
+
+                    if not chunk:
+                        break
+
+                    yield chunk
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as e:
+            logger.info("[pdf] Client disconnected during streaming: %s", e)
+            if disconnect_monitor:
+                disconnect_monitor.signal_disconnected()
+        except _ClientDisconnected:
+            logger.info("[pdf] Disconnect monitor triggered during streaming")
+            if disconnect_monitor:
+                disconnect_monitor.signal_disconnected()
+        except Exception as e:
+            logger.warning("[pdf] Unexpected error during streaming: %s", e)
+        finally:
+            _cleanup_tmp()
+
+    def _close_callback():
+        """Called by Django when the response is closed (client disconnect or finish)."""
+        _cleanup_tmp()
+        if disconnect_monitor:
+            disconnect_monitor.signal_disconnected()
+
+    response = StreamingHttpResponse(_file_iterator(), content_type='application/pdf')
+    response['Content-Disposition'] = f'{content_disposition}; filename="{filename}"'
+    response['Content-Length'] = str(len(pdf_bytes))
+    response['X-Gateway-Timeout'] = str(gateway_timeout)
+    response.close = _close_callback
+    return response
 
 
 # ==============================================================================
@@ -734,13 +910,17 @@ def download_broadsheet_pdf(request):
     patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
     # ── 4. Playwright — PRINT media so template's @media print CSS activates ──
+    disconnect_monitor = _DisconnectMonitor()
     try:
         pdf_bytes = _generate_pdf(
             patched_html,
             viewport={"width": 1094, "height": 765},
             landscape=True,
             margin={"top": "0.15in", "right": "0.15in", "bottom": "0.15in", "left": "0.15in"},
+            disconnect_monitor=disconnect_monitor,
         )
+    except _ClientDisconnected:
+        return HttpResponse(status=499)  # Client closed connection
     except Exception as e:
         _log_pdf_error('download_broadsheet_pdf', e, {
             'year': year, 'term': term, 'section': section,
@@ -755,12 +935,9 @@ def download_broadsheet_pdf(request):
     filename    = f"{slug_grade}_{slug_stream}_Premium_Results_List_{year or current_year}.pdf"
 
     mode = request.GET.get('mode', 'download').strip().lower()
-    response = HttpResponse(pdf_bytes, content_type='application/pdf')
-    if mode == 'inline':
-        response['Content-Disposition'] = f'inline; filename="{filename}"'
-    else:
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+    disposition = 'inline' if mode == 'inline' else 'attachment'
+    return _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition=disposition,
+                                  disconnect_monitor=disconnect_monitor)
 
 
 # ==============================================================================
@@ -1020,6 +1197,7 @@ def download_classlist_pdf(request):
 
     patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
+    disconnect_monitor = _DisconnectMonitor()
     try:
         pdf_bytes = _generate_pdf(
             patched_html,
@@ -1027,7 +1205,10 @@ def download_classlist_pdf(request):
             landscape=False,
             margin={"top": "0.62in", "right": "0.38in", "bottom": "0.72in", "left": "0.5in"},
             wait_for_logo_selector='.sheet-logo',
+            disconnect_monitor=disconnect_monitor,
         )
+    except _ClientDisconnected:
+        return HttpResponse(status=499)
     except Exception as e:
         _log_pdf_error('download_classlist_pdf', e, {
             'grade': selected_grade, 'stream': selected_stream,
@@ -1040,13 +1221,10 @@ def download_classlist_pdf(request):
     year = datetime.date.today().year
     filename = f"{slug_grade}_{slug_stream}_Class_List_{year}.pdf"
 
-    response = HttpResponse(pdf_bytes, content_type='application/pdf')
     mode = request.GET.get('mode', 'download').strip().lower()
-    if mode == 'inline':
-        response['Content-Disposition'] = f'inline; filename="{filename}"'
-    else:
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+    disposition = 'inline' if mode == 'inline' else 'attachment'
+    return _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition=disposition,
+                                  disconnect_monitor=disconnect_monitor)
 
 
 # ==============================================================================
@@ -1367,6 +1545,7 @@ def download_individual_report_pdf(request, student_id):
     pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
     patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
+    disconnect_monitor = _DisconnectMonitor()
     try:
         pdf_bytes = _generate_pdf(
             patched_html,
@@ -1374,7 +1553,10 @@ def download_individual_report_pdf(request, student_id):
             landscape=False,
             margin={"top": "0.5in", "right": "0.3in", "bottom": "0.5in", "left": "0.3in"},
             wait_for_charts=True,
+            disconnect_monitor=disconnect_monitor,
         )
+    except _ClientDisconnected:
+        return HttpResponse(status=499)
     except Exception as e:
         _log_pdf_error('download_individual_report_pdf', e, {
             'student_id': student_id, 'year': year, 'term': term,
@@ -1385,13 +1567,10 @@ def download_individual_report_pdf(request, student_id):
     student_name = slugify(f"{student.first_name}_{student.last_name}" if student.first_name or student.last_name else student.admission_number)
     filename = f"{student_name}_Report_Card_{year}_{slugify(term)}.pdf"
 
-    response = HttpResponse(pdf_bytes, content_type='application/pdf')
     mode = request.GET.get('mode', 'download').strip().lower()
-    if mode == 'inline':
-        response['Content-Disposition'] = f'inline; filename="{filename}"'
-    else:
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+    disposition = 'inline' if mode == 'inline' else 'attachment'
+    return _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition=disposition,
+                                  disconnect_monitor=disconnect_monitor)
 
 
 # ==============================================================================
@@ -1678,13 +1857,14 @@ def download_bulk_report_pdf(request):
   .system-footer {{ display: none !important; }}
   .rc-print-watermark {{ display: none !important; }}
   .rc-table, .rc-table th, .rc-table td, .rc-stat, .rc-descriptors-table, .rc-descriptors-table th, .rc-descriptors-table td {{ border-color: #000 !important; }}
-  @page {{ size: A4 portrait; margin: 0.12in 0.35in 0.4in 0.35in; @bottom-center {{ content: "GENERATED FROM EDUNEXUS EXAM SYSTEM @2026"; font-family: "Times New Roman", Times, serif; font-size: 9pt; font-weight: 700; color: rgba(0, 0, 0, 0.55); text-transform: uppercase; letter-spacing: 0.4pt; }} }}
+  @page {{ size: A4 portrait; margin: 0.12in 0.35in 0.4in 0.35in; }}
 </style>
 """
 
     pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
     patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
+    disconnect_monitor = _DisconnectMonitor()
     try:
         student_count = len(student_marks_list)
         per_student_timeout = max(8, 300 // max(student_count, 1))
@@ -1697,7 +1877,10 @@ def download_bulk_report_pdf(request):
             wait_for_charts=True,
             timeout=pdf_timeout,
             retries=2,
+            disconnect_monitor=disconnect_monitor,
         )
+    except _ClientDisconnected:
+        return HttpResponse(status=499)
     except Exception as e:
         _log_pdf_error('download_bulk_report_pdf', e, {
             'student_count': student_count, 'year': year, 'term': term,
@@ -1710,10 +1893,7 @@ def download_bulk_report_pdf(request):
     stream_slug = slugify(sample.stream or "stream")
     filename = f"Bulk_Report_Cards_{grade_slug}_{stream_slug}_{year}_{slugify(term)}.pdf"
 
-    response = HttpResponse(pdf_bytes, content_type='application/pdf')
     mode = request.GET.get('mode', 'download').strip().lower()
-    if mode == 'inline':
-        response['Content-Disposition'] = f'inline; filename="{filename}"'
-    else:
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+    disposition = 'inline' if mode == 'inline' else 'attachment'
+    return _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition=disposition,
+                                  disconnect_monitor=disconnect_monitor)
