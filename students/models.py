@@ -1,3 +1,4 @@
+import bisect
 import datetime
 import logging
 
@@ -329,6 +330,10 @@ class Student(SchoolScopedModel):
 
     class Meta:
         unique_together = ('school', 'admission_no')
+        indexes = [
+            models.Index(fields=['school', 'class_name', 'stream'], name='student_class_idx'),
+            models.Index(fields=['school', 'school_section', 'class_name'], name='student_section_idx'),
+        ]
 
 # -------------------- Mark Model --------------------
 class Mark(SchoolScopedModel):
@@ -535,6 +540,14 @@ class Mark(SchoolScopedModel):
     frozen_headteacher_comment = models.TextField(blank=True, default="")
     frozen_closing_date = models.DateField(null=True, blank=True)
     frozen_opening_date = models.DateField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['school', 'student', 'term', 'year', 'exam_type'], name='mark_student_exam_idx'),
+            models.Index(fields=['school', 'subject', 'term', 'year'], name='mark_subject_exam_idx'),
+            models.Index(fields=['school', 'term', 'year', 'exam_type'], name='mark_exam_lookup_idx'),
+            models.Index(fields=['school', 'school_section', 'term', 'year'], name='mark_section_idx'),
+        ]
 
     def __str__(self):
         if self.is_absent:
@@ -1220,6 +1233,9 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_read', '-created_at'], name='notification_unread_idx'),
+        ]
 
     def __str__(self):
         return f"{self.title} ({self.notification_type})"
@@ -1281,20 +1297,70 @@ class GradingConfig(SchoolScopedModel):
         return f"Grading Config - {self.get_school_section_display()} ({self.school})"
 
     def get_subject_level(self, score):
-        """Return (level, points) for a given individual subject score (0-100)."""
+        """Return (level, points) for a given individual subject score (0-100).
+
+        Uses bisect for O(log n) lookup instead of O(n) linear scan.
+        The lookup table is built once from the JSON and cached on the instance.
+        """
         score = max(0, min(100, round(score or 0)))
-        for entry in self.subject_scale:
-            if entry['min_score'] <= score <= entry['max_score']:
-                return entry['level'], entry['points']
+        mins, entries = self._get_subject_lookup()
+        if not entries:
+            return '-', 0
+        idx = bisect.bisect_right(mins, score) - 1
+        if 0 <= idx < len(entries):
+            min_s, max_s, level, pts = entries[idx]
+            if min_s <= score <= max_s:
+                return level, pts
         return '-', 0
 
     def get_total_level(self, total_marks):
-        """Return (level, points) for a given total/aggregate mark."""
+        """Return (level, points) for a given total/aggregate mark.
+
+        Uses bisect for O(log n) lookup instead of O(n) linear scan.
+        The lookup table is built once from the JSON and cached on the instance.
+        """
         total_marks = max(0, round(total_marks or 0))
-        for entry in self.total_scale:
-            if entry['min_marks'] <= total_marks <= entry['max_marks']:
-                return entry['level'], entry['points']
+        mins, entries = self._get_total_lookup()
+        if not entries:
+            return '-', 0
+        idx = bisect.bisect_right(mins, total_marks) - 1
+        if 0 <= idx < len(entries):
+            min_m, max_m, level, pts = entries[idx]
+            if min_m <= total_marks <= max_m:
+                return level, pts
         return '-', 0
+
+    def _get_subject_lookup(self):
+        """Build and cache a sorted lookup table from subject_scale JSON.
+
+        Returns (mins, entries) where:
+          - mins:    tuple of min_score values (sorted ascending)
+          - entries: tuple of (min, max, level, points) tuples
+        Cached on the instance — built once, reused for every call.
+        """
+        if not hasattr(self, '_subject_lookup_cache'):
+            raw = self.subject_scale or []
+            entries = tuple(
+                sorted((e['min_score'], e['max_score'], e['level'], e['points']) for e in raw)
+            )
+            self._subject_lookup_cache = (tuple(e[0] for e in entries), entries)
+        return self._subject_lookup_cache
+
+    def _get_total_lookup(self):
+        """Build and cache a sorted lookup table from total_scale JSON.
+
+        Returns (mins, entries) where:
+          - mins:    tuple of min_marks values (sorted ascending)
+          - entries: tuple of (min, max, level, points) tuples
+        Cached on the instance — built once, reused for every call.
+        """
+        if not hasattr(self, '_total_lookup_cache'):
+            raw = self.total_scale or []
+            entries = tuple(
+                sorted((e['min_marks'], e['max_marks'], e['level'], e['points']) for e in raw)
+            )
+            self._total_lookup_cache = (tuple(e[0] for e in entries), entries)
+        return self._total_lookup_cache
 
     @classmethod
     def get_default_subject_scale(cls, section):
@@ -1344,3 +1410,116 @@ class GradingConfig(SchoolScopedModel):
             {"level": "BE1", "min_marks": 88,  "max_marks": 167, "points": 2},
             {"level": "BE2", "min_marks": 0,   "max_marks": 87,  "points": 1},
         ]
+
+
+class ExamSummary(SchoolScopedModel):
+    """
+    Pre-calculated snapshot of a student's performance for one exam.
+
+    Populated by the `populate_exam_summaries` Celery task when an admin
+    publishes marks. Report card views read from this table instead of
+    computing totals + ranking on-the-fly, eliminating expensive per-request
+    aggregation.
+
+    The snapshot is rebuilt from scratch every time the task runs — no
+    incremental updates, so it always reflects the latest published data.
+    """
+    SECTION_CHOICES = [
+        ('PRIMARY', 'Primary'),
+        ('JSS', 'Junior Secondary'),
+    ]
+
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='exam_summaries',
+    )
+
+    # Exam identification (denormalized — not FK to Exam, so snapshots
+    # survive if Exam is deleted)
+    term = models.CharField(max_length=20, choices=Student.TERM_CHOICES)
+    year = models.IntegerField(default=current_year)
+    exam_name = models.CharField(
+        max_length=100,
+        help_text="Exam name (e.g. 'Opener Assessment')",
+    )
+    school_section = models.CharField(
+        max_length=10,
+        choices=SECTION_CHOICES,
+        default='JSS',
+    )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        null=True,
+        blank=True,
+    )
+
+    # ── Aggregated results ────────────────────────────────────────────
+    total_marks = models.PositiveIntegerField(default=0)
+    total_points = models.PositiveIntegerField(default=0)
+    mean_points = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=0,
+    )
+    subject_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of subjects with a captured mark",
+    )
+    overall_plv = models.CharField(
+        max_length=20,
+        default='-',
+        help_text="Overall performance level (e.g. EXCELLENT, GOOD)",
+    )
+
+    # ── Rankings ──────────────────────────────────────────────────────
+    stream_rank = models.PositiveIntegerField(
+        default=0,
+        help_text="Rank within the student's stream (1 = best)",
+    )
+    grade_rank = models.PositiveIntegerField(
+        default=0,
+        help_text="Rank across all streams in the grade (1 = best)",
+    )
+
+    # ── Frozen comments snapshot ──────────────────────────────────────
+    frozen_class_teacher_comment = models.TextField(blank=True, default="")
+    frozen_headteacher_comment = models.TextField(blank=True, default="")
+    frozen_closing_date = models.DateField(null=True, blank=True)
+    frozen_opening_date = models.DateField(null=True, blank=True)
+
+    # ── Integrity ─────────────────────────────────────────────────────
+    integrity_checksum = models.CharField(
+        max_length=64,
+        editable=False,
+        blank=True,
+        default="",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (
+            'school',
+            'student',
+            'term',
+            'year',
+            'exam_name',
+            'school_section',
+            'sub_section',
+        )
+        indexes = [
+            models.Index(fields=['school', 'term', 'year', 'exam_name'], name='summary_exam_idx'),
+            models.Index(fields=['school', 'student', 'year'], name='summary_student_idx'),
+        ]
+        ordering = ['student__admission_no']
+        verbose_name = 'Exam Summary'
+        verbose_name_plural = 'Exam Summaries'
+
+    def __str__(self):
+        return (
+            f"{self.student.name} — {self.exam_name} {self.term} {self.year}: "
+            f"{self.total_marks} marks, rank {self.grade_rank}"
+        )

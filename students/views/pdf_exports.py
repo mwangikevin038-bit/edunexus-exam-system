@@ -1,36 +1,35 @@
 """
 PDF export views for broadsheet results and class list registers.
 
-Uses Playwright (headless Chromium) to render Django templates to PDF,
+Uses WeasyPrint to render Django templates to PDF,
 applying screen-emulated CSS overrides so the output matches the web view.
 """
 
 import base64
-import asyncio
-import contextlib
 import datetime
+import io
 import json
 import logging
 import mimetypes
-import os
-import subprocess
-import sys
-import tempfile
-import threading
-import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+import matplotlib
+matplotlib.use('Agg')  # Thread-safe headless backend for local django servers
+import matplotlib.pyplot as plt
+import numpy as np
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.db.models import Avg, Prefetch, Q, Sum
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
-from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.utils.text import slugify
-from playwright.sync_api import sync_playwright
+from pypdf import PdfWriter
+from weasyprint import HTML
 
 from .constants import ASSESSMENT_MAP, GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_NAMES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_DISPLAY_ORDER, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
 from .reports import PRIMARY_ORDERED_LEVELS, _grading_config_for
@@ -54,6 +53,59 @@ from ..models import ClassTeacherMasterComment, Mark, SchoolHeadteacherComment, 
 from ..security import get_request_school, get_request_school_section, get_school_object_or_403, rate_limit, user_has_main_school_admin_override
 
 logger = logging.getLogger('pdf_export')
+
+
+def generate_python_chart_base64(labels, student_scores, class_averages):
+    if not labels:
+        return ""
+    try:
+        fig, ax = plt.subplots(figsize=(5.5, 1.4))
+        x = np.arange(len(labels))
+
+        # Attempt smooth cubic spline interpolation for browser-matching curves
+        try:
+            from scipy.interpolate import make_interp_spline
+            x_smooth = np.linspace(x.min(), x.max(), 200)
+            spline_student = make_interp_spline(x, student_scores, k=3)
+            student_smooth = np.clip(spline_student(x_smooth), 0, 100)
+            spline_class = make_interp_spline(x, class_averages, k=3)
+            class_smooth = np.clip(spline_class(x_smooth), 0, 100)
+            ax.plot(x_smooth, student_smooth, color='#4f46e5', linewidth=2, label='Student', zorder=3)
+            ax.plot(x_smooth, class_smooth, color='#94a3b8', linewidth=1.5, linestyle='--', label='Class Avg', zorder=2)
+        except ImportError:
+            ax.plot(x, student_scores, marker='o', color='#4f46e5', linewidth=2, label='Student', zorder=3)
+            ax.plot(x, class_averages, marker='s', linestyle='--', color='#94a3b8', linewidth=1.5, label='Class Avg', zorder=2)
+            x_smooth = x
+            student_smooth = student_scores
+            class_smooth = class_averages
+
+        # Filled gradient under student line
+        ax.fill_between(x_smooth, student_smooth, color='#4f46e5', alpha=0.15, zorder=1)
+
+        # Marker dots on original data points
+        ax.scatter(x, student_scores, color='#4f46e5', edgecolors='white', s=30, zorder=4)
+        ax.scatter(x, class_averages, color='#94a3b8', s=20, marker='s', zorder=4)
+
+        # Premium theme
+        ax.grid(True, linestyle=':', alpha=0.5, color='#cbd5e1')
+        ax.set_ylabel('Marks', fontsize=8, fontweight='bold', color='#1e293b')
+        ax.set_ylim(0, 105)
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, rotation=12, ha='right', fontsize=6.5, color='#475569')
+        ax.legend(loc='upper right', fontsize=6.5, framealpha=0.8, edgecolor='#e2e8f0')
+        for spine in ['top', 'right']:
+            ax.spines[spine].set_visible(False)
+        ax.spines['left'].set_color('#e2e8f0')
+        ax.spines['bottom'].set_color('#e2e8f0')
+
+        plt.tight_layout(pad=0.1)
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=160, bbox_inches='tight')
+        plt.close(fig)
+        buf.seek(0)
+        return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+    except Exception:
+        return ""
 
 
 def _log_pdf_error(view_name, error, context=None):
@@ -86,444 +138,21 @@ def _log_pdf_error(view_name, error, context=None):
 
 
 # ==============================================================================
-# BULLETPROOF PLAYWRIGHT PDF INFRASTRUCTURE
-# ==============================================================================
-# DO NOT modify this section unless you are fixing a Playwright breakage.
-# All 3 PDF views (broadsheet, class list, individual report) use
-# _generate_pdf() as their single entry point. This ensures:
-#   - Consistent retry / cleanup / error handling
-#   - Concurrency limited to 2 browsers (RAM safety)
-#   - Event loop policy restored for Windows compatibility
-#   - Browser always closed even on error
-#   - Startup verification fails fast if Chromium is missing
+# WEASYPRESS PDF GENERATION
 # ==============================================================================
 
-# Limit concurrent Playwright browser instances to prevent RAM exhaustion.
-# Each Chromium instance uses ~200-500MB. Configurable via PDF_MAX_CONCURRENT env var.
-_pdf_max_concurrent = int(os.environ.get('PDF_MAX_CONCURRENT', '2'))
-_pdf_semaphore = threading.Semaphore(_pdf_max_concurrent)
-# Maximum seconds a request will wait for the semaphore before failing fast
-_pdf_semaphore_timeout = int(os.environ.get('PDF_SEMAPHORE_TIMEOUT', '120'))
-
-# Verified once at import time — False means Chromium is not installed.
-_playwright_ok = True
-
-
-_playwright_checked = False
-
-
-def _verify_playwright():
-    """
-    Lazily verify Playwright and Chromium are installed on first PDF request.
-    Sets _playwright_ok = False on failure so all subsequent calls fail fast.
-    Only runs once per process.
-    """
-    global _playwright_ok, _playwright_checked
-    if _playwright_checked:
-        return
-    _playwright_checked = True
+def _generate_pdf(patched_html, *, landscape=False, margin=None, **kwargs):
+    """Generates PDF directly from HTML string using WeasyPrint in-memory compilation"""
     try:
-        with _playwright_session(), sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            browser.close()
-        logger.info("[pdf] Playwright Chromium verified OK")
+        # Create WeasyPrint HTML document instance directly from string
+        html_doc = HTML(string=patched_html)
+
+        # Write the PDF directly to bytes memory
+        pdf_bytes = html_doc.write_pdf()
+        return {'pdf': pdf_bytes}
     except Exception as e:
-        _playwright_ok = False
-        logger.error(
-            "[pdf] Playwright verification FAILED: %s\n"
-            "[pdf] Run: pip install playwright && python -m playwright install chromium",
-            str(e),
-        )
-
-
-@contextlib.contextmanager
-def _playwright_session():
-    """
-    Context manager that creates an ISOLATED event loop for this execution.
-
-    Instead of modifying the global asyncio event loop policy (which causes
-    race conditions under concurrent requests), we create a fresh ProactorEventLoop
-    for this thread only and clean it up afterward.
-
-    Django Channels/Daphne overrides the Windows event loop policy to
-    SelectorEventLoop, which does not support subprocess creation.
-    Playwright needs ProactorEventLoop to spawn Chromium.
-    """
-    if sys.platform != "win32":
-        yield
-        return
-
-    # Create an isolated event loop for this execution (never touches global policy)
-    loop = asyncio.ProactorEventLoop()
-    asyncio.set_event_loop(loop)
-    try:
-        yield
-    finally:
-        try:
-            loop.close()
-        except Exception:
-            pass
-        # Restore whatever the current thread had before (thread-local)
-        try:
-            old_loop = asyncio._get_running_loop()
-        except AttributeError:
-            old_loop = None
-        if old_loop is None:
-            # No running loop — we can safely unset
-            asyncio.set_event_loop(None)
-
-
-def _kill_chromium_processes():
-    """
-    Hard-kill all orphaned Chromium processes on Windows.
-    Called after timeout or error to prevent zombie browser memory leaks.
-    """
-    if sys.platform != 'win32':
-        return
-    try:
-        # Kill all chromium.exe and chrome.exe processes (Playwright's browser)
-        for proc_name in ('chromium.exe', 'chrome.exe'):
-            subprocess.run(
-                ['taskkill', '/F', '/IM', proc_name],
-                capture_output=True, timeout=5,
-                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
-            )
-        logger.info("[pdf] Orphaned Chromium processes cleaned up")
-    except Exception as e:
-        logger.warning("[pdf] Process cleanup failed: %s", str(e))
-
-
-class _DisconnectMonitor:
-    """
-    Thread-safe signal that bridges the Django response lifecycle with the
-    background Playwright generation thread.
-
-    Lifecycle:
-      1. View creates monitor, passes to _generate_pdf() and _stream_pdf_from_bytes()
-      2. _generate() periodically calls monitor.abort_if_disconnected() — if the
-         client has disconnected, it raises _ClientDisconnected to abort Playwright
-         immediately instead of running to completion.
-      3. When StreamingHttpResponse.close() fires (client disconnect OR normal
-         completion), it calls monitor.signal_disconnected() which sets the event
-         and hard-kills any still-running Chromium processes.
-      4. The streaming iterator calls monitor.abort_if_disconnected() before every
-         chunk write to detect BrokenPipe before it happens.
-    """
-
-    def __init__(self):
-        self._event = threading.Event()
-        self._browser = None      # mutable reference to active Chromium browser
-        self._lock = threading.Lock()
-
-    def signal_disconnected(self):
-        """Called by response.close() — signals the generation thread to abort."""
-        self._event.set()
-        # Hard-kill any Chromium that's still running
-        browser = self._browser
-        if browser:
-            try:
-                browser.close()
-            except Exception:
-                pass
-        _kill_chromium_processes()
-
-    def abort_if_disconnected(self):
-        """Called by _generate() or the streaming iterator — raises if client is gone."""
-        if self._event.is_set():
-            raise _ClientDisconnected("Client disconnected — aborting PDF generation")
-
-    def is_disconnected(self):
-        """Non-raising check. Returns True if the client has disconnected."""
-        return self._event.is_set()
-
-    def set_browser(self, browser):
-        """Store a reference to the active Playwright browser for cleanup."""
-        with self._lock:
-            self._browser = browser
-
-    def clear_browser(self):
-        with self._lock:
-            self._browser = None
-
-
-class _ClientDisconnected(Exception):
-    """Raised inside _generate() when the client disconnects mid-generation."""
-    pass
-
-
-def _generate_pdf(
-    patched_html,
-    *,
-    viewport=None,
-    landscape=False,
-    margin=None,
-    wait_for_charts=False,
-    wait_for_logo_selector=None,
-    timeout=90,
-    retries=2,
-    disconnect_monitor=None,
-):
-    """
-    Bulletproof Playwright PDF generation — single entry point for all views.
-
-    - Acquires semaphore to limit concurrency (max 2 browsers).
-    - Runs in a ThreadPoolExecutor with strict timeout.
-    - On timeout/error, HARD-KILLS all Chromium processes (no zombies).
-    - On client disconnect, aborts immediately via disconnect_monitor.
-    - Retries up to `retries` times on transient failures.
-    - ALWAYS closes the browser, even on error.
-
-    Returns:
-        bytes: The PDF content.
-
-    Raises:
-        TimeoutError: If all attempts time out.
-        RuntimeError: If Playwright is not available or all attempts fail.
-        _ClientDisconnected: If the client disconnects mid-generation (not retried).
-    """
-    if not _playwright_ok:
-        raise RuntimeError(
-            "Playwright Chromium is not installed. "
-            "Run: pip install playwright && python -m playwright install chromium"
-        )
-
-    _verify_playwright()
-
-    if viewport is None:
-        viewport = {"width": 1200, "height": 900}
-
-    if margin is None:
-        margin = {"top": "0.5in", "right": "0.3in", "bottom": "0.5in", "left": "0.3in"}
-
-    last_error = None
-
-    for attempt in range(retries + 1):
-        if not _pdf_semaphore.acquire(timeout=_pdf_semaphore_timeout):
-            return JsonResponse({
-                'error': 'Server busy: too many PDF requests in progress. Please wait a moment and try again.',
-                'retry_after': _pdf_semaphore_timeout,
-            }, status=503, headers={'Retry-After': str(_pdf_semaphore_timeout)})
-        try:
-            result = {}
-            error_holder = [None]
-
-            def _generate():
-                try:
-                    with _playwright_session(), sync_playwright() as pw:
-                        browser = pw.chromium.launch(
-                            headless=True,
-                            args=[
-                                '--no-sandbox',
-                                '--disable-dev-shm-usage',
-                                '--disable-service-workers',
-                                '--js-flags="--max-old-space-size=512"',
-                            ],
-                        )
-                        if disconnect_monitor:
-                            disconnect_monitor.set_browser(browser)
-                        try:
-                            # Use browser context with device_scale_factor for crisp charts
-                            context = browser.new_context(device_scale_factor=2)
-                            pg = context.new_page()
-
-                            # ── Block service workers to prevent stale cache ──
-                            pg.route("**/sw.js", lambda route: route.abort())
-                            pg.route("**/sw.prod.js", lambda route: route.abort())
-
-                            # Also disable service worker registration via init script
-                            context.add_init_script("""
-                                if (typeof navigator.serviceWorker !== 'undefined') {
-                                    Object.defineProperty(navigator, 'serviceWorker', {
-                                        value: undefined,
-                                        writable: false,
-                                    });
-                                }
-                            """)
-
-                            pg.set_viewport_size(viewport)
-                            pg.emulate_media(media="print")
-                            pg.set_content(patched_html, wait_until="domcontentloaded")
-
-                            # Check if client disconnected during content load
-                            if disconnect_monitor:
-                                disconnect_monitor.abort_if_disconnected()
-
-                            # Wait for web fonts to load
-                            try:
-                                pg.wait_for_function("document.fonts.ready", timeout=5000)
-                            except Exception:
-                                pass  # Fonts may be unavailable — continue anyway
-
-                            # Wait for Chart.js canvases if present
-                            if wait_for_charts:
-                                # Step 1: Wait for Chart.js library to load
-                                try:
-                                    pg.wait_for_function("() => typeof Chart !== 'undefined'", timeout=10000)
-                                except Exception:
-                                    # Chart.js may not have loaded from <script src> — inject directly from disk
-                                    try:
-                                        from django.contrib.staticfiles.finders import find as static_find
-                                        chart_js_path = static_find('js/chart.umd.min.js')
-                                        if chart_js_path and os.path.exists(chart_js_path):
-                                            with open(chart_js_path, 'r', encoding='utf-8') as f:
-                                                chart_js_source = f.read()
-                                            pg.evaluate(chart_js_source)
-                                            pg.wait_for_function("() => typeof Chart !== 'undefined'", timeout=5000)
-                                    except Exception:
-                                        pass
-
-                                # Step 2: Wait for all Chart instances to finish rendering
-                                # Uses a dual-check: JS hook flag OR Chart.getChart() DOM verification
-                                try:
-                                    pg.wait_for_function("""
-                                        () => {
-                                            // Check for explicit JS hook (preferred)
-                                            if (window.allChartsRendered === true) return true;
-                                            // Fallback: verify all canvas charts have data
-                                            const canvases = document.querySelectorAll('canvas[id^="chart-"]');
-                                            if (canvases.length === 0) return true;
-                                            for (const canvas of canvases) {
-                                                const chart = Chart.getChart(canvas);
-                                                if (!chart || !chart.data || !chart.data.datasets || chart.data.datasets.length === 0) {
-                                                    return false;
-                                                }
-                                            }
-                                            return true;
-                                        }
-                                    """, timeout=15000)
-                                except Exception:
-                                    # Fallback: brief delay if chart detection fails
-                                    pg.wait_for_timeout(500)
-
-                            # Check if client disconnected during chart rendering
-                            if disconnect_monitor:
-                                disconnect_monitor.abort_if_disconnected()
-
-                            # Wait for a specific image to finish loading (e.g. school logo)
-                            if wait_for_logo_selector:
-                                try:
-                                    pg.wait_for_function(f"""
-                                        () => {{
-                                            const el = document.querySelector('{wait_for_logo_selector}');
-                                            return !el || (el.complete && el.naturalWidth > 0);
-                                        }}
-                                    """, timeout=5000)
-                                except Exception:
-                                    pass
-
-                            # Final paint delay — minimal since charts are verified
-                            pg.wait_for_timeout(100)
-
-                            # Final disconnect check before generating PDF bytes
-                            if disconnect_monitor:
-                                disconnect_monitor.abort_if_disconnected()
-
-                            result['pdf'] = pg.pdf(
-                                format="A4",
-                                landscape=landscape,
-                                print_background=True,
-                                display_header_footer=False,
-                                margin=margin,
-                                prefer_css_page_size=True,
-                            )
-                        finally:
-                            if disconnect_monitor:
-                                disconnect_monitor.clear_browser()
-                            # Explicit teardown: page → context → browser (innermost first)
-                            try:
-                                pg.close()
-                            except Exception:
-                                pass
-                            try:
-                                context.close()
-                            except Exception:
-                                pass
-                            try:
-                                browser.close()
-                            except Exception:
-                                pass
-                except Exception as e:
-                    error_holder[0] = e
-
-            # ── Run with ThreadPoolExecutor + strict timeout ──
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_generate)
-                try:
-                    future.result(timeout=timeout)
-                except FuturesTimeoutError:
-                    # Timeout — hard-kill all Chromium processes
-                    last_error = TimeoutError(f"PDF generation timed out after {timeout}s")
-                    logger.warning(
-                        "[pdf] Attempt %d/%d timed out — killing orphaned processes",
-                        attempt + 1, retries + 1,
-                    )
-                    _kill_chromium_processes()
-                    if attempt < retries:
-                        time.sleep(1)
-                        continue
-                    break
-                except Exception as e:
-                    last_error = e
-                    logger.warning(
-                        "[pdf] Attempt %d/%d failed: %s",
-                        attempt + 1, retries + 1, str(last_error),
-                    )
-                    # Also kill processes on any error to prevent zombies
-                    _kill_chromium_processes()
-                    if attempt < retries:
-                        time.sleep(1)
-                        continue
-                    break
-
-            # Check if the inner function raised an error
-            if error_holder[0] is not None:
-                last_error = error_holder[0]
-                # Client disconnect — abort immediately, do NOT retry
-                if isinstance(last_error, _ClientDisconnected):
-                    logger.info("[pdf] Client disconnected during generation — aborting")
-                    _kill_chromium_processes()
-                    raise last_error
-                logger.warning(
-                    "[pdf] Attempt %d/%d failed: %s",
-                    attempt + 1, retries + 1, str(last_error),
-                )
-                # Also kill processes on any error to prevent zombies
-                _kill_chromium_processes()
-                if attempt < retries:
-                    time.sleep(1)
-                    continue
-                break
-
-            if 'pdf' not in result:
-                last_error = TimeoutError(f"PDF generation timed out after {timeout}s")
-                logger.warning(
-                    "[pdf] Attempt %d/%d timed out", attempt + 1, retries + 1,
-                )
-                _kill_chromium_processes()
-                if attempt < retries:
-                    time.sleep(1)
-                    continue
-                break
-
-            pdf_bytes = result['pdf']
-            if not pdf_bytes or len(pdf_bytes) < 1000:
-                last_error = ValueError(f"PDF too small ({len(pdf_bytes or b'')} bytes) — charts likely failed to render")
-                logger.warning(
-                    "[pdf] Attempt %d/%d produced empty/tiny PDF (%d bytes)",
-                    attempt + 1, retries + 1, len(pdf_bytes or b''),
-                )
-                if attempt < retries:
-                    time.sleep(1)
-                    continue
-                break
-
-            return pdf_bytes
-
-        finally:
-            _pdf_semaphore.release()
-
-    # All attempts exhausted
-    raise RuntimeError(f"PDF generation failed after {retries + 1} attempts: {last_error}")
+        logger.error(f"[pdf] WeasyPrint generation failed: {str(e)}")
+        return {'pdf': None, 'error': str(e)}
 
 
 def _inject_pdf_css(template_html, pdf_css, base_tag):
@@ -569,83 +198,6 @@ def _embed_logo_base64(template_html, request):
     except Exception:
         logger.warning("Failed to embed school logo as base64", exc_info=True)
     return template_html
-
-
-def _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition='attachment',
-                           disconnect_monitor=None, gateway_timeout=60):
-    """
-    Write PDF bytes to a temporary disk file, then return a StreamingHttpResponse
-    that streams the file in 64 KB chunks.
-
-    Guarantees:
-      - Temp file is ALWAYS deleted (finally block), even on BrokenPipe / disconnect.
-      - Every chunk write is preceded by a disconnect check — if the client is gone,
-        we stop immediately instead of writing to a dead socket.
-      - A Gateway-Timeout header tells upstream proxies to abort after `gateway_timeout`
-        seconds if the response stalls.
-    """
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-    try:
-        tmp.write(pdf_bytes)
-        tmp.flush()
-        tmp_path = tmp.name
-    finally:
-        tmp.close()
-
-    closed = [False]
-
-    def _cleanup_tmp():
-        if closed[0]:
-            return
-        closed[0] = True
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-
-    def _file_iterator():
-        try:
-            with open(tmp_path, 'rb') as f:
-                while True:
-                    # Pre-flight: abort if client disconnected
-                    if disconnect_monitor:
-                        disconnect_monitor.abort_if_disconnected()
-
-                    try:
-                        chunk = f.read(65536)  # 64 KB chunks
-                    except (OSError, IOError) as e:
-                        logger.warning("[pdf] Read error during streaming: %s", e)
-                        break
-
-                    if not chunk:
-                        break
-
-                    yield chunk
-        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as e:
-            logger.info("[pdf] Client disconnected during streaming: %s", e)
-            if disconnect_monitor:
-                disconnect_monitor.signal_disconnected()
-        except _ClientDisconnected:
-            logger.info("[pdf] Disconnect monitor triggered during streaming")
-            if disconnect_monitor:
-                disconnect_monitor.signal_disconnected()
-        except Exception as e:
-            logger.warning("[pdf] Unexpected error during streaming: %s", e)
-        finally:
-            _cleanup_tmp()
-
-    def _close_callback():
-        """Called by Django when the response is closed (client disconnect or finish)."""
-        _cleanup_tmp()
-        if disconnect_monitor:
-            disconnect_monitor.signal_disconnected()
-
-    response = StreamingHttpResponse(_file_iterator(), content_type='application/pdf')
-    response['Content-Disposition'] = f'{content_disposition}; filename="{filename}"'
-    response['Content-Length'] = str(len(pdf_bytes))
-    response['X-Gateway-Timeout'] = str(gateway_timeout)
-    response.close = _close_callback
-    return response
 
 
 # ==============================================================================
@@ -911,18 +463,9 @@ def download_broadsheet_pdf(request):
     # Insert overrides using bulletproof injector
     patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
-    # ── 4. Playwright — PRINT media so template's @media print CSS activates ──
-    disconnect_monitor = _DisconnectMonitor()
+    # ── 4. WeasyPrint — generate PDF directly from HTML ──
     try:
-        pdf_bytes = _generate_pdf(
-            patched_html,
-            viewport={"width": 1094, "height": 765},
-            landscape=True,
-            margin={"top": "0.15in", "right": "0.15in", "bottom": "0.15in", "left": "0.15in"},
-            disconnect_monitor=disconnect_monitor,
-        )
-    except _ClientDisconnected:
-        return HttpResponse(status=499)  # Client closed connection
+        pdf_data = _generate_pdf(patched_html, landscape=True)
     except Exception as e:
         _log_pdf_error('download_broadsheet_pdf', e, {
             'year': year, 'term': term, 'section': section,
@@ -931,15 +474,17 @@ def download_broadsheet_pdf(request):
         return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     # ── 5. Return as download or inline ────────────────────────────────────────
-    slug_grade  = slugify(grade  or "class")
-    slug_stream = slugify(stream or "stream")
-    current_year = datetime.date.today().year
-    filename    = f"{slug_grade}_{slug_stream}_Premium_Results_List_{year or current_year}.pdf"
+    if pdf_data.get('pdf'):
+        slug_grade  = slugify(grade  or "class")
+        slug_stream = slugify(stream or "stream")
+        current_year = datetime.date.today().year
+        filename    = f"{slug_grade}_{slug_stream}_Premium_Results_List_{year or current_year}.pdf"
 
-    mode = request.GET.get('mode', 'download').strip().lower()
-    disposition = 'inline' if mode == 'inline' else 'attachment'
-    return _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition=disposition,
-                                  disconnect_monitor=disconnect_monitor)
+        response = HttpResponse(pdf_data['pdf'], content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    else:
+        return HttpResponse("Error generating report", status=500)
 
 
 # ==============================================================================
@@ -1182,15 +727,6 @@ def download_classlist_pdf(request):
 
   @page {{
     margin: 0.62in 0.38in 0.72in 0.5in;
-    @bottom-center {{
-      content: "GENERATED FROM EDUNEXUS EXAM SYSTEM @2026";
-      font-family: "Times New Roman", Times, serif;
-      font-size: 10pt;
-      font-weight: 700;
-      color: rgba(0, 0, 0, 0.55);
-      text-transform: uppercase;
-      letter-spacing: 0.4pt;
-    }}
   }}
 </style>
 """
@@ -1199,18 +735,9 @@ def download_classlist_pdf(request):
 
     patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
-    disconnect_monitor = _DisconnectMonitor()
+    # ── WeasyPrint — generate PDF directly from HTML ──
     try:
-        pdf_bytes = _generate_pdf(
-            patched_html,
-            viewport={"width": 794, "height": 1123},
-            landscape=False,
-            margin={"top": "0.62in", "right": "0.38in", "bottom": "0.72in", "left": "0.5in"},
-            wait_for_logo_selector='.sheet-logo',
-            disconnect_monitor=disconnect_monitor,
-        )
-    except _ClientDisconnected:
-        return HttpResponse(status=499)
+        pdf_data = _generate_pdf(patched_html, landscape=False)
     except Exception as e:
         _log_pdf_error('download_classlist_pdf', e, {
             'grade': selected_grade, 'stream': selected_stream,
@@ -1218,15 +745,17 @@ def download_classlist_pdf(request):
         })
         return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
-    slug_grade  = slugify(selected_grade  or "class")
-    slug_stream = slugify(selected_stream or "stream")
-    year = datetime.date.today().year
-    filename = f"{slug_grade}_{slug_stream}_Class_List_{year}.pdf"
+    if pdf_data.get('pdf'):
+        slug_grade  = slugify(selected_grade  or "class")
+        slug_stream = slugify(selected_stream or "stream")
+        year = datetime.date.today().year
+        filename = f"{slug_grade}_{slug_stream}_Class_List_{year}.pdf"
 
-    mode = request.GET.get('mode', 'download').strip().lower()
-    disposition = 'inline' if mode == 'inline' else 'attachment'
-    return _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition=disposition,
-                                  disconnect_monitor=disconnect_monitor)
+        response = HttpResponse(pdf_data['pdf'], content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    else:
+        return HttpResponse("Error generating report", status=500)
 
 
 # ==============================================================================
@@ -1272,21 +801,24 @@ def download_individual_report_pdf(request, student_id):
         school=school, student=student, year=year, term=term,
         exam_type=db_assessment, subject__in=published_subjects_qs,
         school_section=student.school_section,
+    ).select_related('subject')
+
+    totals = marks.aggregate(
+        total_score=Sum('score'),
+        total_pts=Sum('points'),
     )
+    total_marks = totals['total_score'] or 0
+    total_points = totals['total_pts'] or 0
+
     marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
-    total_marks  = sum(m.score  for m in marks if m.score)
-    total_points = sum(m.points for m in marks if m.points)
 
     leaderboard = get_class_leaderboard(
         school, student.class_name, student.stream,
         year, term, db_assessment, published_subjects_qs,
     )
-    sorted_ids  = leaderboard['sorted_ids']
+    class_leaderboard_rank = {sid: rank for rank, sid in enumerate(leaderboard['sorted_ids'], 1)}
     class_count = leaderboard['class_count']
-    try:
-        position = sorted_ids.index(student.id) + 1
-    except ValueError:
-        position = 0
+    position = class_leaderboard_rank.get(student.id, 0)
 
     is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
     is_primary = student.school_section == 'PRIMARY'
@@ -1358,6 +890,20 @@ def download_individual_report_pdf(request, student_id):
         'student':   [m.score for m in marks_list if not m.is_absent],
         'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
     })
+
+    # Generate server-side chart image for PDF rendering (WeasyPrint compatible)
+    chart_labels = [m.subject_name for m in marks_list if not m.is_absent]
+    chart_student = [m.score for m in marks_list if not m.is_absent]
+    chart_class_avg = [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent]
+
+    # Check Redis cache first before generating new chart
+    chart_cache_key = f"student_chart_{student.id}_{year}_{term}"
+    chart_base64_image = cache.get(chart_cache_key)
+
+    if not chart_base64_image:
+        chart_base64_image = generate_python_chart_base64(chart_labels, chart_student, chart_class_avg)
+        if chart_base64_image:
+            cache.set(chart_cache_key, chart_base64_image, timeout=86400)
 
     overall_plv = calculate_primary_plv(total_marks, assessed_subjects, sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks)
 
@@ -1449,6 +995,7 @@ def download_individual_report_pdf(request, student_id):
         'max_total_points':    max_total_points,
         'grade_descriptors':   grade_descriptors,
         'chart_data_json':     chart_data_json,
+        'chart_base64_image':  chart_base64_image,
         'class_teacher_remark': class_teacher_remark,
         'headteacher_comment': headteacher_comment,
         'closing_date':        closing_date,
@@ -1468,6 +1015,7 @@ def download_individual_report_pdf(request, student_id):
             'max_total_points': max_total_points,
             'grade_descriptors': grade_descriptors,
             'chart_data_json': chart_data_json,
+            'chart_base64_image': chart_base64_image,
             'class_teacher_remark': class_teacher_remark,
             'class_teacher_name':   class_teacher_name,
             'headteacher_comment': headteacher_comment,
@@ -1542,18 +1090,9 @@ def download_individual_report_pdf(request, student_id):
     pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
     patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
-    disconnect_monitor = _DisconnectMonitor()
+    # ── WeasyPrint — generate PDF directly from HTML ──
     try:
-        pdf_bytes = _generate_pdf(
-            patched_html,
-            viewport={"width": 794, "height": 1123},
-            landscape=False,
-            margin={"top": "0.5in", "right": "0.3in", "bottom": "0.5in", "left": "0.3in"},
-            wait_for_charts=True,
-            disconnect_monitor=disconnect_monitor,
-        )
-    except _ClientDisconnected:
-        return HttpResponse(status=499)
+        pdf_data = _generate_pdf(patched_html, landscape=False)
     except Exception as e:
         _log_pdf_error('download_individual_report_pdf', e, {
             'student_id': student_id, 'year': year, 'term': term,
@@ -1561,26 +1100,28 @@ def download_individual_report_pdf(request, student_id):
         })
         return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
-    student_name = slugify(f"{student.first_name}_{student.last_name}" if student.first_name or student.last_name else student.admission_number)
-    filename = f"{student_name}_Report_Card_{year}_{slugify(term)}.pdf"
+    if pdf_data.get('pdf'):
+        safe_student_name = student.name.strip().replace(" ", "_")
+        filename = f"{safe_student_name}_report.pdf"
 
-    mode = request.GET.get('mode', 'download').strip().lower()
-    disposition = 'inline' if mode == 'inline' else 'attachment'
-    return _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition=disposition,
-                                  disconnect_monitor=disconnect_monitor)
+        response = HttpResponse(pdf_data['pdf'], content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    else:
+        return HttpResponse("Error generating report", status=500)
 
 
 # ==============================================================================
-# download_bulk_report_pdf
+# download_bulk_report_pdf — Parallel PDF Stitching Engine
 # ==============================================================================
 
 @login_required(login_url='login')
 @rate_limit("report_download", max_requests=5, window_seconds=60, methods=["GET", "POST"])
 def download_bulk_report_pdf(request):
     """
-    Server-side bulk report card PDF via Playwright.
-    Accepts the same GET parameters as bulk_report_cards view
-    (ids, year, term, assessment) and renders all cards into one PDF.
+    High-performance bulk report card PDF via per-student WeasyPrint compilation
+    and in-memory PdfMerger stitching. Each student is rendered individually,
+    then all pages are stitched into a unified PDF stream.
     """
     school = get_request_school(request)
     if not school:
@@ -1622,11 +1163,11 @@ def download_bulk_report_pdf(request):
         subject_mapping = {s.code: s.name for s in published_subjects_qs}
 
     marks_prefetch = Prefetch(
-        'marks',
+        'cached_marks',
         queryset=Mark.all_objects.filter(
             school=school, year=year, term=term, exam_type=db_assessment,
             subject__in=published_subjects_qs, school_section=sample.school_section,
-        ),
+        ).select_related('subject'),
         to_attr='cached_marks',
     )
     selected_students = selected_students_base.prefetch_related(marks_prefetch)
@@ -1635,7 +1176,7 @@ def download_bulk_report_pdf(request):
         school, sample.class_name, sample.stream,
         year, term, db_assessment, published_subjects_qs,
     )
-    class_leaderboard = leaderboard['sorted_ids']
+    class_leaderboard_rank = {sid: rank for rank, sid in enumerate(leaderboard['sorted_ids'], 1)}
     total_class_count = leaderboard['class_count']
 
     class_avg_map = get_cached_class_averages(
@@ -1671,14 +1212,39 @@ def download_bulk_report_pdf(request):
         school_section=sample.school_section,
     ).first()
 
-    freeze_threshold = datetime.timedelta(days=30)
-    now = datetime.datetime.now(datetime.timezone.utc)
+    # Bulk DB aggregation — one query for all students
+    student_totals_qs = (
+        Mark.all_objects.filter(
+            school=school, year=year, term=term, exam_type=db_assessment,
+            subject__in=published_subjects_qs, school_section=sample.school_section,
+            student__in=selected_students,
+        )
+        .values('student_id')
+        .annotate(total_score=Sum('score'), total_pts=Sum('points'))
+    )
+    totals_map = {row['student_id']: row for row in student_totals_qs}
 
-    student_marks_list = []
+    # Section accent colors
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if is_lower_primary:
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif is_primary:
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors['JSS']
+
+    # ── PDF Stitching Pipeline ────────────────────────────────────────────────
+    merger = PdfWriter()
+
     for student in selected_students:
         marks = sorted(student.cached_marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
-        total_marks  = sum(m.score  for m in marks if m.score)
-        total_points = sum(m.points for m in marks if m.points)
+        student_totals = totals_map.get(student.id, {})
+        total_marks = student_totals.get('total_score') or 0
+        total_points = student_totals.get('total_pts') or 0
 
         for mark in marks:
             mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
@@ -1694,16 +1260,19 @@ def download_bulk_report_pdf(request):
         assessed_subjects = sum(1 for m in marks if m.score is not None and not m.is_absent)
         mean_points = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
 
-        chart_data_json = json.dumps({
-            'labels':    [m.subject_name for m in marks if not m.is_absent],
-            'student':   [m.score for m in marks if not m.is_absent],
-            'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent],
-        })
+        # Chart generation with Redis cache
+        chart_labels = [m.subject_name for m in marks if not m.is_absent]
+        chart_student = [m.score for m in marks if not m.is_absent]
+        chart_class_avg = [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent]
 
-        try:
-            position = class_leaderboard.index(student.id) + 1
-        except ValueError:
-            position = 0
+        chart_cache_key = f"student_chart_{student.id}_{year}_{term}"
+        chart_base64_image = cache.get(chart_cache_key)
+        if not chart_base64_image:
+            chart_base64_image = generate_python_chart_base64(chart_labels, chart_student, chart_class_avg)
+            if chart_base64_image:
+                cache.set(chart_cache_key, chart_base64_image, timeout=86400)
+
+        position = class_leaderboard_rank.get(student.id, 0)
 
         overall_plv = calculate_primary_plv(
             total_marks, sum(1 for m in marks if m.score),
@@ -1739,149 +1308,86 @@ def download_bulk_report_pdf(request):
         if not opening_date and marks and marks[0].frozen_opening_date:
             opening_date = marks[0].frozen_opening_date
 
-        student_marks_list.append({
-            'student':              student,
-            'marks':                marks,
-            'total_marks':          total_marks,
-            'total_points':         total_points,
-            'overall_plv':          overall_plv,
-            'mean_points':          mean_points,
-            'mean_points_max':      max_points_per_subj,
-            'max_total_marks':      assessed_subjects * 100,
-            'max_total_points':     assessed_subjects * max_points_per_subj,
-            'grade_descriptors':    grade_descriptors,
-            'chart_data_json':      chart_data_json,
-            'class_teacher_remark': class_teacher_remark,
-            'class_teacher_name':   class_teacher_name,
-            'headteacher_comment':  headteacher_comment,
-            'closing_date':         closing_date,
-            'opening_date':         opening_date,
-            'position':             position,
-            'class_count':          total_class_count,
+        # Build individual student context for the single-card template
+        marks_list = list(marks)
+        chart_data_json = json.dumps({
+            'labels':    chart_labels,
+            'student':   chart_student,
+            'class_avg': chart_class_avg,
         })
 
-    student_marks_list.sort(key=lambda x: (x['position'] == 0, x['position']))
+        student_context = {
+            'student_marks_list': [{
+                'student':              student,
+                'marks':                marks_list,
+                'total_marks':          total_marks,
+                'total_points':         total_points,
+                'overall_plv':          overall_plv,
+                'mean_points':          mean_points,
+                'mean_points_max':      max_points_per_subj,
+                'max_total_marks':      assessed_subjects * 100,
+                'max_total_points':     assessed_subjects * max_points_per_subj,
+                'grade_descriptors':    grade_descriptors,
+                'chart_data_json':      chart_data_json,
+                'chart_base64_image':   chart_base64_image,
+                'class_teacher_remark': class_teacher_remark,
+                'class_teacher_name':   class_teacher_name,
+                'headteacher_comment':  headteacher_comment,
+                'closing_date':         closing_date,
+                'opening_date':         opening_date,
+                'position':             position,
+                'class_count':          total_class_count,
+            }],
+            'selected_year':       year,
+            'selected_term':       term,
+            'selected_assessment': db_assessment,
+            'class_count':         total_class_count,
+            'closing_date':        master_comment.closing_date if master_comment else None,
+            'opening_date':        master_comment.opening_date if master_comment else None,
+            'section_accent':      section_accent,
+        }
 
-    section_colors = {
-        'JSS':           '#305CDE',
-        'PRIMARY':       '#00674F',
-        'LOWER_PRIMARY': '#B45309',
-    }
-    if is_lower_primary:
-        section_accent = section_colors['LOWER_PRIMARY']
-    elif is_primary:
-        section_accent = section_colors['PRIMARY']
-    else:
-        section_accent = section_colors['JSS']
+        # Render single student HTML
+        single_html = render_to_string('students/individual_report_card.html', student_context, request=request)
+        single_html = _embed_logo_base64(single_html, request)
 
-    template_html = render_to_string('students/bulk_report_cards_pdf.html', {
-        'student_marks_list': student_marks_list,
-        'selected_year':      year,
-        'selected_term':      term,
-        'selected_assessment': db_assessment,
-        'class_count':        total_class_count,
-        'closing_date':       master_comment.closing_date if master_comment else None,
-        'opening_date':       master_comment.opening_date if master_comment else None,
-        'section_accent':     section_accent,
-    }, request=request)
-
-    template_html = _embed_logo_base64(template_html, request)
-
-    pdf_css = f"""
+        # Inject print CSS for single page
+        single_pdf_css = f"""
 <style id="pdf-override">
   * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-  .rv-shell, .rv-header, .rv-hero, .rv-actions, .rv-scroll,
-  .sidebar, .sidebar-overlay, .sidebar-header, .sidebar-footer, .sidebar-nav, .sidebar-user, nav, header, .mobile-topbar, .hamburger-btn,
-  .global-loader-overlay, .bottom-nav, .d-print-none, .topbar,
-  .btn-print, .btn-print-action, .control-panel, .button-group,
-  .date-picker-group, .rv-badge,
-  .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header, .mobile-menu-backdrop,
-  .system-footer {{ display: none !important; visibility: hidden !important; height: 0 !important; overflow: hidden !important; }}
-  html, body {{ margin: 0 !important; padding: 0 !important; background: white !important; overflow: visible !important; font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; }}
-  .container-fluid {{ margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }}
-  #reportCardsContainer {{ display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }}
-  .report-card {{
-    display: flex !important; page-break-after: always !important; break-after: always !important;
-    margin: 0 !important; width: 7.4in !important; overflow: hidden !important; border: none !important;
-    border-left: 12px solid {section_accent} !important; position: relative !important;
-    font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important;
-    box-sizing: border-box !important; padding: 0.12in 0.35in 0.2in !important;
-  }}
-  .report-card:last-child {{ page-break-after: auto !important; break-after: auto !important; }}
-  .report-content {{ display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 8px !important; }}
-  .report-logo, .rc-logo-placeholder {{ width: 78px !important; height: 78px !important; }}
-  .rc-logo-spacer {{ width: 78px !important; }}
-  .rc-logo-placeholder {{ font-size: 30px !important; }}
-  .rc-schoolinfo h1 {{ font-size: 16pt !important; margin: 0 0 2px !important; color: {section_accent} !important; }}
-  .rc-schoolinfo .rc-tagline {{ font-size: 8pt !important; margin-bottom: 3px !important; }}
-  .rc-schoolinfo .rc-address {{ font-size: 11pt !important; margin-bottom: 1px !important; }}
-  .rc-schoolinfo .rc-contact-line {{ font-size: 9pt !important; }}
-  .rc-header {{ gap: 12px !important; padding-bottom: 7px !important; border-bottom: 3px solid {section_accent} !important; }}
-  .rc-banner {{ padding: 6px 8px !important; font-size: 11pt !important; }}
-  .rc-top-grid {{ gap: 16px !important; }}
-  .rc-photo-placeholder {{ width: 58px !important; height: 58px !important; font-size: 22px !important; border-radius: 8px !important; }}
-  .rc-student-name {{ font-size: 14pt !important; margin-bottom: 4px !important; }}
-  .rc-detail {{ font-size: 11pt !important; margin-bottom: 3px !important; }}
-  .rc-chart-title {{ font-size: 10pt !important; margin-bottom: 4px !important; }}
-  .rc-chart-block {{ padding: 7px !important; }}
-  .rc-chart-block canvas {{ max-width: 100% !important; }}
-  .rc-stats {{ gap: 8px !important; }}
-  .rc-stat {{ padding: 8px 8px !important; border-top: 3px solid {section_accent} !important; }}
-  .rc-stat-label {{ font-size: 9pt !important; margin-bottom: 3px !important; }}
-  .rc-stat-value {{ font-size: 14pt !important; }}
-  .table-scroll {{ overflow: visible !important; }}
-  .rc-table td {{ padding: 4px 6px !important; font-size: 11pt !important; line-height: 1.15 !important; }}
-  .rc-table thead th {{ padding: 5px 6px !important; font-size: 10pt !important; }}
-  .rc-remarks-grid {{ gap: 14px !important; }}
-  .rc-remark-box {{ padding: 9px 12px !important; }}
-  .rc-remark-title {{ font-size: 10pt !important; margin-bottom: 4px !important; color: {section_accent} !important; }}
-  .rc-remark-author {{ font-size: 10pt !important; font-weight: 700 !important; color: #000000 !important; margin-bottom: 5px !important; }}
-  .rc-remark-text {{ font-size: 12pt !important; min-height: 30px !important; margin-bottom: 6px !important; line-height: 1.2 !important; }}
-  .rc-signature {{ font-size: 10pt !important; padding-top: 4px !important; }}
-  .rc-descriptors-title {{ font-size: 9pt !important; margin-bottom: 3px !important; }}
-  .rc-descriptors-table th, .rc-descriptors-table td {{ padding: 3px 4px !important; font-size: 9pt !important; }}
-  .footer-dates {{ display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 30px !important; padding-top: 8px !important; margin-top: auto !important; }}
-  .date-box {{ font-size: 10pt !important; padding-bottom: 3px !important; border-bottom: 2px solid {section_accent} !important; }}
+  html, body {{ margin: 0 !important; padding: 0 !important; background: white !important; font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; }}
+  .report-card {{ display: block !important; margin: 0 !important; width: 7.4in !important; max-height: 282mm !important; overflow: hidden !important; border: none !important; border-left: 12px solid {section_accent} !important; box-sizing: border-box !important; padding: 0.12in 0.35in 0.2in !important; page-break-inside: avoid !important; break-inside: avoid !important; flex-shrink: 1 !important; }}
+  .report-content {{ display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 6px !important; }}
+  .rc-chart-img {{ display: block !important; max-height: 110px !important; width: auto !important; margin: 4px auto !important; }}
+  .report-card canvas {{ display: none !important; }}
+  .rc-table td {{ padding: 2px 5px !important; font-size: 0.86em !important; line-height: 1.05 !important; }}
+  .rc-table thead th {{ padding: 2px 5px !important; font-size: 0.86em !important; }}
   .system-footer {{ display: none !important; }}
   .rc-print-watermark {{ display: none !important; }}
-  .rc-table, .rc-table th, .rc-table td, .rc-stat, .rc-descriptors-table, .rc-descriptors-table th, .rc-descriptors-table td {{ border-color: #000 !important; }}
-  @page {{ size: A4 portrait; margin: 0.12in 0.35in 0.4in 0.35in; }}
+  @page {{ size: A4 portrait; margin: 4mm 8mm 4mm 8mm !important; }}
 </style>
 """
+        single_html = _inject_pdf_css(single_html, single_pdf_css, f'<base href="{request.build_absolute_uri("/")}">')
 
-    pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
-    patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
+        # Compile to PDF bytes
+        try:
+            single_pdf_bytes = HTML(string=single_html).write_pdf(optimize_size='none')
+            if single_pdf_bytes:
+                merger.append(io.BytesIO(single_pdf_bytes))
+        except Exception as e:
+            logger.warning("[pdf] Failed to compile PDF for student %s: %s", student.name, str(e))
+            continue
 
-    disconnect_monitor = _DisconnectMonitor()
-    try:
-        student_count = len(student_marks_list)
-        per_student_timeout = max(8, 300 // max(student_count, 1))
-        pdf_timeout = max(600, per_student_timeout * student_count + 120)
-        pdf_bytes = _generate_pdf(
-            patched_html,
-            viewport={"width": 794, "height": 1123},
-            landscape=False,
-            margin={"top": "0.12in", "right": "0.35in", "bottom": "0.4in", "left": "0.35in"},
-            wait_for_charts=True,
-            timeout=pdf_timeout,
-            retries=2,
-            disconnect_monitor=disconnect_monitor,
-        )
-    except _ClientDisconnected:
-        return HttpResponse(status=499)
-    except Exception as e:
-        _log_pdf_error('download_bulk_report_pdf', e, {
-            'student_count': student_count, 'year': year, 'term': term,
-            'assessment': assessment, 'class': sample.class_name,
-            'stream': sample.stream,
-        })
-        return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
+    # Stitch all pages into final output
+    output_buffer = io.BytesIO()
+    merger.write(output_buffer)
+    merger.close()
 
     grade_slug = slugify(sample.class_name or "class")
     stream_slug = slugify(sample.stream or "stream")
     filename = f"Bulk_Report_Cards_{grade_slug}_{stream_slug}_{year}_{slugify(term)}.pdf"
 
-    mode = request.GET.get('mode', 'download').strip().lower()
-    disposition = 'inline' if mode == 'inline' else 'attachment'
-    return _stream_pdf_from_bytes(pdf_bytes, filename, content_disposition=disposition,
-                                  disconnect_monitor=disconnect_monitor)
+    response = HttpResponse(output_buffer.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    output_buffer.close()
+    return response

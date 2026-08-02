@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Avg, Count, Q
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.template.loader import render_to_string
@@ -871,6 +871,7 @@ def learner_profile(request, student_id):
 
     marks = (
         Mark.all_objects.filter(student=student)
+        .select_related('subject')
         .order_by('year', 'term', 'exam_type', 'subject')
     )
     is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
@@ -935,10 +936,20 @@ def learner_profile(request, student_id):
     chart_scores = [item["mean"] for item in reversed(exam_history)]
     chart_history = list(reversed(exam_history))
 
+    # DB-level per-subject average (single query, no Python loops)
+    subject_avg_qs = (
+        Mark.all_objects.filter(student=student)
+        .values('subject__code')
+        .annotate(avg_score=Avg('score', filter=Q(score__gt=0)))
+    )
+    db_subject_avgs = {
+        short_mapping.get(row['subject__code'], row['subject__code']): round(row['avg_score'], 1)
+        for row in subject_avg_qs if row['avg_score'] is not None
+    }
+
     subject_averages = []
     for short, entries in subject_trends.items():
-        scores = [e["score"] for e in entries if e["score"] > 0]
-        avg = round(sum(scores) / len(scores), 1) if scores else 0
+        avg = db_subject_avgs.get(short, 0)
         subject_averages.append({
             "short": short,
             "name": entries[0]["label"].split(" ")[0] if entries else short,

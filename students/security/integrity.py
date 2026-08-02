@@ -17,12 +17,15 @@ def _integrity_key():
 
 
 def compute_mark_checksum(mark):
+    subject_val = getattr(mark, 'subject_id', None) or (
+        mark.subject.pk if hasattr(mark.subject, 'pk') else mark.subject
+    ) if getattr(mark, 'subject', None) else ""
     payload = "|".join(
         str(part)
         for part in (
             mark.school_id or "",
             mark.student_id or "",
-            mark.subject or "",
+            subject_val,
             mark.score,
             mark.raw_score if mark.raw_score is not None else "",
             mark.maximum_marks,

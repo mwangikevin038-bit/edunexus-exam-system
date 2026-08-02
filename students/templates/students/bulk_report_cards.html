@@ -278,7 +278,8 @@
         .rc-detail { font-size: 11pt !important; margin-bottom: 3px !important; }
         .rc-chart-title { font-size: 10pt !important; margin-bottom: 4px !important; }
         .rc-chart-block { padding: 7px !important; }
-        .rc-chart-block canvas { max-width: 100% !important; }
+        .rc-chart-block canvas { max-width: 100% !important; height: 100px !important; }
+        .rc-rendered-chart-img { width: 100% !important; height: 100px !important; object-fit: contain !important; }
         .rc-stats { gap: 4px !important; }
         .rc-stat { padding: 5px 6px !important; border-top: 2px solid var(--section-accent, var(--rc-blue)) !important; }
         .rc-stat-label { font-size: 9pt !important; margin-bottom: 3px !important; }
@@ -356,7 +357,7 @@
                     </div>
                     <div class="rc-chart-block">
                         <div class="rc-chart-title">Subject Performance – Student vs Class</div>
-                        <canvas id="chart-{{ forloop.counter }}" width="560" height="260"></canvas>
+                        <canvas id="chart-{{ forloop.counter }}" width="560" height="130"></canvas>
                         <script type="application/json" id="chart-data-{{ forloop.counter }}">{{ student_data.chart_data_json|safe }}</script>
                     </div>
                 </div>
@@ -459,7 +460,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    devicePixelRatio: 1.5,
+                    devicePixelRatio: 1,
                     animation: false,
                     plugins: { legend: { display: true, position: 'top', labels: { font: { size: 9 } } } },
                     scales: {
@@ -471,17 +472,21 @@
             var img = document.createElement('img');
             img.src = canvas.toDataURL('image/png');
             img.className = 'rc-rendered-chart-img';
-            img.style.cssText = 'width:100%;height:auto;display:block;';
             canvas.style.display = 'none';
             canvas.parentNode.appendChild(img);
             chartInstance.destroy();
             await new Promise(function(resolve) { setTimeout(resolve, 15); });
         }
+        window._allChartsConverted = true;
     }
     document.addEventListener('DOMContentLoaded', renderAllChartsSequentially);
 
     function printAllReportCards(btn, e) {
         if (e) { e.preventDefault(); e.stopPropagation(); }
+        if (!window._allChartsConverted) {
+            showToast('Charts still rendering — please wait a moment.', 'info');
+            return;
+        }
         var origText = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<i class="ph ph-spinner"></i> Preparing print...';
@@ -489,7 +494,7 @@
             window.print();
             btn.disabled = false;
             btn.innerHTML = origText;
-        }, 500);
+        }, 200);
     }
 </script>
 {% endblock %}

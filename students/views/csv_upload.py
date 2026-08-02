@@ -8,8 +8,10 @@ Progress is tracked purely through Redis cache.
 import uuid as _uuid
 import json
 import logging
+import time
 
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
@@ -44,6 +46,18 @@ def csv_upload_api(request):
     school = get_request_school(request)
     if not school:
         return JsonResponse({"status": "error", "error": "School context required."}, status=403)
+
+    # ── RATE LIMIT: 3 uploads per minute sliding window ────────────────────
+    user_id = request.user.id if request.user.is_authenticated else request.META.get('REMOTE_ADDR')
+    cache_key = f"rate_limit_csv_upload_{user_id}"
+    request_history = cache.get(cache_key, [])
+    now = time.time()
+    # Filter out requests older than 60 seconds
+    request_history = [t for t in request_history if now - t < 60.0]
+    if len(request_history) >= 3:
+        return JsonResponse({"status": "error", "error": "Too many upload requests. Please wait a minute."}, status=429)
+    request_history.append(now)
+    cache.set(cache_key, request_history, timeout=65)
 
     try:
         payload = json.loads(request.body)

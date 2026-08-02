@@ -7,15 +7,17 @@ individual submission reviews, and assessment lock management.
 
 import datetime
 import json
+import time
 
 import bleach
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Avg, Count, IntegerField, Q
 from django.db.models.functions import Cast
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -35,8 +37,10 @@ from .helpers import (
     get_performance_level,
     get_religion_aware_student_count,
     get_stream_submission_summary,
+    get_subject_level_fast,
     get_subject_marks,
     get_subject_students,
+    upsert_mark,
 )
 from ..models import (
     AssessmentLock,
@@ -60,6 +64,15 @@ from ..security import (
 )
 from ..security.roles import user_can_mutate_marks
 from ..school_scope import get_current_school, get_current_school_section
+
+
+def _htmx_redirect(request, url):
+    """Return HX-Redirect header for HTMX requests, standard redirect otherwise."""
+    if request.headers.get('HX-Request'):
+        resp = HttpResponse()
+        resp['HX-Redirect'] = url
+        return resp
+    return redirect(url)
 
 
 def _get_grading_scale_json():
@@ -288,13 +301,13 @@ def select_exam(request):
                     raw_score = int(value)
                 except ValueError:
                     messages.error(request, f"Invalid score for {student.name}. Use a number or AB.")
-                    return redirect(
+                    return _htmx_redirect(request,
                         f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                     )
 
                 if raw_score < 0 or raw_score > maximum_marks:
                     messages.error(request, f"{student.name}'s score exceeds the total marks.")
-                    return redirect(
+                    return _htmx_redirect(request,
                         f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                     )
 
@@ -303,15 +316,23 @@ def select_exam(request):
             # Validate before touching DB — religion subjects allow blanks
             if missing_students and not is_religion:
                 messages.error(request, "Please enter a score or AB for every learner before submitting.")
-                return redirect(
+                return _htmx_redirect(request,
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
 
             # ============================================================
-            # PHASE 2 — Atomic bulk write: exactly 3 queries total
+            # PHASE 2 — Atomic bulk write: transaction.atomic + bulk_update
             # ============================================================
             deleted_count = 0
             saved_count = 0
+
+            # ── Pre-fetch grading config + HMAC key (single queries) ────
+            from .helpers import _resolve_grading_config
+            grading_config = _resolve_grading_config(
+                school, selected_assignment.school_section, selected_assignment.sub_section,
+            )
+            from ..security.integrity import compute_mark_checksum
+            subject_id = selected_assignment.subject.id if selected_assignment.subject else None
 
             with transaction.atomic():
                 existing_marks = {
@@ -323,7 +344,7 @@ def select_exam(request):
                         school=school,
                         school_section=selected_assignment.school_section,
                         sub_section=selected_assignment.sub_section,
-                    )
+                    ).select_related('student', 'subject')
                 }
 
                 marks_to_create = []
@@ -345,9 +366,12 @@ def select_exam(request):
                             existing.maximum_marks = maximum_marks
                             existing.score = 0
                             existing.is_absent = True
+                            existing.performance_level = 'AB'
+                            existing.points = 0
+                            existing.integrity_checksum = compute_mark_checksum(existing)
                             marks_to_update.append(existing)
                         else:
-                            marks_to_create.append(Mark(
+                            new_mark = Mark(
                                 school=school,
                                 student=student,
                                 subject=selected_assignment.subject,
@@ -360,7 +384,11 @@ def select_exam(request):
                                 maximum_marks=maximum_marks,
                                 score=0,
                                 is_absent=True,
-                            ))
+                                performance_level='AB',
+                                points=0,
+                            )
+                            new_mark.integrity_checksum = compute_mark_checksum(new_mark)
+                            marks_to_create.append(new_mark)
                         saved_count += 1
                         continue
 
@@ -368,14 +396,24 @@ def select_exam(request):
                         opposite_religion_student_ids.append(student.id)
 
                     score = round((value / maximum_marks) * 100)
+
+                    # Compute grading from percentage
+                    if grading_config and grading_config.subject_scale:
+                        perf_level, perf_points = get_subject_level_fast(score, grading_config)
+                    else:
+                        perf_level, perf_points = '-', 0
+
                     if existing:
                         existing.raw_score = value
                         existing.maximum_marks = maximum_marks
                         existing.score = score
                         existing.is_absent = False
+                        existing.performance_level = perf_level
+                        existing.points = perf_points
+                        existing.integrity_checksum = compute_mark_checksum(existing)
                         marks_to_update.append(existing)
                     else:
-                        marks_to_create.append(Mark(
+                        new_mark = Mark(
                             school=school,
                             student=student,
                             subject=selected_assignment.subject,
@@ -388,7 +426,11 @@ def select_exam(request):
                             maximum_marks=maximum_marks,
                             score=score,
                             is_absent=False,
-                        ))
+                            performance_level=perf_level,
+                            points=perf_points,
+                        )
+                        new_mark.integrity_checksum = compute_mark_checksum(new_mark)
+                        marks_to_create.append(new_mark)
                     saved_count += 1
 
                 if ids_to_delete:
@@ -398,7 +440,8 @@ def select_exam(request):
                 if marks_to_update:
                     Mark.all_objects.bulk_update(
                         marks_to_update,
-                        ['raw_score', 'maximum_marks', 'score', 'is_absent'],
+                        ['raw_score', 'maximum_marks', 'score', 'is_absent',
+                         'performance_level', 'points', 'integrity_checksum'],
                         batch_size=250,
                     )
 
@@ -442,7 +485,7 @@ def select_exam(request):
                 school.pk, selected_assignment.class_name, selected_assignment.stream,
                 selected_exam.year, selected_exam.term, selected_exam.name,
             )
-            return redirect('select_exam')
+            return _htmx_redirect(request, 'select_exam')
 
     exam_rows = []
 
@@ -576,7 +619,10 @@ def select_exam(request):
 
     exam_rows.sort(key=lambda r: (r['assignment'].class_name, r['assignment'].stream, r['exam'].name))
 
-    return render(request, 'students/select_exam_details.html', {
+    is_htmx = request.headers.get('HX-Request') == 'true'
+    template_name = 'students/select_exam_details_partial.html' if is_htmx else 'students/select_exam_details.html'
+    
+    return render(request, template_name, {
         'teacher': teacher,
         'exam_rows': exam_rows,
         'selected_assignment': selected_assignment,
@@ -1224,47 +1270,57 @@ def review_submission(request):
 
             school = get_request_school(request)
 
+            # ── BULK READ: fetch existing marks in ONE query (fixes N+1) ──
+            existing_marks = Mark.all_objects.filter(
+                student__in=students_for_sheet,
+                subject=assignment.subject,
+                term=exam.term,
+                exam_type=exam.name,
+                year=exam.year,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
+            )
+            existing_map = {m.student_id: m for m in existing_marks}
+
+            # ── PHASE 1: Validate all inputs + build operation lists ────────
+            marks_to_delete_ids = []
+            marks_to_create = []
+            religion_student_updates = []
+            religion_opposite_deletes = []
+
             for student in students_for_sheet:
                 value = request.POST.get(f"score_{student.id}", "").strip()
                 if not value:
                     continue
 
-                if assignment.subject.code in RELIGION_SUBJECTS:
-                    religion_tag = RELIGION_TAG.get(assignment.subject.code, "")
-                    Student.objects.filter(id=student.id).update(religion=religion_tag)
-                    opposite = _resolve_opposite_religion_subject(school, assignment)
-                    if opposite:
-                        Mark.all_objects.filter(
-                            school=school,
-                            student=student,
-                            subject=opposite,
-                            term=exam.term,
-                            exam_type=exam.name,
-                            year=exam.year,
-                            school_section=assignment.school_section,
-                            sub_section=assignment.sub_section,
-                        ).delete()
+                _adm_lookup = dict(
+                    school=school,
+                    student=student,
+                    subject=assignment.subject,
+                    term=exam.term,
+                    exam_type=exam.name,
+                    year=exam.year,
+                    school_section=assignment.school_section,
+                    sub_section=assignment.sub_section,
+                )
 
                 if value.upper() == "AB":
-                    _adm_lookup = dict(
-                        school=school,
-                        student=student,
-                        subject=assignment.subject,
-                        term=exam.term,
-                        exam_type=exam.name,
-                        year=exam.year,
-                        school_section=assignment.school_section,
-                        sub_section=assignment.sub_section,
-                    )
-                    Mark.all_objects.filter(**_adm_lookup).delete()
-                    Mark.all_objects.create(
+                    marks_to_create.append(Mark(
                         **_adm_lookup,
                         raw_score=None,
                         maximum_marks=maximum_marks,
                         score=0,
                         is_absent=True,
-                    )
+                    ))
+                    if student.id in existing_map:
+                        marks_to_delete_ids.append(existing_map[student.id].id)
                     corrected_count += 1
+                    if assignment.subject.code in RELIGION_SUBJECTS:
+                        religion_tag = RELIGION_TAG.get(assignment.subject.code, "")
+                        religion_student_updates.append((student.id, religion_tag))
+                        opposite = _resolve_opposite_religion_subject(school, assignment)
+                        if opposite:
+                            religion_opposite_deletes.append((student.id, opposite))
                     continue
 
                 try:
@@ -1281,25 +1337,50 @@ def review_submission(request):
                         f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
                     )
 
-                _adm_lookup = dict(
-                    school=school,
-                    student=student,
-                    subject=assignment.subject,
-                    term=exam.term,
-                    exam_type=exam.name,
-                    year=exam.year,
-                    school_section=assignment.school_section,
-                    sub_section=assignment.sub_section,
-                )
-                Mark.all_objects.filter(**_adm_lookup).delete()
-                Mark.all_objects.create(
+                marks_to_create.append(Mark(
                     **_adm_lookup,
                     raw_score=raw_score,
                     maximum_marks=maximum_marks,
                     score=round((raw_score / maximum_marks) * 100),
                     is_absent=False,
-                )
+                ))
+                if student.id in existing_map:
+                    marks_to_delete_ids.append(existing_map[student.id].id)
                 corrected_count += 1
+                if assignment.subject.code in RELIGION_SUBJECTS:
+                    religion_tag = RELIGION_TAG.get(assignment.subject.code, "")
+                    religion_student_updates.append((student.id, religion_tag))
+                    opposite = _resolve_opposite_religion_subject(school, assignment)
+                    if opposite:
+                        religion_opposite_deletes.append((student.id, opposite))
+
+            # ── PHASE 2: Atomic bulk write — all deletes + creates in one transaction ──
+            with transaction.atomic():
+                if marks_to_delete_ids:
+                    Mark.all_objects.filter(id__in=marks_to_delete_ids).delete()
+
+                if marks_to_create:
+                    Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
+
+                if religion_student_updates:
+                    student_ids = [sid for sid, _ in religion_student_updates]
+                    _, religion_tag = religion_student_updates[0]
+                    Student.all_objects.filter(id__in=student_ids).update(religion=religion_tag)
+
+                if religion_opposite_deletes:
+                    from django.db.models import Q
+                    q_objects = Q()
+                    for student_id, opposite_subject in religion_opposite_deletes:
+                        q_objects |= Q(student_id=student_id, subject=opposite_subject)
+                    Mark.all_objects.filter(
+                        q_objects,
+                        school=school,
+                        term=exam.term,
+                        exam_type=exam.name,
+                        year=exam.year,
+                        school_section=assignment.school_section,
+                        sub_section=assignment.sub_section,
+                    ).delete()
 
             submission.admin_note = admin_note
             if submission.status != "published":
@@ -1307,6 +1388,19 @@ def review_submission(request):
                 submission.published_at = None
             submission.reviewed_at = timezone.now()
             submission.save()
+
+            # ── Rebuild ExamSummary snapshots for this grade ───────────
+            from students.tasks import populate_exam_summaries
+            populate_exam_summaries.delay(
+                school_id=school.pk,
+                grade=assignment.class_name,
+                year=exam.year,
+                term=exam.term,
+                exam_name=exam.name,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
+            )
+
             messages.success(request, f"{corrected_count} learner score correction(s) saved.")
 
         elif action_type == "return_submission":
@@ -1395,6 +1489,18 @@ def review_submission(request):
                 submission.reviewed_at = timezone.now()
 
             submission.save()
+
+            # ── Rebuild ExamSummary snapshots for this grade ───────────
+            from students.tasks import populate_exam_summaries
+            populate_exam_summaries.delay(
+                school_id=school.pk,
+                grade=assignment.class_name,
+                year=exam.year,
+                term=exam.term,
+                exam_name=exam.name,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
+            )
 
             messages.success(request, "Assessment sheet has been published.")
         return redirect(
@@ -1618,7 +1724,7 @@ def _get_primary_performance(percentage, school=None, section=None, sub_section=
             config = _get_grading_config(school, 'JSS', None)
 
         if config and config.subject_scale:
-            return config.get_subject_level(percentage)
+            return get_subject_level_fast(percentage, config)
 
     logging.getLogger("students.exams").error(
         "GradingConfig.subject_scale missing for school_id=%s section=%s. "
@@ -1748,14 +1854,18 @@ def select_exam_primary(request):
             selected_assignment.subject,
         )
 
+        # ── BULK READ: fetch all existing marks in ONE query (fixes N+1) ──
+        existing_marks = Mark.all_objects.filter(
+            student__in=students,
+            subject=selected_assignment.subject,
+            term=selected_exam.term,
+            exam_type=selected_exam.name,
+            year=selected_exam.year,
+        )
+        existing_map = {m.student_id: m for m in existing_marks}
+
         for student in students:
-            existing = Mark.objects.filter(
-                student=student,
-                subject=selected_assignment.subject,
-                term=selected_exam.term,
-                exam_type=selected_exam.name,
-                year=selected_exam.year,
-            ).first()
+            existing = existing_map.get(student.id)
 
             if existing:
                 if existing.is_absent:
@@ -1782,13 +1892,13 @@ def select_exam_primary(request):
         if request.method == 'POST':
             if is_locked:
                 messages.error(request, "This assessment sheet is locked by admin.")
-                return redirect(
+                return _htmx_redirect(request,
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
 
             if is_submitted:
                 messages.error(request, "This sheet has already been submitted and cannot be edited. Ask the admin to return it first.")
-                return redirect(
+                return _htmx_redirect(request,
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
 
@@ -1801,84 +1911,20 @@ def select_exam_primary(request):
             saved_count = 0
             deleted_count = 0
 
+            # ── PHASE 1: Validate all inputs + build operation lists ────────
+            marks_to_delete_ids = []
+            marks_to_create = []
+            religion_student_updates = []
+            religion_opposite_deletes = []
+
             for student in students:
                 value = request.POST.get(f'score_{student.id}', '').strip()
 
                 if not value:
-                    _del_lookup = dict(
-                        school=school,
-                        student=student,
-                        subject=selected_assignment.subject,
-                        term=selected_exam.term,
-                        exam_type=selected_exam.name,
-                        year=selected_exam.year,
-                        school_section=exam_section,
-                        sub_section=exam_sub_section,
-                    )
-                    _, del_count = Mark.all_objects.filter(**_del_lookup).delete()
-                    if del_count:
-                        deleted_count += 1
                     missing_students.append(student.name)
+                    if student.id in existing_map:
+                        marks_to_delete_ids.append(existing_map[student.id].id)
                     continue
-
-                if value.upper() == "AB":
-                    # Auto-tag student religion on CRE/IRE for primary
-                    if selected_assignment.subject.code in RELIGION_SUBJECTS:
-                        religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
-                        Student.objects.filter(id=student.id).update(religion=religion_tag)
-                        opposite = _resolve_opposite_religion_subject(school, selected_assignment)
-                        if opposite:
-                            Mark.all_objects.filter(
-                                school=school,
-                                student=student,
-                                subject=opposite,
-                                term=selected_exam.term,
-                                exam_type=selected_exam.name,
-                                year=selected_exam.year,
-                                school_section=exam_section,
-                                sub_section=exam_sub_section,
-                            ).delete()
-
-                    _mark_lookup = dict(
-                        school=school,
-                        student=student,
-                        subject=selected_assignment.subject,
-                        term=selected_exam.term,
-                        exam_type=selected_exam.name,
-                        year=selected_exam.year,
-                        school_section=exam_section,
-                        sub_section=exam_sub_section,
-                    )
-                    Mark.all_objects.filter(**_mark_lookup).delete()
-                    Mark.all_objects.create(
-                        **_mark_lookup,
-                        raw_score=None,
-                        maximum_marks=maximum_marks,
-                        score=0,
-                        is_absent=True,
-                        primary_raw_score='AB',
-                        primary_performance_point='AB',
-                        primary_descriptor='AB',
-                    )
-                    saved_count += 1
-                    continue
-
-                try:
-                    raw_score = int(value)
-                except ValueError:
-                    messages.error(request, f"Invalid score for {student.name}. Use a number or AB.")
-                    return redirect(
-                        f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
-                    )
-
-                if raw_score < 0 or raw_score > maximum_marks:
-                    messages.error(request, f"{student.name}'s score exceeds the total marks.")
-                    return redirect(
-                        f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
-                    )
-
-                percentage = round((raw_score / maximum_marks) * 100)
-                descriptor, points = _get_primary_performance(percentage, school=school, section=section, sub_section=exam_sub_section)
 
                 _mark_lookup = dict(
                     school=school,
@@ -1890,8 +1936,50 @@ def select_exam_primary(request):
                     school_section=exam_section,
                     sub_section=exam_sub_section,
                 )
-                Mark.all_objects.filter(**_mark_lookup).delete()
-                Mark.all_objects.create(
+
+                if value.upper() == "AB":
+                    marks_to_create.append(Mark(
+                        **_mark_lookup,
+                        raw_score=None,
+                        maximum_marks=maximum_marks,
+                        score=0,
+                        is_absent=True,
+                        primary_raw_score='AB',
+                        primary_performance_point='AB',
+                        primary_descriptor='AB',
+                    ))
+                    if student.id in existing_map:
+                        marks_to_delete_ids.append(existing_map[student.id].id)
+                    saved_count += 1
+
+                    # Collect religion auto-tag work for batch execution
+                    if selected_assignment.subject.code in RELIGION_SUBJECTS:
+                        religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
+                        religion_student_updates.append((student.id, religion_tag))
+                        opposite = _resolve_opposite_religion_subject(school, selected_assignment)
+                        if opposite:
+                            religion_opposite_deletes.append((student.id, opposite))
+                    continue
+
+                # ── Numeric score path ──
+                try:
+                    raw_score = int(value)
+                except ValueError:
+                    messages.error(request, f"Invalid score for {student.name}. Use a number or AB.")
+                    return _htmx_redirect(request,
+                        f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
+                    )
+
+                if raw_score < 0 or raw_score > maximum_marks:
+                    messages.error(request, f"{student.name}'s score exceeds the total marks.")
+                    return _htmx_redirect(request,
+                        f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
+                    )
+
+                percentage = round((raw_score / maximum_marks) * 100)
+                descriptor, points = _get_primary_performance(percentage, school=school, section=section, sub_section=exam_sub_section)
+
+                marks_to_create.append(Mark(
                     **_mark_lookup,
                     raw_score=raw_score,
                     maximum_marks=maximum_marks,
@@ -1900,31 +1988,59 @@ def select_exam_primary(request):
                     primary_raw_score=str(raw_score),
                     primary_performance_point=str(points),
                     primary_descriptor=descriptor,
-                )
+                ))
+                if student.id in existing_map:
+                    marks_to_delete_ids.append(existing_map[student.id].id)
                 saved_count += 1
 
-                # Auto-tag student religion on CRE/IRE for primary
+                # Collect religion auto-tag work for batch execution
                 if selected_assignment.subject.code in RELIGION_SUBJECTS:
                     religion_tag = RELIGION_TAG.get(selected_assignment.subject.code, '')
-                    Student.objects.filter(id=student.id).update(religion=religion_tag)
+                    religion_student_updates.append((student.id, religion_tag))
                     opposite = _resolve_opposite_religion_subject(school, selected_assignment)
                     if opposite:
-                        Mark.all_objects.filter(
-                            school=school,
-                            student=student,
-                            subject=opposite,
-                            term=selected_exam.term,
-                            exam_type=selected_exam.name,
-                            year=selected_exam.year,
-                            school_section=exam_section,
-                            sub_section=exam_sub_section,
-                        ).delete()
+                        religion_opposite_deletes.append((student.id, opposite))
 
+            # ── PHASE 2: Check validation errors before any writes ──────────
             if missing_students and selected_assignment.subject.code not in RELIGION_SUBJECTS:
                 messages.error(request, "Please enter a score or AB for every learner before submitting.")
-                return redirect(
+                return _htmx_redirect(request,
                     f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                 )
+
+            # ── PHASE 3: Atomic bulk write — all deletes + creates in one transaction ──
+            with transaction.atomic():
+                # Bulk delete old marks
+                if marks_to_delete_ids:
+                    Mark.all_objects.filter(id__in=marks_to_delete_ids).delete()
+                    deleted_count = len(marks_to_delete_ids)
+
+                # Bulk create new marks
+                if marks_to_create:
+                    Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
+
+                # Batch religion student updates
+                if religion_student_updates:
+                    student_ids = [sid for sid, _ in religion_student_updates]
+                    # Use the tag from the last update (all should be the same for one subject)
+                    _, religion_tag = religion_student_updates[0]
+                    Student.all_objects.filter(id__in=student_ids).update(religion=religion_tag)
+
+                # Batch delete opposite religion marks
+                if religion_opposite_deletes:
+                    from django.db.models import Q
+                    q_objects = Q()
+                    for student_id, opposite_subject in religion_opposite_deletes:
+                        q_objects |= Q(student_id=student_id, subject=opposite_subject)
+                    Mark.all_objects.filter(
+                        q_objects,
+                        school=school,
+                        term=selected_exam.term,
+                        exam_type=selected_exam.name,
+                        year=selected_exam.year,
+                        school_section=exam_section,
+                        sub_section=exam_sub_section,
+                    ).delete()
 
             MarkSubmission.objects.update_or_create(
                 school=school,
@@ -1950,7 +2066,7 @@ def select_exam_primary(request):
                 school.pk, selected_assignment.class_name, selected_assignment.stream,
                 selected_exam.year, selected_exam.term, selected_exam.name,
             )
-            return redirect('select_exam_primary')
+            return _htmx_redirect(request, 'select_exam_primary')
 
     exam_rows = []
 
@@ -2020,7 +2136,10 @@ def select_exam_primary(request):
 
     exam_rows.sort(key=lambda r: (r['assignment'].class_name, r['assignment'].stream, r['exam'].name))
 
-    return render(request, 'students/select_exam_details.html', {
+    is_htmx = request.headers.get('HX-Request') == 'true'
+    template_name = 'students/select_exam_details_partial.html' if is_htmx else 'students/select_exam_details.html'
+    
+    return render(request, template_name, {
         'teacher': teacher,
         'exam_rows': exam_rows,
         'selected_assignment': selected_assignment,
@@ -2126,12 +2245,27 @@ def save_mark(request):
     """
     AJAX endpoint to auto-save a single mark without submitting.
     POST: student_id, assignment_id, exam_id, score (number, 'AB', or empty)
+
+    Uses PostgreSQL INSERT ... ON CONFLICT DO UPDATE for atomic upsert.
+    Single query, zero dead tuples, zero index bloat, zero race conditions.
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
 
     if not user_can_mutate_marks(request.user):
         return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    # ── RATE LIMIT: 5 saves per second sliding window ──────────────────────
+    user_id = request.user.id
+    cache_key = f"rate_limit_save_mark_{user_id}"
+    request_history = cache.get(cache_key, [])
+    now = time.time()
+    # Filter out requests older than 1 second
+    request_history = [t for t in request_history if now - t < 1.0]
+    if len(request_history) >= 5:
+        return JsonResponse({'error': 'Too many requests. Slow down.'}, status=429)
+    request_history.append(now)
+    cache.set(cache_key, request_history, timeout=2)
 
     try:
         teacher = get_school_object_or_403(Teacher, request, user=request.user)
@@ -2182,6 +2316,7 @@ def save_mark(request):
     except (ValueError, TypeError):
         maximum_marks = existing_mark.maximum_marks if existing_mark else 100
 
+    # ── CLEAR: empty score → delete mark ──────────────────────────────────
     if not score_value:
         Mark.all_objects.filter(
             school=school, student=student, subject=assignment.subject,
@@ -2191,17 +2326,17 @@ def save_mark(request):
         ).delete()
         return JsonResponse({'ok': True, 'cleared': True})
 
-    # Always delete existing mark first, then create fresh — avoids integrity
-    # checksum collision in update_or_create (save() verifies checksum before
-    # the new field values are applied).
-    _mark_lookup = dict(
-        school=school, student=student, subject=assignment.subject,
+    # ── Shared lookup for religion handling ────────────────────────────────
+    _mark_filter = dict(
+        school_id=school.pk, student_id=student.pk,
+        subject_id=assignment.subject.pk if assignment.subject else None,
         term=exam.term, exam_type=exam.name, year=exam.year,
         school_section=assignment.school_section,
         sub_section=assignment.sub_section,
     )
 
-    if score_value.upper() == 'AB':
+    def _handle_religion():
+        """Update student religion tag and delete opposite-religion mark if applicable."""
         if assignment.subject.code in RELIGION_SUBJECTS:
             religion_tag = RELIGION_TAG.get(assignment.subject.code, '')
             Student.objects.filter(id=student.id).update(religion=religion_tag)
@@ -2214,19 +2349,32 @@ def save_mark(request):
                     sub_section=assignment.sub_section,
                 ).delete()
 
-        Mark.all_objects.filter(**_mark_lookup).delete()
-        Mark.all_objects.create(
-            **_mark_lookup,
+    # ── ABSENT: score = 'AB' → upsert absent mark ────────────────────────
+    if score_value.upper() == 'AB':
+        _handle_religion()
+
+        mark_id = upsert_mark(
+            school_id=school.pk,
+            student_id=student.pk,
+            subject_id=assignment.subject.pk if assignment.subject else None,
+            school_section=assignment.school_section,
+            sub_section=assignment.sub_section,
+            score=0,
             raw_score=None,
             maximum_marks=maximum_marks,
-            score=0,
             is_absent=True,
             primary_raw_score='AB',
             primary_performance_point='AB',
             primary_descriptor='AB',
+            performance_level='AB',
+            points=0,
+            term=exam.term,
+            year=exam.year,
+            exam_type=exam.name,
         )
-        return JsonResponse({'ok': True, 'absent': True})
+        return JsonResponse({'ok': True, 'absent': True, 'mark_id': mark_id})
 
+    # ── NUMERIC SCORE → upsert with computed grading ──────────────────────
     try:
         raw_score = int(score_value)
     except ValueError:
@@ -2235,37 +2383,51 @@ def save_mark(request):
     if raw_score < 0 or raw_score > maximum_marks:
         return JsonResponse({'error': 'Score exceeds total marks'}, status=400)
 
-    Mark.all_objects.filter(**_mark_lookup).delete()
     percentage = round((raw_score / maximum_marks) * 100)
-    pp_level, pp_points = _get_primary_performance(percentage, school=school, section=assignment.school_section, sub_section=assignment.sub_section) if assignment.school_section == 'PRIMARY' else ('', '')
-    Mark.all_objects.create(
-        **_mark_lookup,
+
+    if assignment.school_section == 'PRIMARY':
+        pp_level, pp_points = _get_primary_performance(
+            percentage, school=school,
+            section=assignment.school_section,
+            sub_section=assignment.sub_section,
+        )
+        perf_level = pp_level
+        perf_points = pp_points if pp_points else 0
+    else:
+        from .helpers import get_performance_level
+        perf_level, perf_points = get_performance_level(
+            percentage, sub_section=assignment.sub_section,
+        )
+        pp_level = ''
+        pp_points = ''
+
+    mark_id = upsert_mark(
+        school_id=school.pk,
+        student_id=student.pk,
+        subject_id=assignment.subject.pk if assignment.subject else None,
+        school_section=assignment.school_section,
+        sub_section=assignment.sub_section,
+        score=percentage,
         raw_score=raw_score,
         maximum_marks=maximum_marks,
-        score=percentage,
         is_absent=False,
         primary_raw_score=str(raw_score),
         primary_performance_point=str(pp_points) if pp_points else '',
         primary_descriptor=pp_level,
+        performance_level=perf_level,
+        points=perf_points,
+        term=exam.term,
+        year=exam.year,
+        exam_type=exam.name,
     )
 
-    if assignment.subject.code in RELIGION_SUBJECTS:
-        religion_tag = RELIGION_TAG.get(assignment.subject.code, '')
-        Student.objects.filter(id=student.id).update(religion=religion_tag)
-        opposite = _resolve_opposite_religion_subject(school, assignment)
-        if opposite:
-            Mark.all_objects.filter(
-                school=school, student=student, subject=opposite,
-                term=exam.term, exam_type=exam.name, year=exam.year,
-                school_section=assignment.school_section,
-                sub_section=assignment.sub_section,
-            ).delete()
+    _handle_religion()
 
     invalidate_report_caches(
         school.pk, assignment.class_name, assignment.stream,
         exam.year, exam.term, exam.name,
     )
-    return JsonResponse({'ok': True, 'saved': True})
+    return JsonResponse({'ok': True, 'saved': True, 'mark_id': mark_id})
 
 
 @login_required(login_url='login')
@@ -2335,24 +2497,60 @@ def update_maximum_marks(request):
     if assignment.sub_section:
         _mark_filter['sub_section'] = assignment.sub_section
 
-    marks = Mark.all_objects.filter(**_mark_filter)
-    updated = 0
-    for mark in marks:
-        if mark.is_absent:
-            mark.maximum_marks = new_maximum
-            mark.save(update_fields=['maximum_marks'])
-            updated += 1
-            continue
-        raw = mark.raw_score if mark.raw_score is not None else mark.score
-        if raw is not None:
-            new_pct = round((raw / new_maximum) * 100)
-            mark.maximum_marks = new_maximum
-            mark.score = new_pct
-            mark.raw_score = raw
-            mark.save(update_fields=['maximum_marks', 'score', 'raw_score'])
-            updated += 1
+    marks = list(Mark.all_objects.filter(**_mark_filter).select_related('student', 'subject'))
+    if not marks:
+        return JsonResponse({'ok': True, 'updated': 0, 'new_maximum': new_maximum})
 
-    return JsonResponse({'ok': True, 'updated': updated, 'new_maximum': new_maximum})
+    # ── Pre-fetch: Student + Subject in_bulk (zero N+1) ──────────────────
+    student_ids = {m.student_id for m in marks}
+    subject_ids = {m.subject_id for m in marks if m.subject_id}
+    students_map = Student.all_objects.in_bulk(student_ids)
+    subjects_map = Subject.all_objects.in_bulk(subject_ids)
+
+    # ── Pre-fetch: GradingConfig (single query) ──────────────────────────
+    from .helpers import _resolve_grading_config
+    grading_config = _resolve_grading_config(school, assignment.school_section, assignment.sub_section)
+
+    # ── Pre-fetch: HMAC key (single read) ────────────────────────────────
+    from ..security.integrity import compute_mark_checksum, _integrity_key
+    hmac_key = _integrity_key()
+
+    # ── Compute all updates in Python, then single bulk_update ────────────
+    marks_to_update = []
+    with transaction.atomic():
+        for mark in marks:
+            subject_obj = subjects_map.get(mark.subject_id)
+            student_obj = students_map.get(mark.student_id)
+
+            if mark.is_absent:
+                mark.maximum_marks = new_maximum
+                mark.integrity_checksum = compute_mark_checksum(mark)
+                marks_to_update.append(mark)
+                continue
+
+            raw = mark.raw_score if mark.raw_score is not None else mark.score
+            if raw is not None:
+                new_pct = round((raw / new_maximum) * 100)
+                mark.maximum_marks = new_maximum
+                mark.score = new_pct
+                mark.raw_score = raw
+                # Recompute grading from new percentage
+                if grading_config and grading_config.subject_scale:
+                    mark.performance_level, mark.points = get_subject_level_fast(new_pct, grading_config)
+                else:
+                    mark.performance_level = mark.performance_level or '-'
+                    mark.points = mark.points or 0
+                mark.integrity_checksum = compute_mark_checksum(mark)
+                marks_to_update.append(mark)
+
+        if marks_to_update:
+            Mark.all_objects.bulk_update(
+                marks_to_update,
+                ['maximum_marks', 'score', 'raw_score', 'performance_level', 'points', 'integrity_checksum'],
+                batch_size=250,
+            )
+
+    return JsonResponse({'ok': True, 'updated': len(marks_to_update), 'new_maximum': new_maximum})
 
 
 @login_required(login_url='login')

@@ -393,3 +393,248 @@ def _next_admission_number(school, school_section=None):
     if last and last.isdigit():
         return int(last) + 1
     return qs.count() + 1
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ExamSummary — pre-calculated snapshots for fast report card rendering
+# ═══════════════════════════════════════════════════════════════════════
+
+@shared_task(bind=True, max_retries=1, default_retry_delay=15)
+def populate_exam_summaries(
+    self,
+    school_id,
+    grade,
+    year,
+    term,
+    exam_name,
+    school_section,
+    sub_section=None,
+):
+    """
+    Bulk-create/update ExamSummary rows for every student in a grade.
+
+    Triggered by the admin when clicking "Publish" on a subject sheet.
+    Computes totals, rankings, PLV, and frozen comments for ALL students
+    in the grade — not just those with marks — so ranking is always complete.
+
+    The task is idempotent: re-running it replaces all existing summaries
+    for the (school, grade, year, term, exam) key set.
+
+    Args:
+        school_id:  int — School.pk
+        grade:      str — e.g. "Grade 7"
+        year:       int — e.g. 2026
+        term:       str — e.g. "Term 2"
+        exam_name:  str — e.g. "Opener Assessment"
+        school_section: str — 'PRIMARY' or 'JSS'
+        sub_section: str or None — 'LOWER' or 'UPPER' (PRIMARY only)
+    """
+    from collections import defaultdict
+    from decimal import Decimal
+
+    from django.db import transaction
+    from django.db.models import Count, Q, Sum
+
+    from .models import ExamSummary, GradingConfig, Mark, School, Student
+
+    logger = logging.getLogger("students.exam_summaries")
+
+    try:
+        school = School.objects.get(pk=school_id)
+    except School.DoesNotExist:
+        logger.error("populate_exam_summaries: school_id=%s not found", school_id)
+        return {"status": "error", "message": "School not found"}
+
+    # ── 1. Aggregate marks per student (single DB query) ──────────────
+    mark_agg = (
+        Mark.all_objects.filter(
+            school=school,
+            student__class_name=grade,
+            year=year,
+            term=term,
+            exam_type=exam_name,
+            school_section=school_section,
+            sub_section=sub_section,
+        )
+        .values('student_id')
+        .annotate(
+            total_marks=Sum('score'),
+            total_points=Sum('points'),
+            subject_count=Count('subject_id', distinct=True),
+        )
+    )
+
+    student_marks = {
+        row['student_id']: {
+            'total_marks': row['total_marks'] or 0,
+            'total_points': row['total_points'] or 0,
+            'subject_count': row['subject_count'] or 0,
+        }
+        for row in mark_agg
+    }
+
+    # ── 2. Fetch ALL students in the grade ────────────────────────────
+    student_filter = {
+        'school': school,
+        'class_name': grade,
+    }
+    if school_section == 'PRIMARY' and sub_section:
+        student_filter['sub_section'] = sub_section
+    elif school_section == 'JSS':
+        student_filter['school_section'] = 'JSS'
+
+    all_students = list(Student.all_objects.filter(**student_filter))
+    student_ids = [s.id for s in all_students]
+
+    # ── 3. Compute stream_rank and grade_rank in Python ────────────────
+    #    Grade rank: across ALL streams in the grade
+    #    Stream rank: within each stream
+
+    # Grade-wide ranking (sorted by total_marks DESC, total_points DESC, then student_id for determinism)
+    grade_sorted = sorted(
+        student_ids,
+        key=lambda sid: (
+            -(student_marks.get(sid, {}).get('total_marks', 0)),
+            -(student_marks.get(sid, {}).get('total_points', 0)),
+            sid,
+        ),
+    )
+    grade_ranks = {}
+    for rank, sid in enumerate(grade_sorted, start=1):
+        grade_ranks[sid] = rank
+
+    # Stream ranking: group by stream, rank within each
+    stream_groups = defaultdict(list)
+    for s in all_students:
+        stream_groups[s.stream].append(s.id)
+
+    stream_ranks = {}
+    for stream_name, sids in stream_groups.items():
+        sids_sorted = sorted(
+            sids,
+            key=lambda sid: (
+                -(student_marks.get(sid, {}).get('total_marks', 0)),
+                -(student_marks.get(sid, {}).get('total_points', 0)),
+                sid,
+            ),
+        )
+        for rank, sid in enumerate(sids_sorted, start=1):
+            stream_ranks[sid] = rank
+
+    # ── 4. Resolve PLV and frozen comments per student ─────────────────
+    # Fetch grading config once
+    grading_config = None
+    config_lookup = {'school': school, 'school_section': school_section}
+    if sub_section:
+        config_lookup['sub_section'] = sub_section
+    else:
+        config_lookup['sub_section__isnull'] = True
+    grading_config = GradingConfig.all_objects.filter(**config_lookup).first()
+    if not grading_config and sub_section:
+        grading_config = GradingConfig.all_objects.filter(
+            school=school, school_section=school_section,
+        ).first()
+
+    # Fetch the most recent mark per student for frozen comment snapshot
+    latest_marks = (
+        Mark.all_objects.filter(
+            school=school,
+            student_id__in=student_ids,
+            year=year,
+            term=term,
+            exam_type=exam_name,
+            school_section=school_section,
+            sub_section=sub_section,
+        )
+        .order_by('student_id', '-date_recorded', '-id')
+    )
+    latest_mark_map = {}
+    for m in latest_marks:
+        if m.student_id not in latest_mark_map:
+            latest_mark_map[m.student_id] = m
+
+    # ── 5. Build ExamSummary objects ───────────────────────────────────
+    summaries = []
+    for student in all_students:
+        sid = student.id
+        m = student_marks.get(sid, {})
+        total_marks = m.get('total_marks', 0)
+        total_points = m.get('total_points', 0)
+        subject_count = m.get('subject_count', 0)
+
+        # PLV — must pass school/section to avoid thread-local lookup
+        if school_section == 'PRIMARY':
+            from .views.helpers import calculate_primary_plv
+            overall_plv = calculate_primary_plv(
+                total_marks, subject_count,
+                sub_section=sub_section, school=school, section=school_section,
+            )
+        else:
+            from .views.helpers import calculate_report_plv
+            overall_plv = calculate_report_plv(total_points, total_marks, school=school, section=school_section)
+
+        # Mean points
+        mean_points = (
+            Decimal(str(total_points)) / Decimal(str(subject_count))
+            if subject_count else Decimal('0')
+        )
+
+        # Frozen comments from latest mark
+        latest = latest_mark_map.get(sid)
+        frozen_ct = latest.frozen_class_teacher_comment if latest else ""
+        frozen_ht = latest.frozen_headteacher_comment if latest else ""
+        frozen_close = latest.frozen_closing_date if latest else None
+        frozen_open = latest.frozen_opening_date if latest else None
+
+        summaries.append(ExamSummary(
+            school=school,
+            student_id=sid,
+            term=term,
+            year=year,
+            exam_name=exam_name,
+            school_section=school_section,
+            sub_section=sub_section,
+            total_marks=total_marks,
+            total_points=total_points,
+            mean_points=mean_points,
+            subject_count=subject_count,
+            overall_plv=overall_plv,
+            stream_rank=stream_ranks.get(sid, 0),
+            grade_rank=grade_ranks.get(sid, 0),
+            frozen_class_teacher_comment=frozen_ct,
+            frozen_headteacher_comment=frozen_ht,
+            frozen_closing_date=frozen_close,
+            frozen_opening_date=frozen_open,
+        ))
+
+    # ── 6. Atomic bulk upsert ──────────────────────────────────────────
+    with transaction.atomic():
+        # Delete old summaries for this exam key set (use all_objects — no request context in Celery)
+        ExamSummary.all_objects.filter(
+            school=school,
+            student__class_name=grade,
+            year=year,
+            term=term,
+            exam_name=exam_name,
+            school_section=school_section,
+            sub_section=sub_section,
+        ).delete()
+
+        # Bulk create all new summaries
+        if summaries:
+            ExamSummary.all_objects.bulk_create(summaries, batch_size=200)
+
+    count = len(summaries)
+    logger.info(
+        "populate_exam_summaries: school=%s grade=%s %s T%s [%s] — %s summaries created",
+        school_id, grade, year, term, exam_name, count,
+    )
+    return {
+        "status": "completed",
+        "school_id": school_id,
+        "grade": grade,
+        "year": year,
+        "term": term,
+        "exam_name": exam_name,
+        "summaries_created": count,
+    }

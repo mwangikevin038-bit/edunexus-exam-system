@@ -55,6 +55,7 @@ LOCAL_ALLOWED_HOSTS = [
     '10.227.19.230',
     '192.168.40.20',
     '192.168.37.183',
+    '192.168.100.35',
     'edunexus.local',
 ]
 
@@ -88,6 +89,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.middleware.gzip.GZipMiddleware',
     'students.security.middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -102,8 +104,6 @@ MIDDLEWARE = [
     'students.security.middleware.TenantIsolationMiddleware',
     'students.security.middleware.SecurityAuditMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # GZip compresses HTML/CSS/JSON responses (~70% smaller). Cheap win.
-    'django.middleware.gzip.GZipMiddleware',
     # Close stale DB connections at the end of every request so the
     # auto-save endpoints + async audit logger don't accumulate idle
     # connections until Postgres' max_connections is hit.
@@ -142,7 +142,7 @@ DATA_INTEGRITY_KEY = os.environ.get('DATA_INTEGRITY_KEY', SECRET_KEY)
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/1"),
+        'LOCATION': os.environ.get("REDIS_CACHE_URL", "redis://127.0.0.1:6379/2"),
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         },
@@ -151,7 +151,7 @@ CACHES = {
     },
     'csv_upload': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/1"),
+        'LOCATION': os.environ.get("REDIS_CSV_CACHE_URL", "redis://127.0.0.1:6379/3"),
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         },
@@ -263,7 +263,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 600,
+        'CONN_MAX_AGE': 0 if DEBUG else 600,
         'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
             'connect_timeout': 5,

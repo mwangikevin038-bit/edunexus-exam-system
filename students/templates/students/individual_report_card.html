@@ -296,6 +296,7 @@
     .rc-chart-block { border: 1px solid var(--section-accent, var(--rc-border)); border-radius: 8px; padding: 8px; }
     .rc-chart-block canvas { width: 280px !important; height: 130px !important; }
     .rc-chart-title { font-size: 10pt; font-weight: 700; color: var(--rc-muted); margin-bottom: 4px; text-align: center; }
+    .rc-chart-img { display: none !important; }
 
     /* Stat boxes */
     .rc-stats {
@@ -425,45 +426,53 @@
        ═══════════════════════════════════════════════════════════ */
     @media print {
         .rv-shell, .sidebar, .sidebar-overlay, .sidebar-header, .sidebar-footer, .sidebar-nav, .sidebar-user, .navbar, .left-menu, .control-panel, .btn-print, .green-header-box, nav, .premium-header-banner, .bottom-nav, .mobile-topbar, .hamburger-btn, .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header, .mobile-menu-backdrop, .system-footer { display: none !important; }
-        html, body { font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; background: white !important; margin: 0 !important; padding: 0 !important; }
+        html, body { font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; background: white !important; margin: 0 !important; padding: 0 !important; max-height: 285mm !important; overflow: hidden !important; }
         .container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }
         .premium-header-banner { display: none !important; height: 0 !important; max-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; border: none !important; }
         #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
         .report-card {
-            display: flex !important; page-break-inside: avoid !important; break-inside: avoid !important; page-break-after: avoid !important; break-after: avoid !important;
-            margin: 0 !important; width: 7.9in !important; max-height: 11.4in !important; overflow: visible !important; border: none !important;
+            display: block !important; page-break-inside: avoid !important; break-inside: avoid !important;
+            margin: 0 !important; width: 7.9in !important; max-height: 285mm !important; overflow: hidden !important; border: none !important;
             border-left: 12px solid var(--section-accent, #305CDE) !important; position: relative !important;
             font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; box-sizing: border-box !important;
-            padding: 0.12in 0.4in 0.2in !important; line-height: 1.2 !important;
+            padding: 0.12in 0.4in 0.15in !important; line-height: 1.15 !important; flex-shrink: 1 !important;
         }
         .report-card + .report-card { page-break-before: always !important; break-before: always !important; }
-        .report-content { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 8px !important; }
-        .report-logo, .rc-logo-placeholder { width: 78px !important; height: 78px !important; }
-        .rc-logo-spacer { width: 78px !important; }
-        .rc-logo-placeholder { font-size: 30px !important; }
-        .rc-schoolinfo h1 { font-size: 16pt !important; margin: 0 0 2px !important; }
-        .rc-schoolinfo .rc-tagline { font-size: 8pt !important; margin-bottom: 3px !important; }
-        .rc-schoolinfo .rc-address { font-size: 11pt !important; margin-bottom: 1px !important; }
+        .report-content { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 6px !important; }
+        .report-logo, .rc-logo-placeholder { width: 72px !important; height: 72px !important; }
+        .rc-logo-spacer { width: 72px !important; }
+        .rc-logo-placeholder { font-size: 28px !important; }
+        .rc-schoolinfo h1 { font-size: 15pt !important; margin: 0 0 2px !important; }
+        .rc-schoolinfo .rc-tagline { font-size: 8pt !important; margin-bottom: 2px !important; }
+        .rc-schoolinfo .rc-address { font-size: 10pt !important; margin-bottom: 1px !important; }
         .rc-schoolinfo .rc-contact-line { font-size: 9pt !important; }
-        .rc-header { gap: 12px !important; padding-bottom: 7px !important; border-bottom: 3px solid var(--section-accent, var(--rc-green)) !important; }
-        .rc-banner { padding: 6px 8px !important; font-size: 11pt !important; }
-        .rc-top-grid { gap: 16px !important; }
-        .rc-photo-placeholder { width: 58px !important; height: 58px !important; font-size: 22px !important; border-radius: 8px !important; }
-        .rc-student-name { font-size: 14pt !important; margin-bottom: 4px !important; }
-        .rc-detail { font-size: 11pt !important; margin-bottom: 3px !important; }
-        .rc-chart-title { font-size: 10pt !important; margin-bottom: 4px !important; }
-        .rc-chart-block { padding: 7px !important; }
-        .rc-chart-block canvas { height: 100px !important; width: auto !important; max-width: 100% !important; }
-        .rc-stats { gap: 8px !important; }
-        .rc-stat { padding: 8px 8px !important; border-top: 3px solid var(--section-accent, var(--rc-blue)) !important; }
-        .rc-stat-label { font-size: 9pt !important; margin-bottom: 3px !important; }
-        .rc-stat-value { font-size: 14pt !important; }
+        .rc-header { gap: 10px !important; padding-bottom: 5px !important; border-bottom: 3px solid var(--section-accent, var(--rc-green)) !important; }
+        .rc-banner { padding: 5px 7px !important; font-size: 10pt !important; }
+        .rc-top-grid { gap: 12px !important; }
+        .rc-photo-placeholder { width: 52px !important; height: 52px !important; font-size: 20px !important; border-radius: 8px !important; }
+        .rc-student-name { font-size: 13pt !important; margin-bottom: 3px !important; }
+        .rc-detail { font-size: 10pt !important; margin-bottom: 2px !important; }
+
+        /* Show server-side chart image, hide canvas for PDF */
+        .rc-chart-img {
+            display: block !important;
+            max-height: 110px !important;
+            width: auto !important;
+            margin: 4px auto !important;
+        }
+        .rc-chart-block canvas { display: none !important; }
+        .rc-chart-title { font-size: 9pt !important; margin-bottom: 3px !important; }
+        .rc-chart-block { padding: 5px !important; }
+        .rc-stats { gap: 6px !important; }
+        .rc-stat { padding: 6px 6px !important; border-top: 2px solid var(--section-accent, var(--rc-blue)) !important; }
+        .rc-stat-label { font-size: 8pt !important; margin-bottom: 2px !important; }
+        .rc-stat-value { font-size: 13pt !important; }
         .table-scroll { overflow: visible !important; }
-        .rc-table td { padding: 4px 6px !important; font-size: 11pt !important; line-height: 1.15 !important; }
-        .rc-table thead th { padding: 5px 6px !important; font-size: 10pt !important; }
-        .rc-remarks-grid { gap: 14px !important; }
-        .rc-remark-box { padding: 9px 12px !important; }
-        .rc-remark-title { font-size: 10pt !important; margin-bottom: 4px !important; color: var(--section-accent, var(--rc-green)) !important; }
+        .rc-table td { padding: 2px 5px !important; font-size: 0.86em !important; line-height: 1.05 !important; }
+        .rc-table thead th { padding: 2px 5px !important; font-size: 0.86em !important; }
+        .rc-remarks-grid { gap: 10px !important; }
+        .rc-remark-box { padding: 6px 10px !important; }
+        .rc-remark-title { font-size: 9pt !important; margin-bottom: 3px !important; color: var(--section-accent, var(--rc-green)) !important; }
         .rc-remark-author { font-size: 10pt !important; font-weight: 700 !important; color: #000000 !important; margin-bottom: 5px !important; }
         .rc-remark-text { font-size: 12pt !important; min-height: 30px !important; margin-bottom: 6px !important; line-height: 1.2 !important; }
         .rc-signature { font-size: 10pt !important; padding-top: 4px !important; }
@@ -550,6 +559,7 @@
                             </div>
                             <div class="rc-chart-block">
                                 <div class="rc-chart-title">Subject Performance – Student vs Class</div>
+                                <img src="{{ student_data.chart_base64_image }}" class="rc-chart-img" alt="Performance Chart" />
                                 <canvas id="chart-m-{{ forloop.counter }}" width="560" height="260"></canvas>
                                 <script type="application/json" id="chart-data-m-{{ forloop.counter }}">{{ student_data.chart_data_json|safe }}</script>
                             </div>
@@ -680,6 +690,7 @@
                     </div>
                     <div class="rc-chart-block">
                         <div class="rc-chart-title">Subject Performance – Student vs Class</div>
+                        <img src="{{ student_data.chart_base64_image }}" class="rc-chart-img" alt="Performance Chart" />
                         <canvas id="chart-d-{{ forloop.counter }}" width="560" height="260"></canvas>
                         <script type="application/json" id="chart-data-d-{{ forloop.counter }}">{{ student_data.chart_data_json|safe }}</script>
                     </div>

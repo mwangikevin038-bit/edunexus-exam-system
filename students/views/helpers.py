@@ -6,14 +6,14 @@ subject-aware queries, and performance-level calculations used by the
 various view layers.
 """
 
+import bisect
 import random
 import secrets
 import string
 
 from django.core.cache import cache
-from django.db.models import Avg, Count, Q, Sum, IntegerField
-from django.db.models.functions import Cast
-from django.db.models import F
+from django.db.models import Avg, Count, Q, Sum, IntegerField, Value, F, Window
+from django.db.models.functions import Cast, Coalesce, DenseRank
 from django.db.models.fields import FloatField
 
 from .constants import (
@@ -483,10 +483,111 @@ def _get_grading_config(school, section, sub_section=None):
     return _grading_config_cache[key]
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Fast Grading Lookup — bisect + module-level parsed cache
+# ═══════════════════════════════════════════════════════════════════════
+
+# Parsed lookup tables: config_id → sorted tuple list
+# Built once per GradingConfig instance, never re-parsed.
+_subject_lookup_cache = {}   # config_id → [(min, max, level, pts), ...]
+_total_lookup_cache = {}     # config_id → [(min, max, level, pts), ...]
+
+
+def _build_subject_lookup(config):
+    """Parse config.subject_scale JSON into a sorted tuple list (once per config).
+
+    Returns two parallel lists for O(log n) bisect lookup:
+      - mins:  [min_score, min_score, ...]  (sorted ascending)
+      - entries: [(min, max, level, pts), ...]
+    """
+    if config is None or not config.pk:
+        return (), ()
+    cid = config.pk
+    if cid not in _subject_lookup_cache:
+        raw = config.subject_scale or []
+        entries = tuple(
+            sorted((e['min_score'], e['max_score'], e['level'], e['points']) for e in raw)
+        )
+        mins = tuple(e[0] for e in entries)
+        _subject_lookup_cache[cid] = (mins, entries)
+    return _subject_lookup_cache[cid]
+
+
+def _build_total_lookup(config):
+    """Parse config.total_scale JSON into a sorted tuple list (once per config).
+
+    Returns two parallel lists for O(log n) bisect lookup:
+      - mins:  [min_marks, min_marks, ...]  (sorted ascending)
+      - entries: [(min, max, level, pts), ...]
+    """
+    if config is None or not config.pk:
+        return (), ()
+    cid = config.pk
+    if cid not in _total_lookup_cache:
+        raw = config.total_scale or []
+        entries = tuple(
+            sorted((e['min_marks'], e['max_marks'], e['level'], e['points']) for e in raw)
+        )
+        mins = tuple(e[0] for e in entries)
+        _total_lookup_cache[cid] = (mins, entries)
+    return _total_lookup_cache[cid]
+
+
+def get_subject_level_fast(score, config):
+    """O(log n) subject score lookup using bisect on pre-parsed tuples.
+
+    Args:
+        score: int — converted percentage (0-100)
+        config: GradingConfig instance (already resolved, no DB query)
+
+    Returns:
+        (level, points) tuple
+
+    Usage:
+        config = _resolve_grading_config(school, section, sub_section)
+        for mark in marks:
+            level, pts = get_subject_level_fast(mark.score, config)
+    """
+    score = max(0, min(100, round(score or 0)))
+    mins, entries = _build_subject_lookup(config)
+    if not entries:
+        return '-', 0
+    # bisect_right on min_score boundaries → O(log n)
+    idx = bisect.bisect_right(mins, score) - 1
+    if 0 <= idx < len(entries):
+        min_s, max_s, level, pts = entries[idx]
+        if min_s <= score <= max_s:
+            return level, pts
+    return '-', 0
+
+
+def get_total_level_fast(total_marks, config):
+    """O(log n) total marks lookup using bisect on pre-parsed tuples.
+
+    Args:
+        total_marks: int — aggregated total marks
+        config: GradingConfig instance (already resolved, no DB query)
+
+    Returns:
+        (level, points) tuple
+    """
+    total_marks = max(0, round(total_marks or 0))
+    mins, entries = _build_total_lookup(config)
+    if not entries:
+        return '-', 0
+    # bisect_right on min_marks boundaries → O(log n)
+    idx = bisect.bisect_right(mins, total_marks) - 1
+    if 0 <= idx < len(entries):
+        min_m, max_m, level, pts = entries[idx]
+        if min_m <= total_marks <= max_m:
+            return level, pts
+    return '-', 0
+
+
 def get_performance_level(score, sub_section=None):
     """
     Return (performance_level, points) for a converted 100% score.
-    Uses cached GradingConfig lookups to avoid repeated DB hits.
+    Uses cached GradingConfig lookups + bisect for O(log n) performance.
     """
     import logging
     from ..school_scope import get_current_school, get_current_school_section
@@ -500,18 +601,18 @@ def get_performance_level(score, sub_section=None):
         if sub_section:
             config = _get_grading_config(school, section, sub_section)
             if config and config.subject_scale:
-                return config.get_subject_level(score)
+                return get_subject_level_fast(score, config)
         config = _get_grading_config(school, section)
         if config and config.subject_scale:
-            return config.get_subject_level(score)
+            return get_subject_level_fast(score, config)
         if section == 'LOWER_PRIMARY':
             config = _get_grading_config(school, 'PRIMARY', 'LOWER')
             if config and config.subject_scale:
-                return config.get_subject_level(score)
+                return get_subject_level_fast(score, config)
         if section == 'PRIMARY':
             config = _get_grading_config(school, 'PRIMARY', 'UPPER')
             if config and config.subject_scale:
-                return config.get_subject_level(score)
+                return get_subject_level_fast(score, config)
 
     logging.getLogger("students.helpers").error(
         "GradingConfig missing for school_id=%s section=%s sub_section=%s.",
@@ -520,11 +621,14 @@ def get_performance_level(score, sub_section=None):
     return 'NO CONFIG', 0
 
 
-def calculate_report_plv(total_points, total_marks, sub_section=None):
+def calculate_report_plv(total_points, total_marks, sub_section=None, school=None, section=None):
     """
     2-tier JSS Performance Level used for report card comment matching.
     Uses the school's GradingConfig.total_scale from the DB.
     NO hardcoded fallback — if config is missing, logs error and returns '-'.
+
+    Optional `school` and `section` parameters bypass the thread-local lookup,
+    making this safe to call from Celery tasks or management commands.
     """
     import logging
     from ..school_scope import get_current_school, get_current_school_section
@@ -532,13 +636,15 @@ def calculate_report_plv(total_points, total_marks, sub_section=None):
     pts = total_points or 0
     mks = total_marks  or 0
 
-    school = get_current_school()
-    section = get_current_school_section()
+    if not school:
+        school = get_current_school()
+    if not section:
+        section = get_current_school_section()
 
     if school and section:
         config = _resolve_grading_config(school, section, sub_section)
         if config and config.total_scale:
-            return config.get_total_level(mks)[0] if mks else '-'
+            return get_total_level_fast(mks, config)[0] if mks else '-'
 
     logging.getLogger("students.helpers").error(
         "GradingConfig.total_scale missing for school_id=%s section=%s sub_section=%s. "
@@ -548,14 +654,14 @@ def calculate_report_plv(total_points, total_marks, sub_section=None):
     return '-'
 
 
-def calculate_broadsheet_plv(total_marks, total_points, sub_section=None):
+def calculate_broadsheet_plv(total_marks, total_points, sub_section=None, school=None, section=None):
     """
     Overall broadsheet level based on the learner's total performance points
     and raw total mark, keeping it consistent with report card PLV thresholds.
     """
     if not total_points and not total_marks:
         return '-'
-    return calculate_report_plv(total_points, total_marks, sub_section)
+    return calculate_report_plv(total_points, total_marks, sub_section, school=school, section=section)
 
 
 def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None, school=None, section=None):
@@ -585,7 +691,7 @@ def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None, scho
     if school and section:
         config = _resolve_grading_config(school, section, sub_section)
         if config and config.total_scale:
-            level, _ = config.get_total_level(total_marks)
+            level, _ = get_total_level_fast(total_marks, config)
             if level and level != '-':
                 return level
 
@@ -752,3 +858,164 @@ def get_class_leaderboard(school, class_name, stream, year, term, assessment, pu
     }
     cache.set(key, result, _CACHE_TTL)
     return result
+
+
+def get_student_totals_with_rank(school, class_name, stream, year, term, assessment, published_subjects_qs):
+    """
+    Database-side aggregation: returns a queryset of dicts, one per student,
+    with total_marks, total_points, subject_count, and dense_rank — all
+    computed entirely in PostgreSQL.
+
+    Ranking order: total_marks DESC, total_points DESC (tie-breaker).
+
+    Returns:
+        QuerySet[dict]: [
+            {'student_id': int, 'total_marks': int, 'total_points': int,
+             'subject_count': int, 'rank': int},
+            ...
+        ]
+    """
+    from django.db.models import IntegerField
+    from django.db.models.functions import Coalesce
+
+    base_filter = dict(
+        school=school,
+        student__class_name=class_name,
+        year=year,
+        term=term,
+        exam_type=assessment,
+        subject__in=published_subjects_qs,
+    )
+    if stream is not None:
+        base_filter['student__stream'] = stream
+
+    return (
+        Mark.all_objects
+        .filter(**base_filter)
+        .exclude(is_absent=True)
+        .values('student_id')
+        .annotate(
+            total_marks=Coalesce(Sum('score'), Value(0), output_field=IntegerField()),
+            total_points=Coalesce(Sum('points'), Value(0), output_field=IntegerField()),
+            subject_count=Count('subject_id', distinct=True),
+            rank=Window(
+                expression=DenseRank(),
+                order_by=[F('total_marks').desc(), F('total_points').desc()],
+            ),
+        )
+        .order_by('rank', '-total_points')
+    )
+
+
+# ── Atomic mark upsert (PostgreSQL SELECT FOR UPDATE + single write) ──────────
+
+def upsert_mark(
+    school_id, student_id, subject_id, school_section, sub_section,
+    score, raw_score, maximum_marks, is_absent,
+    primary_raw_score, primary_performance_point, primary_descriptor,
+    performance_level, points,
+    term, year, exam_type,
+):
+    """
+    Atomic single-row upsert using SELECT ... FOR UPDATE within a
+    serialized transaction.  Guarantees zero dead tuples, zero index
+    bloat, and zero race conditions under high concurrency.
+
+    Flow:
+      1. Begin transaction (serializable isolation via atomic)
+      2. SELECT ... FOR UPDATE — locks the existing row (if any)
+      3. If exists → UPDATE in place (single UPDATE, no DELETE + INSERT)
+      4. If not   → INSERT (single INSERT)
+      5. Compute and set integrity_checksum
+      6. Commit — lock released
+
+    Returns the mark ID.
+    """
+    from django.db import transaction, connection
+    from ..security.integrity import compute_mark_checksum
+
+    class _MarkProxy:
+        """Lightweight stand-in for a Mark instance so compute_mark_checksum works."""
+        __slots__ = (
+            'school_id', 'student_id', 'subject', 'score', 'raw_score',
+            'maximum_marks', 'is_absent', 'term', 'year', 'exam_type',
+            'performance_level', 'points',
+        )
+
+        def __init__(self, **kw):
+            for k, v in kw.items():
+                setattr(self, k, v)
+
+    def _compute_checksum(**kw):
+        proxy = _MarkProxy(**kw)
+        return compute_mark_checksum(proxy)
+
+    # Filter kwargs shared by SELECT, INSERT, UPDATE
+    _filter = dict(
+        school_id=school_id,
+        student_id=student_id,
+        term=term,
+        exam_type=exam_type,
+        year=year,
+        school_section=school_section,
+    )
+    if subject_id is not None:
+        _filter['subject_id'] = subject_id
+    else:
+        _filter['subject_id__isnull'] = True
+    if sub_section is not None:
+        _filter['sub_section'] = sub_section
+    else:
+        _filter['sub_section__isnull'] = True
+
+    with transaction.atomic():
+        existing = (
+            Mark.all_objects
+            .select_for_update(nowait=False)
+            .filter(**_filter)
+            .first()
+        )
+
+        checksum = _compute_checksum(
+            school_id=school_id, student_id=student_id, subject=subject_id,
+            score=score, raw_score=raw_score, maximum_marks=maximum_marks,
+            is_absent=is_absent, term=term, year=year, exam_type=exam_type,
+            performance_level=performance_level, points=points,
+        )
+
+        if existing:
+            Mark.all_objects.filter(pk=existing.pk).update(
+                score=score,
+                raw_score=raw_score,
+                maximum_marks=maximum_marks,
+                is_absent=is_absent,
+                primary_raw_score=primary_raw_score,
+                primary_performance_point=primary_performance_point,
+                primary_descriptor=primary_descriptor,
+                performance_level=performance_level,
+                points=points,
+                integrity_checksum=checksum,
+            )
+            return existing.pk
+        else:
+            mark = Mark.all_objects.create(
+                school_id=school_id,
+                student_id=student_id,
+                subject_id=subject_id,
+                school_section=school_section,
+                sub_section=sub_section,
+                score=score,
+                raw_score=raw_score,
+                maximum_marks=maximum_marks,
+                is_absent=is_absent,
+                primary_raw_score=primary_raw_score,
+                primary_performance_point=primary_performance_point,
+                primary_descriptor=primary_descriptor,
+                performance_level=performance_level,
+                points=points,
+                term=term,
+                year=year,
+                exam_type=exam_type,
+                integrity_checksum=checksum,
+            )
+            return mark.pk

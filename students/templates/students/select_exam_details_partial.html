@@ -1,10 +1,4 @@
-{% extends 'students/base.html' %}
 {% load static %}
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/capture-mobile.css' %}">
-<link rel="stylesheet" href="{% static 'css/entry-mobile.css' %}">
-{% endblock %}
-{% block content %}
 <style>
     /* Outer page wrapper */
     .cap{max-width:100%;margin:0 auto;padding-bottom:90px;animation:capIn 350ms cubic-bezier(.16,1,.3,1) both}
@@ -799,4 +793,3 @@
     };
 })();
 </script>
-{% endblock %}

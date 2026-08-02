@@ -179,7 +179,8 @@ def grading_configuration(request):
                 ).first()
             if not config or not config.subject_scale:
                 return JsonResponse({'error': 'No config for this section.'}, status=404)
-            level, points = config.get_subject_level(score)
+            from .helpers import get_subject_level_fast
+            level, points = get_subject_level_fast(score, config)
             return JsonResponse({'score': score, 'level': level, 'points': points})
 
     # GET — load configs for all sections. Note: PRIMARY has TWO rows now

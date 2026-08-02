@@ -10,7 +10,7 @@ import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Prefetch, Q, Sum
+from django.db.models import Avg, Q, Sum
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 
@@ -36,7 +36,6 @@ from .helpers import (
     calculate_primary_plv,
     calculate_report_plv,
     get_cached_class_averages,
-    get_class_leaderboard,
     get_class_teacher_scope,
     get_performance_level,
     get_published_contexts_for_user,
@@ -210,35 +209,89 @@ def results_list(request):
         for short in analysis_data:
             analysis_data[short]['teacher_name'] = teacher_map.get(short, '—')
 
-        # Prefetch all relevant marks in one query (only published subject codes)
-        marks_prefetch = Prefetch(
-            'marks',
-            queryset=Mark.all_objects.filter(
-                school=school,
-                year=year,
-                term=term,
-                exam_type=exam_type,
-                subject__in=published_subjects_qs,
-            ).order_by('subject', '-date_recorded', '-id'),
-            to_attr='cached_marks',
-        )
-        students = Student.all_objects.filter(
+        # ── Read from ExamSummary cache (populated by Celery task on Publish) ──
+        from ..models import ExamSummary
+        # Map workspace section to DB school_section
+        if is_lower_primary:
+            db_section = 'PRIMARY'
+            db_sub = 'LOWER'
+        elif is_primary:
+            db_section = 'PRIMARY'
+            db_sub = active_sub
+        else:
+            db_section = 'JSS'
+            db_sub = None
+        summaries_qs = ExamSummary.all_objects.filter(
             school=school,
-            class_name=grade,
-            stream=stream,
-        ).prefetch_related(marks_prefetch).order_by('admission_no')
+            student__class_name=grade,
+            year=year,
+            term=term,
+            exam_name=exam_type,
+            school_section=db_section,
+            sub_section=db_sub,
+        )
+        totals_map = {s.student_id: s for s in summaries_qs}
 
+        # Fetch all marks for this class in ONE query (no N+1 prefetch)
+        all_marks = Mark.all_objects.filter(
+            school=school,
+            student__class_name=grade,
+            student__stream=stream,
+            year=year, term=term, exam_type=exam_type,
+            subject__in=published_subjects_qs,
+        ).select_related('subject').order_by('subject', '-date_recorded', '-id')
+
+        # Group marks by student_id
+        marks_by_student = {}
+        for mark in all_marks:
+            marks_by_student.setdefault(mark.student_id, []).append(mark)
+
+        students = Student.all_objects.filter(
+            school=school, class_name=grade, stream=stream,
+        ).order_by('admission_no')
         student_count = students.count()
 
-        for student in students:
-            marks_dict  = {}
-            for mark in student.cached_marks:
-                marks_dict.setdefault(mark.subject.code, mark)
-            row_scores  = []
-            total_marks = 0
-            total_points = 0
-            assessed_subjects = 0
+        # ── Pre-compute per-subject analysis from flat mark query (single pass) ──
+        for mark in all_marks:
+            if mark.is_absent or mark.score is None:
+                continue
+            code = mark.subject.code
+            short = subject_label_map.get(code, subject_map.get(code, code))
+            if short not in analysis_data:
+                continue
+            analysis_data[short]['entries'] += 1
+            analysis_data[short]['total_score'] += mark.score
+            if is_primary:
+                lv, _ = _get_primary_performance(mark.score, school=school, section=section, sub_section=active_sub if is_primary else None)
+            else:
+                lv, _ = get_performance_level(mark.score)
+            if lv in analysis_data[short]['distribution']:
+                analysis_data[short]['distribution'][lv] += 1
 
+        for student in students:
+            student_marks = marks_by_student.get(student.id, [])
+            marks_dict = {}
+            for mark in student_marks:
+                marks_dict.setdefault(mark.subject.code, mark)
+
+            # Read from ExamSummary cache
+            t = totals_map.get(student.id)
+            total_marks = t.total_marks if t else 0
+            total_points = t.total_points if t else 0
+            assessed_subjects = t.subject_count if t else 0
+
+            # Pure read-only fallback: compute from marks if ExamSummary is empty/zero
+            if not t or (total_marks == 0 and total_points == 0):
+                from django.db.models import Sum
+                live_totals = student_marks.aggregate(
+                    total_score=Sum('score'),
+                    total_pts=Sum('points'),
+                )
+                total_marks = live_totals['total_score'] or 0
+                total_points = live_totals['total_pts'] or 0
+                assessed_subjects = sum(1 for m in student_marks if m.score is not None and not m.is_absent)
+
+            row_scores = []
             for code, short in published_subjects:
                 m = marks_dict.get(code)
                 if m and m.score is not None:
@@ -247,14 +300,6 @@ def results_list(request):
                     else:
                         level, points = _get_primary_performance(m.score, school=school, section=section, sub_section=active_sub if is_primary else None) if is_primary else get_performance_level(m.score)
                         row_scores.append({'score': m.score, 'level': level})
-                        total_marks  += m.score
-                        total_points += points
-                        assessed_subjects += 1
-                    if not m.is_absent:
-                        analysis_data[short]['entries']     += 1
-                        analysis_data[short]['total_score'] += m.score
-                        if level in analysis_data[short]['distribution']:
-                            analysis_data[short]['distribution'][level] += 1
                 else:
                     row_scores.append({'score': '-', 'level': '-'})
 
@@ -266,6 +311,7 @@ def results_list(request):
                 'plv':     calculate_primary_plv(total_marks, assessed_subjects, sub_section=active_sub if is_primary else None, school=school, section=section) if is_primary else calculate_broadsheet_plv(total_marks, total_points),
             })
 
+        # Sort by DB-computed rank (total_marks DESC, total_points DESC)
         broadsheet.sort(key=lambda x: (-x['total'], -x['tps']))
 
         for short, data in analysis_data.items():
@@ -528,20 +574,66 @@ def individual_report(request, student_id):
     )
     # Sort marks by SUBJECT_DISPLAY_ORDER instead of alphabetical
     marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
-    total_marks  = sum(m.score  for m in marks if m.score)
-    total_points = sum(m.points for m in marks if m.points)
 
-    # Class position via normalized mean score
-    leaderboard = get_class_leaderboard(
-        school, student.class_name, student.stream,
-        year, term, db_assessment, published_subjects_qs,
+    # ── Read from ExamSummary cache (populated by Celery task on Publish) ──
+    from ..models import ExamSummary
+    summary = ExamSummary.all_objects.filter(
+        school=school,
+        student=student,
+        year=year,
+        term=term,
+        exam_name=db_assessment,
+        school_section=student.school_section,
+        sub_section=student.sub_section,
+    ).first()
+
+    # Grade-wide rank: count summaries with higher total_marks
+    grade_summaries = ExamSummary.all_objects.filter(
+        school=school,
+        student__class_name=student.class_name,
+        year=year,
+        term=term,
+        exam_name=db_assessment,
+        school_section=student.school_section,
+        sub_section=student.sub_section,
     )
-    sorted_ids  = leaderboard['sorted_ids']
-    class_count = leaderboard['class_count']
-    try:
-        position = sorted_ids.index(student.id) + 1
-    except ValueError:
-        position = 0
+
+    # READ-ONLY FALLBACK: If ExamSummary not populated, compute from live marks
+    if summary:
+        total_marks  = summary.total_marks
+        total_points = summary.total_points
+        position     = summary.grade_rank
+        assessed_subjects = summary.subject_count
+    else:
+        # FIXED: Use safe in-memory list operations instead of QuerySet aggregations
+        valid_scores = [m.score for m in marks if m.score is not None]
+        valid_points = [m.points for m in marks if m.points is not None]
+
+        total_marks = sum(valid_scores)
+        total_points = sum(valid_points)
+        assessed_subjects = len(valid_scores) if len(valid_scores) > 0 else 1
+
+        # READ-ONLY RANKING ENGINE: Compare this student's totals against classmates
+        class_scores_qs = (
+            Mark.all_objects.filter(
+                school=school, student__class_name=student.class_name,
+                student__stream=student.stream, year=year, term=term,
+                exam_type=db_assessment, school_section=student.school_section,
+            )
+            .values('student_id')
+            .annotate(student_total=Sum('score'))
+        )
+        current_student_score = total_marks
+        better_performing = sum(1 for c in class_scores_qs if (c['student_total'] or 0) > current_student_score)
+        position = better_performing + 1 if current_student_score > 0 else 0
+        class_count = len(class_scores_qs) if class_scores_qs else 1
+
+    if not class_count:
+        class_count = grade_summaries.count()
+
+    # FIXED: Combine position and class count into the exact display string the template uses
+    total_students = class_count if class_count > 0 else 1
+    position_display = f"{position}/{total_students}" if position > 0 else "-"
 
     # Attach subject name and teacher to each mark
     is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
@@ -606,7 +698,6 @@ def individual_report(request, student_id):
     grade_descriptors = grading_config.subject_scale if grading_config else []
 
     # ── Mean points + denominators for the stat boxes ──────────────────────
-    assessed_subjects   = sum(1 for m in marks_list if m.score is not None and not m.is_absent)
     max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
     mean_points         = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
     max_total_marks     = assessed_subjects * 100
@@ -619,8 +710,8 @@ def individual_report(request, student_id):
         'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
     })
 
-    # PLV and class teacher remark
-    overall_plv = calculate_primary_plv(total_marks, sum(1 for m in marks if m.score), sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks)
+    # PLV — read from ExamSummary cache
+    overall_plv = summary.overall_plv if summary else ('-' if assessed_subjects == 0 else calculate_primary_plv(total_marks, assessed_subjects, sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks, school=school, section=student.school_section))
     master_comment = ClassTeacherMasterComment.objects.filter(
         school=school,
         year=year, term=term, grade=student.class_name,
@@ -706,6 +797,7 @@ def individual_report(request, student_id):
         'total_marks':         total_marks,
         'total_points':        total_points,
         'position':            position,
+        'position_display':    position_display,
         'class_count':         class_count,
         'overall_plv':         overall_plv,
         'mean_points':         mean_points,
@@ -738,7 +830,7 @@ def individual_report(request, student_id):
             'headteacher_comment': headteacher_comment,
             'closing_date': closing_date,
             'opening_date': opening_date,
-            'position': position, 'class_count': class_count,
+            'position': position, 'position_display': position_display, 'class_count': class_count,
         }],
     })
 
@@ -797,30 +889,50 @@ def bulk_report_cards(request):
     else:
         subject_mapping = {s.code: s.name for s in published_subjects_qs}
 
-    marks_prefetch = Prefetch(
-        'marks',
-        queryset=Mark.all_objects.filter(
-            school=school,
-            year=year,
-            term=term,
-            exam_type=db_assessment,
-            subject__in=published_subjects_qs,
-            school_section=sample.school_section,
-        ),
-        to_attr='cached_marks',
-    )
-    selected_students = selected_students_base.prefetch_related(marks_prefetch)
+    # ── Single flat mark query (no ORM Prefetch, no N+1) ──
+    all_marks_bulk = Mark.all_objects.filter(
+        school=school,
+        year=year,
+        term=term,
+        exam_type=db_assessment,
+        subject__in=published_subjects_qs,
+        school_section=sample.school_section,
+        student__class_name=sample.class_name,
+        student__stream=sample.stream,
+    ).select_related('subject').order_by('subject', '-date_recorded', '-id')
+
+    marks_by_student_bulk = {}
+    for mark in all_marks_bulk:
+        marks_by_student_bulk.setdefault(mark.student_id, []).append(mark)
+
+    selected_students = list(selected_students_base)
 
     if not selected_students:
         return render(request, 'students/bulk_report_cards.html', {'student_marks_list': [], 'class_count': 0})
 
-    # Class-wide leaderboard using normalized mean score
-    leaderboard = get_class_leaderboard(
-        school, sample.class_name, sample.stream,
-        year, term, db_assessment, published_subjects_qs,
+    # ── Read from ExamSummary cache (populated by Celery task on Publish) ──
+    from ..models import ExamSummary
+    summaries_qs = ExamSummary.all_objects.filter(
+        school=school,
+        student__class_name=sample.class_name,
+        year=year,
+        term=term,
+        exam_name=db_assessment,
+        school_section=sample.school_section,
+        sub_section=sample.sub_section,
     )
-    class_leaderboard = leaderboard['sorted_ids']
-    total_class_count = leaderboard['class_count']
+    # Grade-wide map: student_id → ExamSummary
+    all_summaries = {s.student_id: s for s in summaries_qs}
+    total_class_count = len(all_summaries)
+
+    # Stream-specific rank: filter to target stream, sort by total_marks DESC
+    stream_summaries = sorted(
+        [s for s in summaries_qs if s.student.stream == sample.stream],
+        key=lambda s: (-s.total_marks, -s.total_points),
+    )
+    for rank, s in enumerate(stream_summaries, start=1):
+        s._stream_rank = rank
+    stream_rank_map = {s.student_id: s._stream_rank for s in stream_summaries}
 
     # Class average per subject — cached in Redis for 1 hour
     class_avg_map = get_cached_class_averages(
@@ -870,9 +982,21 @@ def bulk_report_cards(request):
 
     student_marks_list = []
     for student in selected_students:
-        marks        = sorted(student.cached_marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
-        total_marks  = sum(m.score  for m in marks if m.score)
-        total_points = sum(m.points for m in marks if m.points)
+        marks        = sorted(marks_by_student_bulk.get(student.id, []), key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
+
+        # Read from ExamSummary cache
+        summary = all_summaries.get(student.id)
+        if summary:
+            total_marks  = summary.total_marks
+            total_points = summary.total_points
+            assessed_subjects = summary.subject_count
+        else:
+            # FIXED: Use safe in-memory list operations instead of QuerySet aggregations
+            valid_scores = [m.score for m in marks if m.score is not None]
+            valid_points = [m.points for m in marks if m.points is not None]
+            total_marks = sum(valid_scores)
+            total_points = sum(valid_points)
+            assessed_subjects = len(valid_scores) if len(valid_scores) > 0 else 1
 
         for mark in marks:
             mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
@@ -887,7 +1011,6 @@ def bulk_report_cards(request):
             else:
                 mark.deviation = None
 
-        assessed_subjects = sum(1 for m in marks if m.score is not None and not m.is_absent)
         mean_points       = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
         max_total_marks   = assessed_subjects * 100
         max_total_points  = assessed_subjects * max_points_per_subj
@@ -898,12 +1021,9 @@ def bulk_report_cards(request):
             'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent],
         })
 
-        try:
-            position = class_leaderboard.index(student.id) + 1
-        except ValueError:
-            position = 0
+        position = stream_rank_map.get(student.id, 0)  # Stream-specific rank from ExamSummary
 
-        overall_plv          = calculate_primary_plv(total_marks, sum(1 for m in marks if m.score), sub_section=sample.sub_section, school=school, section=sample.school_section) if sample.school_section == 'PRIMARY' else calculate_report_plv(total_points, total_marks)
+        overall_plv          = summary.overall_plv if summary else ('-' if assessed_subjects == 0 else calculate_primary_plv(total_marks, assessed_subjects, sub_section=sample.sub_section, school=school, section=sample.school_section) if sample.school_section == 'PRIMARY' else calculate_report_plv(total_points, total_marks, school=school, section=sample.school_section))
         class_teacher_remark = ""
         headteacher_comment = ""
         closing_date = None
