@@ -1,0 +1,123 @@
+<!-- Search Criteria Card -->
+<div class="search-criteria-card" style="background: #ffffff; padding: 24px 32px; border: 1px solid var(--en-border); border-radius: var(--radius-sm); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.01);">
+    <h3 style="font-size: 18px; font-weight: 600; color: #334155; margin: 0 0 20px 0; font-family: 'Plus Jakarta Sans', sans-serif;">Search By</h3>
+
+    <form method="GET" action="{% url 'admin_add_student' %}" style="display: flex; flex-direction: column; gap: 16px;">
+        <input type="hidden" name="tab" value="directory">
+
+        <!-- Radio Criteria Matrix with HTMX triggers -->
+        <div class="radio-criteria-matrix">
+            <label class="clean-radio-item">
+                <input type="radio" name="search_type" value="adm_no"
+                       hx-get="{% url 'admin_search_fields' %}?type=adm_no"
+                       hx-target="#dynamic-search-fields"
+                       {% if search_type != 'name' and search_type != 'phone' and search_type != 'assessment_no' %}checked{% endif %}>
+                <span class="custom-radio-dot"></span>
+                <span class="radio-label-txt">Admission Number</span>
+            </label>
+            <label class="clean-radio-item">
+                <input type="radio" name="search_type" value="name"
+                       hx-get="{% url 'admin_search_fields' %}?type=name"
+                       hx-target="#dynamic-search-fields"
+                       {% if search_type == 'name' %}checked{% endif %}>
+                <span class="custom-radio-dot"></span>
+                <span class="radio-label-txt">Name</span>
+            </label>
+            <label class="clean-radio-item">
+                <input type="radio" name="search_type" value="phone"
+                       hx-get="{% url 'admin_search_fields' %}?type=phone"
+                       hx-target="#dynamic-search-fields"
+                       {% if search_type == 'phone' %}checked{% endif %}>
+                <span class="custom-radio-dot"></span>
+                <span class="radio-label-txt">Phone number</span>
+            </label>
+            <label class="clean-radio-item">
+                <input type="radio" name="search_type" value="assessment_no"
+                       hx-get="{% url 'admin_search_fields' %}?type=assessment_no"
+                       hx-target="#dynamic-search-fields"
+                       {% if search_type == 'assessment_no' %}checked{% endif %}>
+                <span class="custom-radio-dot"></span>
+                <span class="radio-label-txt">Assessment Number</span>
+            </label>
+        </div>
+
+        <!-- Target Container for HTMX Dynamic Swapping -->
+        <div id="dynamic-search-fields" style="width: 100%;">
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+                <label style="font-size: 13px; font-weight: 600; color: #0f172a;">Admission Number<span style="color: #ef4444; margin-left: 2px;">*</span></label>
+                <input type="text"
+                       name="q"
+                       value="{{ query|default:'' }}"
+                       class="reference-style-input-box"
+                       placeholder="Admission Number"
+                       required>
+            </div>
+        </div>
+
+        <!-- Right-Aligned Submit Button -->
+        <div style="display: flex; justify-content: flex-end; width: 100%; margin-top: 4px;">
+            <button type="submit" class="btn-cyan-search-action">
+                <i class="ph ph-magnifying-glass"></i>
+                <span>Search</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Search Results Card -->
+{% if query %}
+<div class="search-results-card" style="background: #ffffff; border: 1px solid var(--en-border); border-radius: var(--radius-sm); padding: 24px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.01); margin-top: 16px;">
+    <h3 style="font-size: 18px; font-weight: 600; color: var(--en-navy); margin: 0 0 20px 0; font-family: 'Plus Jakarta Sans', sans-serif;">Search Results</h3>
+
+    {% if students %}
+    <div class="table-scroll-container" style="overflow-x: auto; width: 100%; border: 1px solid var(--en-border); border-radius: var(--radius-sm); margin-bottom: 20px;">
+        <table class="zeraki-style-results-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background-color: #fafafa; border-bottom: 1px solid var(--en-border);">
+                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); width: 50px; border-right: 1px solid var(--en-border);">#</th>
+                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); width: 120px; border-right: 1px solid var(--en-border);">ADM NO</th>
+                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); border-right: 1px solid var(--en-border);">NAME</th>
+                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); width: 180px; border-right: 1px solid var(--en-border);">CLASS</th>
+                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); width: 220px; text-align: center;">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr style="border-bottom: 1px solid var(--en-border); background-color: #ffffff;">
+                    <td style="padding: 16px; font-size: 14px; font-weight: 600; color: var(--en-navy); border-right: 1px solid var(--en-border);">
+                        {{ forloop.counter }}
+                    </td>
+                    <td style="padding: 16px; font-size: 14px; font-weight: 500; color: #334155; border-right: 1px solid var(--en-border);">
+                        {{ student.admission_no }}
+                    </td>
+                    <td style="padding: 16px; font-size: 14px; font-weight: 500; color: #334155; border-right: 1px solid var(--en-border);">
+                        {{ student.name }}
+                    </td>
+                    <td style="padding: 16px; font-size: 14px; font-weight: 500; color: #334155; border-right: 1px solid var(--en-border);">
+                        {{ student.class_name }} {{ student.stream }}
+                    </td>
+                    <td style="padding: 12px 16px; text-align: center;">
+                        <div style="display: flex; gap: 16px; justify-content: center; align-items: center;">
+                            <a href="?tab=profile&id={{ student.id }}" class="btn-navy-pill-action">Profile</a>
+                            <a href="{% url 'learner_profile' student.id %}" class="btn-navy-pill-action">Analytics</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 24px; text-align: center; color: #64748b; font-style: italic; border: 1px solid var(--en-border); border-radius: var(--radius-sm); margin-bottom: 20px;">
+        No records found matching your query.
+    </div>
+    {% endif %}
+
+    <div style="display: flex; justify-content: flex-start;">
+        <a href="?tab=directory" class="btn-gray-back-action">
+            <i class="ph ph-arrow-left"></i>
+            <span>Back</span>
+        </a>
+    </div>
+</div>
+{% endif %}

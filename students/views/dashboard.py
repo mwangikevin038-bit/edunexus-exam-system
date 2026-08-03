@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, Q
 from django.shortcuts import redirect, render
+from django.views.decorators.cache import never_cache
 
 from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES
 from .helpers import get_teacher_for_user, get_class_teacher_scope, get_published_contexts_for_user
@@ -169,6 +170,7 @@ def dashboard(request):
 
 @login_required(login_url='login')
 @school_admin_required
+@never_cache
 def school_admin_dashboard(request):
     """
     Executive metric panel for the School ICT Admin.

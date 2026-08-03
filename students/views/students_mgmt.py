@@ -13,6 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
 from django.http import HttpResponse, JsonResponse
+from django.views.decorators.cache import never_cache
 from django.shortcuts import redirect, render
 
 from .constants import GRADE_CHOICES, TERM_CHOICES, get_streams_for_school
@@ -23,7 +24,7 @@ from .helpers import (
     get_next_admission_no,
     get_teacher_for_user,
 )
-from ..models import Guardian, Student
+from ..models import Guardian, RemovedStudent, Student
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
 
 PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
@@ -117,6 +118,7 @@ def add_student(request):
 
 @login_required(login_url='login')
 @school_admin_required
+@never_cache
 def admin_add_student(request):
     """
     Admin-facing student management hub with five sub-sections:
@@ -154,19 +156,27 @@ def admin_add_student(request):
             name       = request.POST.get('name', '').strip()
             class_name = request.POST.get('class_name', '').strip()
             stream     = request.POST.get('stream', '').strip()
-            term       = request.POST.get('term', 'Term 1').strip()
-            year       = request.POST.get('year', str(current_year)).strip()
             religion   = request.POST.get('religion', 'None').strip() or 'None'
             gender     = request.POST.get('gender', 'Not Specified').strip() or 'Not Specified'
             g_name     = request.POST.get('guardian_name', '').strip()
             g_phone    = request.POST.get('guardian_phone', '').strip()
+
+            # Auto-fill term and year from system
+            current_month = datetime.date.today().month
+            if 1 <= current_month <= 4:
+                term = 'Term 1'
+            elif 5 <= current_month <= 8:
+                term = 'Term 2'
+            else:
+                term = 'Term 3'
+            year = current_year
 
             try:
                 section = get_request_school_section(request)
                 guardian_obj, _ = Guardian.objects.get_or_create(
                     school=school,
                     phone=g_phone,
-                    defaults={'name': g_name, 'school_section': section or 'JSS'}
+                    defaults={'name': g_name or 'Unknown', 'school_section': section or 'JSS'}
                 )
                 Student.objects.create(
                     school=school,
@@ -184,7 +194,13 @@ def admin_add_student(request):
                     sub_section=_derive_sub_section(class_name),
                 )
                 messages.success(request, f"✓ {name} enrolled into {class_name} {stream}. ADM: {adm_no}")
-                return redirect('/school-admin/registration/?tab=directory')
+
+                # Handle Save and Exit vs Next button
+                action = request.POST.get('action', 'save_exit')
+                if action == 'next':
+                    return redirect('/school-admin/registration/?tab=add_student')
+                else:
+                    return redirect('/school-admin/registration/?tab=directory')
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -192,6 +208,47 @@ def admin_add_student(request):
                 messages.error(request, "An error occurred during admission. Please try again.")
                 return redirect('/school-admin/registration/?tab=add_student')
 
+        # --- Restore removed student ---
+        elif mode == 'restore_student':
+            removed_id = request.POST.get('removed_student_id')
+            if removed_id:
+                try:
+                    removed = RemovedStudent.objects.get(pk=removed_id, school=school)
+                    # Determine admission_no — if conflict, bump
+                    adm_no = removed.admission_no
+                    if Student.objects.filter(school=school, admission_no=adm_no).exists():
+                        base = adm_no.rstrip('ABCD')
+                        for letter in 'ABCD':
+                            candidate = base + letter
+                            if not Student.objects.filter(school=school, admission_no=candidate).exists():
+                                adm_no = candidate
+                                break
+                    # Recreate guardian
+                    guardian_obj, _ = Guardian.objects.get_or_create(
+                        school=school,
+                        phone=removed.guardian_phone,
+                        defaults={'name': removed.guardian_name or 'Unknown', 'school_section': removed.school_section or 'JSS'}
+                    )
+                    Student.objects.create(
+                        school=school,
+                        admission_no=adm_no,
+                        assessment_no=removed.assessment_no or '',
+                        name=removed.name,
+                        class_name=removed.class_name,
+                        stream=removed.stream,
+                        term=removed.term,
+                        year=removed.year,
+                        guardian=guardian_obj,
+                        religion=removed.religion or 'None',
+                        gender=removed.gender or 'Not Specified',
+                        school_section=removed.school_section or 'JSS',
+                        sub_section=removed.sub_section,
+                    )
+                    removed.delete()
+                    messages.success(request, f"✓ {removed.name} has been restored to {removed.class_name} {removed.stream}.")
+                except RemovedStudent.DoesNotExist:
+                    messages.error(request, "Removed student record not found.")
+            return redirect('/school-admin/registration/?tab=removed_students')
 
         # --- Mass promotion / graduation ---
         elif mode == 'promote':
@@ -228,54 +285,138 @@ def admin_add_student(request):
     section = get_request_school_section(request)
     grades_for_section = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
 
-    base_query = (
-        Student.objects.filter(school=school)
-        .filter(admission_no__regex=r'^[0-9]+$')
-        .select_related('guardian')
-        .annotate(adm_int=Cast('admission_no', IntegerField()))
-    )
-    # Scope directory to current workspace section
-    if section == 'LOWER_PRIMARY':
-        base_query = base_query.filter(school_section='PRIMARY', sub_section='LOWER')
-    elif section == 'PRIMARY':
-        base_query = base_query.filter(school_section='PRIMARY', sub_section='UPPER')
-    elif section == 'JSS':
-        base_query = base_query.filter(school_section='JSS')
-    if active_tab == 'directory':
-        search_term = request.GET.get('q', '').strip()
-        if search_term:
-            students = (
-                base_query.filter(name__icontains=search_term) |
-                base_query.filter(admission_no__icontains=search_term)
-            ).order_by('name')
-        else:
-            students = base_query.order_by('name')
-    else:
-        students = base_query.order_by('adm_int')
+    tab = active_tab
+    query = request.GET.get('q', '').strip()
+    search_type = request.GET.get('search_type', 'adm_no')
 
-    # Build per-grade counts for the active section
-    grade_counts = {}
-    for g in grades_for_section:
-        grade_counts[g] = Student.objects.filter(school=school, class_name=g).count()
-
-    # Pass individual grade count variables for template (first 3 grades in section)
-    ctx = {
-        'active_tab':       active_tab,
+    context = {
+        'active_tab':       tab,
         'next_admission_no': next_admission_no,
         'grades':           grades_for_section,
         'streams':          get_streams_for_school(school, section),
         'terms':            TERM_CHOICES,
         'current_year':     current_year,
-        'students':         students,
         'total_students':   Student.objects.filter(school=school).count(),
         'guardian_count':   Guardian.objects.filter(school=school).count(),
-        'grade_counts':     grade_counts,
+        'query':            query,
+        'search_type':      search_type,
+        'search_label':     'Admission Number',
+        'students':         Student.objects.none(),
+        'move_students':    Student.objects.none(),
+        'move_grade':       '',
+        'move_stream':      '',
+        'move_class_label': '',
+        'removed_students': RemovedStudent.objects.none(),
+        'removed_query':    '',
     }
     for i, g in enumerate(grades_for_section[:3]):
-        ctx[f'grade_{i+1}_name'] = g
-        ctx[f'grade_{i+1}_count'] = grade_counts.get(g, 0)
+        context[f'grade_{i+1}_name'] = g
+        context[f'grade_{i+1}_count'] = Student.objects.filter(school=school, class_name=g).count()
 
-    return render(request, 'students/admin_add_student.html', ctx)
+    # 1. HANDLE DIRECTORY SEARCH STATE
+    if tab == 'directory':
+        search_qs = Student.all_objects.filter(school=school).select_related('guardian')
+        if query:
+            if search_type == 'adm_no':
+                students = search_qs.filter(admission_no__icontains=query).order_by('name')
+            elif search_type == 'name':
+                students = search_qs.filter(name__icontains=query).order_by('name')
+            elif search_type == 'phone':
+                students = search_qs.filter(guardian__phone__icontains=query).order_by('name')
+            elif search_type == 'assessment_no':
+                students = search_qs.filter(assessment_no__icontains=query).order_by('name')
+            else:
+                students = search_qs.filter(
+                    Q(admission_no__icontains=query) | Q(name__icontains=query)
+                ).order_by('name')
+        else:
+            students = search_qs.none()
+        context['students'] = students
+
+    # 2. HANDLE STUDENT PROFILE LOOKUP STATE
+    elif tab == 'profile':
+        student_id = request.GET.get('id')
+        if student_id:
+            try:
+                student = Student.all_objects.select_related('guardian').get(pk=student_id, school=school)
+            except Student.DoesNotExist:
+                student = None
+            context['student'] = student
+
+    # 3. HANDLE MOVE STUDENTS STATE
+    elif tab == 'move_student':
+        move_grade = request.GET.get('grade', '').strip()
+        move_stream = request.GET.get('stream', '').strip()
+        context['move_grade'] = move_grade
+        context['move_stream'] = move_stream
+        if move_grade and move_stream:
+            move_students = Student.all_objects.filter(
+                school=school, class_name__iexact=move_grade, stream__iexact=move_stream
+            ).order_by('name')
+            context['move_students'] = move_students
+            context['move_class_label'] = f"{move_grade} {move_stream}"
+
+    # 4. HANDLE REMOVED STUDENTS STATE
+    elif tab == 'removed_students':
+        removed_query = request.GET.get('q', '').strip()
+        removed_qs = RemovedStudent.objects.filter(school=school).select_related('removed_by')
+        if removed_query:
+            removed_qs = removed_qs.filter(
+                Q(name__icontains=removed_query) | Q(admission_no__icontains=removed_query)
+            )
+        context['removed_students'] = removed_qs
+        context['removed_query'] = removed_query
+
+    return render(request, 'students/admin_add_student.html', context)
+
+
+@login_required(login_url='login')
+@school_admin_required
+@never_cache
+def admin_search_fields(request):
+    """HTMX partial: returns the search input field matching the selected radio type."""
+    search_type = request.GET.get('type', 'adm_no')
+    school = get_request_school(request)
+
+    if search_type == 'name':
+        grades = []
+        if school:
+            from .constants import GRADE_CHOICES
+            grades = GRADE_CHOICES
+        grade_options = '<option value="">Form / Grade</option>'
+        for g in grades:
+            grade_options += f'<option value="{g}">{g}</option>'
+        html = (
+            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px; width: 100%;">'
+            '  <div style="display: flex; flex-direction: column; gap: 6px;">'
+            '    <label style="font-size: 13px; font-weight: 600; color: #0f172a;">Name<span style="color: #ef4444; margin-left: 2px;">*</span></label>'
+            '    <input type="text" name="q" class="search-input" placeholder="Name" required>'
+            '  </div>'
+            '  <div style="display: flex; flex-direction: column; gap: 6px;">'
+            '    <label style="font-size: 13px; font-weight: 600; color: #475569;">Form / Grade</label>'
+            '    <div style="position: relative; width: 100%;">'
+            f'      <select name="form_grade" class="search-input" style="appearance: none; -webkit-appearance: none; padding-right: 32px; cursor: pointer;">'
+            f'        {grade_options}'
+            '      </select>'
+            '      <i class="ph ph-caret-down" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #64748b; pointer-events: none;"></i>'
+            '    </div>'
+            '  </div>'
+            '</div>'
+        )
+    else:
+        field_map = {
+            'adm_no': {'label': 'Admission Number', 'placeholder': 'Admission Number'},
+            'phone': {'label': 'Phone Number', 'placeholder': 'Phone Number'},
+            'assessment_no': {'label': 'Assessment Number', 'placeholder': 'Assessment Number'},
+        }
+        field = field_map.get(search_type, field_map['adm_no'])
+        html = (
+            '<div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; width: 100%;">'
+            f'<label style="font-size: 13px; font-weight: 600; color: #0f172a;">{field["label"]}<span style="color: #ef4444; margin-left: 2px;">*</span></label>'
+            f'<input type="text" name="q" class="search-input" placeholder="{field["placeholder"]}" required>'
+            '</div>'
+        )
+    return HttpResponse(html)
 
 
 @login_required(login_url='login')

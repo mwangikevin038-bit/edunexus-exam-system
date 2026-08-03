@@ -1,615 +1,301 @@
 {% extends 'students/base.html' %}
 {% load static %}
 
+{% block sub_tabs %}
+<nav class="sub-tab-bar">
+    <ul class="tab-list">
+        <li class="tab-item active">
+            <a href="#" class="tab-link">
+                <i class="ph-bold ph-squares-four"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+        <li class="tab-item">
+            <a href="#" class="tab-link">
+                <i class="ph-bold ph-trend-up"></i>
+                <span>My Subjects</span>
+            </a>
+        </li>
+        <li class="tab-item">
+            <a href="#" class="tab-link">
+                <i class="ph-bold ph-student"></i>
+                <span>Graduated Classes</span>
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endblock %}
+
 {% block content %}
-<style>
-    .admin-page {
-        animation: fadeIn var(--duration-slow) var(--ease-out) both;
-    }
+<!-- Master 60/40 Dashboard Split Grid -->
+<div class="dashboard-master-grid-60-40">
 
-    /* ── Greeting ─────────────────────────────────────────────── */
-    .greeting {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--space-4);
-        margin-bottom: var(--space-6);
-        flex-wrap: wrap;
-    }
-    .greeting h1 {
-        font-size: clamp(1.3rem, 5vw, var(--text-2xl));
-        font-weight: var(--weight-extrabold);
-        color: var(--en-text);
-    }
-    .greeting h1 span { color: var(--en-green); }
-    .term-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: var(--en-green-light);
-        border: 1px solid rgba(155, 232, 22, 0.3);
-        padding: 6px 14px;
-        border-radius: var(--radius-full);
-        font-size: 11px;
-        font-weight: var(--weight-bold);
-        color: #3f6212;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .term-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--en-green);
-    }
+    <!-- LEFT MAIN COLUMN (60% Width) -->
+    <div class="dashboard-left-column">
 
-    /* ── Alert Banner ─────────────────────────────────────────── */
-    .alert-banner {
-        display: flex;
-        align-items: center;
-        gap: var(--space-3);
-        padding: var(--space-4);
-        background: var(--en-warning-bg);
-        border: 1px solid rgba(245, 158, 11, 0.2);
-        border-radius: var(--radius-lg);
-        margin-bottom: var(--space-6);
-    }
-    .alert-banner-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: var(--radius-md);
-        background: rgba(245, 158, 11, 0.15);
-        color: var(--en-warning);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        flex-shrink: 0;
-    }
-    .alert-banner-text {
-        flex: 1;
-        font-size: var(--text-sm);
-        font-weight: var(--weight-semibold);
-        color: #92400e;
-    }
-    .alert-banner-text strong {
-        color: #78350f;
-    }
-
-    /* ── Metrics Strip ────────────────────────────────────────── */
-    .metrics-strip {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-3);
-        margin-bottom: var(--space-6);
-    }
-    .metric-card {
-        background: var(--en-bg-elevated);
-        border: 1px solid var(--en-border);
-        border-radius: var(--radius-xl);
-        padding: var(--space-4);
-        display: flex;
-        align-items: center;
-        gap: var(--space-3);
-        box-shadow: var(--shadow-card);
-    }
-    .metric-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: var(--radius-lg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        flex-shrink: 0;
-    }
-    .metric-value {
-        font-size: var(--text-2xl);
-        font-weight: var(--weight-extrabold);
-        color: var(--en-text);
-        line-height: 1;
-    }
-    .metric-label {
-        font-size: 11px;
-        font-weight: var(--weight-bold);
-        color: var(--en-text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    /* ── Quick Actions Grid ───────────────────────────────────── */
-    .quick-actions {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-3);
-        margin-bottom: var(--space-6);
-    }
-
-    /* ── Performance Card ─────────────────────────────────────── */
-    .perf-card {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        border-radius: var(--radius-xl);
-        padding: var(--space-6);
-        color: white;
-        margin-bottom: var(--space-6);
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
-    }
-    .perf-header {
-        font-size: 11px;
-        font-weight: var(--weight-bold);
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin-bottom: var(--space-2);
-    }
-    .perf-mean {
-        display: flex;
-        align-items: baseline;
-        gap: var(--space-3);
-        margin-bottom: var(--space-4);
-    }
-    .perf-mean-value {
-        font-size: clamp(2.5rem, 8vw, 3rem);
-        font-weight: var(--weight-extrabold);
-        color: var(--en-green);
-        line-height: 1;
-    }
-    .perf-mean-label {
-        font-size: var(--text-sm);
-        color: #94a3b8;
-        font-weight: var(--weight-semibold);
-    }
-    .perf-stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-3);
-    }
-    .perf-stat {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: var(--radius-md);
-        padding: var(--space-3);
-        text-align: center;
-    }
-    .perf-stat-value {
-        font-size: var(--text-lg);
-        font-weight: var(--weight-extrabold);
-        color: white;
-    }
-    .perf-stat-label {
-        font-size: 10px;
-        font-weight: var(--weight-bold);
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-top: 2px;
-    }
-
-    /* ── Section Header ───────────────────────────────────────── */
-    .section-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: var(--space-4);
-    }
-    .section-title {
-        font-size: var(--text-lg);
-        font-weight: var(--weight-bold);
-        color: var(--en-text);
-    }
-
-    /* ── Grade Performance Bars ───────────────────────────────── */
-    .grade-bars {
-        display: grid;
-        gap: var(--space-3);
-        margin-bottom: var(--space-6);
-    }
-    .grade-bar-row {
-        background: var(--en-bg-elevated);
-        border: 1px solid var(--en-border);
-        border-radius: var(--radius-lg);
-        padding: var(--space-3) var(--space-4);
-    }
-    .grade-bar-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: var(--space-2);
-    }
-    .grade-bar-name {
-        font-size: var(--text-sm);
-        font-weight: var(--weight-bold);
-        color: var(--en-text);
-    }
-    .grade-bar-score {
-        font-size: var(--text-sm);
-        font-weight: var(--weight-extrabold);
-        color: var(--en-text);
-    }
-    .grade-bar-track {
-        width: 100%;
-        height: 8px;
-        background: var(--en-surface);
-        border-radius: var(--radius-full);
-        overflow: hidden;
-    }
-    .grade-bar-fill {
-        height: 100%;
-        border-radius: var(--radius-full);
-        transition: width 0.8s var(--ease-out);
-    }
-
-    /* ── Gender Split ─────────────────────────────────────────── */
-    .gender-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--space-3);
-        margin-bottom: var(--space-6);
-    }
-    .gender-card {
-        background: var(--en-bg-elevated);
-        border: 1px solid var(--en-border);
-        border-radius: var(--radius-lg);
-        padding: var(--space-4);
-        display: flex;
-        align-items: center;
-        gap: var(--space-3);
-    }
-    .gender-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: var(--radius-lg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        flex-shrink: 0;
-    }
-
-    /* ── Missing Entries ──────────────────────────────────────── */
-    .missing-list {
-        display: grid;
-        gap: var(--space-2);
-        margin-bottom: var(--space-6);
-    }
-    .missing-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-3);
-        padding: var(--space-3) var(--space-4);
-        background: var(--en-bg-elevated);
-        border: 1px solid var(--en-border);
-        border-radius: var(--radius-lg);
-    }
-    .missing-info {
-        flex: 1;
-        min-width: 0;
-    }
-    .missing-subject {
-        font-size: var(--text-sm);
-        font-weight: var(--weight-bold);
-        color: var(--en-text);
-    }
-    .missing-teacher {
-        font-size: 11px;
-        color: var(--en-text-muted);
-    }
-    .missing-class {
-        font-size: 10px;
-        font-weight: var(--weight-bold);
-        background: var(--en-surface);
-        padding: 2px 8px;
-        border-radius: var(--radius-full);
-        color: var(--en-text-secondary);
-    }
-
-    /* ── Enrollment Grid ──────────────────────────────────────── */
-    .enroll-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: var(--space-3);
-        margin-bottom: var(--space-6);
-    }
-    .enroll-card {
-        background: var(--en-bg-elevated);
-        border: 1px solid var(--en-border);
-        border-radius: var(--radius-lg);
-        padding: var(--space-4);
-        text-align: center;
-    }
-    .enroll-grade {
-        font-size: var(--text-xs);
-        font-weight: var(--weight-bold);
-        color: var(--en-text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: var(--space-1);
-    }
-    .enroll-total {
-        font-size: var(--text-3xl);
-        font-weight: var(--weight-extrabold);
-        color: var(--en-text);
-        line-height: 1;
-        margin-bottom: var(--space-2);
-    }
-    .enroll-streams {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        justify-content: center;
-    }
-    .enroll-stream {
-        font-size: 10px;
-        font-weight: var(--weight-semibold);
-        background: var(--en-surface);
-        padding: 2px 8px;
-        border-radius: var(--radius-full);
-        color: var(--en-text-secondary);
-    }
-
-    /* ── Responsive ───────────────────────────────────────────── */
-    @media (max-width: 768px) {
-        .greeting {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: var(--space-2);
-        }
-        .metrics-strip {
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--space-2);
-        }
-        .metric-card {
-            padding: var(--space-3);
-        }
-        .metric-icon {
-            width: 36px;
-            height: 36px;
-            font-size: 16px;
-        }
-        .metric-value {
-            font-size: var(--text-xl);
-        }
-        .perf-card {
-            padding: var(--space-4);
-        }
-        .perf-stats {
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--space-2);
-        }
-        .enroll-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        .gender-row {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    @media (max-width: 420px) {
-        .metrics-strip {
-            grid-template-columns: 1fr 1fr;
-        }
-        .quick-actions {
-            grid-template-columns: 1fr 1fr;
-        }
-        .enroll-grid {
-            grid-template-columns: 1fr 1fr;
-        }
-    }
-</style>
-
-<div class="admin-page">
-    <!-- GREETING -->
-    <div class="greeting">
-        <h1>{{ request.school.name|default:"School" }}</h1>
-        <div class="term-pill">
-            <span class="term-dot"></span>
-            {{ active_term_label }}
+        <!-- Component 2: Welcome Profile Banner -->
+        <div class="dashboard-welcome-banner">
+            <div class="banner-overlay"></div>
+            <div class="banner-content">
+                <div class="banner-avatar-wrapper">
+                    {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture.url }}" alt="Profile" class="banner-avatar-img">
+                    {% else %}
+                        <i class="ph-fill ph-user-circle"></i>
+                    {% endif %}
+                </div>
+                <div class="banner-text-block">
+                    <h2 class="banner-greeting">Welcome, {{ user.get_full_name|default:"School Admin" }}</h2>
+                    <p class="banner-subtext">Manage exams from the comfort of your mobile phone</p>
+                </div>
+            </div>
         </div>
+
+        <!-- Component 3: Missing 2x2 Statistics Cards Grid -->
+        <div class="statistics-cards-grid">
+            <!-- Teachers Card -->
+            <div class="stat-card">
+                <div class="stat-icon-box blue-theme"><i class="ph ph-users-three"></i></div>
+                <div class="stat-info">
+                    <span class="stat-number">34</span>
+                    <span class="stat-label">Teachers</span>
+                </div>
+                <i class="ph ph-arrow-right stat-arrow"></i>
+            </div>
+            <!-- Students Card -->
+            <div class="stat-card">
+                <div class="stat-icon-box blue-theme"><i class="ph ph-student"></i></div>
+                <div class="stat-info">
+                    <span class="stat-number">1,193</span>
+                    <span class="stat-label">Students</span>
+                </div>
+                <i class="ph ph-arrow-right stat-arrow"></i>
+            </div>
+            <!-- Staff Card -->
+            <div class="stat-card">
+                <div class="stat-icon-box blue-theme"><i class="ph ph-identification-card"></i></div>
+                <div class="stat-info">
+                    <span class="stat-number">11</span>
+                    <span class="stat-label">Staff</span>
+                </div>
+                <i class="ph ph-arrow-right stat-arrow"></i>
+            </div>
+            <!-- Streams Card -->
+            <div class="stat-card">
+                <div class="stat-icon-box blue-theme"><i class="ph ph-house-line"></i></div>
+                <div class="stat-info">
+                    <span class="stat-number">17</span>
+                    <span class="stat-label">Streams</span>
+                </div>
+                <i class="ph ph-arrow-right stat-arrow"></i>
+            </div>
+        </div>
+
     </div>
 
-    <!-- MISSING ENTRIES ALERT -->
-    {% if missing_entries_count > 0 %}
-    <div class="alert-banner">
-        <div class="alert-banner-icon"><i class="ph ph-warning-circle"></i></div>
-        <div class="alert-banner-text">
-            <strong>{{ missing_entries_count }} pending submission{{ missing_entries_count|pluralize }}</strong> need{{ missing_entries_count|pluralize:"s" }} your attention
-        </div>
-    </div>
-    {% endif %}
+    <!-- RIGHT SIDEBAR COLUMN (40% Width) -->
+    <div class="dashboard-right-column">
+        <div class="upcoming-events-card tall-layout">
+            <!-- Row 1: Header Title & Add Button -->
+            <div class="events-header">
+                <h3 class="events-title">Upcoming Events</h3>
+                <div class="events-header-actions">
+                    <button class="btn-icon-dimmed"><i class="ph ph-calendar"></i></button>
+                    <button class="btn-add-event">
+                        <i class="ph ph-plus"></i>
+                        <span>Add Event</span>
+                    </button>
+                </div>
+            </div>
 
-    <!-- METRICS STRIP -->
-    <div class="metrics-strip stagger-children">
-        <div class="metric-card">
-            <div class="metric-icon" style="background:var(--en-info-bg); color:var(--en-info);"><i class="ph ph-users"></i></div>
-            <div>
-                <div class="metric-value">{{ total_students }}</div>
-                <div class="metric-label">Learners</div>
+            <!-- Row 2: Date Selector Block (Centered Layout) -->
+            <div class="events-date-slider">
+                <button class="date-nav-arrow"><i class="ph ph-caret-left"></i></button>
+                <div class="date-display-box">
+                    <span class="main-date-range">27 Jul –</span>
+                    <span class="sub-date-range">2 Aug 2026</span>
+                </div>
+                <button class="date-nav-arrow"><i class="ph ph-caret-right"></i></button>
             </div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-icon" style="background:rgba(236,72,153,0.1); color:#ec4899;"><i class="ph ph-users-three"></i></div>
-            <div>
-                <div class="metric-value">{{ total_teachers }}</div>
-                <div class="metric-label">Faculty</div>
+
+            <!-- Row 3: Full Width View Filter Row -->
+            <div class="events-filter-bar">
+                <div class="view-filter-pills">
+                    <button class="view-pill">month</button>
+                    <button class="view-pill">Week</button>
+                    <button class="view-pill">Day</button>
+                    <button class="view-pill active">List</button>
+                </div>
             </div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-icon" style="background:var(--en-green-light); color:var(--en-navy);"><i class="ph ph-buildings"></i></div>
-            <div>
-                <div class="metric-value">{{ active_classes }}</div>
-                <div class="metric-label">Classes</div>
-            </div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-icon" style="background:var(--en-warning-bg); color:var(--en-warning);"><i class="ph ph-notebook"></i></div>
-            <div>
-                <div class="metric-value">{{ total_exams }}</div>
-                <div class="metric-label">Exams</div>
+
+            <!-- Row 4: Viewport Area Box -->
+            <div class="events-viewport extended-panel">
+                <p class="empty-events-text">No events to display</p>
             </div>
         </div>
     </div>
 
-    <!-- QUICK ACTIONS -->
-    <div class="section-header">
-        <h2 class="section-title">Quick Actions</h2>
-    </div>
-    <div class="quick-actions stagger-children">
-        <a class="action-card" href="{% url 'admin_add_student' %}">
-            <div class="action-card-icon"><i class="ph ph-student"></i></div>
-            <div class="action-card-title">Students</div>
-            <div class="action-card-desc">Register & manage</div>
-        </a>
-        <a class="action-card" href="{% url 'manage_exams' %}">
-            <div class="action-card-icon"><i class="ph ph-clipboard-text"></i></div>
-            <div class="action-card-title">Exams</div>
-            <div class="action-card-desc">Assessment control</div>
-        </a>
-        <a class="action-card" href="{% url 'results_list' %}">
-            <div class="action-card-icon"><i class="ph ph-chart-bar"></i></div>
-            <div class="action-card-title">Results</div>
-            <div class="action-card-desc">Broadsheets</div>
-        </a>
-        <a class="action-card" href="{% url 'report_card_select' %}">
-            <div class="action-card-icon"><i class="ph ph-certificate"></i></div>
-            <div class="action-card-title">Reports</div>
-            <div class="action-card-desc">Report cards</div>
-        </a>
-        <a class="action-card" href="{% url 'manage_classes' %}">
-            <div class="action-card-icon"><i class="ph ph-layout"></i></div>
-            <div class="action-card-title">Classes</div>
-            <div class="action-card-desc">Grade & stream</div>
-        </a>
-        <a class="action-card" href="{% url 'manage_faculty_matrix' %}">
-            <div class="action-card-icon"><i class="ph ph-users-three"></i></div>
-            <div class="action-card-title">Faculty</div>
-            <div class="action-card-desc">Allocations</div>
-        </a>
-    </div>
-
-    <!-- PERFORMANCE CARD -->
-    <div class="perf-card">
-        <div class="perf-header"><i class="ph ph-chart-bar-fill"></i> Latest Exam Performance</div>
-        <div class="perf-mean">
-            <span class="perf-mean-value">{{ overall_average }}%</span>
-            <span class="perf-mean-label">School Mean</span>
-        </div>
-        <div class="perf-stats">
-            <div class="perf-stat">
-                <div class="perf-stat-value">{{ completion_rate }}%</div>
-                <div class="perf-stat-label">Completion</div>
-            </div>
-            <div class="perf-stat">
-                <div class="perf-stat-value" style="{% if missing_entries_count > 0 %}color:#fca5a5{% endif %}">{{ missing_entries_count }}</div>
-                <div class="perf-stat-label">Pending</div>
-            </div>
-            <div class="perf-stat">
-                <div class="perf-stat-value" style="font-size:var(--text-sm);">{{ best_stream }}</div>
-                <div class="perf-stat-label">Top Stream</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- GRADE PERFORMANCE -->
-    <div class="section-header">
-        <h2 class="section-title">Grade Performance</h2>
-        <span class="badge badge-green">{{ active_term_label }}</span>
-    </div>
-    <div class="grade-bars stagger-children">
-        {% for row in grade_performance_rows %}
-        <div class="grade-bar-row">
-            <div class="grade-bar-top">
-                <span class="grade-bar-name">{{ row.label }}</span>
-                <span class="grade-bar-score">{{ row.score }}%</span>
-            </div>
-            <div class="grade-bar-track">
-                <div class="grade-bar-fill" style="width:{{ row.score }}%; background:{{ row.color }};"></div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- GENDER SPLIT -->
-    <div class="section-header">
-        <h2 class="section-title">Demographics</h2>
-    </div>
-    <div class="gender-row stagger-children">
-        <div class="gender-card">
-            <div class="gender-icon" style="background:var(--en-info-bg); color:var(--en-info);"><i class="ph ph-gender-male"></i></div>
-            <div>
-                <div class="metric-value">{{ boys_count }}</div>
-                <div class="metric-label">Male</div>
-            </div>
-        </div>
-        <div class="gender-card">
-            <div class="gender-icon" style="background:rgba(236,72,153,0.1); color:#ec4899;"><i class="ph ph-gender-female"></i></div>
-            <div>
-                <div class="metric-value">{{ girls_count }}</div>
-                <div class="metric-label">Female</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ENROLLMENT BY CLASS -->
-    <div class="section-header">
-        <h2 class="section-title">Enrollment</h2>
-    </div>
-    <div class="enroll-grid stagger-children">
-        {% for grade_name, data in class_stats.items %}
-        <div class="enroll-card">
-            <div class="enroll-grade">{{ grade_name }}</div>
-            <div class="enroll-total">{{ data.total }}</div>
-            <div class="enroll-streams">
-                {% for stream_name, stream_count in data.streams.items %}
-                    <span class="enroll-stream">{{ stream_name }}: {{ stream_count }}</span>
-                {% empty %}
-                    <span class="enroll-stream" style="color:var(--en-text-muted); font-style:italic;">No data</span>
-                {% endfor %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- MISSING ENTRIES DETAIL -->
-    {% if missing_entries_feed %}
-    <div class="section-header">
-        <h2 class="section-title">Pending Submissions</h2>
-        <span class="badge badge-amber badge-dot">{{ missing_entries_count }} pending</span>
-    </div>
-    <div class="missing-list stagger-children">
-        {% for alert in missing_entries_feed %}
-        <div class="missing-item">
-            <div class="missing-info">
-                <div class="missing-subject">{{ alert.subject_name }}</div>
-                <div class="missing-teacher">{{ alert.teacher_name }}</div>
-            </div>
-            <span class="missing-class">{{ alert.target_class }}</span>
-            <a href="tel:{{ alert.phone }}" class="btn btn-sm btn-dark" style="flex-shrink:0;">
-                <i class="ph ph-phone"></i> Nudge
-            </a>
-        </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="card" style="text-align:center; padding:var(--space-6); margin-bottom:var(--space-6);">
-        <i class="ph ph-check-circle" style="color:var(--en-success); font-size:28px; display:block; margin-bottom:var(--space-2);"></i>
-        <div style="font-weight:var(--weight-bold); color:var(--en-text); margin-bottom:var(--space-1);">All submissions complete!</div>
-        <div style="font-size:var(--text-sm); color:var(--en-text-muted);">All faculty have submitted their mark sheets.</div>
-    </div>
-    {% endif %}
-
-    <!-- ADMIN OVERRIDE -->
-    {% if admin_override_enabled %}
-    <div class="card" style="border-left:4px solid var(--en-danger); margin-bottom:var(--space-6);">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); flex-wrap:wrap;">
-            <div>
-                <div style="font-weight:var(--weight-bold); color:var(--en-text); margin-bottom:var(--space-1);">Admin Override</div>
-                <div style="font-size:var(--text-sm); color:var(--en-text-muted);">Correct published scores when needed.</div>
-            </div>
-            <a href="{% url 'manage_exams' %}" class="btn btn-sm btn-dark">
-                <i class="ph ph-gear"></i> Open
-            </a>
-        </div>
-    </div>
-    {% endif %}
 </div>
+
+<!-- Component 4 Section Heading -->
+<div class="section-header-title">
+    Academic Performance
+</div>
+
+<!-- Comprehensive 9-Card Grid (Grade 1 to Grade 9) -->
+<div class="performance-analysis-grid">
+
+    <!-- Card 1: Grade 1 -->
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">Grade 1</h4>
+            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+        </div>
+        <div class="metrics-matrix-subgrid">
+            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">3.1205</span><span class="deviation-badge positive">+0.120</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">30.45%</span><span class="deviation-badge positive">+1.150</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">B-</span></div>
+            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">145</span></div>
+        </div>
+        <button class="btn-view-analysis">View Analysis</button>
+    </div>
+
+    <!-- Card 2: Grade 2 -->
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">Grade 2</h4>
+            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+        </div>
+        <div class="metrics-matrix-subgrid">
+            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">3.3003</span><span class="deviation-badge negative">-0.400</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">32.62%</span><span class="deviation-badge negative">-4.830</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">AE2</span></div>
+            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">313</span></div>
+        </div>
+        <button class="btn-view-analysis">View Analysis</button>
+    </div>
+
+    <!-- Card 3: Grade 3 -->
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">Grade 3</h4>
+            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+        </div>
+        <div class="metrics-matrix-subgrid">
+            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">2.8450</span><span class="deviation-badge positive">+0.050</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">28.10%</span><span class="deviation-badge positive">+0.950</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">C+</span></div>
+            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">188</span></div>
+        </div>
+        <button class="btn-view-analysis">View Analysis</button>
+    </div>
+
+    <!-- Card 4: Grade 4 -->
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">Grade 4</h4>
+            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+        </div>
+        <div class="metrics-matrix-subgrid">
+            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">1.7392</span><span class="deviation-badge negative">-0.110</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">20.02%</span><span class="deviation-badge negative">-2.150</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">D-</span></div>
+            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">471</span></div>
+        </div>
+        <button class="btn-view-analysis">View Analysis</button>
+    </div>
+
+    <!-- Card 5: Grade 5 -->
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">Grade 5</h4>
+            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+        </div>
+        <div class="metrics-matrix-subgrid">
+            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">2.4501</span><span class="deviation-badge positive">+0.220</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">25.30%</span><span class="deviation-badge positive">+1.400</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">C</span></div>
+            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">210</span></div>
+        </div>
+        <button class="btn-view-analysis">View Analysis</button>
+    </div>
+
+    <!-- Card 6: Grade 6 -->
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">Grade 6</h4>
+            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+        </div>
+        <div class="metrics-matrix-subgrid">
+            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">2.1450</span><span class="deviation-badge negative">-0.050</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">24.50%</span><span class="deviation-badge negative">-0.850</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">D</span></div>
+            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">412</span></div>
+        </div>
+        <button class="btn-view-analysis">View Analysis</button>
+    </div>
+
+    <!-- Card 7: Grade 7 -->
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">Grade 7</h4>
+            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+        </div>
+        <div class="metrics-matrix-subgrid">
+            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">3.0500</span><span class="deviation-badge positive">+0.310</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">31.20%</span><span class="deviation-badge positive">+2.450</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">B</span></div>
+            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">195</span></div>
+        </div>
+        <button class="btn-view-analysis">View Analysis</button>
+    </div>
+
+    <!-- Card 8: Grade 8 -->
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">Grade 8</h4>
+            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+        </div>
+        <div class="metrics-matrix-subgrid">
+            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">2.9110</span><span class="deviation-badge negative">-0.150</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">29.00%</span><span class="deviation-badge negative">-1.200</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">C+</span></div>
+            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">230</span></div>
+        </div>
+        <button class="btn-view-analysis">View Analysis</button>
+    </div>
+
+    <!-- Card 9: Grade 9 -->
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">Grade 9</h4>
+            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+        </div>
+        <div class="metrics-matrix-subgrid">
+            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">3.4150</span><span class="deviation-badge positive">+0.510</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">35.90%</span><span class="deviation-badge positive">+3.200</span></div></div>
+            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">A-</span></div>
+            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">176</span></div>
+        </div>
+        <button class="btn-view-analysis">View Analysis</button>
+    </div>
+
+</div>
+
+<!-- Component 6: Global Page System Layout Footer -->
+<footer class="global-workspace-footer">
+    <p class="footer-copyright-note">&copy; 2026 EduNexus. All Rights Reserved.</p>
+</footer>
+
+<script>
+document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.sub-tab-bar .tab-item').forEach(function(item) {
+            item.classList.remove('active');
+        });
+        this.parentElement.classList.add('active');
+    });
+});
+</script>
 {% endblock %}

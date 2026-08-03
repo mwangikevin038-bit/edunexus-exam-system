@@ -48,6 +48,7 @@ from .dashboard import (  # noqa: F401
 from .students_mgmt import (  # noqa: F401
     add_student,
     admin_add_student,
+    admin_search_fields,
     api_streams_for_grade,
     class_lists,
 )

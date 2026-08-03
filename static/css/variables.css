@@ -141,6 +141,7 @@
     --duration-slow:      350ms;
 
     /* ── Layout ───────────────────────────────────────────────── */
+    --global-header-height: 64px;
     --sidebar-width:      260px;
     --sidebar-collapsed:  72px;
     --topbar-height:      60px;

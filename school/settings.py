@@ -110,6 +110,11 @@ MIDDLEWARE = [
     'students.security.middleware.CloseOldConnectionsMiddleware',
 ]
 
+# Dev: disable browser caching on all responses
+if DEBUG:
+    # Add no-cache header to every response
+    MIDDLEWARE.insert(0, 'school.middleware.NoCacheMiddleware')
+
 # ==============================================================================
 # AUTHENTICATION
 # ==============================================================================
@@ -141,22 +146,10 @@ DATA_INTEGRITY_KEY = os.environ.get('DATA_INTEGRITY_KEY', SECRET_KEY)
 # ==============================================================================
 CACHES = {
     'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.environ.get("REDIS_CACHE_URL", "redis://127.0.0.1:6379/2"),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        },
-        'KEY_PREFIX': 'edunexus',
-        'TIMEOUT': 300,
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     },
     'csv_upload': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.environ.get("REDIS_CSV_CACHE_URL", "redis://127.0.0.1:6379/3"),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        },
-        'KEY_PREFIX': 'csv_upload',
-        'TIMEOUT': 600,
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     },
 }
 RATELIMIT_DISABLE = os.environ.get('RATELIMIT_DISABLE', 'False') == 'True'
@@ -336,10 +329,8 @@ TEMPLATES = [
                 'students.context_processors.school_context',
             ],
             'loaders': [
-                ('django.template.loaders.cached.Loader', [
-                    'django.template.loaders.filesystem.Loader',
-                    'django.template.loaders.app_directories.Loader',
-                ]),
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
             ],
         },
     },
@@ -393,6 +384,11 @@ STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
+
+# Dev: disable WhiteNoise static file caching
+WHITENOISE_MAX_AGE = 0
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_MANIFEST_STRICT = False
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

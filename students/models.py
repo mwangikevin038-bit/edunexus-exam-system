@@ -1523,3 +1523,42 @@ class ExamSummary(SchoolScopedModel):
             f"{self.student.name} — {self.exam_name} {self.term} {self.year}: "
             f"{self.total_marks} marks, rank {self.grade_rank}"
         )
+
+
+# -------------------- Removed Student Model --------------------
+class RemovedStudent(models.Model):
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='removed_students')
+    original_student_id = models.PositiveIntegerField(help_text="PK of the student before removal")
+    admission_no = models.CharField(max_length=20)
+    name = models.CharField(max_length=100)
+    class_name = models.CharField(max_length=20)
+    stream = models.CharField(max_length=20)
+    gender = models.CharField(max_length=15, default='Not Specified')
+    guardian_name = models.CharField(max_length=100, blank=True, default='')
+    guardian_phone = models.CharField(max_length=20, blank=True, default='')
+    religion = models.CharField(max_length=10, blank=True, default='None')
+    assessment_no = models.CharField(max_length=50, blank=True, null=True)
+    school_section = models.CharField(max_length=10, default='JSS')
+    sub_section = models.CharField(max_length=10, blank=True, null=True)
+    term = models.CharField(max_length=20, default='Term 1')
+    year = models.IntegerField(default=current_year)
+    removed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='removed_students',
+        help_text="Admin who removed this student"
+    )
+    removed_at = models.DateTimeField(auto_now_add=True)
+    reason = models.CharField(max_length=255, blank=True, default='')
+
+    class Meta:
+        ordering = ['-removed_at']
+        indexes = [
+            models.Index(fields=['school', '-removed_at'], name='removed_student_school_idx'),
+        ]
+        verbose_name = 'Removed Student'
+        verbose_name_plural = 'Removed Students'
+
+    def __str__(self):
+        return f"{self.name} ({self.admission_no}) — removed {self.removed_at:%Y-%m-%d}"
