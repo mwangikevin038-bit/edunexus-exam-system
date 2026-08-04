@@ -193,6 +193,7 @@ UNLINKED_GUARDIAN_NAME = os.environ.get(
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False       # JS must read csrftoken cookie for AJAX CSRF
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # ==============================================================================
 # SECURITY HEADERS

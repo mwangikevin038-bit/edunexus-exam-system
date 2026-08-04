@@ -268,7 +268,7 @@
 
 .global-loader-overlay.active {
     opacity: 1;
-    pointer-events: all;
+    pointer-events: none;
 }
 
 .loader-bars {

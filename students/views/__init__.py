@@ -49,6 +49,13 @@ from .students_mgmt import (  # noqa: F401
     add_student,
     admin_add_student,
     admin_search_fields,
+    admin_search_form_reset,
+    admin_student_analytics,
+    admin_student_delete,
+    admin_student_profile_card,
+    admin_student_profile_edit,
+    admin_student_profile_save,
+    admin_student_search_submit,
     api_streams_for_grade,
     class_lists,
 )

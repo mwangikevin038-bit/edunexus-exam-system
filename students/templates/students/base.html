@@ -9,6 +9,18 @@
     <meta http-equiv="Expires" content="0">
     <title>EDUNEXUS Exam System</title>
 
+    <!-- Kill old service workers BEFORE any scripts load -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(r) {
+                for (var i = 0; i < r.length; i++) r[i].unregister();
+            });
+            if (caches && caches.keys) {
+                caches.keys().then(function(n) { n.forEach(function(k) { caches.delete(k); }); });
+            }
+        }
+    </script>
+
     <!-- PWA -->
     <link rel="icon" type="image/png" href="{% static 'images/edunexus_logo.png' %}">
     <link rel="manifest" href="{% static 'manifest.json' %}">
@@ -28,7 +40,16 @@
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-D1Kt99CQMDuVntoLrgMX55Fr5DQXnk18XI1FlOTbexQowTCcqf1He6W9AxJJbkey" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script>
+      document.body.addEventListener('htmx:configRequest', function(evt) {
+        var csrfToken = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        if (csrfToken) {
+          evt.detail.headers['X-CSRFToken'] = csrfToken[1];
+        }
+      });
+    </script>
 
     <!-- DESIGN SYSTEM -->
     <link rel="stylesheet" href="{% static 'css/variables.css' %}">
@@ -491,6 +512,7 @@
         setTimeout(hideLoader, 3000);
 
         document.querySelectorAll('.nav-link-card, .btn, a[href]').forEach(el => {
+            if (el.hasAttribute('hx-get') || el.hasAttribute('hx-post') || el.hasAttribute('hx-trigger')) return;
             el.addEventListener('click', function() {
                 const href = this.getAttribute('href');
                 if (href && href !== '#' && !href.startsWith('javascript:') && !href.startsWith('mailto:')) {
@@ -510,6 +532,71 @@
         window.showLoader = showLoader;
         window.hideLoader = hideLoader;
 
+        // ── Chart.js auto-init for HTMX-swapped canvases ─────────
+        function initAnalyticsCharts() {
+            // ── Subject Performance chart ──
+            var canvas = document.getElementById('performanceLineChart');
+            if (canvas && !canvas._chartInit && typeof Chart !== 'undefined') {
+                canvas._chartInit = true;
+                var ctx = canvas.getContext('2d');
+                var labels = canvas.dataset.labels ? JSON.parse(canvas.dataset.labels) : [];
+                var studentData = canvas.dataset.studentData ? JSON.parse(canvas.dataset.studentData) : [];
+                var classData = canvas.dataset.classData ? JSON.parse(canvas.dataset.classData) : [];
+                var targetData = canvas.dataset.targetData ? JSON.parse(canvas.dataset.targetData) : [];
+                var studentName = canvas.dataset.studentName || 'Student';
+                var classLabel = canvas.dataset.classLabel || 'Class';
+                if (labels.length) {
+                    var gradientStudent = ctx.createLinearGradient(0, 0, 0, 360);
+                    gradientStudent.addColorStop(0, 'rgba(34,197,94,0.12)');
+                    gradientStudent.addColorStop(1, 'rgba(34,197,94,0.01)');
+                    var gradientClass = ctx.createLinearGradient(0, 0, 0, 360);
+                    gradientClass.addColorStop(0, 'rgba(148,163,184,0.15)');
+                    gradientClass.addColorStop(1, 'rgba(148,163,184,0.01)');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                { label: 'Target', data: targetData, borderColor: '#a855f7', backgroundColor: 'transparent', borderWidth: 2, pointBackgroundColor: '#a855f7', pointBorderColor: '#ffffff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, fill: false, tension: 0.3, borderDash: [5, 5] },
+                                { label: studentName, data: studentData, borderColor: '#22c55e', backgroundColor: gradientStudent, borderWidth: 3, pointBackgroundColor: '#ffffff', pointBorderColor: '#22c55e', pointBorderWidth: 2, pointRadius: 5, pointHoverRadius: 7, fill: true, tension: 0.3 },
+                                { label: classLabel, data: classData, borderColor: '#94a3b8', backgroundColor: gradientClass, borderWidth: 2, pointBackgroundColor: '#94a3b8', pointBorderColor: '#ffffff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, fill: true, tension: 0.3 }
+                            ]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', align: 'end', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { family: 'Inter', size: 12, weight: '500' }, color: '#64748b' } }, tooltip: { backgroundColor: '#0f172a', titleFont: { family: 'Inter', size: 12 }, bodyFont: { family: 'Inter', size: 13, weight: '600' }, padding: 12, cornerRadius: 8 } }, scales: { x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8' } }, y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8', stepSize: 10 } } } }
+                    });
+                }
+            }
+            // ── Performance Over Time chart ──
+            var canvas2 = document.getElementById('performanceTimelineChart');
+            if (canvas2 && !canvas2._chartInit && typeof Chart !== 'undefined') {
+                canvas2._chartInit = true;
+                var ctx2 = canvas2.getContext('2d');
+                var tlLabels = canvas2.dataset.tlLabels ? JSON.parse(canvas2.dataset.tlLabels) : [];
+                var tlStudent = canvas2.dataset.tlStudent ? JSON.parse(canvas2.dataset.tlStudent) : [];
+                var tlTarget = canvas2.dataset.tlTarget ? JSON.parse(canvas2.dataset.tlTarget) : [];
+                if (tlLabels.length) {
+                    var gradTimeline = ctx2.createLinearGradient(0, 0, 0, 280);
+                    gradTimeline.addColorStop(0, 'rgba(34,197,94,0.15)');
+                    gradTimeline.addColorStop(1, 'rgba(34,197,94,0.01)');
+                    new Chart(ctx2, {
+                        type: 'line',
+                        data: {
+                            labels: tlLabels,
+                            datasets: [
+                                { label: 'Target', data: tlTarget, borderColor: '#d946ef', backgroundColor: 'transparent', borderWidth: 2, pointBackgroundColor: '#d946ef', pointBorderColor: '#ffffff', pointBorderWidth: 2, pointRadius: 3, pointHoverRadius: 5, fill: false, tension: 0.3, borderDash: [5, 5] },
+                                { label: 'Exam Mean', data: tlStudent, borderColor: '#22c55e', backgroundColor: gradTimeline, borderWidth: 2.5, pointBackgroundColor: '#ffffff', pointBorderColor: '#22c55e', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, fill: true, tension: 0.3 }
+                            ]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'bottom', align: 'center', labels: { usePointStyle: true, pointStyle: 'line', padding: 20, font: { family: 'Inter', size: 12, weight: '500' }, color: '#64748b' } }, tooltip: { backgroundColor: '#0f172a', titleFont: { family: 'Inter', size: 11 }, bodyFont: { family: 'Inter', size: 12, weight: '600' }, padding: 10, cornerRadius: 8 } }, scales: { x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8', maxRotation: 45, minRotation: 45 } }, y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8', stepSize: 50 } } } }
+                    });
+                }
+            }
+        }
+        document.addEventListener('htmx:afterSettle', initAnalyticsCharts);
+        document.addEventListener('htmx:afterSwap', initAnalyticsCharts);
+        document.addEventListener('DOMContentLoaded', initAnalyticsCharts);
+        setTimeout(initAnalyticsCharts, 500);
+
         // ── Header User Dropdown ─────────────────────────────────
         const headerUser = document.getElementById('headerUserMenu');
         if (headerUser) {
@@ -522,16 +609,6 @@
     </script>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for (var i = 0; i < registrations.length; i++) {
-                    registrations[i].unregister();
-                }
-            });
-            caches.keys().then(function(names) {
-                names.forEach(function(name) { caches.delete(name); });
-            });
-        }
     </script>
 
     {% block extra_js %}{% endblock %}

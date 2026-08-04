@@ -11,6 +11,8 @@
                 <input type="radio" name="search_type" value="adm_no"
                        hx-get="{% url 'admin_search_fields' %}?type=adm_no"
                        hx-target="#dynamic-search-fields"
+                       hx-swap="innerHTML"
+                       hx-trigger="click"
                        {% if search_type != 'name' and search_type != 'phone' and search_type != 'assessment_no' %}checked{% endif %}>
                 <span class="custom-radio-dot"></span>
                 <span class="radio-label-txt">Admission Number</span>
@@ -19,6 +21,8 @@
                 <input type="radio" name="search_type" value="name"
                        hx-get="{% url 'admin_search_fields' %}?type=name"
                        hx-target="#dynamic-search-fields"
+                       hx-swap="innerHTML"
+                       hx-trigger="click"
                        {% if search_type == 'name' %}checked{% endif %}>
                 <span class="custom-radio-dot"></span>
                 <span class="radio-label-txt">Name</span>
@@ -27,6 +31,8 @@
                 <input type="radio" name="search_type" value="phone"
                        hx-get="{% url 'admin_search_fields' %}?type=phone"
                        hx-target="#dynamic-search-fields"
+                       hx-swap="innerHTML"
+                       hx-trigger="click"
                        {% if search_type == 'phone' %}checked{% endif %}>
                 <span class="custom-radio-dot"></span>
                 <span class="radio-label-txt">Phone number</span>
@@ -35,6 +41,8 @@
                 <input type="radio" name="search_type" value="assessment_no"
                        hx-get="{% url 'admin_search_fields' %}?type=assessment_no"
                        hx-target="#dynamic-search-fields"
+                       hx-swap="innerHTML"
+                       hx-trigger="click"
                        {% if search_type == 'assessment_no' %}checked{% endif %}>
                 <span class="custom-radio-dot"></span>
                 <span class="radio-label-txt">Assessment Number</span>
