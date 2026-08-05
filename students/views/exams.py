@@ -2504,7 +2504,7 @@ def update_maximum_marks(request):
     # ── Pre-fetch: Student + Subject in_bulk (zero N+1) ──────────────────
     student_ids = {m.student_id for m in marks}
     subject_ids = {m.subject_id for m in marks if m.subject_id}
-    students_map = Student.all_objects.in_bulk(student_ids)
+    students_map = Student.all_objects.filter(is_active=True).in_bulk(student_ids)
     subjects_map = Subject.all_objects.in_bulk(subject_ids)
 
     # ── Pre-fetch: GradingConfig (single query) ──────────────────────────

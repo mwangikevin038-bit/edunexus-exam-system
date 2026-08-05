@@ -329,9 +329,10 @@ def _process_chunk(school, chunk, offset, section,
                     except (ValueError, AttributeError):
                         pass
                     next_no = _next_admission_number(school, school_section=section)
+                    suffix = 'P' if section == 'PRIMARY' else 'J'
                     Student.all_objects.create(
                         school=school,
-                        admission_no=f"{next_no:03}",
+                        admission_no=f"{next_no:03}{suffix}",
                         assessment_no=assessment_no,
                         name=s_name,
                         class_name=cls,
@@ -376,8 +377,8 @@ def _next_admission_number(school, school_section=None):
     if school_section == 'LOWER_PRIMARY':
         school_section = 'PRIMARY'
 
-    # Base query: only numeric admission numbers
-    qs = Student.all_objects.filter(school=school, admission_no__regex=r'^[0-9]+$')
+    # Base query: admission numbers ending with P or J suffix
+    qs = Student.all_objects.filter(school=school, admission_no__regex=r'^[0-9]+[PJ]$')
 
     if school_section == 'PRIMARY':
         # PRIMARY = both sub-sections share one series
@@ -390,8 +391,10 @@ def _next_admission_number(school, school_section=None):
         return 1
 
     last = qs.order_by("-admission_no").values_list("admission_no", flat=True).first()
-    if last and last.isdigit():
-        return int(last) + 1
+    if last:
+        num_part = last[:-1]  # strip P or J suffix
+        if num_part.isdigit():
+            return int(num_part) + 1
     return qs.count() + 1
 
 

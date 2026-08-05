@@ -159,6 +159,7 @@ def manage_classes(request):
                 school=school,
                 class_name=stream.grade.name,
                 stream=stream.name,
+                is_active=True,
             ).count()
 
             if student_count > 0:
@@ -188,6 +189,7 @@ def manage_classes(request):
             student_count = Student.all_objects.filter(
                 school=school,
                 class_name=grade.name,
+                is_active=True,
             ).count()
 
             if student_count > 0:

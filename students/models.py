@@ -325,6 +325,28 @@ class Student(SchoolScopedModel):
         verbose_name="Gender"
     )
 
+    # ── Soft Delete Fields ─────────────────────────────────────────────
+    is_active = models.BooleanField(default=True, db_index=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('Active', 'Active'),
+            ('Removed', 'Removed'),
+            ('Graduated', 'Graduated'),
+        ],
+        default='Active',
+        db_index=True,
+    )
+    date_removed = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='deleted_students',
+        help_text="Admin who removed this student",
+    )
+
     def __str__(self):
         return f"{self.name} ({self.admission_no})"
 

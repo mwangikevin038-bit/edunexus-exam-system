@@ -68,6 +68,8 @@ urlpatterns = [
 
     # ── Premium CSV Onboarding Engine ────────────────────────────────────
     path('school-admin/csv-onboard/', views.premium_csv_upload_page, name='premium_csv_upload'),
+    path('school-admin/csv-onboard/fragment/', views.premium_csv_upload_fragment, name='premium_csv_upload_fragment'),
     path('api/csv-upload/', views.csv_upload_api, name='csv_upload_api'),
     path('api/csv-upload/progress/', views.csv_upload_progress, name='csv_upload_progress'),
+    path('api/section-info/', views.get_section_info, name='get_section_info'),
 ]

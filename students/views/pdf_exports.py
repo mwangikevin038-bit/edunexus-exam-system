@@ -21,9 +21,8 @@ import numpy as np
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.db.models import Avg, Prefetch, Q, Sum
-from django.db.models import IntegerField
-from django.db.models.functions import Cast
+from django.db.models import Avg, Prefetch, Q, Sum, IntegerField
+from django.db.models.functions import Cast, Length, Substr
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
@@ -309,7 +308,7 @@ def download_broadsheet_pdf(request):
             ).order_by('subject', '-date_recorded', '-id'),
             to_attr='cached_marks',
         )
-        students      = Student.all_objects.filter(school=school, class_name=grade, stream=stream).prefetch_related(marks_prefetch)
+        students      = Student.all_objects.filter(school=school, class_name=grade, stream=stream, is_active=True).prefetch_related(marks_prefetch)
         student_count = students.count()
 
         for student in students:
@@ -542,10 +541,10 @@ def download_classlist_pdf(request):
         student_manager = Student.all_objects if is_admin_view else Student.objects
         students = (
             student_manager
-            .filter(school=school, class_name=selected_grade, stream=selected_stream)
-            .filter(admission_no__regex=r'^[0-9]+$')
+            .filter(school=school, class_name=selected_grade, stream=selected_stream, is_active=True)
+            .filter(admission_no__regex=r'^[0-9]+[PJ]$')
             .select_related('guardian')
-            .annotate(adm_int=Cast('admission_no', IntegerField()))
+            .annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
             .order_by('adm_int')
         )
 

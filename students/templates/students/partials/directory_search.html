@@ -1,5 +1,5 @@
 <!-- Search Criteria Card -->
-<div class="search-criteria-card" style="background: #ffffff; padding: 24px 32px; border: 1px solid var(--en-border); border-radius: var(--radius-sm); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.01);">
+<div style="background: #ffffff; padding: 24px 32px; border: 1px solid var(--en-border, #e2e8f0); border-radius: var(--radius-sm, 8px); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.01);">
     <h3 style="font-size: 18px; font-weight: 600; color: #334155; margin: 0 0 20px 0; font-family: 'Plus Jakarta Sans', sans-serif;">Search By</h3>
 
     <form method="GET" action="{% url 'admin_add_student' %}" style="display: flex; flex-direction: column; gap: 16px;">
@@ -74,40 +74,40 @@
 
 <!-- Search Results Card -->
 {% if query %}
-<div class="search-results-card" style="background: #ffffff; border: 1px solid var(--en-border); border-radius: var(--radius-sm); padding: 24px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.01); margin-top: 16px;">
-    <h3 style="font-size: 18px; font-weight: 600; color: var(--en-navy); margin: 0 0 20px 0; font-family: 'Plus Jakarta Sans', sans-serif;">Search Results</h3>
+<div style="background: #ffffff; border: 1px solid #22c55e; border-radius: var(--radius-sm, 8px); padding: 24px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.01); margin-top: 16px;">
+    <h3 style="font-size: 18px; font-weight: 600; color: #0f172a; margin: 0 0 20px 0; font-family: 'Plus Jakarta Sans', sans-serif;">Search Results</h3>
 
     {% if students %}
-    <div class="table-scroll-container" style="overflow-x: auto; width: 100%; border: 1px solid var(--en-border); border-radius: var(--radius-sm); margin-bottom: 20px;">
-        <table class="zeraki-style-results-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+    <div style="overflow-x: auto; width: 100%; margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
             <thead>
-                <tr style="background-color: #fafafa; border-bottom: 1px solid var(--en-border);">
-                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); width: 50px; border-right: 1px solid var(--en-border);">#</th>
-                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); width: 120px; border-right: 1px solid var(--en-border);">ADM NO</th>
-                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); border-right: 1px solid var(--en-border);">NAME</th>
-                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); width: 180px; border-right: 1px solid var(--en-border);">CLASS</th>
-                    <th style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--en-navy); width: 220px; text-align: center;">ACTIONS</th>
+                <tr style="background-color: #f8fafc;">
+                    <th style="padding: 12px 16px; font-size: 12px; font-weight: 700; color: #0f172a; width: 50px; border: 1px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.5px;">#</th>
+                    <th style="padding: 12px 16px; font-size: 12px; font-weight: 700; color: #0f172a; width: 120px; border: 1px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.5px;">ADM NO</th>
+                    <th style="padding: 12px 16px; font-size: 12px; font-weight: 700; color: #0f172a; border: 1px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.5px;">NAME</th>
+                    <th style="padding: 12px 16px; font-size: 12px; font-weight: 700; color: #0f172a; width: 180px; border: 1px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.5px;">CLASS</th>
+                    <th style="padding: 12px 16px; font-size: 12px; font-weight: 700; color: #0f172a; width: 220px; text-align: center; border: 1px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.5px;">ACTIONS</th>
                 </tr>
             </thead>
             <tbody>
                 {% for student in students %}
-                <tr style="border-bottom: 1px solid var(--en-border); background-color: #ffffff;">
-                    <td style="padding: 16px; font-size: 14px; font-weight: 600; color: var(--en-navy); border-right: 1px solid var(--en-border);">
+                <tr style="background-color: #ffffff;">
+                    <td style="padding: 14px 16px; font-size: 14px; font-weight: 600; color: #0f172a; border: 1px solid #e2e8f0;">
                         {{ forloop.counter }}
                     </td>
-                    <td style="padding: 16px; font-size: 14px; font-weight: 500; color: #334155; border-right: 1px solid var(--en-border);">
+                    <td style="padding: 14px 16px; font-size: 14px; font-weight: 500; color: #334155; border: 1px solid #e2e8f0;">
                         {{ student.admission_no }}
                     </td>
-                    <td style="padding: 16px; font-size: 14px; font-weight: 500; color: #334155; border-right: 1px solid var(--en-border);">
+                    <td style="padding: 14px 16px; font-size: 14px; font-weight: 500; color: #334155; border: 1px solid #e2e8f0;">
                         {{ student.name }}
                     </td>
-                    <td style="padding: 16px; font-size: 14px; font-weight: 500; color: #334155; border-right: 1px solid var(--en-border);">
+                    <td style="padding: 14px 16px; font-size: 14px; font-weight: 500; color: #334155; border: 1px solid #e2e8f0;">
                         {{ student.class_name }} {{ student.stream }}
                     </td>
-                    <td style="padding: 12px 16px; text-align: center;">
-                        <div style="display: flex; gap: 16px; justify-content: center; align-items: center;">
-                            <a href="?tab=profile&id={{ student.id }}" class="btn-navy-pill-action">Profile</a>
-                            <a href="{% url 'learner_profile' student.id %}" class="btn-navy-pill-action">Analytics</a>
+                    <td style="padding: 12px 16px; text-align: center; border: 1px solid #e2e8f0;">
+                        <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
+                            <a href="?tab=profile&id={{ student.id }}" style="display:inline-block; background:#0f172a; color:#ffffff; padding:8px 20px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; font-family:'Inter','Plus Jakarta Sans',sans-serif; transition:all 0.2s;">Profile</a>
+                            <a href="{% url 'learner_profile' student.id %}" style="display:inline-block; background:#22c55e; color:#ffffff; padding:8px 20px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; font-family:'Inter','Plus Jakarta Sans',sans-serif; transition:all 0.2s;">Analytics</a>
                         </div>
                     </td>
                 </tr>
@@ -116,16 +116,19 @@
         </table>
     </div>
     {% else %}
-    <div style="padding: 24px; text-align: center; color: #64748b; font-style: italic; border: 1px solid var(--en-border); border-radius: var(--radius-sm); margin-bottom: 20px;">
+    <div style="padding: 24px; text-align: center; color: #64748b; font-style: italic; border: 1px solid #e2e8f0; border-radius: var(--radius-sm, 8px); margin-bottom: 20px;">
         No records found matching your query.
     </div>
     {% endif %}
 
     <div style="display: flex; justify-content: flex-start;">
-        <a href="?tab=directory" class="btn-gray-back-action">
-            <i class="ph ph-arrow-left"></i>
-            <span>Back</span>
-        </a>
+        <button hx-get="/school-admin/registration/search-submit/?tab=directory"
+                hx-target="#search-card-container"
+                hx-swap="innerHTML"
+                style="display:inline-flex; align-items:center; gap:6px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:10px 22px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; font-family:'Inter','Plus Jakarta Sans',sans-serif; transition:all 0.2s ease;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+            Back
+        </button>
     </div>
 </div>
 {% endif %}

@@ -58,6 +58,7 @@ from .students_mgmt import (  # noqa: F401
     admin_student_search_submit,
     api_streams_for_grade,
     class_lists,
+    get_section_info,
 )
 
 # ── Exam & mark entry views ──────────────────────────────────────────────────
@@ -112,6 +113,7 @@ from .grading_config import (  # noqa: F401
 # ── CSV upload views ─────────────────────────────────────────────────────────
 from .csv_upload import (  # noqa: F401
     premium_csv_upload_page,
+    premium_csv_upload_fragment,
     csv_upload_api,
     csv_upload_progress,
 )

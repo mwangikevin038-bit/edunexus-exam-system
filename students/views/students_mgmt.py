@@ -11,7 +11,7 @@ import datetime
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import IntegerField
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Length, Substr
 from django.http import HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.cache import never_cache
@@ -75,8 +75,8 @@ def add_student(request):
     Auto-assigns the next sequential admission number.
     """
     school = get_request_school(request)
-    next_admission_no = get_next_admission_no()
     school_section = get_request_school_section(request) or 'JSS'
+    next_admission_no = get_next_admission_no(school_section=school_section)
 
     if request.method == 'POST':
         data = request.POST.copy()
@@ -132,11 +132,12 @@ def admin_add_student(request):
 
     current_year      = datetime.date.today().year
     active_tab        = request.GET.get('tab', 'directory')
-    next_admission_no = get_next_admission_no()
+    school_section    = get_request_school_section(request) or 'JSS'
+    next_admission_no = get_next_admission_no(school_section=school_section)
     # Store the raw integer for bulk increment calculations
     try:
-        next_no = int(next_admission_no)
-    except ValueError:
+        next_no = int(next_admission_no[:-1])
+    except (ValueError, IndexError):
         next_no = 1
 
     # --------------------------------------------------------------------------
@@ -150,8 +151,13 @@ def admin_add_student(request):
             submitted_adm = request.POST.get('admission_no', '').strip()
             adm_no = submitted_adm if submitted_adm else next_admission_no
 
-            if Student.objects.filter(school=school, admission_no=adm_no).exists():
-                messages.error(request, f"❌ Admission Number '{adm_no}' is already taken.")
+            # Check both active AND inactive students to prevent unique constraint violations
+            existing = Student.all_objects.filter(school=school, admission_no=adm_no).first()
+            if existing:
+                if existing.is_active:
+                    messages.error(request, f"❌ Admission Number '{adm_no}' is already taken.")
+                else:
+                    messages.warning(request, f"⚠️ Admission Number '{adm_no}' belongs to a removed student ({existing.name}). Use Re-admit to restore them instead.")
                 return redirect('/school-admin/registration/?tab=add_student')
 
             name       = request.POST.get('name', '').strip()
@@ -173,7 +179,7 @@ def admin_add_student(request):
             year = current_year
 
             try:
-                section = get_request_school_section(request)
+                section = request.POST.get('school_section', '').strip() or 'JSS'
                 guardian_obj, _ = Guardian.objects.get_or_create(
                     school=school,
                     phone=g_phone,
@@ -206,79 +212,122 @@ def admin_add_student(request):
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.exception("Student admission failed for name=%s", name)
-                messages.error(request, "An error occurred during admission. Please try again.")
+                if 'unique' in str(e).lower() or 'duplicate' in str(e).lower():
+                    messages.error(request, f"❌ Admission number '{adm_no}' conflicts with an existing record. If this student was removed, use Re-admit from the Removed Students tab.")
+                else:
+                    messages.error(request, "An error occurred during admission. Please try again.")
                 return redirect('/school-admin/registration/?tab=add_student')
 
         # --- Restore removed student ---
         elif mode == 'restore_student':
             removed_id = request.POST.get('removed_student_id')
+            restore_source = request.POST.get('restore_source', 'student')
             if removed_id:
                 try:
-                    removed = RemovedStudent.objects.get(pk=removed_id, school=school)
-                    # Determine admission_no — if conflict, bump
-                    adm_no = removed.admission_no
-                    if Student.objects.filter(school=school, admission_no=adm_no).exists():
-                        base = adm_no.rstrip('ABCD')
-                        for letter in 'ABCD':
-                            candidate = base + letter
-                            if not Student.objects.filter(school=school, admission_no=candidate).exists():
-                                adm_no = candidate
-                                break
-                    # Recreate guardian
-                    guardian_obj, _ = Guardian.objects.get_or_create(
-                        school=school,
-                        phone=removed.guardian_phone,
-                        defaults={'name': removed.guardian_name or 'Unknown', 'school_section': removed.school_section or 'JSS'}
-                    )
-                    Student.objects.create(
-                        school=school,
-                        admission_no=adm_no,
-                        assessment_no=removed.assessment_no or '',
-                        name=removed.name,
-                        class_name=removed.class_name,
-                        stream=removed.stream,
-                        term=removed.term,
-                        year=removed.year,
-                        guardian=guardian_obj,
-                        religion=removed.religion or 'None',
-                        gender=removed.gender or 'Not Specified',
-                        school_section=removed.school_section or 'JSS',
-                        sub_section=removed.sub_section,
-                    )
-                    removed.delete()
-                    messages.success(request, f"✓ {removed.name} has been restored to {removed.class_name} {removed.stream}.")
-                except RemovedStudent.DoesNotExist:
+                    if restore_source == 'student':
+                        # New soft-delete approach: just flip flags
+                        student = Student.all_objects.get(pk=removed_id, school=school, is_active=False, status='Removed')
+                        student.is_active = True
+                        student.status = 'Active'
+                        student.date_removed = None
+                        student.deleted_by = None
+                        student.save(update_fields=['is_active', 'status', 'date_removed', 'deleted_by'])
+                        messages.success(request, f"✓ {student.name} has been restored to {student.class_name} {student.stream}.")
+                    else:
+                        # Legacy RemovedStudent table
+                        removed = RemovedStudent.objects.get(pk=removed_id, school=school)
+                        # Determine admission_no — if conflict, bump
+                        adm_no = removed.admission_no
+                        if Student.objects.filter(school=school, admission_no=adm_no).exists():
+                            base = adm_no.rstrip('ABCD')
+                            for letter in 'ABCD':
+                                candidate = base + letter
+                                if not Student.objects.filter(school=school, admission_no=candidate).exists():
+                                    adm_no = candidate
+                                    break
+                        # Recreate guardian
+                        guardian_obj, _ = Guardian.objects.get_or_create(
+                            school=school,
+                            phone=removed.guardian_phone,
+                            defaults={'name': removed.guardian_name or 'Unknown', 'school_section': removed.school_section or 'JSS'}
+                        )
+                        Student.objects.create(
+                            school=school,
+                            admission_no=adm_no,
+                            assessment_no=removed.assessment_no or '',
+                            name=removed.name,
+                            class_name=removed.class_name,
+                            stream=removed.stream,
+                            term=removed.term,
+                            year=removed.year,
+                            guardian=guardian_obj,
+                            religion=removed.religion or 'None',
+                            gender=removed.gender or 'Not Specified',
+                            school_section=removed.school_section or 'JSS',
+                            sub_section=removed.sub_section,
+                        )
+                        removed.delete()
+                        messages.success(request, f"✓ {removed.name} has been restored to {removed.class_name} {removed.stream}.")
+                except (Student.DoesNotExist, RemovedStudent.DoesNotExist):
                     messages.error(request, "Removed student record not found.")
             return redirect('/school-admin/registration/?tab=removed_students')
 
-        # --- Mass promotion / graduation ---
+        # --- Mass promotion / graduation / move ---
         elif mode == 'promote':
             source_class = request.POST.get('source_class')
-            target_class = request.POST.get('target_class')
-            confirm = request.POST.get('confirm_delete')
-            if source_class and target_class:
-                # Validate source_class belongs to current workspace section
-                if section == 'LOWER_PRIMARY' and source_class not in LOWER_PRIMARY_GRADE_CHOICES:
-                    messages.error(request, f"{source_class} is not in your Lower Primary workspace.")
-                    return redirect('/school-admin/registration/?tab=overview')
-                elif section == 'PRIMARY' and source_class not in PRIMARY_GRADE_CHOICES:
-                    messages.error(request, f"{source_class} is not in your Upper Primary workspace.")
-                    return redirect('/school-admin/registration/?tab=overview')
-                cohort        = Student.objects.filter(school=school, class_name=source_class)
+            confirm = request.POST.get('confirm')
+            target_class = request.POST.get('target_class', '').strip()
+            target_stream = request.POST.get('target_stream', '').strip()
+            student_ids = request.POST.get('student_ids', '').strip()
+
+            if student_ids:
+                # Move selected students to specific destination
+                id_list = [int(i) for i in student_ids.split(',') if i.strip().isdigit()]
+                cohort = Student.all_objects.filter(school=school, id__in=id_list, is_active=True)
                 affected_count = cohort.count()
                 if affected_count > 0:
-                    if target_class == 'Graduate/Exit':
+                    if confirm != 'yes':
+                        dest = f"{target_class} {target_stream}" if target_stream else target_class
+                        messages.warning(request, f"Move {affected_count} selected students to {dest}? Submit again with confirmation.")
+                        return redirect('/school-admin/registration/?tab=move_student')
+                    if target_class == 'Graduated':
+                        from django.utils import timezone
+                        cohort.update(is_active=False, status='Graduated', class_name='Graduated', date_removed=timezone.now())
+                        messages.success(request, f"🎓 {affected_count} students graduated.")
+                    else:
+                        update_fields = {'class_name': target_class}
+                        if target_stream:
+                            update_fields['stream'] = target_stream
+                        cohort.update(**update_fields)
+                        dest = f"{target_class} {target_stream}" if target_stream else target_class
+                        messages.success(request, f"✅ {affected_count} students moved to {dest}.")
+                else:
+                    messages.warning(request, f"⚠️ No valid students selected.")
+            elif source_class:
+                # Promote/graduate all in source class
+                cohort = Student.all_objects.filter(school=school, class_name=source_class, is_active=True)
+                affected_count = cohort.count()
+                if affected_count > 0:
+                    grade_num = int(source_class.replace('Grade ', ''))
+                    if grade_num >= 9:
+                        # Graduate: remove from active
                         if confirm != 'yes':
-                            messages.warning(request, f"Are you sure you want to graduate/exit {affected_count} students from {source_class}? Submit again with confirmation.")
-                            return redirect('/school-admin/registration/?tab=overview')
-                        cohort.update(is_active=False, class_name='Graduated')
+                            messages.warning(request, f"Are you sure you want to graduate {affected_count} students from {source_class}? Submit again with confirmation.")
+                            return redirect('/school-admin/registration/?tab=move_student')
+                        from django.utils import timezone
+                        cohort.update(is_active=False, status='Graduated', class_name='Graduated', date_removed=timezone.now())
                         messages.success(request, f"🎓 {affected_count} students graduated from {source_class}.")
                     else:
-                        cohort.update(class_name=target_class)
-                        messages.success(request, f"🚀 {affected_count} students promoted to {target_class}.")
+                        # Promote to next grade
+                        next_grade = f"Grade {grade_num + 1}"
+                        if confirm != 'yes':
+                            messages.warning(request, f"Promote {affected_count} students from {source_class} to {next_grade}? Submit again with confirmation.")
+                            return redirect('/school-admin/registration/?tab=move_student')
+                        cohort.update(class_name=next_grade)
+                        messages.success(request, f"🚀 {affected_count} students promoted from {source_class} to {next_grade}.")
                 else:
                     messages.warning(request, f"⚠️ No students found in {source_class}.")
-            return redirect('/school-admin/registration/?tab=overview')
+            return redirect('/school-admin/registration/?tab=move_student')
 
     # --------------------------------------------------------------------------
     # GET — Build query and context
@@ -305,11 +354,14 @@ def admin_add_student(request):
     context = {
         'active_tab':       tab,
         'next_admission_no': next_admission_no,
+        'school_section':   'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS',
         'grades':           grades_for_section,
+        'move_grades':      GRADE_CHOICES,
         'streams':          get_streams_for_school(school, section),
+        'all_streams':      get_streams_for_school(school),
         'terms':            TERM_CHOICES,
         'current_year':     current_year,
-        'total_students':   Student.objects.filter(school=school).count(),
+        'total_students':   Student.objects.filter(school=school, is_active=True).count(),
         'guardian_count':   Guardian.objects.filter(school=school).count(),
         'query':            query,
         'search_type':      search_type,
@@ -324,11 +376,11 @@ def admin_add_student(request):
     }
     for i, g in enumerate(grades_for_section[:3]):
         context[f'grade_{i+1}_name'] = g
-        context[f'grade_{i+1}_count'] = Student.objects.filter(school=school, class_name=g).count()
+        context[f'grade_{i+1}_count'] = Student.objects.filter(school=school, class_name=g, is_active=True).count()
 
     # 1. HANDLE DIRECTORY SEARCH STATE
     if tab == 'directory':
-        search_qs = Student.all_objects.filter(school=school).select_related('guardian')
+        search_qs = Student.all_objects.filter(school=school, is_active=True).select_related('guardian')
         grade_query = request.GET.get('grade', '').strip() if search_type == 'name' else ''
 
         if query:
@@ -381,22 +433,96 @@ def admin_add_student(request):
         move_stream = request.GET.get('stream', '').strip()
         context['move_grade'] = move_grade
         context['move_stream'] = move_stream
+        try:
+            context['move_grade_num'] = int(move_grade.replace('Grade ', ''))
+        except (ValueError, AttributeError):
+            context['move_grade_num'] = 0
         if move_grade and move_stream:
             move_students = Student.all_objects.filter(
-                school=school, class_name__iexact=move_grade, stream__iexact=move_stream
-            ).order_by('name')
+                school=school, class_name__iexact=move_grade, stream__iexact=move_stream, is_active=True
+            )
+            move_students = move_students.annotate(
+                adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField())
+            ).order_by('adm_int')
             context['move_students'] = move_students
             context['move_class_label'] = f"{move_grade} {move_stream}"
 
     # 4. HANDLE REMOVED STUDENTS STATE
     elif tab == 'removed_students':
         removed_query = request.GET.get('q', '').strip()
-        removed_qs = RemovedStudent.objects.filter(school=school).select_related('removed_by')
+
+        # Soft-deleted students (new approach)
+        soft_deleted = Student.all_objects.filter(
+            school=school, is_active=False, status='Removed'
+        ).select_related('deleted_by', 'guardian').values(
+            'id', 'admission_no', 'name', 'class_name', 'stream',
+            'gender', 'religion', 'assessment_no', 'school_section',
+            'sub_section', 'term', 'year', 'date_removed',
+            'deleted_by__first_name', 'deleted_by__last_name',
+            'guardian__name', 'guardian__phone',
+        )
+        # Legacy RemovedStudent records
+        legacy_removed = RemovedStudent.objects.filter(
+            school=school
+        ).select_related('removed_by').values(
+            'id', 'admission_no', 'name', 'class_name', 'stream',
+            'gender', 'religion', 'assessment_no', 'school_section',
+            'sub_section', 'term', 'year', 'removed_at',
+            'removed_by__first_name', 'removed_by__last_name',
+            'guardian_name', 'guardian_phone',
+        )
+
+        # Normalize both into a common format for the template
+        removed_list = []
+        for s in soft_deleted:
+            removed_list.append({
+                'id': s['id'],
+                'admission_no': s['admission_no'],
+                'name': s['name'],
+                'class_name': s['class_name'],
+                'stream': s['stream'],
+                'gender': s['gender'] or 'Not Specified',
+                'religion': s['religion'] or 'None',
+                'assessment_no': s['assessment_no'] or '',
+                'school_section': s['school_section'] or 'JSS',
+                'sub_section': s['sub_section'],
+                'term': s['term'] or 'Term 1',
+                'year': s['year'],
+                'removed_at': s['date_removed'],
+                'removed_by_name': f"{s['deleted_by__first_name'] or ''} {s['deleted_by__last_name'] or ''}".strip() or 'System',
+                'guardian_name': s['guardian__name'] or '',
+                'guardian_phone': s['guardian__phone'] or '',
+                'source': 'student',
+            })
+        for r in legacy_removed:
+            removed_list.append({
+                'id': r['id'],
+                'admission_no': r['admission_no'],
+                'name': r['name'],
+                'class_name': r['class_name'],
+                'stream': r['stream'],
+                'gender': r['gender'] or 'Not Specified',
+                'religion': r['religion'] or 'None',
+                'assessment_no': r['assessment_no'] or '',
+                'school_section': r['school_section'] or 'JSS',
+                'sub_section': r['sub_section'],
+                'term': r['term'] or 'Term 1',
+                'year': r['year'],
+                'removed_at': r['removed_at'],
+                'removed_by_name': f"{r['removed_by__first_name'] or ''} {r['removed_by__last_name'] or ''}".strip() or 'System',
+                'guardian_name': r['guardian_name'] or '',
+                'guardian_phone': r['guardian_phone'] or '',
+                'source': 'removed_student',
+            })
+
+        # Filter by search query
         if removed_query:
-            removed_qs = removed_qs.filter(
-                Q(name__icontains=removed_query) | Q(admission_no__icontains=removed_query)
-            )
-        context['removed_students'] = removed_qs
+            removed_list = [r for r in removed_list if removed_query.lower() in r['name'].lower() or removed_query.lower() in r['admission_no'].lower()]
+
+        # Sort by removed_at descending
+        removed_list.sort(key=lambda x: x['removed_at'] or '', reverse=True)
+
+        context['removed_students'] = removed_list
         context['removed_query'] = removed_query
 
     return render(request, 'students/admin_add_student.html', context)
@@ -492,7 +618,7 @@ def admin_student_search_submit(request):
                 format_ok = False
 
         if format_ok:
-            search_qs = Student.all_objects.filter(school=school).select_related('guardian')
+            search_qs = Student.all_objects.filter(school=school, is_active=True).select_related('guardian')
             if search_type == 'adm_no':
                 students = search_qs.filter(admission_no__icontains=query).order_by('name')
             elif search_type == 'name':
@@ -508,70 +634,66 @@ def admin_student_search_submit(request):
     label = TYPE_LABELS.get(search_type, 'Admission Number')
 
     if students.exists():
-        cards = ''
+        rows = ''
         for idx, s in enumerate(students, 1):
-            cards += (
-                '<div style="background:#ffffff;border:1px solid #f1f5f9;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.02),0 2px 4px -1px rgba(0,0,0,0.02);padding:16px 24px;">'
-                '  <div style="display:grid;grid-template-columns:0.5fr 1fr 2.5fr 2fr 2fr;align-items:center;">'
-                f'    <span style="font-size:13px;color:#64748b;font-weight:500;">{idx}</span>'
-                f'    <span style="font-size:13px;color:#64748b;font-weight:500;">{s.admission_no}</span>'
-                f'    <span style="font-size:15px;color:#0f172a;font-weight:500;">{s.name}</span>'
-                f'    <span style="display:inline-block;background:#f8fafc;color:#475569;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;width:fit-content;">{s.class_name} {s.stream}</span>'
-                '    <div style="display:flex;gap:8px;justify-content:flex-end;">'
+            rows += (
+                '<tr style="background:#ffffff;">'
+                f'  <td style="padding:14px 16px;font-size:14px;font-weight:600;color:#0f172a;border:1px solid #e2e8f0;">{idx}</td>'
+                f'  <td style="padding:14px 16px;font-size:14px;font-weight:500;color:#334155;border:1px solid #e2e8f0;">{s.admission_no}</td>'
+                f'  <td style="padding:14px 16px;font-size:14px;font-weight:500;color:#334155;border:1px solid #e2e8f0;">{s.name}</td>'
+                f'  <td style="padding:14px 16px;font-size:14px;font-weight:500;color:#334155;border:1px solid #e2e8f0;">{s.class_name} {s.stream}</td>'
+                '  <td style="padding:12px 16px;text-align:center;border:1px solid #e2e8f0;">'
+                '    <div style="display:flex;gap:12px;justify-content:center;align-items:center;">'
                 f'      <a hx-get="/school-admin/registration/profile/{s.id}/" hx-target="#search-card-container" hx-swap="innerHTML"'
-                '         style="background:#1e293b;color:#ffffff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;border:none;cursor:pointer;text-decoration:none;font-family:\'Inter\',sans-serif;transition:all 0.2s;">Profile</a>'
+                '         style="display:inline-block;background:#0f172a;color:#ffffff;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;font-family:\'Inter\',sans-serif;transition:all 0.2s;">Profile</a>'
                 f'      <a hx-get="/school-admin/registration/analytics/{s.id}/" hx-target="#search-card-container" hx-swap="innerHTML"'
-                '         style="background:#ffffff;color:#1e293b;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;border:1px solid #e2e8f0;cursor:pointer;text-decoration:none;font-family:\'Inter\',sans-serif;transition:all 0.2s;">Analytics</a>'
+                '         style="display:inline-block;background:#22c55e;color:#ffffff;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;font-family:\'Inter\',sans-serif;transition:all 0.2s;">Analytics</a>'
                 '    </div>'
-                '  </div>'
-                '</div>'
+                '  </td>'
+                '</tr>'
             )
         html = (
-            '<style>'
-            '  .sr-back-btn { background:#ffffff; border:1px solid #cbd5e1; color:#334155; padding:10px 20px; border-radius:8px; font-weight:500; font-size:13px; cursor:pointer; font-family:"Inter",sans-serif; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:6px; }'
-            '  .sr-back-btn:hover { background:#f8fafc; border-color:#94a3b8; }'
-            '</style>'
+            '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #22c55e;">'
+            '  <h3 style="margin:0 0 20px;color:#0f172a;font-size:18px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
 
-            '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">'
-            '  <h3 style="margin:0 0 20px;color:#1e3a8a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
-
-            # Column header
-            '  <div style="display:grid;grid-template-columns:0.5fr 1fr 2.5fr 2fr 2fr;padding:0 24px 8px 24px;">'
-            '    <span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">#</span>'
-            '    <span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">ADM NO</span>'
-            '    <span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">NAME</span>'
-            '    <span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">CLASS</span>'
-            '    <span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;text-align:right;">ACTIONS</span>'
+            '  <div style="overflow-x:auto;width:100%;margin-bottom:20px;">'
+            '    <table style="width:100%;border-collapse:collapse;text-align:left;">'
+            '      <thead>'
+            '        <tr style="background:#f8fafc;">'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;width:50px;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">#</th>'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;width:120px;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">ADM NO</th>'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">NAME</th>'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;width:180px;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">CLASS</th>'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;width:220px;text-align:center;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">ACTIONS</th>'
+            '        </tr>'
+            '      </thead>'
+            f'      <tbody>{rows}</tbody>'
+            '    </table>'
             '  </div>'
 
-            # Card stack
-            f'  <div style="display:flex;flex-direction:column;gap:12px;padding:4px;">'
-            f'    {cards}'
-            '  </div>'
-
-            '  <div style="margin-top:24px;">'
-            '    <button class="sr-back-btn" hx-get="/school-admin/registration/search-reset/" hx-target="#search-card-container" hx-swap="innerHTML">'
-            '      &larr; Back'
+            '  <div style="display:flex;justify-content:flex-start;">'
+            '    <button hx-get="/school-admin/registration/search-reset/" hx-target="#search-card-container" hx-swap="innerHTML"'
+            '            style="display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;border:1px solid #cbd5e1;color:#334155;padding:10px 22px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:\'Inter\',sans-serif;transition:all 0.2s ease;">'
+            '      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
+            '      Back'
             '    </button>'
             '  </div>'
             '</div>'
         )
     else:
         html = (
-            '<style>'
-            '  .sr-back-btn { background:#ffffff; border:1px solid #cbd5e1; color:#334155; padding:10px 20px; border-radius:8px; font-weight:500; font-size:13px; cursor:pointer; font-family:"Inter",sans-serif; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:6px; }'
-            '  .sr-back-btn:hover { background:#f8fafc; border-color:#94a3b8; }'
-            '</style>'
-            '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">'
-            '  <h3 style="margin:0 0 20px;color:#1e3a8a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
+            '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #22c55e;">'
+            '  <h3 style="margin:0 0 20px;color:#0f172a;font-size:18px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
             '  <div style="text-align:center;padding:48px 24px;color:#94a3b8;">'
             '    <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>'
             '    <p style="margin:0 0 6px;font-size:15px;font-weight:500;color:#475569;">No records found</p>'
             f'    <p style="margin:0;font-size:13px;color:#94a3b8;">No students match &ldquo;{query}&rdquo; in {label} search.</p>'
             '  </div>'
-            '  <div style="margin-top:24px;">'
-            '    <button class="sr-back-btn" hx-get="/school-admin/registration/search-reset/" hx-target="#search-card-container" hx-swap="innerHTML">'
-            '      &larr; Back'
+            '  <div style="display:flex;justify-content:flex-start;">'
+            '    <button hx-get="/school-admin/registration/search-reset/" hx-target="#search-card-container" hx-swap="innerHTML"'
+            '            style="display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;border:1px solid #cbd5e1;color:#334155;padding:10px 22px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:\'Inter\',sans-serif;transition:all 0.2s ease;">'
+            '      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
+            '      Back'
             '    </button>'
             '  </div>'
             '</div>'
@@ -784,7 +906,7 @@ def admin_student_profile_card(request, student_id):
 
         # ── Delete Student (centered, bottom) ──
         '  <div style="margin-top:24px;display:flex;justify-content:center;">'
-        f'    <button class="student-delete-btn" hx-delete="/school-admin/registration/profile/{student.id}/delete/" hx-target="#search-card-container" hx-swap="innerHTML" hx-confirm="Are you sure you want to delete {student.name}? This action cannot be undone.">'
+        f'    <button class="student-delete-btn" hx-post="/school-admin/registration/profile/{student.id}/delete/" hx-target="#search-card-container" hx-swap="innerHTML" hx-confirm="Are you sure you want to delete {student.name}? This action cannot be undone.">'
         '      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>'
         '      Delete Student'
         '    </button>'
@@ -992,7 +1114,7 @@ def admin_student_profile_save(request, student_id):
     student.stream = request.POST.get('stream', student.stream)
     student.religion = request.POST.get('religion', student.religion)
 
-    if Student.objects.filter(school=school, admission_no=student.admission_no).exclude(pk=student.pk).exists():
+    if Student.objects.filter(school=school, admission_no=student.admission_no, is_active=True).exclude(pk=student.pk).exists():
         error_html = (
             '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">'
             '  <svg width="20" height="20" fill="none" stroke="#ef4444" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
@@ -1049,13 +1171,18 @@ def admin_student_profile_save(request, student_id):
 @school_admin_required
 @never_cache
 def admin_student_delete(request, student_id):
-    """HTMX endpoint: delete a student and return the search form shell."""
+    """HTMX endpoint: soft-delete a student and return the search form shell."""
+    from django.utils import timezone
     school = get_request_school(request)
     try:
         student = Student.all_objects.get(pk=student_id, school=school)
         student_name = student.name
-        student.delete()
-        messages.success(request, f"Student '{student_name}' has been deleted successfully.")
+        student.is_active = False
+        student.status = 'Removed'
+        student.date_removed = timezone.now()
+        student.deleted_by = request.user
+        student.save(update_fields=['is_active', 'status', 'date_removed', 'deleted_by'])
+        messages.success(request, f"Student '{student_name}' has been removed successfully.")
     except Student.DoesNotExist:
         messages.error(request, "Student not found.")
 
@@ -1144,21 +1271,31 @@ def admin_student_analytics(request, student_id):
     initials = ''.join([w[0] for w in student.name.split()[:2]]).upper()
     guardian_name = student.guardian.name if student.guardian else '—'
 
+    from django.db.models import Case, When, Value, IntegerField
+    exam_order = Case(
+        When(exam_name__icontains='Opener', then=1),
+        When(exam_name__icontains='Mid', then=2),
+        When(exam_name__icontains='End', then=3),
+        default=0,
+        output_field=IntegerField(),
+    )
     latest = (
-        ExamSummary.objects.filter(student=student, school=school)
-        .order_by('-year', '-term', '-exam_name')
+        ExamSummary.all_objects.filter(student=student, school=school)
+        .annotate(exam_sort=exam_order)
+        .order_by('-year', '-term', '-exam_sort')
         .first()
     )
     all_exams = list(
-        ExamSummary.objects.filter(student=student, school=school)
-        .order_by('-year', '-term', '-exam_name')[:10]
+        ExamSummary.all_objects.filter(student=student, school=school)
+        .annotate(exam_sort=exam_order)
+        .order_by('-year', '-term', '-exam_sort')[:10]
     )
     total_students_in_class = (
-        Student.objects.filter(school=school, class_name=student.class_name, stream=student.stream)
+        Student.all_objects.filter(school=school, class_name=student.class_name, stream=student.stream, is_active=True)
         .count()
     )
     total_students_in_grade = (
-        Student.objects.filter(school=school, class_name=student.class_name)
+        Student.all_objects.filter(school=school, class_name=student.class_name, is_active=True)
         .count()
     )
 
@@ -1223,23 +1360,32 @@ def admin_student_analytics(request, student_id):
 
     # ── Subject performance + chart data (single pass) ──
     chart_labels = []
-    chart_student_scores = []
-    chart_class_scores = []
-    chart_target_scores = []
+    chart_student_data = []
+    chart_form_data = []
+    chart_target_data = []
     subject_perf_rows = ''
     if latest:
         latest_marks = list(
-            Mark.objects.filter(
+            Mark.all_objects.filter(
                 student=student, school=school,
                 year=latest.year, term=latest.term, exam_type=latest.exam_name,
             ).select_related('subject')
         )
+        latest_subj_ids = {mk.subject_id for mk in latest_marks if mk.subject_id}
+        earlier_marks = Mark.all_objects.filter(
+            student=student, school=school,
+            year=latest.year, term=latest.term,
+        ).exclude(exam_type=latest.exam_name).select_related('subject')
+        for mk in earlier_marks:
+            if mk.subject_id and mk.subject_id not in latest_subj_ids:
+                latest_subj_ids.add(mk.subject_id)
+                latest_marks.append(mk)
         subject_names_map = {
-            s.code: s.name for s in Subject.objects.filter(school=school)
+            s.code: s.name for s in Subject.all_objects.filter(school=school)
         }
         class_avgs = {}
-        class_stream_avg = Mark.objects.filter(
-            school=school, class_name=student.class_name, stream=student.stream,
+        class_stream_avg = Mark.all_objects.filter(
+            school=school, student__class_name=student.class_name, student__stream=student.stream,
             year=latest.year, term=latest.term, exam_type=latest.exam_name,
             is_absent=False, score__gt=0,
         ).values('subject__code').annotate(avg=Avg('score'))
@@ -1247,8 +1393,8 @@ def admin_student_analytics(request, student_id):
             class_avgs[row['subject__code']] = round(row['avg'], 1)
 
         grade_avgs = {}
-        all_grade_avg = Mark.objects.filter(
-            school=school, class_name=student.class_name,
+        all_grade_avg = Mark.all_objects.filter(
+            school=school, student__class_name=student.class_name,
             year=latest.year, term=latest.term, exam_type=latest.exam_name,
             is_absent=False, score__gt=0,
         ).values('subject__code').annotate(avg=Avg('score'))
@@ -1257,7 +1403,7 @@ def admin_student_analytics(request, student_id):
 
         target_marks = {}
         if prev_exam:
-            prev_marks = Mark.objects.filter(
+            prev_marks = Mark.all_objects.filter(
                 student=student, school=school,
                 year=prev_exam.year, term=prev_exam.term, exam_type=prev_exam.exam_name,
                 is_absent=False, score__gt=0,
@@ -1267,15 +1413,21 @@ def admin_student_analytics(request, student_id):
 
         subject_class_ranks = {}
         if latest:
-            all_students_marks = Mark.objects.filter(
-                school=school, class_name=student.class_name, stream=student.stream,
-                year=latest.year, term=latest.term, exam_type=latest.exam_name,
+            all_students_marks = Mark.all_objects.filter(
+                school=school, student__class_name=student.class_name, student__stream=student.stream,
+                year=latest.year, term=latest.term,
                 is_absent=False, score__gt=0,
-            ).values('student_id', 'subject__code').annotate(score_val=Avg('score'))
+            ).select_related('subject').order_by('-exam_type')
             from collections import defaultdict
             subj_scores = defaultdict(list)
+            seen_per_student = {}
             for m in all_students_marks:
-                subj_scores[m['subject__code']].append((m['student_id'], m['score_val']))
+                key = (m.student_id, m.subject_id)
+                if key not in seen_per_student:
+                    seen_per_student[key] = m
+                    code = m.subject.code if m.subject else ''
+                    if code:
+                        subj_scores[code].append((m.student_id, m.score))
             for s_code, s_list in subj_scores.items():
                 s_list.sort(key=lambda x: -x[1])
                 rank_map = {}
@@ -1284,18 +1436,22 @@ def admin_student_analytics(request, student_id):
                 total_in_subj = len(s_list)
                 subject_class_ranks[s_code] = (rank_map, total_in_subj)
 
+        SUBJ_SHORT = {
+            '901': 'Eng', '902': 'Kisw', '903': 'Maths', '904': 'KSL',
+            '905': 'IS', '906': 'Agr', '907': 'Soc', '908': 'CRE',
+            '909': 'IRE', '910': 'HRE', '911': 'CAS', '912': 'PRE',
+        }
         for mk in sorted(latest_marks, key=lambda x: (x.subject.code if x.subject else '')):
             if mk.is_absent or mk.score is None:
                 continue
             code = mk.subject.code if mk.subject else ''
             sc = mk.score
             c_avg = class_avgs.get(code, 0)
-            tgt = target_marks.get(code, 0)
+            tgt = 0
 
-            chart_labels.append(code)
-            chart_student_scores.append(sc)
-            chart_class_scores.append(c_avg)
-            chart_target_scores.append(tgt)
+            chart_labels.append(SUBJ_SHORT.get(code, code))
+            chart_student_data.append(sc)
+            chart_form_data.append(c_avg)
 
             subj_name = subject_names_map.get(code, code)
             dev_exam = round(sc - c_avg, 1) if c_avg else 0
@@ -1326,53 +1482,76 @@ def admin_student_analytics(request, student_id):
             )
     if not chart_labels:
         chart_labels = ['No Data']
-        chart_student_scores = [0]
-        chart_class_scores = [0]
-        chart_target_scores = [0]
+        chart_student_data = [0]
+        chart_form_data = [0]
+        chart_target_data = [0]
     if not subject_perf_rows:
         subject_perf_rows = (
             '<tr><td colspan="6" style="padding:40px;text-align:center;color:#94a3b8;font-size:14px;">No subject marks available for this exam.</td></tr>'
         )
 
-    # ── Build chart JSON ──
+    # ── Build clean JSON for chart data ──
     import json as _json
+    has_chart_data = bool(chart_labels) and chart_labels != ['No Data']
     chart_labels_json = _json.dumps(chart_labels)
-    chart_student_scores_json = _json.dumps(chart_student_scores)
-    chart_class_scores_json = _json.dumps(chart_class_scores)
-    chart_target_scores_json = _json.dumps(chart_target_scores)
+    chart_student_data_json = _json.dumps(chart_student_data)
+    chart_form_data_json = _json.dumps(chart_form_data)
+    chart_target_data_json = _json.dumps(chart_target_data)
     chart_student_name = student.name.split()[0].upper() if student.name else 'STUDENT'
     chart_class_label = f"{student.class_name} {student.stream}" if student.class_name else 'Class'
 
-    # ── Performance Over Time chart data ──
+    # ── Performance Over Time chart data (from Mark records, not ExamSummary) ──
+    grade_abbr = student.class_name.replace('Grade', 'G').strip() if student.class_name else 'G'
+    TERM_SHORT = {'Term 1': 'T1', 'Term 2': 'T2', 'Term 3': 'T3'}
+    EXAM_SHORT = {
+        'Opener Assessment': 'OPENER',
+        'Mid Term Assessment': 'MID-TERM',
+        'End of Term Assessment': 'END TERM',
+    }
+
+    from django.db.models import Case, When, Value, IntegerField as IntF
+    exam_sort_expr = Case(
+        When(exam_type__icontains='Opener', then=1),
+        When(exam_type__icontains='Mid', then=2),
+        When(exam_type__icontains='End', then=3),
+        default=0,
+        output_field=IntF(),
+    )
+    mark_exams = (
+        Mark.all_objects.filter(student=student, school=school, is_absent=False, score__gt=0)
+        .values('exam_type', 'term', 'year')
+        .annotate(exam_sort=exam_sort_expr)
+        .order_by('-year', '-term', 'exam_sort')
+        .distinct()
+    )
+
     timeline_labels = []
     timeline_student_scores = []
-    timeline_target_scores = []
-    for ex in reversed(all_exams):
-        ex_mean = round(ex.total_marks / ex.subject_count, 1) if ex.subject_count else 0
-        timeline_labels.append(f"{ex.exam_name} {ex.term}, {ex.year}")
-        timeline_student_scores.append(ex_mean)
-    if timeline_labels and len(all_exams) > 1:
-        ex_grade_avgs = Mark.objects.filter(
-            school=school, class_name=student.class_name,
-            year__in=[ex.year for ex in all_exams],
-            term__in=[ex.term for ex in all_exams],
-            exam_type__in=[ex.exam_name for ex in all_exams],
-            is_absent=False, score__gt=0,
-        ).values('year', 'term', 'exam_type').annotate(avg=Avg('score'))
-        ga_map = {(r['year'], r['term'], r['exam_type']): round(r['avg'], 1) for r in ex_grade_avgs}
-        for ex in reversed(all_exams):
-            timeline_target_scores.append(ga_map.get((ex.year, ex.term, ex.exam_name), 0))
-    elif timeline_labels:
-        timeline_target_scores = [0] * len(timeline_labels)
+    for me in mark_exams:
+        ex_marks = list(
+            Mark.all_objects.filter(
+                student=student, school=school,
+                year=me['year'], term=me['term'], exam_type=me['exam_type'],
+                is_absent=False, score__gt=0,
+            )
+        )
+        if ex_marks:
+            mean_score = round(sum(m.score for m in ex_marks) / len(ex_marks), 1)
+        else:
+            mean_score = 0
+        term_short = TERM_SHORT.get(me['term'], me['term'])
+        exam_short = EXAM_SHORT.get(me['exam_type'], me['exam_type'][:8].upper() if me['exam_type'] else 'EXAM')
+        timeline_labels.append(f"{grade_abbr} {term_short}, {exam_short}, {me['year']}")
+        timeline_student_scores.append(mean_score)
 
     timeline_labels_json = _json.dumps(timeline_labels)
     timeline_student_json = _json.dumps(timeline_student_scores)
-    timeline_target_json = _json.dumps(timeline_target_scores)
+    has_timeline_data = bool(timeline_labels)
 
     html = (
         '<style>'
-        '  .an-back-btn { background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%); border:none; color:#ffffff; padding:12px 28px; border-radius:10px; font-weight:600; font-size:13px; cursor:pointer; font-family:"Inter",sans-serif; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 8px rgba(30,58,138,0.25); }'
-        '  .an-back-btn:hover { background:linear-gradient(135deg,#1e40af 0%,#1d4ed8 100%); box-shadow:0 4px 12px rgba(30,58,138,0.35); transform:translateY(-1px); }'
+        '  .an-back-btn { background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:10px 22px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; font-family:"Inter","Plus Jakarta Sans",sans-serif; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:6px; }'
+        '  .an-back-btn:hover { background:#e2e8f0; border-color:#94a3b8; }'
         '  .an-pill { display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:#475569; font-weight:500; padding:12px 16px; border:1px solid #d1d5db; border-radius:8px; background:#ffffff; transition:all 0.2s; font-family:"Inter",sans-serif; }'
         '  .an-pill:hover { border-color:#94a3b8; background:#f9fafb; }'
         '  .an-pill.active { border-color:#22c55e; background:#f0fdf4; color:#166534; font-weight:600; }'
@@ -1384,6 +1563,22 @@ def admin_student_analytics(request, student_id):
         '  .an-dropdown-select { background:#ffffff; border:1px solid #e2e8f0; color:#334155; padding:10px 32px 10px 14px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; font-family:"Inter",sans-serif; transition:all 0.15s; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }'
         '  .an-dropdown-select:hover { border-color:#94a3b8; }'
         '</style>'
+
+        # ── Inline <script> data block (dual-path: data-* attrs + global vars) ──
+        '<script>'
+        f'window.__chartData = {{'
+        f'"labels": {chart_labels_json},'
+        f'"studentData": {chart_student_data_json},'
+        f'"formData": {chart_form_data_json},'
+        f'"targetData": {chart_target_data_json},'
+        f'"studentName": "{chart_student_name}",'
+        f'"classLabel": "{chart_class_label}"'
+        f'}};'
+        f'window.__timelineData = {{'
+        f'"labels": {timeline_labels_json},'
+        f'"student": {timeline_student_json}'
+        f'}};'
+        '</script>'
 
         '<div style="background:#ffffff;padding:0;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">'
 
@@ -1498,10 +1693,22 @@ def admin_student_analytics(request, student_id):
         # ═══ RIGHT COLUMN ═══
         '      <div style="position:relative;min-height:0;">'
 
-        # ── Chart Canvas (raw, no border/shadow) ──
+        # ── Chart Canvas with inline data ──
         '        <div style="position:absolute;inset:0;">'
-        f'          <canvas id="performanceLineChart" data-labels=\'{chart_labels_json}\' data-student-data=\'{chart_student_scores_json}\' data-class-data=\'{chart_class_scores_json}\' data-target-data=\'{chart_target_scores_json}\' data-student-name="{chart_student_name}" data-class-label="{chart_class_label}"></canvas>'
-        '        </div>'
+        + (f'          <canvas id="performanceLineChart" '
+           f'data-labels=\'{chart_labels_json}\' '
+           f'data-student-data=\'{chart_student_data_json}\' '
+           f'data-form-data=\'{chart_form_data_json}\' '
+           f'data-target-data=\'{chart_target_data_json}\' '
+           f'data-student-name="{chart_student_name}" '
+           f'data-class-label="{chart_class_label}"></canvas>'
+           if has_chart_data else
+           '          <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;">'
+           '            <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/></svg>'
+           '            <p style="margin:0;color:#94a3b8;font-size:14px;font-weight:500;font-family:Inter,sans-serif;">No performance data records available for this exam term session.</p>'
+           '          </div>'
+          )
+        + '        </div>'
 
         '      </div>'
 
@@ -1535,16 +1742,21 @@ def admin_student_analytics(request, student_id):
         '    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;">'
         '      <h3 style="margin:0 0 16px;color:#0f172a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Performance Over Time</h3>'
         '      <div style="position:relative;height:280px;">'
-        f'        <canvas id="performanceTimelineChart" data-tl-labels=\'{timeline_labels_json}\' data-tl-student=\'{timeline_student_json}\' data-tl-target=\'{timeline_target_json}\'></canvas>'
-        '      </div>'
+        + (f'        <canvas id="performanceTimelineChart" data-tl-labels=\'{timeline_labels_json}\' data-tl-student=\'{timeline_student_json}\'></canvas>'
+           if has_timeline_data else
+           '          <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;">'
+           '            <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/></svg>'
+           '            <p style="margin:0;color:#94a3b8;font-size:14px;font-weight:500;font-family:Inter,sans-serif;">No performance data records available for this exam term session.</p>'
+           '          </div>')
+        + '      </div>'
         '    </div>'
         '  </div>'
 
         # ── Back to Student List Button ──
-        '  <div style="padding:0 40px 40px 40px;display:flex;justify-content:center;">'
+        '  <div style="padding:0 40px 40px 40px;display:flex;justify-content:flex-start;">'
         '    <button class="an-back-btn" hx-get="/school-admin/registration/search-submit/?tab=directory" hx-target="#search-card-container" hx-swap="innerHTML">'
-        '      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>'
-        '      Back to Student List'
+        '      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
+        '      Back'
         '    </button>'
         '  </div>'
 
@@ -1595,10 +1807,10 @@ def class_lists(request):
         student_manager = Student.all_objects if is_admin_view else Student.objects
         students = (
             student_manager
-            .filter(school=school, class_name=selected_grade, stream=selected_stream)
-            .filter(admission_no__regex=r'^[0-9]+$')
+            .filter(school=school, class_name=selected_grade, stream=selected_stream, is_active=True)
+            .filter(admission_no__regex=r'^[0-9]+[PJ]$')
             .select_related('guardian')
-            .annotate(adm_int=Cast('admission_no', IntegerField()))
+            .annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
             .order_by('adm_int')
         )
 
@@ -1635,3 +1847,19 @@ def class_lists(request):
         'grades':           grades_for_section,
         'streams':          get_streams_for_school(school, section),
     })
+
+
+# ── HTMX API: section toggle for Add Student form ──────────────────────
+from django.http import JsonResponse
+
+def get_section_info(request):
+    """Return next admission number and grade list for a given section."""
+    section = request.GET.get('section', 'JSS').strip()
+    if section not in ('PRIMARY', 'JSS'):
+        section = 'JSS'
+    next_adm = get_next_admission_no(school_section=section)
+    if section == 'PRIMARY':
+        grades = LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES
+    else:
+        grades = GRADE_CHOICES
+    return JsonResponse({'admission_no': next_adm, 'grades': grades})

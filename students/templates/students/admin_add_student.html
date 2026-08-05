@@ -62,16 +62,16 @@
   }
   .form-card-header {
     padding: 20px 28px;
-    border-bottom: 1px solid var(--en-border, #e2e8f0);
   }
   .form-card-header h3 {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
     color: var(--en-navy, #0f172a);
     margin: 0;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
   .form-card-body { padding: 24px 28px; }
+  .personal-info-card .form-card-header { border-bottom: 1px solid var(--en-border, #e2e8f0); }
 
   .form-grid-2 {
     display: grid;
@@ -81,9 +81,11 @@
   .form-group { display: flex; flex-direction: column; gap: 6px; }
   .form-group.full-span { grid-column: 1 / span 2; }
   .form-label {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
   .form-label .req { color: #ef4444; margin-left: 2px; }
   .form-input, .form-select {
@@ -237,14 +239,44 @@
     align-items: center;
     gap: 10px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
-    color: #334155;
+    color: #1e293b;
     user-select: none;
   }
   .radio-option input[type="radio"] {
-    accent-color: #10b981;
-    width: 16px; height: 16px; cursor: pointer; margin: 0;
+    display: none;
+  }
+  .radio-option .radio-custom {
+    width: 22px;
+    height: 22px;
+    border: 2px solid #94a3b8;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+  .radio-option .radio-custom::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: transparent;
+    transition: background-color 0.2s;
+  }
+  .radio-option input[type="radio"]:checked ~ .radio-custom {
+    border-color: #16a34a;
+    background-color: #16a34a;
+  }
+  .radio-option input[type="radio"]:checked ~ .radio-custom::after {
+    background: #ffffff;
+    width: 8px;
+    height: 8px;
+  }
+  .radio-option:hover .radio-custom {
+    border-color: #16a34a;
   }
 
   .search-card {
@@ -358,7 +390,7 @@
       </a>
     </li>
     <li class="sub-nav-item">
-      <a href="?tab=move_student" class="sub-nav-link">
+      <a href="?tab=move_student" class="sub-nav-link {% if active_tab == 'move_student' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
         Move Students
       </a>
@@ -397,21 +429,52 @@
         <h3>Options</h3>
       </div>
       <div class="form-card-body">
-        <div style="display: flex; gap: 40px; align-items: center;">
+        <div style="display: flex; gap: 50px; align-items: center;">
           <label class="radio-option">
             <input type="radio" name="entry_mode" value="key_in" checked>
+            <span class="radio-custom"></span>
             <span>Key in student details</span>
           </label>
           <label class="radio-option">
             <input type="radio" name="entry_mode" value="spreadsheet">
+            <span class="radio-custom"></span>
             <span>Upload students from a spreadsheet</span>
           </label>
         </div>
       </div>
     </div>
 
+    <!-- CSV Upload Container (loaded via HTMX when spreadsheet radio is selected) -->
+    <div id="csv-upload-container" style="display:none"></div>
+
+    <!-- Section Toggle Card -->
+    <div class="form-card" id="section-toggle-card">
+      <div class="form-card-header">
+        <h3>Enrolment Section</h3>
+      </div>
+      <div class="form-card-body">
+        <div style="display: flex; gap: 16px; align-items: center;">
+          <label class="radio-option">
+            <input type="radio" name="school_section_toggle" value="PRIMARY"
+                   onchange="switchSection('PRIMARY')"
+                   {% if school_section == 'PRIMARY' %}checked{% endif %}>
+            <span class="radio-custom"></span>
+            <span>Primary (Grade 1 – 6)</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="school_section_toggle" value="JSS"
+                   onchange="switchSection('JSS')"
+                   {% if school_section != 'PRIMARY' %}checked{% endif %}>
+            <span class="radio-custom"></span>
+            <span>JSS (Grade 7 – 9)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" name="school_section" id="school_section_field" value="{{ school_section }}">
+
     <!-- Personal Information Card -->
-    <div class="form-card personal-info-card">
+    <div class="form-card personal-info-card" id="add-student-form-card">
       <div class="form-card-header">
         <h3 style="color: var(--en-green, #84cc16);">Personal Information</h3>
       </div>
@@ -515,7 +578,7 @@
             <label class="form-label">Form / Grade</label>
             <select name="grade" class="form-select" id="moveGrade">
               <option value="">Select Form / Grade</option>
-              {% for grade in grades %}
+              {% for grade in move_grades %}
               <option value="{{ grade }}" {% if move_grade == grade %}selected{% endif %}>{{ grade }}</option>
               {% endfor %}
             </select>
@@ -524,7 +587,7 @@
             <label class="form-label">Stream</label>
             <select name="stream" class="form-select" id="moveStream">
               <option value="">Select Stream</option>
-              {% for s in streams %}
+              {% for s in all_streams %}
               <option value="{{ s }}" {% if move_stream == s %}selected{% endif %}>{{ s }}</option>
               {% endfor %}
             </select>
@@ -542,75 +605,121 @@
 
   {% if move_grade and move_stream %}
   <!-- Student List Card -->
-  <div class="form-card">
-    <div class="form-card-header" style="display: flex; align-items: center; justify-content: space-between;">
-      <h3>{{ move_class_label }}</h3>
-      <button type="button" class="btn-select-move" id="selectMoveBtn" onclick="toggleMoveMode()">Select Student To Move</button>
+  <div class="form-card" style="margin-top: 20px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff;">
+    <!-- Header -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; border-bottom: 1px solid #e2e8f0; background: #fff;">
+      <h3 style="font-size: 20px; font-weight: 800; color: #1e293b; margin: 0;">{{ move_class_label }}</h3>
+      <button type="button" id="selectMoveBtn" onclick="toggleMoveMode()" style="display:inline-flex; align-items:center; gap:6px; padding:10px 20px; background:#0f172a; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; transition: background 0.15s;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'">
+        <span id="moveBtnLabel">Select Student To Move</span>
+      </button>
     </div>
-    <div class="form-card-body" style="padding: 0;">
-      {% if move_students %}
-      <div style="overflow-x: auto; width: 100%;">
-        <table class="results-table">
-          <thead>
-            <tr>
-              <th style="width: 50px;">#</th>
-              <th style="width: 120px;">ADM NO</th>
-              <th>NAME</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for s in move_students %}
-            <tr>
-              <td>{{ forloop.counter }}</td>
-              <td style="font-weight: 600; color: var(--en-navy);">{{ s.admission_no }}</td>
-              <td style="font-weight: 600; color: var(--en-navy);">{{ s.name }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <div class="empty-state">No students found in {{ move_class_label }}.</div>
-      {% endif %}
+
+    {% if move_students %}
+    <!-- Table -->
+    <div style="overflow-x: auto; width: 100%;">
+      <table style="width:100%; border-collapse:collapse; font-family: inherit;" id="moveTable">
+        <thead>
+          <tr style="background:#f8fafc;">
+            <th id="moveCheckAllTh" style="padding:14px 12px 14px 28px; text-align:left; width:48px; border-bottom:1px solid #e2e8f0; display:none;">
+              <input type="checkbox" id="moveCheckAll" onchange="toggleAllMoveChecks(this)" style="width:16px; height:16px; cursor:pointer; accent-color:#0ea5e9; border-radius:3px;">
+            </th>
+            <th style="padding:14px 28px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.6px; border-bottom:1px solid #e2e8f0; width:56px;">#</th>
+            <th style="padding:14px 28px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.6px; border-bottom:1px solid #e2e8f0; width:140px;">ADM NO</th>
+            <th style="padding:14px 28px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.6px; border-bottom:1px solid #e2e8f0;">NAME</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in move_students %}
+          <tr style="border-bottom:1px solid #f1f5f9; background:{% if forloop.counter|divisibleby:2 %}#f8fafc{% else %}#ffffff{% endif %}; transition: background 0.1s;">
+            <td class="move-check-td" style="padding:16px 12px 16px 28px; display:none; vertical-align:middle;">
+              <input type="checkbox" class="move-check" value="{{ s.id }}" style="width:16px; height:16px; cursor:pointer; accent-color:#0ea5e9; border-radius:3px; border:1.5px solid #cbd5e1;">
+            </td>
+            <td style="padding:16px 28px; font-size:14px; color:#94a3b8; font-weight:500; vertical-align:middle;">{{ forloop.counter }}</td>
+            <td style="padding:16px 28px; font-size:14px; font-weight:700; color:#1e293b; vertical-align:middle;">{{ s.admission_no }}</td>
+            <td style="padding:16px 28px; font-size:14px; font-weight:600; color:#334155; vertical-align:middle;">{{ s.name }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+
+    <!-- Move to — destination selector (hidden until students selected) -->
+    <div id="moveToSection" style="display:none; padding: 28px; border-top: 1px solid #e2e8f0; background: #f8fafc;">
+      <div style="font-size:15px; font-weight:700; color:#1e293b; margin-bottom:20px;">Move to :</div>
+      <form method="POST" action="{% url 'admin_add_student' %}" id="moveSelectedForm" style="display:flex; flex-direction:column; gap:20px;">
+        {% csrf_token %}
+        <input type="hidden" name="registration_mode" value="promote">
+        <input type="hidden" name="confirm" value="yes">
+        <input type="hidden" name="student_ids" id="moveStudentIds" value="">
+        <input type="hidden" name="source_class" value="{{ move_grade }}">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+          <div>
+            <label style="display:block; font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Destination Form / Grade</label>
+            <select name="target_class" id="moveTargetGrade" required style="width:100%; padding:12px 16px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit; background:#fff; color:#1e293b; outline:none; transition:border-color 0.15s; appearance:none; background-image:url('data:image/svg+xml;utf8,<svg fill=\"%2364748b\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M7 10l5 5 5-5z\"/></svg>'); background-repeat:no-repeat; background-position:right 12px center; background-size:16px;" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#e2e8f0'">
+              <option value="">Select Form / Grade</option>
+              {% for grade in move_grades %}
+              <option value="{{ grade }}">{{ grade }}</option>
+              {% endfor %}
+              <option value="Graduated">🎓 Graduated (Exit System)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Destination Stream</label>
+            <select name="target_stream" id="moveTargetStream" style="width:100%; padding:12px 16px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit; background:#fff; color:#1e293b; outline:none; transition:border-color 0.15s; appearance:none; background-image:url('data:image/svg+xml;utf8,<svg fill=\"%2364748b\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M7 10l5 5 5-5z\"/></svg>'); background-repeat:no-repeat; background-position:right 12px center; background-size:16px;" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#e2e8f0'">
+              <option value="">Select Stream</option>
+              {% for s in all_streams %}
+              <option value="{{ s }}">{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="submit" style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:#0ea5e9; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition: background 0.15s;" onmouseover="this.style.background='#0284c7'" onmouseout="this.style.background='#0ea5e9'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+            Move
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {% else %}
+    <div style="padding:48px 28px; text-align:center; color:#94a3b8; font-size:14px;">No students found in {{ move_class_label }}.</div>
+    {% endif %}
   </div>
   {% endif %}
 
   {# ════════════════ REMOVED STUDENTS TAB ════════════════ #}
   {% elif active_tab == 'removed_students' %}
 
-  <div class="form-card">
+  <div class="form-card" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff;">
     <!-- Header -->
-    <div class="form-card-header" style="border-bottom: none;">
-      <div>
-        <h3 style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0;">Removed Students</h3>
-        <p style="font-size: 13px; color: #94a3b8; margin: 4px 0 0 0;">Manage the students removed from your school</p>
-      </div>
+    <div style="padding: 24px 28px 0 28px;">
+      <h3 style="font-size: 22px; font-weight: 800; color: #1e293b; margin: 0;">Removed Students</h3>
+      <p style="font-size: 14px; color: #94a3b8; margin: 4px 0 0 0;">Manage the students removed from your school</p>
     </div>
 
     <!-- Search + Actions Row -->
-    <div style="display: flex; align-items: flex-end; justify-content: space-between; padding: 0 24px 20px 24px; gap: 16px; flex-wrap: wrap;">
-      <form method="GET" action="{% url 'admin_add_student' %}" style="display: flex; align-items: flex-end; gap: 12px; flex: 1; max-width: 480px;">
-        <input type="hidden" name="tab" value="removed_students">
-        <div style="flex: 1;">
-          <label style="display: block; font-size: 12px; font-weight: 700; color: #0f172a; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Search Student</label>
-          <input type="text" name="q" value="{{ removed_query|default:'' }}" placeholder="Name or Adm no." style="width: 100%; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: inherit; background: #f8fafc; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#9be816'" onblur="this.style.borderColor='#e2e8f0'">
-        </div>
-        <button type="submit" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #0f172a; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          Search
-        </button>
-      </form>
-      <div style="display: flex; gap: 8px; flex-shrink: 0;">
-        <button type="button" onclick="window.print()" style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; background: #fff; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; padding: 24px 28px 20px 28px; gap: 16px; flex-wrap: wrap;">
+      <div style="flex: 1; max-width: 400px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Search Student</label>
+        <form method="GET" action="{% url 'admin_add_student' %}" style="display: flex; gap: 0;">
+          <input type="hidden" name="tab" value="removed_students">
+          <input type="text" name="q" value="{{ removed_query|default:'' }}" placeholder="Name or Adm no." style="flex:1; padding:11px 16px; border:1.5px solid #e2e8f0; border-radius:8px 0 0 8px; font-size:14px; font-family:inherit; background:#fff; color:#1e293b; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#e2e8f0'">
+          <button type="submit" style="padding:11px 18px; background:#0f172a; color:#fff; border:none; border-radius:0 8px 8px 0; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+        </form>
+      </div>
+      <div style="display: flex; gap: 10px; flex-shrink: 0;">
+        <button type="button" onclick="window.print()" style="display:inline-flex; align-items:center; gap:6px; padding:10px 18px; background:#fff; color:#475569; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#fff'">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Print
         </button>
-        <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; background: #fff; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;">
+        <button type="button" style="display:inline-flex; align-items:center; gap:6px; padding:10px 18px; background:#fff; color:#475569; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#fff'">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download
         </button>
-        <button type="button" style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; background: #fff; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;">
+        <button type="button" style="display:inline-flex; align-items:center; gap:6px; padding:10px 18px; background:#fff; color:#475569; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#fff'">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
           Filters
         </button>
@@ -618,43 +727,42 @@
     </div>
 
     <!-- Table -->
-    <div class="form-card-body" style="padding: 0;">
+    <div style="padding: 0;">
       {% if removed_students %}
       <div style="overflow-x: auto; width: 100%;">
-        <table class="results-table">
+        <table style="width:100%; border-collapse:collapse; font-family:inherit;">
           <thead>
-            <tr>
-              <th style="width: 40px;">#</th>
-              <th>Student</th>
-              <th>Admission</th>
-              <th>Class</th>
-              <th>Deleted By</th>
-              <th>Date Removed</th>
-              <th style="width: 140px; text-align: center;">Action</th>
+            <tr style="background:#f8fafc;">
+              <th style="padding:14px 28px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.6px; border-bottom:1px solid #e2e8f0;">Student</th>
+              <th style="padding:14px 28px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.6px; border-bottom:1px solid #e2e8f0; width:130px;">Admission</th>
+              <th style="padding:14px 28px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.6px; border-bottom:1px solid #e2e8f0;">Class</th>
+              <th style="padding:14px 28px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.6px; border-bottom:1px solid #e2e8f0;">Deleted By</th>
+              <th style="padding:14px 28px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.6px; border-bottom:1px solid #e2e8f0; width:140px;">Date Removed</th>
+              <th style="padding:14px 28px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.6px; border-bottom:1px solid #e2e8f0; width:130px;">Action</th>
             </tr>
           </thead>
           <tbody>
             {% for rs in removed_students %}
-            <tr>
-              <td>{{ forloop.counter }}</td>
-              <td>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <div style="width: 36px; height: 36px; border-radius: 50%; background: {% cycle '#fca5a5' '#86efac' '#93c5fd' '#fdba74' '#c4b5fd' '#f9a8d4' '#67e8f9' '#fde047' %}; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; text-transform: uppercase;">
+            <tr style="border-bottom:1px solid #f1f5f9; background:{% if forloop.counter|divisibleby:2 %}#f8fafc{% else %}#ffffff{% endif %}; transition:background 0.1s;">
+              <td style="padding:16px 28px; vertical-align:middle;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <div style="width:38px; height:38px; border-radius:50%; background:{% cycle '#f87171' '#4ade80' '#60a5fa' '#fb923c' '#a78bfa' '#f472b6' '#22d3ee' '#facc15' %}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; text-transform:uppercase; letter-spacing:0.3px;">
                     {{ rs.name|truncatechars:2 }}
                   </div>
-                  <span style="font-weight: 600; color: #0f172a;">{{ rs.name }}</span>
+                  <span style="font-weight:700; color:#1e293b; font-size:14px;">{{ rs.name }}</span>
                 </div>
               </td>
-              <td style="font-weight: 600; color: #0f172a;">{{ rs.admission_no }}</td>
-              <td style="color: #334155;">{{ rs.class_name }} {{ rs.stream }}</td>
-              <td style="color: #475569;">{{ rs.removed_by.get_full_name|default:rs.removed_by.username }}</td>
-              <td style="color: #64748b;">{{ rs.removed_at|date:"d/m/Y" }}</td>
-              <td style="text-align: center;">
-                <form method="POST" action="{% url 'admin_add_student' %}" style="display: inline;">
+              <td style="padding:16px 28px; font-weight:700; color:#1e293b; font-size:14px; vertical-align:middle;">{{ rs.admission_no }}</td>
+              <td style="padding:16px 28px; color:#334155; font-size:14px; vertical-align:middle;">{{ rs.class_name }} {{ rs.stream }}</td>
+              <td style="padding:16px 28px; color:#475569; font-size:14px; vertical-align:middle;">{{ rs.removed_by_name }}</td>
+              <td style="padding:16px 28px; color:#64748b; font-size:14px; vertical-align:middle;">{{ rs.removed_at|date:"d/m/Y" }}</td>
+              <td style="padding:16px 28px; vertical-align:middle;">
+                <form method="POST" action="{% url 'admin_add_student' %}" style="display:inline;">
                   {% csrf_token %}
                   <input type="hidden" name="registration_mode" value="restore_student">
                   <input type="hidden" name="removed_student_id" value="{{ rs.id }}">
-                  <button type="submit" style="display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; background: #fff; color: #0f172a; border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s;" onmouseover="this.style.borderColor='#0f172a'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#fff'">
+                  <input type="hidden" name="restore_source" value="{{ rs.source }}">
+                  <button type="submit" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:#fff; color:#0ea5e9; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s; white-space:nowrap;" onmouseover="this.style.borderColor='#0ea5e9'; this.style.background='#f0f9ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#fff'">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                     Re-admit
                   </button>
@@ -666,7 +774,7 @@
         </table>
       </div>
       {% else %}
-      <div style="text-align: center; padding: 48px 24px; color: #94a3b8; font-size: 14px;">No removed students found.</div>
+      <div style="padding:48px 28px; text-align:center; color:#94a3b8; font-size:14px;">No removed students found.</div>
       {% endif %}
     </div>
   </div>
@@ -810,16 +918,86 @@
     admInput.value = '{{ next_admission_no }}';
   }
 
-  // ── Options radio: toggle form vs spreadsheet redirect ──
+  // ── Options radio: toggle form vs spreadsheet content ──
   var entryRadios = document.querySelectorAll('input[name="entry_mode"]');
-  var personalCard = document.querySelector('.personal-info-card');
+  var personalCard = document.getElementById('add-student-form-card');
+  var csvContainer = document.getElementById('csv-upload-container');
+
   entryRadios.forEach(function(r){
     r.addEventListener('change', function(){
       if(this.value === 'spreadsheet') {
-        window.location.href = '{% url "premium_csv_upload" %}';
+        personalCard.style.display = 'none';
+        csvContainer.style.display = 'block';
+        if(!csvContainer.innerHTML.trim()) {
+          htmx.ajax('GET', '{% url "premium_csv_upload_fragment" %}', {target: '#csv-upload-container', swap: 'innerHTML'});
+        }
+      } else {
+        personalCard.style.display = '';
+        csvContainer.style.display = 'none';
       }
     });
   });
 })();
+</script>
+<script>
+function switchSection(section) {
+  document.getElementById('school_section_field').value = section;
+  fetch('{% url "get_section_info" %}?section=' + section)
+    .then(r => r.json())
+    .then(data => {
+      // Update admission number
+      var admInput = document.querySelector('input[name="admission_no"]');
+      if (admInput) admInput.value = data.admission_no;
+      // Update grade dropdown
+      var gradeSelect = document.querySelector('select[name="class_name"]');
+      if (gradeSelect) {
+        var current = gradeSelect.value;
+        gradeSelect.innerHTML = '<option value="">Select Form / Grade</option>';
+        data.grades.forEach(function(g) {
+          var opt = document.createElement('option');
+          opt.value = g; opt.textContent = g;
+          if (g === current) opt.selected = true;
+          gradeSelect.appendChild(opt);
+        });
+      }
+    });
+}
+</script>
+<script>
+var moveMode = false;
+function toggleMoveMode() {
+  moveMode = !moveMode;
+  var checks = document.querySelectorAll('.move-check');
+  var checkTds = document.querySelectorAll('.move-check-td');
+  var allTh = document.getElementById('moveCheckAllTh');
+  var btn = document.getElementById('moveBtnLabel');
+  var allCb = document.getElementById('moveCheckAll');
+  if (moveMode) {
+    checkTds.forEach(function(td){ td.style.display = ''; });
+    allTh.style.display = '';
+    btn.textContent = 'Cancel Move';
+  } else {
+    checkTds.forEach(function(td){ td.style.display = 'none'; });
+    allTh.style.display = 'none';
+    btn.textContent = 'Select Student To Move';
+    checks.forEach(function(c){ c.checked = false; });
+    if (allCb) allCb.checked = false;
+    document.getElementById('moveStudentIds').value = '';
+    document.getElementById('moveToSection').style.display = 'none';
+  }
+}
+function toggleAllMoveChecks(source) {
+  document.querySelectorAll('.move-check').forEach(function(c){ c.checked = source.checked; });
+  updateMoveIds();
+}
+function updateMoveIds() {
+  var ids = [];
+  document.querySelectorAll('.move-check:checked').forEach(function(c){ ids.push(c.value); });
+  document.getElementById('moveStudentIds').value = ids.join(',');
+  document.getElementById('moveToSection').style.display = ids.length > 0 ? '' : 'none';
+}
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('move-check')) updateMoveIds();
+});
 </script>
 {% endblock %}

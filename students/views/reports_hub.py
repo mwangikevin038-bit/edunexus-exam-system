@@ -76,7 +76,7 @@ def reports_hub(request):
 
         # Student count
         ctx['student_count'] = Student.objects.filter(
-            school=school, class_name=grade, stream=stream,
+            school=school, class_name=grade, stream=stream, is_active=True,
         ).count()
 
         # Top 3 students by total points

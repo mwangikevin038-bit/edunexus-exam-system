@@ -39,6 +39,21 @@ def premium_csv_upload_page(request):
     return render(request, 'students/premium_csv_upload.html')
 
 
+@login_required(login_url='login')
+@school_admin_required
+def premium_csv_upload_fragment(request):
+    """HTMX endpoint: return CSV upload content fragment (no full page)."""
+    from ..models import Stream
+    from students.views.constants import GRADE_CHOICES
+    school = get_request_school(request)
+    grades = GRADE_CHOICES if school else []
+    streams = list(Stream.all_objects.filter(school=school).values_list('name', flat=True).distinct()) if school else []
+    return render(request, 'students/premium_csv_upload_fragment.html', {
+        'grades': grades,
+        'streams': streams,
+    })
+
+
 @csrf_exempt
 @_json_safe_view
 @require_POST

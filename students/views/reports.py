@@ -247,7 +247,7 @@ def results_list(request):
             marks_by_student.setdefault(mark.student_id, []).append(mark)
 
         students = Student.all_objects.filter(
-            school=school, class_name=grade, stream=stream,
+            school=school, class_name=grade, stream=stream, is_active=True,
         ).order_by('admission_no')
         student_count = students.count()
 

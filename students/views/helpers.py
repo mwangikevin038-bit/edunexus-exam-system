@@ -315,7 +315,7 @@ def get_learner_contexts_for_user(user):
     # Non-admin (teacher) views stay scoped via Student.objects (SchoolScopedManager).
     school = get_current_school()
     if is_admin_view:
-        student_qs = Student.all_objects.all()
+        student_qs = Student.all_objects.filter(is_active=True)
         if school:
             student_qs = student_qs.filter(school=school)
         if section == 'JSS':
@@ -325,7 +325,7 @@ def get_learner_contexts_for_user(user):
         elif section == 'LOWER_PRIMARY':
             student_qs = student_qs.filter(school_section='PRIMARY', sub_section='LOWER')
     else:
-        student_qs = Student.objects.all()
+        student_qs = Student.objects.filter(is_active=True)
 
     if is_admin_view:
         qs = student_qs.values("class_name", "stream").annotate(learner_count=Count("id"))
@@ -704,43 +704,45 @@ def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None, scho
     return '-'
 
 
-def get_next_admission_no():
+def get_next_admission_no(school_section=None):
     """
-    Compute the next sequential admission number as a zero-padded string.
-    Skips non-numeric admission numbers safely.
+    Compute the next sequential admission number as a zero-padded string
+    with P/J suffix based on school_section.
     """
+    from django.db.models.functions import Substr, Length
+    suffix = 'P' if school_section == 'PRIMARY' else 'J'
+    qs = Student.all_objects.all().filter(admission_no__regex=r'^[0-9]+[PJ]$')
+    if school_section == 'PRIMARY':
+        qs = qs.filter(school_section='PRIMARY')
+    elif school_section == 'JSS':
+        qs = qs.filter(school_section='JSS')
     last = (
-        Student.objects.all()
-        .filter(admission_no__regex=r'^[0-9]+$')
-        .annotate(adm_int=Cast('admission_no', IntegerField()))
+        qs.annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
         .order_by('adm_int')
         .last()
     )
     if last and last.admission_no:
         try:
-            return f"{int(last.admission_no) + 1:03}"
+            return f"{int(last.admission_no[:-1]) + 1:03}{suffix}"
         except ValueError:
             pass
-    return '001'
+    return f'001{suffix}'
 
 
 def get_students_ordered(grade, stream):
     """
     Return students filtered by grade and stream, ordered by admission number.
-    Non-numeric admission numbers are sorted to the end.
-    Uses a single query with Coalesce for efficient ordering.
+    Handles P/J suffixed admission numbers. Non-numeric parts sorted to the end.
     """
-    from django.db.models import Value, CharField, Case, When, Q
-    from django.db.models.functions import Lower
+    from django.db.models import Value, CharField, Case, When, Q, Length
+    from django.db.models.functions import Substr
     students = Student.all_objects.filter(
-        class_name=grade, stream=stream
-    ).order_by(
-        Case(
-            When(admission_no__regex=r'^[0-9]+$', then=Value(0)),
-            default=Value(1),
-        ),
-        'admission_no'
-    )
+        class_name=grade, stream=stream, is_active=True
+    ).filter(
+        admission_no__regex=r'^[0-9]+[PJ]$'
+    ).annotate(
+        adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField())
+    ).order_by('adm_int')
     return list(students)
 
 
@@ -791,11 +793,11 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
 def get_religion_aware_student_count(class_name, stream, subject):
     """Return the count of students eligible for the given subject."""
     subject_code = subject.code if hasattr(subject, 'code') else subject
-    students = Student.all_objects.filter(class_name=class_name, stream=stream)
+    students = Student.all_objects.filter(class_name=class_name, stream=stream, is_active=True)
     if subject_code in RELIGION_SUBJECTS:
         religion_tag = RELIGION_TAG.get(subject_code, '')
         school = get_current_school()
-        religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag)
+        religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag, is_active=True)
         if school:
             religion_filter['school'] = school
         if Student.all_objects.filter(**religion_filter).exists():

@@ -343,8 +343,9 @@ def _process_chunk(school, chunk, offset, section,
             # No admission_no — generate one (scoped to section so PRIMARY and
             # JSS each have their own independent number series).
             next_no = _next_admission_number(school, school_section=section, sub_section=p["sub_section"])
+            suffix = 'P' if section == 'PRIMARY' else 'J'
             new_students.append(Student(
-                school=school, admission_no=f"{next_no:03}",
+                school=school, admission_no=f"{next_no:03}{suffix}",
                 assessment_no=p["assessment_no"], name=p["name"],
                 class_name=p["class"], stream=p["stream"],
                 term=p["term"], guardian=guardian_obj,

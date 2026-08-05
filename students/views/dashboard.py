@@ -131,7 +131,7 @@ def dashboard(request):
             mark_map[key] = entry['student_count']
 
         student_counts = (
-            Student.objects.filter(school=school)
+            Student.objects.filter(school=school, is_active=True)
             .values('class_name', 'stream')
             .annotate(cnt=Count('id'))
         )
@@ -191,7 +191,7 @@ def school_admin_dashboard(request):
     grade_choices = LOWER_PRIMARY_GRADE_CHOICES if is_lower_primary else (LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES) if is_primary else ['Grade 7', 'Grade 8', 'Grade 9']
 
     # Base querysets filtered by section
-    student_qs = Student.objects.filter(school=school)
+    student_qs = Student.objects.filter(school=school, is_active=True)
     teacher_qs = Teacher.objects.filter(school=school)
     exam_qs = Exam.objects.filter(school=school)
     assignment_qs = SubjectAssignment.objects.filter(school=school)

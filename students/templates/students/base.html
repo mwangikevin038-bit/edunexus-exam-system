@@ -43,7 +43,7 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script>
-      document.body.addEventListener('htmx:configRequest', function(evt) {
+      document.addEventListener('htmx:configRequest', function(evt) {
         var csrfToken = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
         if (csrfToken) {
           evt.detail.headers['X-CSRFToken'] = csrfToken[1];
@@ -539,27 +539,50 @@
             if (canvas && !canvas._chartInit && typeof Chart !== 'undefined') {
                 canvas._chartInit = true;
                 var ctx = canvas.getContext('2d');
-                var labels = canvas.dataset.labels ? JSON.parse(canvas.dataset.labels) : [];
-                var studentData = canvas.dataset.studentData ? JSON.parse(canvas.dataset.studentData) : [];
-                var classData = canvas.dataset.classData ? JSON.parse(canvas.dataset.classData) : [];
-                var targetData = canvas.dataset.targetData ? JSON.parse(canvas.dataset.targetData) : [];
-                var studentName = canvas.dataset.studentName || 'Student';
-                var classLabel = canvas.dataset.classLabel || 'Class';
-                if (labels.length) {
-                    var gradientStudent = ctx.createLinearGradient(0, 0, 0, 360);
-                    gradientStudent.addColorStop(0, 'rgba(34,197,94,0.12)');
-                    gradientStudent.addColorStop(1, 'rgba(34,197,94,0.01)');
-                    var gradientClass = ctx.createLinearGradient(0, 0, 0, 360);
-                    gradientClass.addColorStop(0, 'rgba(148,163,184,0.15)');
-                    gradientClass.addColorStop(1, 'rgba(148,163,184,0.01)');
+                var g = window.__chartData || {};
+                var labels = g.labels || (canvas.dataset.labels ? JSON.parse(canvas.dataset.labels) : []);
+                var studentData = g.studentData || (canvas.dataset.studentData ? JSON.parse(canvas.dataset.studentData) : []);
+                var formData = g.formData || (canvas.dataset.formData ? JSON.parse(canvas.dataset.formData) : []);
+                var targetData = g.targetData || (canvas.dataset.targetData ? JSON.parse(canvas.dataset.targetData) : []);
+                var studentName = g.studentName || canvas.dataset.studentName || 'Student';
+                var classLabel = g.classLabel || canvas.dataset.classLabel || 'Class';
+                if (labels.length && !(labels.length === 1 && labels[0] === 'No Data')) {
+                    var gradStudent = ctx.createLinearGradient(0, 0, 0, 360);
+                    gradStudent.addColorStop(0, 'rgba(34,197,94,0.12)');
+                    gradStudent.addColorStop(1, 'rgba(34,197,94,0.01)');
                     new Chart(ctx, {
                         type: 'line',
                         data: {
                             labels: labels,
                             datasets: [
-                                { label: 'Target', data: targetData, borderColor: '#a855f7', backgroundColor: 'transparent', borderWidth: 2, pointBackgroundColor: '#a855f7', pointBorderColor: '#ffffff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, fill: false, tension: 0.3, borderDash: [5, 5] },
-                                { label: studentName, data: studentData, borderColor: '#22c55e', backgroundColor: gradientStudent, borderWidth: 3, pointBackgroundColor: '#ffffff', pointBorderColor: '#22c55e', pointBorderWidth: 2, pointRadius: 5, pointHoverRadius: 7, fill: true, tension: 0.3 },
-                                { label: classLabel, data: classData, borderColor: '#94a3b8', backgroundColor: gradientClass, borderWidth: 2, pointBackgroundColor: '#94a3b8', pointBorderColor: '#ffffff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, fill: true, tension: 0.3 }
+                                {
+                                    label: 'Form Average',
+                                    data: formData,
+                                    borderColor: '#94a3b8',
+                                    backgroundColor: 'rgba(226,232,240,0.4)',
+                                    borderWidth: 2,
+                                    pointBackgroundColor: '#94a3b8',
+                                    pointBorderColor: '#ffffff',
+                                    pointBorderWidth: 2,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    fill: true,
+                                    tension: 0.3
+                                },
+                                {
+                                    label: studentName,
+                                    data: studentData,
+                                    borderColor: '#22c55e',
+                                    backgroundColor: gradStudent,
+                                    borderWidth: 3,
+                                    pointBackgroundColor: '#ffffff',
+                                    pointBorderColor: '#22c55e',
+                                    pointBorderWidth: 2,
+                                    pointRadius: 5,
+                                    pointHoverRadius: 7,
+                                    fill: true,
+                                    tension: 0.3
+                                }
                             ]
                         },
                         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', align: 'end', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { family: 'Inter', size: 12, weight: '500' }, color: '#64748b' } }, tooltip: { backgroundColor: '#0f172a', titleFont: { family: 'Inter', size: 12 }, bodyFont: { family: 'Inter', size: 13, weight: '600' }, padding: 12, cornerRadius: 8 } }, scales: { x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8' } }, y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8', stepSize: 10 } } } }
@@ -571,23 +594,65 @@
             if (canvas2 && !canvas2._chartInit && typeof Chart !== 'undefined') {
                 canvas2._chartInit = true;
                 var ctx2 = canvas2.getContext('2d');
-                var tlLabels = canvas2.dataset.tlLabels ? JSON.parse(canvas2.dataset.tlLabels) : [];
-                var tlStudent = canvas2.dataset.tlStudent ? JSON.parse(canvas2.dataset.tlStudent) : [];
-                var tlTarget = canvas2.dataset.tlTarget ? JSON.parse(canvas2.dataset.tlTarget) : [];
+                var gt = window.__timelineData || {};
+                var tlLabels = gt.labels || (canvas2.dataset.tlLabels ? JSON.parse(canvas2.dataset.tlLabels) : []);
+                var tlStudent = gt.student || (canvas2.dataset.tlStudent ? JSON.parse(canvas2.dataset.tlStudent) : []);
                 if (tlLabels.length) {
                     var gradTimeline = ctx2.createLinearGradient(0, 0, 0, 280);
-                    gradTimeline.addColorStop(0, 'rgba(34,197,94,0.15)');
+                    gradTimeline.addColorStop(0, 'rgba(34,197,94,0.10)');
                     gradTimeline.addColorStop(1, 'rgba(34,197,94,0.01)');
                     new Chart(ctx2, {
                         type: 'line',
                         data: {
                             labels: tlLabels,
                             datasets: [
-                                { label: 'Target', data: tlTarget, borderColor: '#d946ef', backgroundColor: 'transparent', borderWidth: 2, pointBackgroundColor: '#d946ef', pointBorderColor: '#ffffff', pointBorderWidth: 2, pointRadius: 3, pointHoverRadius: 5, fill: false, tension: 0.3, borderDash: [5, 5] },
-                                { label: 'Exam Mean', data: tlStudent, borderColor: '#22c55e', backgroundColor: gradTimeline, borderWidth: 2.5, pointBackgroundColor: '#ffffff', pointBorderColor: '#22c55e', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, fill: true, tension: 0.3 }
+                                {
+                                    label: 'Exam Mean',
+                                    data: tlStudent,
+                                    borderColor: '#22c55e',
+                                    backgroundColor: gradTimeline,
+                                    borderWidth: 2,
+                                    pointBackgroundColor: '#ffffff',
+                                    pointBorderColor: '#22c55e',
+                                    pointBorderWidth: 2,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    fill: true,
+                                    tension: 0.3
+                                }
                             ]
                         },
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'bottom', align: 'center', labels: { usePointStyle: true, pointStyle: 'line', padding: 20, font: { family: 'Inter', size: 12, weight: '500' }, color: '#64748b' } }, tooltip: { backgroundColor: '#0f172a', titleFont: { family: 'Inter', size: 11 }, bodyFont: { family: 'Inter', size: 12, weight: '600' }, padding: 10, cornerRadius: 8 } }, scales: { x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8', maxRotation: 45, minRotation: 45 } }, y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8', stepSize: 50 } } } }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#0f172a',
+                                    titleFont: { family: 'Inter', size: 11, weight: '600' },
+                                    bodyFont: { family: 'Inter', size: 12, weight: '600' },
+                                    padding: 10,
+                                    cornerRadius: 8,
+                                    displayColors: false,
+                                    callbacks: {
+                                        title: function(items) { return items[0].label; },
+                                        label: function(item) { return 'Exam Mean: ' + item.formattedValue; }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8', maxRotation: 50, minRotation: 50 }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: { color: '#f1f5f9' },
+                                    ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8', stepSize: 50 }
+                                }
+                            }
+                        }
                     });
                 }
             }
