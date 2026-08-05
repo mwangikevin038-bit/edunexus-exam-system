@@ -175,7 +175,7 @@ def school_admin_dashboard(request):
     """
     Executive metric panel for the School ICT Admin.
     Shows population stats, missing-marks feed, grade performance, and best stream.
-    Workspace-aware: filters data by school_section when toggled.
+    Admin sees ALL data across all sections — no section filtering.
     """
     current_year = datetime.date.today().year
 
@@ -184,41 +184,16 @@ def school_admin_dashboard(request):
         messages.error(request, "School context is required.")
         return redirect('welcome_page')
 
-    # Determine workspace section for filtering
-    section = get_request_school_section(request)
-    is_lower_primary = section == 'LOWER_PRIMARY'
-    is_primary = section == 'PRIMARY' or is_lower_primary
-    grade_choices = LOWER_PRIMARY_GRADE_CHOICES if is_lower_primary else (LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES) if is_primary else ['Grade 7', 'Grade 8', 'Grade 9']
+    # Admin sees all grades (no section filtering)
+    grade_choices = LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES + ['Grade 7', 'Grade 8', 'Grade 9']
 
-    # Base querysets filtered by section
-    student_qs = Student.objects.filter(school=school, is_active=True)
-    teacher_qs = Teacher.objects.filter(school=school)
-    exam_qs = Exam.objects.filter(school=school)
-    assignment_qs = SubjectAssignment.objects.filter(school=school)
-    submission_qs = MarkSubmission.objects.filter(school=school)
-    mark_qs = Mark.objects.filter(school=school)
-
-    if section == 'LOWER_PRIMARY':
-        student_qs = student_qs.filter(school_section='PRIMARY', sub_section='LOWER')
-        teacher_qs = teacher_qs.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', None])
-        exam_qs = exam_qs.filter(school_section='PRIMARY', sub_section='LOWER')
-        assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='LOWER')
-        submission_qs = submission_qs.filter(school_section='PRIMARY', sub_section='LOWER')
-        mark_qs = mark_qs.filter(school_section='PRIMARY', sub_section='LOWER')
-    elif section == 'PRIMARY':
-        student_qs = student_qs.filter(school_section='PRIMARY')
-        teacher_qs = teacher_qs.filter(school_section__in=['PRIMARY', 'BOTH'])
-        exam_qs = exam_qs.filter(school_section='PRIMARY', sub_section='UPPER')
-        assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='UPPER')
-        submission_qs = submission_qs.filter(school_section='PRIMARY', sub_section='UPPER')
-        mark_qs = mark_qs.filter(school_section='PRIMARY', sub_section='UPPER')
-    elif section == 'JSS':
-        student_qs = student_qs.filter(school_section='JSS')
-        teacher_qs = teacher_qs.filter(school_section__in=['JSS', 'BOTH'])
-        exam_qs = exam_qs.filter(school_section='JSS')
-        assignment_qs = assignment_qs.filter(school_section='JSS')
-        submission_qs = submission_qs.filter(school_section='JSS')
-        mark_qs = mark_qs.filter(school_section='JSS')
+    # Unfiltered querysets — admin sees everything
+    student_qs = Student.all_objects.filter(school=school, is_active=True)
+    teacher_qs = Teacher.all_objects.filter(school=school)
+    exam_qs = Exam.all_objects.filter(school=school)
+    assignment_qs = SubjectAssignment.all_objects.filter(school=school)
+    submission_qs = MarkSubmission.all_objects.filter(school=school)
+    mark_qs = Mark.all_objects.filter(school=school)
 
     active_exam = exam_qs.filter(status="active").order_by("-year", "term", "name").first()
 
@@ -348,16 +323,6 @@ def school_admin_dashboard(request):
     # --- Active classes count ---
     active_classes = len([g for g, d in class_stats.items() if d['total'] > 0])
 
-    # --- Section label for template ---
-    if is_lower_primary:
-        section_label = 'Lower Primary'
-    elif is_primary:
-        section_label = 'Upper Primary'
-    elif section == 'JSS':
-        section_label = 'Junior Secondary'
-    else:
-        section_label = 'All Sections'
-
     return render(request, 'students/dashboard_admin.html', {
         'total_students':       total_students,
         'total_teachers':       total_teachers,
@@ -378,6 +343,6 @@ def school_admin_dashboard(request):
         'boys_count':           boys_count,
         'girls_count':          girls_count,
         'active_classes':       active_classes,
-        'is_primary':           is_primary,
-        'section_label':        section_label,
+        'is_primary':           True,
+        'section_label':        'All Sections',
     })
