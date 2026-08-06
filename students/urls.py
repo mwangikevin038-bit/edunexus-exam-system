@@ -67,6 +67,7 @@ urlpatterns = [
     path('school-admin/exams/review/', views.review_stream_submission, name='review_stream_submission'),
     path('school-admin/exams/review-submission/', views.review_submission, name='review_submission'),
     path('school-admin/classes/', views.manage_classes, name='manage_classes'),
+    path('school-admin/classes/<int:grade_id>/streams/', views.manage_streams, name='manage_streams'),
 
     # ── Premium CSV Onboarding Engine ────────────────────────────────────
     path('school-admin/csv-onboard/', views.premium_csv_upload_page, name='premium_csv_upload'),

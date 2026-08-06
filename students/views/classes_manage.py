@@ -246,3 +246,131 @@ def manage_classes(request):
         'total_girls': total_girls,
         'total_students': total_students,
     })
+
+
+@login_required(login_url='login')
+@school_admin_required
+def manage_streams(request, grade_id):
+    """
+    School admin view to manage streams within a specific grade.
+    Displays streams table with boy/girl counts, class teacher, and CRUD actions.
+    """
+    from ..models import Grade, Stream, Student, Teacher
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    try:
+        grade = Grade.all_objects.get(id=grade_id, school=school)
+    except Grade.DoesNotExist:
+        messages.error(request, "Grade not found.")
+        return redirect('manage_classes')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add_stream':
+            stream_name = request.POST.get('stream_name', '').strip().title()
+            if not stream_name:
+                messages.error(request, "Stream name cannot be empty.")
+                return redirect('manage_streams', grade_id=grade.id)
+
+            if Stream.all_objects.filter(school=school, grade=grade, name=stream_name).exists():
+                messages.error(request, f"Stream '{stream_name}' already exists in {grade.name}.")
+                return redirect('manage_streams', grade_id=grade.id)
+
+            Stream.all_objects.create(
+                school=school,
+                grade=grade,
+                name=stream_name,
+                school_section=grade.school_section,
+            )
+            messages.success(request, f"Stream '{stream_name}' added to {grade.name}.")
+            return redirect('manage_streams', grade_id=grade.id)
+
+        elif action == 'rename_stream':
+            stream_id = request.POST.get('stream_id')
+            new_name = request.POST.get('new_name', '').strip().title()
+            if not new_name:
+                messages.error(request, "Stream name cannot be empty.")
+                return redirect('manage_streams', grade_id=grade.id)
+            try:
+                stream = Stream.all_objects.get(id=stream_id, school=school)
+            except Stream.DoesNotExist:
+                messages.error(request, "Stream not found.")
+                return redirect('manage_streams', grade_id=grade.id)
+            old_name = stream.name
+            stream.name = new_name
+            stream.save()
+            messages.success(request, f"Stream renamed from '{old_name}' to '{new_name}'.")
+            return redirect('manage_streams', grade_id=grade.id)
+
+        elif action == 'delete_stream':
+            stream_id = request.POST.get('stream_id')
+            try:
+                stream = Stream.all_objects.get(id=stream_id, school=school)
+            except Stream.DoesNotExist:
+                messages.error(request, "Stream not found.")
+                return redirect('manage_streams', grade_id=grade.id)
+            student_count = Student.all_objects.filter(
+                school=school, class_name=grade.name, stream=stream.name, is_active=True,
+            ).count()
+            if student_count > 0:
+                messages.error(
+                    request,
+                    f"Cannot delete '{stream.name}' — {student_count} student(s) are still enrolled. Move them first.",
+                )
+                return redirect('manage_streams', grade_id=grade.id)
+            stream_name = stream.name
+            stream.delete()
+            messages.success(request, f"Stream '{stream_name}' removed from {grade.name}.")
+            return redirect('manage_streams', grade_id=grade.id)
+
+    streams = Stream.all_objects.filter(school=school, grade=grade).order_by('name')
+
+    stream_rows = []
+    total_boys = 0
+    total_girls = 0
+    total_students = 0
+
+    for stream in streams:
+        students_qs = Student.all_objects.filter(
+            school=school, class_name=grade.name, stream=stream.name, is_active=True,
+        )
+        boys = students_qs.filter(gender='Male').count()
+        girls = students_qs.filter(gender='Female').count()
+        total = students_qs.count()
+
+        supervisor = ''
+        ct = Teacher.all_objects.filter(
+            school=school, is_active=True,
+            assigned_task__icontains=grade.name,
+        ).filter(
+            assigned_task__icontains=stream.name,
+        ).filter(
+            assigned_task__icontains='Class Teacher',
+        ).first()
+        if ct:
+            supervisor = ct.get_full_title()
+
+        stream_rows.append({
+            'id': stream.id,
+            'name': stream.name,
+            'boys': boys,
+            'girls': girls,
+            'total': total,
+            'supervisor': supervisor,
+        })
+        total_boys += boys
+        total_girls += girls
+        total_students += total
+
+    return render(request, 'students/manage_streams.html', {
+        'grade': grade,
+        'stream_rows': stream_rows,
+        'total_boys': total_boys,
+        'total_girls': total_girls,
+        'total_students': total_students,
+    })
