@@ -55,15 +55,15 @@
 <nav class="sub-nav-bar">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
-      <a href="{% url 'manage_classes' %}" class="sub-nav-link">
-        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      <a href="{% url 'manage_classes' %}?tab=manage" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Manage Classes
       </a>
     </li>
     <li class="sub-nav-item">
-      <a href="#" class="sub-nav-link active">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Streams – {{ grade.name }}
+      <a href="{% url 'manage_classes' %}?tab=add" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Add New Class
       </a>
     </li>
   </ul>
@@ -265,6 +265,7 @@
     }
 
     .btn-actions {
+        position: relative;
         display: inline-flex;
         align-items: center;
         gap: 5px;
@@ -283,6 +284,48 @@
         flex-shrink: 0;
     }
     .btn-actions:hover { background: #475569; }
+
+    .actions-dropdown {
+        display: none;
+        position: fixed;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        min-width: 160px;
+        z-index: 100;
+        padding: 4px 0;
+    }
+    .actions-dropdown.show { display: block; }
+    .actions-dropdown a,
+    .actions-dropdown button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 8px 14px;
+        border: none;
+        background: none;
+        font-size: 13px;
+        font-weight: 500;
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        color: #334155;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: left;
+        transition: background 0.12s;
+    }
+    .actions-dropdown a:hover,
+    .actions-dropdown button:hover { background: #f1f5f9; }
+    .actions-dropdown a svg,
+    .actions-dropdown button svg {
+        width: 15px; height: 15px;
+        stroke: currentColor; fill: none; stroke-width: 2;
+        stroke-linecap: round; stroke-linejoin: round;
+        flex-shrink: 0;
+    }
+    .actions-dropdown .dropdown-delete { color: #dc2626; }
+    .actions-dropdown .dropdown-delete:hover { background: #fef2f2; }
 
     .btn-add-stream {
         display: inline-flex;
@@ -381,23 +424,30 @@
                         <td class="td-num">{{ row.total }}</td>
                         <td class="td-supervisor">{{ row.supervisor|default:"—" }}</td>
                         <td class="td-actions">
-                            <form method="POST" style="display:inline;"
-                                  onsubmit="return confirm('Delete stream {{ row.name }}? This cannot be undone.');">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="delete_stream">
-                                <input type="hidden" name="stream_id" value="{{ row.id }}">
-                                <button type="submit" class="icon-delete" title="Delete {{ row.name }}">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                                </button>
-                            </form>
                             <button type="button" class="btn-edit-name"
                                     onclick="openRenameModal('{{ row.id }}', '{{ row.name }}')">
                                 <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                 Edit Name
                             </button>
-                            <button type="button" class="btn-actions" onclick="return false;">
-                                &hellip; Actions
+                            <button type="button" class="btn-manage" onclick="return false;">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                Manage
                             </button>
+                            <div style="position:relative;display:inline-flex;">
+                                <button type="button" class="btn-actions" onclick="toggleActionsDropdown(this)">
+                                    &hellip; Actions
+                                </button>
+                                <div class="actions-dropdown">
+                                    <a href="{% url 'class_lists' %}?context={{ grade.name }}|{{ row.name }}">
+                                        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                        Class list
+                                    </a>
+                                    <button type="button" class="dropdown-delete" onclick="openDeleteModal('{{ row.id }}', '{{ row.name }}', {{ row.total }})">
+                                        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -461,7 +511,70 @@
     </div>
 </div>
 
+<div id="deleteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:28px;width:420px;max-width:90vw;box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <h3 style="margin:0 0 8px 0;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:16px;font-weight:700;color:#111827;">Delete Stream</h3>
+        <p id="deleteModalText" style="margin:0 0 16px 0;font-size:14px;color:#64748b;font-family:'Plus Jakarta Sans','Inter',sans-serif;"></p>
+        <div id="deleteModalWarning" style="display:none;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;margin-bottom:16px;">
+            <p style="margin:0;font-size:13px;color:#991b1b;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif;"></p>
+        </div>
+        <form method="POST" id="deleteStreamForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_stream">
+            <input type="hidden" name="stream_id" id="delete_stream_id">
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('deleteModal').style.display='none'"
+                        style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;">Cancel</button>
+                <button type="submit" id="deleteModalBtn"
+                        style="padding:8px 16px;border:none;border-radius:6px;background:#dc2626;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+function toggleActionsDropdown(btn) {
+    var dropdown = btn.nextElementSibling;
+    var isOpen = dropdown.classList.contains('show');
+    closeAllDropdowns();
+    if (!isOpen) {
+        var rect = btn.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + 4) + 'px';
+        dropdown.style.left = (rect.right - 160) + 'px';
+        dropdown.classList.add('show');
+    }
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.actions-dropdown').forEach(function(d) { d.classList.remove('show'); });
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.btn-actions') && !e.target.closest('.actions-dropdown')) {
+        closeAllDropdowns();
+    }
+});
+
+function openDeleteModal(streamId, streamName, studentCount) {
+    document.getElementById('delete_stream_id').value = streamId;
+    document.getElementById('deleteModalText').textContent = 'Are you sure you want to delete stream "' + streamName + '"?';
+    var warning = document.getElementById('deleteModalWarning');
+    var btn = document.getElementById('deleteModalBtn');
+    if (studentCount > 0) {
+        warning.style.display = 'block';
+        warning.querySelector('p').textContent = studentCount + ' student(s) are still enrolled. Move or remove them first.';
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+    } else {
+        warning.style.display = 'none';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+    }
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+
 function openRenameModal(streamId, currentName) {
     document.getElementById('rename_stream_id').value = streamId;
     document.getElementById('rename_stream_name').value = currentName;
