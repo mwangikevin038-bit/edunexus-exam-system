@@ -1,0 +1,189 @@
+﻿{% extends 'students/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .tc-page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 32px 24px;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--global-header-height, 64px));
+  }
+  .tc-page > *:last-child {
+    margin-top: auto;
+  }
+  .tc-teacher-bar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: #fff;
+    border: 1px solid var(--en-border, #e2e8f0);
+    border-radius: 12px;
+    padding: 18px 24px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 6px -1px rgba(15,23,42,0.03), 0 2px 4px -2px rgba(15,23,42,0.03);
+  }
+  .tc-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--en-green, #a4e61d) 0%, #65a30d 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .tc-teacher-info { flex: 1; }
+  .tc-teacher-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--en-navy, #0f172a);
+    margin: 0;
+  }
+  .tc-teacher-username {
+    font-size: 13px;
+    color: #64748b;
+    margin: 2px 0 0;
+  }
+  .tc-teacher-meta {
+    margin-left: auto;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .tc-meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #dcfce7;
+    white-space: nowrap;
+  }
+  .tc-meta-badge.orange {
+    background: #fff7ed;
+    color: #ea580c;
+    border: 1px solid #fed7aa;
+  }
+  .tc-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 14px;
+  }
+  .tc-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.15s;
+    align-self: flex-start;
+  }
+  .tc-back-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+  }
+  .tc-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+  }
+  .tc-empty p { font-size: 15px; margin-top: 12px; }
+</style>
+
+<div class="tc-page">
+
+  <div class="tc-top-content">
+    <div class="tc-teacher-bar">
+      <div class="tc-avatar">{{ teacher.user.first_name|first }}{{ teacher.user.last_name|first }}</div>
+      <div class="tc-teacher-info">
+        <h2 class="tc-teacher-name">{{ teacher.get_full_title }}</h2>
+        <p class="tc-teacher-username">@{{ teacher.user.username }}</p>
+      </div>
+      <div class="tc-teacher-meta">
+        {% if is_class_teacher %}
+          <span class="tc-meta-badge orange">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Class Teacher: {{ ct_class }} {{ ct_stream }}
+          </span>
+        {% endif %}
+        <span class="tc-meta-badge">
+          {{ teacher.get_school_section_display }}
+        </span>
+      </div>
+    </div>
+
+    {% if cards %}
+      <h3 class="tc-section-title">Classes Assigned</h3>
+      <div class="performance-analysis-grid">
+        {% for card in cards %}
+          <div class="analysis-card">
+            <div class="analysis-card-accent" style="height:5px; background:{{ card.accent }};"></div>
+            <div class="analysis-card-header">
+              <h4 class="class-level-title">{{ card.subject_name }}</h4>
+              <span class="exam-period-label">{{ card.display_name }} &middot; {{ card.exam_name }} - ({{ card.exam_year }} {{ card.exam_term }})</span>
+            </div>
+            <div class="metrics-matrix-subgrid">
+              <div class="metric-cell">
+                <span class="cell-label">Mean Points</span>
+                <div class="cell-value-group">
+                  <span class="cell-number">{{ card.mean_points|floatformat:4 }}</span>
+                </div>
+              </div>
+              <div class="metric-cell">
+                <span class="cell-label">Mean Marks</span>
+                <div class="cell-value-group">
+                  <span class="cell-number">{{ card.mean_score|floatformat:2 }}%</span>
+                </div>
+              </div>
+              <div class="metric-cell">
+                <span class="cell-label">Mean Grade</span>
+                <span class="cell-number grade-txt">{{ card.mean_grade }}</span>
+              </div>
+              <div class="metric-cell">
+                <span class="cell-label">Students</span>
+                <span class="cell-number green-txt">{{ card.student_count }}</span>
+              </div>
+            </div>
+            <button class="btn-view-analysis">View Analysis</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="performance-analysis-grid">
+        <div class="tc-empty">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <p>No class assignments found for this teacher.</p>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <a href="{% url 'manage_faculty_matrix' %}?tab=manage" class="tc-back-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Faculty
+  </a>
+
+</div>
+{% endblock %}

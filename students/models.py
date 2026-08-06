@@ -679,6 +679,20 @@ class Teacher(SchoolScopedModel):
         help_text="Contact phone number"
     )
     
+    GENDER_CHOICES = [
+        ('Male', 'Male'),
+        ('Female', 'Female'),
+    ]
+
+    gender = models.CharField(
+        max_length=10,
+        choices=GENDER_CHOICES,
+        blank=True,
+        default='',
+        verbose_name="Gender",
+        help_text="Teacher's gender"
+    )
+    
     email = models.EmailField(
         help_text="Teacher's email address"
     )
@@ -708,6 +722,46 @@ class Teacher(SchoolScopedModel):
     classes = models.CharField(
         max_length=255,
         help_text="Classes taught (e.g., Grade 7 Yellow, Grade 8 Blue, Grade 9 Main)"
+    )
+
+    # ============ ADDITIONAL PROFILE INFORMATION ============
+    national_id = models.CharField(
+        max_length=30,
+        blank=True,
+        default='',
+        verbose_name="National ID No.",
+        help_text="National identification number"
+    )
+
+    address = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name="Address",
+        help_text="Postal or physical address"
+    )
+
+    employee_number = models.CharField(
+        max_length=30,
+        blank=True,
+        default='',
+        verbose_name="Employee Number",
+        help_text="Internal employee number"
+    )
+
+    bio = models.TextField(
+        blank=True,
+        default='',
+        verbose_name="Bio",
+        help_text="Short biography or notes about the teacher"
+    )
+
+    signature = models.ImageField(
+        upload_to='teacher_signatures/',
+        blank=True,
+        null=True,
+        verbose_name="Signature",
+        help_text="Teacher's digital signature image"
     )
     
     # ============ STATUS & METADATA ============

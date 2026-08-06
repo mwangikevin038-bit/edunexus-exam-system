@@ -190,146 +190,62 @@
 <!-- Component 4 Section Heading -->
 <div class="section-header-title">
     Academic Performance
+    {% if exam_label %}
+    <span style="font-size:12px;font-weight:500;color:#94a3b8;margin-left:8px;text-transform:none;letter-spacing:0">{{ exam_label }}</span>
+    {% endif %}
 </div>
 
-<!-- Comprehensive 9-Card Grid (Grade 1 to Grade 9) -->
+<!-- Dynamic Performance Cards Grid (Grade 1 to Grade 9) -->
 <div class="performance-analysis-grid">
-
-    <!-- Card 1: Grade 1 -->
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">Grade 1</h4>
-            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
+    {% for card in grade_performance_cards %}
+    <div class="analysis-card" style="border-top:3px solid {{ card.accent }}">
+        <div class="analysis-card-header" style="background:{{ card.bg }};border-bottom-color:{{ card.border }}">
+            <h4 class="class-level-title" style="color:{{ card.text }}">{{ card.label }}</h4>
+            <span class="exam-period-label">{{ exam_label|default:"No Exam Data" }}</span>
         </div>
         <div class="metrics-matrix-subgrid">
-            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">3.1205</span><span class="deviation-badge positive">+0.120</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">30.45%</span><span class="deviation-badge positive">+1.150</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">B-</span></div>
-            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">145</span></div>
+            <div class="metric-cell">
+                <span class="cell-label">Mean Points</span>
+                <div class="cell-value-group">
+                    <span class="cell-number">{{ card.mean_points|floatformat:4 }}</span>
+                    {% if card.points_dev is not None %}
+                    <span class="deviation-badge {% if card.points_dev >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if card.points_dev >= 0 %}+{% endif %}{{ card.points_dev|floatformat:3 }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="metric-cell">
+                <span class="cell-label">Mean Marks</span>
+                <div class="cell-value-group">
+                    <span class="cell-number">{{ card.mean_score|floatformat:2 }}%</span>
+                    {% if card.score_dev is not None %}
+                    <span class="deviation-badge {% if card.score_dev >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if card.score_dev >= 0 %}+{% endif %}{{ card.score_dev|floatformat:2 }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="metric-cell">
+                <span class="cell-label">Mean Grade</span>
+                <span class="cell-number grade-txt">{{ card.mean_grade }}</span>
+            </div>
+            <div class="metric-cell">
+                <span class="cell-label">Students</span>
+                <span class="cell-number" style="color:{{ card.accent }}">{{ card.student_count }}</span>
+            </div>
         </div>
-        <button class="btn-view-analysis">View Analysis</button>
+        <button class="btn-view-analysis" style="background-color:{{ card.accent }};color:#fff;border-top-color:{{ card.border }}">
+            View Analysis
+        </button>
     </div>
-
-    <!-- Card 2: Grade 2 -->
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">Grade 2</h4>
-            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
-        </div>
-        <div class="metrics-matrix-subgrid">
-            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">3.3003</span><span class="deviation-badge negative">-0.400</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">32.62%</span><span class="deviation-badge negative">-4.830</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">AE2</span></div>
-            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">313</span></div>
-        </div>
-        <button class="btn-view-analysis">View Analysis</button>
+    {% empty %}
+    <div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:#94a3b8;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin:0 auto 12px"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 4-6"/></svg>
+        <p style="font-size:15px;font-weight:600;color:#64748b;margin:0 0 4px">No Performance Data</p>
+        <p style="font-size:13px;color:#94a3b8;margin:0">Publish exam results to see grade performance cards here.</p>
     </div>
-
-    <!-- Card 3: Grade 3 -->
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">Grade 3</h4>
-            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
-        </div>
-        <div class="metrics-matrix-subgrid">
-            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">2.8450</span><span class="deviation-badge positive">+0.050</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">28.10%</span><span class="deviation-badge positive">+0.950</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">C+</span></div>
-            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">188</span></div>
-        </div>
-        <button class="btn-view-analysis">View Analysis</button>
-    </div>
-
-    <!-- Card 4: Grade 4 -->
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">Grade 4</h4>
-            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
-        </div>
-        <div class="metrics-matrix-subgrid">
-            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">1.7392</span><span class="deviation-badge negative">-0.110</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">20.02%</span><span class="deviation-badge negative">-2.150</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">D-</span></div>
-            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">471</span></div>
-        </div>
-        <button class="btn-view-analysis">View Analysis</button>
-    </div>
-
-    <!-- Card 5: Grade 5 -->
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">Grade 5</h4>
-            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
-        </div>
-        <div class="metrics-matrix-subgrid">
-            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">2.4501</span><span class="deviation-badge positive">+0.220</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">25.30%</span><span class="deviation-badge positive">+1.400</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">C</span></div>
-            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">210</span></div>
-        </div>
-        <button class="btn-view-analysis">View Analysis</button>
-    </div>
-
-    <!-- Card 6: Grade 6 -->
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">Grade 6</h4>
-            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
-        </div>
-        <div class="metrics-matrix-subgrid">
-            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">2.1450</span><span class="deviation-badge negative">-0.050</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">24.50%</span><span class="deviation-badge negative">-0.850</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">D</span></div>
-            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">412</span></div>
-        </div>
-        <button class="btn-view-analysis">View Analysis</button>
-    </div>
-
-    <!-- Card 7: Grade 7 -->
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">Grade 7</h4>
-            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
-        </div>
-        <div class="metrics-matrix-subgrid">
-            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">3.0500</span><span class="deviation-badge positive">+0.310</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">31.20%</span><span class="deviation-badge positive">+2.450</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">B</span></div>
-            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">195</span></div>
-        </div>
-        <button class="btn-view-analysis">View Analysis</button>
-    </div>
-
-    <!-- Card 8: Grade 8 -->
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">Grade 8</h4>
-            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
-        </div>
-        <div class="metrics-matrix-subgrid">
-            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">2.9110</span><span class="deviation-badge negative">-0.150</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">29.00%</span><span class="deviation-badge negative">-1.200</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">C+</span></div>
-            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">230</span></div>
-        </div>
-        <button class="btn-view-analysis">View Analysis</button>
-    </div>
-
-    <!-- Card 9: Grade 9 -->
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">Grade 9</h4>
-            <span class="exam-period-label">END TERM - (2026 TERM 2)</span>
-        </div>
-        <div class="metrics-matrix-subgrid">
-            <div class="metric-cell"><span class="cell-label">Mean Points</span><div class="cell-value-group"><span class="cell-number">3.4150</span><span class="deviation-badge positive">+0.510</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Marks</span><div class="cell-value-group"><span class="cell-number">35.90%</span><span class="deviation-badge positive">+3.200</span></div></div>
-            <div class="metric-cell"><span class="cell-label">Mean Grade</span><span class="cell-number grade-txt">A-</span></div>
-            <div class="metric-cell"><span class="cell-label">Students</span><span class="cell-number green-txt">176</span></div>
-        </div>
-        <button class="btn-view-analysis">View Analysis</button>
-    </div>
-
+    {% endfor %}
 </div>
 
 <!-- Component 6: Global Page System Layout Footer -->

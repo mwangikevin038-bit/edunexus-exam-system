@@ -310,14 +310,15 @@ def manage_faculty_matrix(request):
 
             try:
                 default_password = generate_default_password()
-                email_address = request.POST.get('email', '').strip()
+                email_address = request.POST.get('personal_email', '').strip() or request.POST.get('email', '').strip()
+                surname = request.POST.get('surname', '').strip()
                 with transaction.atomic():
                     new_user = User.objects.create_user(
                         username=login_username,
                         email=email_address,
                         password=default_password,
                         first_name=full_name,
-                        last_name='',
+                        last_name=surname,
                     )
                     Teacher.objects.create(
                         user=new_user, title=title, tsc_number=tsc_number,
@@ -328,6 +329,11 @@ def manage_faculty_matrix(request):
                         assigned_task=request.POST.get('assigned_task', 'Teacher'),
                         subjects_taught='', classes='',
                         must_change_password=True,
+                        gender=request.POST.get('gender', ''),
+                        national_id=request.POST.get('national_id', '').strip(),
+                        address=request.POST.get('address', '').strip(),
+                        employee_number=request.POST.get('employee_number', '').strip(),
+                        bio=request.POST.get('bio', '').strip(),
                     )
 
                 clear_teacher_cache(new_user.pk)
@@ -384,8 +390,9 @@ def manage_faculty_matrix(request):
                 with transaction.atomic():
                     teacher      = Teacher.all_objects.get(id=request.POST.get('teacher_id'), school=school)
                     full_name    = request.POST.get('full_name', '').strip()
+                    surname      = request.POST.get('surname', '').strip()
                     phone_number = request.POST.get('phone_number', '').strip()
-                    email        = request.POST.get('email', '').strip()
+                    email        = request.POST.get('personal_email', '').strip() or request.POST.get('email', '').strip()
                     new_tsc      = request.POST.get('tsc_number', '').strip()
 
                     # ── Input validation ───────────────────────────────────
@@ -414,17 +421,24 @@ def manage_faculty_matrix(request):
 
                     # ── Demographics (school_section / sub_section are intentionally NOT updatable) ──
                     teacher.user.first_name = full_name
-                    teacher.user.last_name  = ''
+                    teacher.user.last_name  = surname
                     teacher.user.username   = f"{phone_number}@{school.code}" if phone_number else teacher.user.username
                     teacher.user.email      = email
                     teacher.user.save()
 
-                    teacher.title         = request.POST.get('title')
-                    teacher.tsc_number    = new_tsc
-                    teacher.phone_number  = phone_number
-                    teacher.email         = email
+                    teacher.title          = request.POST.get('title')
+                    teacher.tsc_number     = new_tsc
+                    teacher.phone_number   = phone_number
+                    teacher.email          = email
+                    teacher.gender         = request.POST.get('gender', teacher.gender)
+                    teacher.national_id    = request.POST.get('national_id', teacher.national_id).strip()
+                    teacher.address        = request.POST.get('address', teacher.address).strip()
+                    teacher.employee_number = request.POST.get('employee_number', teacher.employee_number).strip()
+                    teacher.bio            = request.POST.get('bio', teacher.bio).strip()
                     if 'assigned_task' in request.POST:
                         teacher.assigned_task = request.POST.get('assigned_task', teacher.assigned_task)
+                    if request.FILES.get('signature'):
+                        teacher.signature = request.FILES['signature']
                     teacher.save()
 
                 clear_teacher_cache(teacher.user_id)
@@ -660,15 +674,17 @@ def manage_faculty_matrix(request):
     teachers = Teacher.all_objects.filter(school=school).select_related('user').filter(is_active=True)
     assignments = SubjectAssignment.all_objects.filter(school=school).select_related('teacher_profile__user').all()
 
-    if section == 'LOWER_PRIMARY':
-        teachers = teachers.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', None])
-        assignments = assignments.filter(school_section='PRIMARY', sub_section='LOWER')
-    elif section == 'PRIMARY':
-        teachers = teachers.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', 'UPPER', None])
-        assignments = assignments.filter(school_section='PRIMARY', sub_section__in=['LOWER', 'UPPER'])
-    elif section == 'JSS':
-        teachers = teachers.filter(school_section__in=['JSS', 'BOTH'])
-        assignments = assignments.filter(school_section='JSS')
+    # Admin users see ALL teachers regardless of section
+    if not user_has_main_school_admin_override(request.user):
+        if section == 'LOWER_PRIMARY':
+            teachers = teachers.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', None])
+            assignments = assignments.filter(school_section='PRIMARY', sub_section='LOWER')
+        elif section == 'PRIMARY':
+            teachers = teachers.filter(school_section__in=['PRIMARY', 'BOTH'], sub_section__in=['LOWER', 'UPPER', None])
+            assignments = assignments.filter(school_section='PRIMARY', sub_section__in=['LOWER', 'UPPER'])
+        elif section == 'JSS':
+            teachers = teachers.filter(school_section__in=['JSS', 'BOTH'])
+            assignments = assignments.filter(school_section='JSS')
 
     # ── Per-teacher metadata for the cards ──
     # Attach extra attributes directly to the Teacher instances so the
@@ -765,7 +781,10 @@ def manage_faculty_matrix(request):
     else:
         reassign_qs = section_target_qs(school, section)
 
+    active_tab = request.GET.get('tab', 'manage')
+
     return render(request, 'students/manage_faculty.html', {
+        'active_tab':         active_tab,
         'assignments':        assignments,
         'assignment_groups':  _group_assignments_by_subject(assignments),
         'teachers':           teachers_list,
@@ -972,4 +991,206 @@ def learner_profile(request, student_id):
         "form": form,
         "can_edit_student": can_edit_student,
         "is_school_admin": is_school_admin,
+    })
+
+
+@login_required(login_url='login')
+def download_teachers_list_pdf(request):
+    """Generate a PDF of the teachers list for the current school."""
+    import base64
+    import datetime
+    import mimetypes
+
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from weasyprint import HTML
+
+    from ..models import Teacher
+
+    school = get_request_school(request)
+    if not school:
+        from django.http import JsonResponse
+        return JsonResponse({'error': 'School context is required.'}, status=400)
+
+    teachers = Teacher.all_objects.filter(school=school, is_active=True).select_related('user').order_by('user__first_name')
+
+    def _section_label(t):
+        if t.school_section == 'BOTH':
+            return 'Cross-Section'
+        if t.school_section == 'PRIMARY':
+            return 'Lower Primary' if t.sub_section == 'LOWER' else 'Upper Primary'
+        if t.school_section == 'JSS':
+            return 'JSS'
+        return '—'
+
+    for t in teachers:
+        t.section_label = _section_label(t)
+
+    # Embed school logo as base64
+    logo_data_uri = ''
+    try:
+        if school.logo:
+            logo_type = mimetypes.guess_type(school.logo.url)[0] or 'image/png'
+            with school.logo.open('rb') as f:
+                logo_data = base64.b64encode(f.read()).decode('ascii')
+            logo_data_uri = f'data:{logo_type};base64,{logo_data}'
+    except Exception:
+        pass
+
+    template_html = render_to_string('students/teachers_list_pdf.html', {
+        'school': school,
+        'teachers': teachers,
+        'logo_data_uri': logo_data_uri,
+        'generated_date': datetime.date.today().strftime('%d %B %Y'),
+    })
+
+    try:
+        html_doc = HTML(string=template_html, base_url=request.build_absolute_uri('/'))
+        pdf_bytes = html_doc.write_pdf()
+    except Exception as e:
+        from django.http import JsonResponse
+        return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
+
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    filename = f"Teachers_List_{school.code}_{datetime.date.today().year}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required(login_url='login')
+def teacher_classes(request, teacher_id):
+    """Show performance cards: one per subject assignment (previous exam), class teacher class last."""
+    import datetime as _dt
+    from django.db.models import Avg, Count
+    from ..models import Teacher, SubjectAssignment, Mark, Student, Exam, GradingConfig
+
+    school = get_request_school(request)
+    if not school:
+        from django.http import JsonResponse
+        return JsonResponse({'error': 'School context required.'}, status=400)
+
+    # Admin users bypass section isolation
+    if user_has_main_school_admin_override(request.user):
+        teacher = Teacher.all_objects.filter(school=school, id=teacher_id).first()
+    else:
+        teacher = get_school_object_or_403(Teacher, request, using="all_objects", id=teacher_id)
+    if not teacher:
+        messages.error(request, "Teacher not found.")
+        return redirect('manage_faculty_matrix')
+
+    # Accent colors per grade — emerald green family for PRIMARY, blue/amber for JSS
+    grade_colors = {
+        'Grade 1': '#B45309', 'Grade 2': '#B45309', 'Grade 3': '#B45309',
+        'Grade 4': '#00674F', 'Grade 5': '#00674F', 'Grade 6': '#00674F',
+        'Grade 7': '#305CDE', 'Grade 8': '#305CDE', 'Grade 9': '#305CDE',
+    }
+
+    # Get all subject assignments for this teacher
+    assignments = SubjectAssignment.all_objects.filter(
+        school=school, teacher_profile=teacher
+    ).select_related('subject').order_by('class_name', 'stream', 'subject__code')
+
+    # Get the latest published exam per section
+    now = _dt.date.today()
+    latest_exams = {}
+    for section_key in ('JSS', 'PRIMARY'):
+        exam = Exam.all_objects.filter(
+            school=school, school_section=section_key, year=now.year, status='active'
+        ).order_by('-created_at').first()
+        if exam:
+            latest_exams[section_key] = exam
+
+    # Get grading config
+    grading_config = GradingConfig.objects.filter(school=school).first()
+
+    def _mean_grade(avg_score, section_key='PRIMARY'):
+        # Always use section-specific default scale
+        scale = GradingConfig.get_default_subject_scale(section_key)
+        for entry in scale:
+            if entry['min_score'] <= avg_score < entry['max_score'] + 1:
+                return entry['level']
+        return '—'
+
+    def _get_exam_label(exam):
+        if not exam:
+            return '—', '', ''
+        return exam.name.upper(), exam.year, exam.term
+
+    # Parse class teacher assignment
+    is_class_teacher = False
+    ct_class = None
+    ct_stream = None
+    if teacher.assigned_task and teacher.assigned_task != 'Teacher':
+        task_text = teacher.assigned_task.replace('Class Teacher', '').strip()
+        task_words = task_text.split()
+        if len(task_words) >= 2:
+            ct_class = ' '.join(task_words[:-1])
+            ct_stream = task_words[-1]
+            is_class_teacher = True
+
+    # Build one card per subject assignment using PREVIOUS exam data
+    subject_cards = []
+    for a in assignments:
+        if not a.subject:
+            continue
+        class_name = a.class_name
+        stream = a.stream
+        section_key = 'JSS' if class_name in ('Grade 7', 'Grade 8', 'Grade 9') else 'PRIMARY'
+        exam = latest_exams.get(section_key)
+
+        # Latest exam marks for this specific subject in this class+stream
+        mark_qs = Mark.all_objects.filter(
+            school=school,
+            student__class_name=class_name,
+            student__stream=stream,
+            student__is_active=True,
+            subject=a.subject,
+        )
+        if exam:
+            mark_qs = mark_qs.filter(term=exam.term, year=exam.year, exam_type=exam.name)
+
+        stats = mark_qs.aggregate(
+            mean_score=Avg('score'),
+            mean_points=Avg('points'),
+        )
+        mean_score = round(stats['mean_score'] or 0, 2)
+        mean_points = round(stats['mean_points'] or 0, 4)
+        mean_grade = _mean_grade(mean_score, section_key)
+
+        student_count = Student.all_objects.filter(
+            school=school, class_name=class_name, stream=stream, is_active=True
+        ).count()
+
+        exam_name, exam_year, exam_term = _get_exam_label(exam)
+        accent = grade_colors.get(class_name, '#8ae325')
+
+        # Mark if this is the class teacher's supervised class
+        is_ct_class = is_class_teacher and class_name == ct_class and stream == ct_stream
+
+        subject_cards.append({
+            'class_name': class_name,
+            'stream': stream,
+            'display_name': f"{class_name} {stream}",
+            'subject_code': a.subject.code,
+            'subject_name': a.subject.name,
+            'mean_score': mean_score,
+            'mean_points': mean_points,
+            'mean_grade': mean_grade,
+            'student_count': student_count,
+            'exam_name': exam_name,
+            'exam_term': exam_term,
+            'exam_year': exam_year,
+            'accent': accent,
+            'is_ct_class': is_ct_class,
+        })
+
+    # Sort: class teacher's class at the end
+    subject_cards.sort(key=lambda c: (c['is_ct_class'], c['class_name'], c['stream']))
+
+    return render(request, 'students/teacher_classes.html', {
+        'teacher': teacher,
+        'cards': subject_cards,
+        'is_class_teacher': is_class_teacher,
+        'ct_class': ct_class,
+        'ct_stream': ct_stream,
     })

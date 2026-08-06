@@ -1,67 +1,4 @@
-﻿{% extends 'students/base.html' %}
-{% load static %}
-
-{% block sub_tabs %}
-<style>
-  .sub-nav-bar {
-    position: fixed;
-    top: var(--global-header-height, 64px);
-    left: var(--sidebar-width, 260px);
-    right: 0;
-    z-index: 40;
-    display: flex;
-    align-items: stretch;
-    background-color: #84cc16;
-    height: 35px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    flex-shrink: 0;
-  }
-  .sub-nav-list {
-    display: flex;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    height: 100%;
-    align-items: stretch;
-    gap: 0;
-  }
-  .sub-nav-item { display: flex; align-items: stretch; }
-  .sub-nav-link {
-    color: rgba(255,255,255,0.85);
-    text-decoration: none;
-    padding: 0 14px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    height: 100%;
-    font-weight: 600;
-    font-size: 13px;
-    font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
-    transition: background-color 0.15s ease, color 0.15s ease;
-    white-space: nowrap;
-  }
-  .sub-nav-link:hover { color: #ffffff; background-color: #65a30d; }
-  .sub-nav-link.active {
-    color: #ffffff;
-    background-color: #166534;
-    font-weight: 700;
-  }
-  .sub-nav-link svg {
-    width: 16px; height: 16px; flex-shrink: 0;
-    stroke: currentColor; fill: none; stroke-width: 2;
-    stroke-linecap: round; stroke-linejoin: round;
-  }
-</style>
-<nav class="sub-nav-bar">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="?tab=manage" class="sub-nav-link {% if active_tab == 'manage' %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Manage Teachers
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="?tab=add" class="sub-nav-link {% if active_tab == 'add' %}active{% endif %}">
+﻿{% if active_tab == 'add' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
         Add New Teacher
       </a>
@@ -489,7 +426,7 @@
     flex-shrink: 0;
   }
 
-  /* ── Grouped assignment (per subject) ───────────────────────────── */
+  /* â”€â”€ Grouped assignment (per subject) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .assignment-group {
     display: block;
     background: #f8fafc;
@@ -939,7 +876,7 @@
     gap: 8px;
   }
 
-  /* ── Section picker (3 tabs) ───────────────────────────────────── */
+  /* â”€â”€ Section picker (3 tabs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .section-picker {
     display: flex;
     gap: 8px;
@@ -987,7 +924,7 @@
     line-height: 1.5;
   }
 
-  /* ── Sub-section tabs (Primary workspace) ─────────────────────── */
+  /* â”€â”€ Sub-section tabs (Primary workspace) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .sub-section-tabs {
     display: flex;
     gap: 10px;
@@ -1057,7 +994,7 @@
   .sub-section-tab.active-lower .sub-tab-count { border-color: #B45309; color: #92400e; }
   .sub-section-tab.active-upper .sub-tab-count { border-color: #00674F; color: #065f46; }
 
-  /* ── Locked section chip (Edit mode) ────────────────────────────── */
+  /* â”€â”€ Locked section chip (Edit mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .section-locked {
     display: flex;
     align-items: center;
@@ -1085,7 +1022,7 @@
     color: #92400e;
   }
 
-  /* ── Section summary strip (page header) ───────────────────────── */
+  /* â”€â”€ Section summary strip (page header) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .section-summary-strip {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -1117,7 +1054,7 @@
   .summary-count { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1; }
   .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; font-weight: 600; }
 
-  /* ── Section badge on teacher card ─────────────────────────────── */
+  /* â”€â”€ Section badge on teacher card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .section-badge {
     display: inline-flex;
     align-items: center;
@@ -1129,9 +1066,9 @@
     letter-spacing: .5px;
     margin-left: 6px;
   }
-  .section-badge-lower  { background: #FFFBEB; color: #B45309; border: 1px solid #fde68a; }
-  .section-badge-upper  { background: #ECFDF5; color: #00674F; border: 1px solid #a7f3d0; }
-  .section-badge-jss    { background: #EFF6FF; color: #305CDE; border: 1px solid #bfdbfe; }
+  .section-badge-lower  { background: #dbeafe; color: #1d4ed8; }
+  .section-badge-upper  { background: #fef3c7; color: #b45309; }
+  .section-badge-jss    { background: #dcfce7; color: #166534; }
   .section-badge-both   { background: #ede9fe; color: #6d28d9; }
 
   .teacher-meta-row {
@@ -1154,7 +1091,7 @@
   .meta-chip-muted { background: #f8fafc; color: #64748b; }
   .meta-chip i { font-size: 10px; }
 
-  /* ── Allocation section pill ───────────────────────────────────── */
+  /* â”€â”€ Allocation section pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .allocation-section-pill {
     display: inline-flex;
     align-items: center;
@@ -1969,7 +1906,7 @@
         </div>
       {% empty %}
         <div class="empty-state" style="grid-column: 1 / -1;">
-          <div class="empty-state-icon">👨‍🏫</div>
+          <div class="empty-state-icon">ðŸ‘¨â€ðŸ«</div>
           <div class="empty-state-title">No Faculty Found</div>
           <div class="empty-state-text">No active faculty definitions found within this school account.</div>
         </div>
@@ -2064,565 +2001,728 @@
   {% endif %}
 
   {% if active_tab == 'add' %}
-  <style>
-    /* ── Section-aware color tokens ─────────────────────────────────── */
-    :root {
-      --s-accent: #16a34a;
-      --s-accent-50: #f0fdf4;
-      --s-accent-100: #dcfce7;
-      --s-accent-200: #bbf7d0;
-      --s-accent-500: #22c55e;
-      --s-accent-600: #16a34a;
-      --s-accent-700: #15803d;
-      --s-accent-rgb: 22,163,74;
-    }
-    body[data-section-theme="JSS"] {
-      --s-accent: #2563eb;
-      --s-accent-50: #eff6ff;
-      --s-accent-100: #dbeafe;
-      --s-accent-200: #bfdbfe;
-      --s-accent-500: #3b82f6;
-      --s-accent-600: #2563eb;
-      --s-accent-700: #1d4ed8;
-      --s-accent-rgb: 37,99,235;
-    }
-
-    /* ── Page layout ────────────────────────────────────────────────── */
-    .atp { max-width: 920px; margin: 0 auto; padding: 0 0 48px; }
-
-    /* ── Step 1: Section Picker ─────────────────────────────────────── */
-    .step-label {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 14px; padding-left: 2px;
-    }
-    .step-num {
-      width: 26px; height: 26px; border-radius: 50%;
-      background: var(--s-accent); color: #fff;
-      font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; transition: background 0.3s;
-    }
-    .step-text {
-      font-size: 13px; font-weight: 600; color: #64748b; letter-spacing: 0.02em;
-      text-transform: uppercase; transition: color 0.3s;
-    }
-    .step-text span { color: var(--s-accent); font-weight: 700; transition: color 0.3s; }
-
-    .picker-row {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
-    }
-    .picker-card {
-      position: relative;
-      background: #fff;
-      border: 2px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 28px 24px;
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(.4,0,.2,1);
-      overflow: hidden;
-      display: flex; flex-direction: column; align-items: flex-start; gap: 14px;
-    }
-    .picker-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: transparent;
-      transition: background 0.25s;
-    }
-    .picker-card:hover {
-      border-color: #d1d5db;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-      transform: translateY(-2px);
-    }
-    /* Primary selected */
-    .picker-card.pri.is-selected {
-      border-color: #16a34a;
-      background: linear-gradient(135deg, #f0fdf4 0%, #fff 60%);
-      box-shadow: 0 4px 20px rgba(22,163,74,0.12);
-    }
-    .picker-card.pri.is-selected::before { background: #16a34a; }
-    /* JSS selected */
-    .picker-card.jss.is-selected {
-      border-color: #2563eb;
-      background: linear-gradient(135deg, #eff6ff 0%, #fff 60%);
-      box-shadow: 0 4px 20px rgba(37,99,235,0.12);
-    }
-    .picker-card.jss.is-selected::before { background: #2563eb; }
-
-    .picker-icon {
-      width: 52px; height: 52px; border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.25s;
-    }
-    .picker-card.pri .picker-icon { background: #dcfce7; color: #16a34a; }
-    .picker-card.jss .picker-icon { background: #dbeafe; color: #2563eb; }
-    .picker-card.is-selected .picker-icon { transform: scale(1.08); }
-
-    .picker-info { flex: 1; }
-    .picker-title {
-      font-size: 16px; font-weight: 700; color: #0f172a;
-      margin-bottom: 3px; line-height: 1.3;
-    }
-    .picker-sub { font-size: 13px; color: #64748b; line-height: 1.4; }
-
-    .picker-check {
-      position: absolute; top: 16px; right: 16px;
-      width: 26px; height: 26px; border-radius: 50%;
-      border: 2px solid #e5e7eb;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.25s;
-    }
-    .picker-check svg { opacity: 0; transition: opacity 0.2s; }
-    .picker-card.is-selected .picker-check {
-      border-color: var(--s-accent);
-      background: var(--s-accent);
-    }
-    .picker-card.is-selected .picker-check svg { opacity: 1; }
-
-    /* ── Connector line ─────────────────────────────────────────────── */
-    .connector {
-      display: flex; align-items: center; justify-content: center;
-      padding: 10px 0;
-    }
-    .connector-line {
-      width: 2px; height: 20px;
-      background: #e5e7eb;
-      transition: background 0.3s;
-    }
-    body[data-section-theme="JSS"] .connector-line { background: #bfdbfe; }
-
-    /* ── Sub-section tabs ───────────────────────────────────────────── */
-    .sub-bar {
-      display: flex; gap: 0;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-    }
-    .sub-btn {
-      flex: 1; padding: 14px 20px; border: none; background: transparent;
-      cursor: pointer; font-size: 14px; font-weight: 600; color: #64748b;
-      transition: all 0.2s; position: relative;
-    }
-    .sub-btn:not(:last-child) { border-right: 1px solid #f1f5f9; }
-    .sub-btn:hover { color: #334155; background: #f9fafb; }
-    .sub-btn.is-selected {
-      color: var(--s-accent);
-      background: var(--s-accent-50);
-    }
-    .sub-btn.is-selected::after {
-      content: '';
-      position: absolute; bottom: 0; left: 20%; right: 20%; height: 2.5px;
-      border-radius: 2px 2px 0 0;
-      background: var(--s-accent);
-    }
-    .sub-btn .sub-label { display: block; }
-    .sub-btn .sub-range { display: block; font-size: 11px; font-weight: 500; color: #94a3b8; margin-top: 2px; }
-
-    /* ── Form card ──────────────────────────────────────────────────── */
-    .form-card {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-top: 3px solid var(--s-accent);
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-      transition: border-top-color 0.3s;
-    }
-    .form-head {
-      padding: 22px 32px 18px;
-      border-bottom: 1px solid #f1f5f9;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .form-head-left { display: flex; align-items: center; gap: 12px; }
-    .form-head-icon {
-      width: 38px; height: 38px; border-radius: 10px;
-      background: var(--s-accent-100); color: var(--s-accent);
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.3s;
-    }
-    .form-head h3 {
-      font-size: 16px; font-weight: 700; color: #0f172a; margin: 0;
-    }
-    .form-head p {
-      font-size: 12px; color: #94a3b8; margin: 2px 0 0;
-    }
-    .section-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 12px; border-radius: 8px;
-      font-size: 12px; font-weight: 600;
-      background: var(--s-accent-50); color: var(--s-accent-700);
-      border: 1px solid var(--s-accent-200);
-      transition: all 0.3s;
-    }
-    .section-badge svg { width: 14px; height: 14px; }
-
-    /* ── Form body ──────────────────────────────────────────────────── */
-    .form-body { padding: 28px 32px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 28px; }
-    .form-col { display: flex; flex-direction: column; gap: 18px; }
-    .form-group { display: flex; flex-direction: column; }
-    .form-group.full-width { grid-column: 1 / -1; }
-    .form-label {
-      font-size: 12px; font-weight: 600; color: #475569;
-      margin-bottom: 6px; letter-spacing: 0.01em; text-transform: uppercase;
-    }
-    .form-label .req { color: #dc2626; margin-left: 1px; }
-    .form-input {
-      padding: 11px 14px; border: 1.5px solid #e2e8f0; border-radius: 8px;
-      font-size: 14px; color: #1e293b;
-      background: var(--s-accent-50);
-      transition: border-color 0.2s, box-shadow 0.2s, background 0.3s;
-      outline: none; width: 100%;
-    }
-    .form-input:focus {
-      border-color: var(--s-accent);
-      box-shadow: 0 0 0 3px rgba(var(--s-accent-rgb), 0.1);
-      background: #fff;
-    }
-    .form-input::placeholder { color: #a0aec0; font-size: 13px; }
-    .form-input[readonly] {
-      background: #f1f5f9; color: #94a3b8; cursor: not-allowed;
-      border-color: #e2e8f0;
-    }
-    select.form-input {
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-      background-position: right 12px center;
-      background-repeat: no-repeat;
-      background-size: 16px;
-      padding-right: 36px;
-      cursor: pointer;
-    }
-    textarea.form-input { resize: vertical; min-height: 80px; }
-
-    /* ── Section divider inside form ────────────────────────────────── */
-    .section-divider {
-      display: flex; align-items: center; gap: 12px;
-      padding: 4px 0 8px; margin: 8px 0;
-    }
-    .section-divider-line { flex: 1; height: 1px; background: #f1f5f9; }
-    .section-divider-text {
-      font-size: 11px; font-weight: 600; color: #94a3b8;
-      text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
-    }
-
-    /* ── Form footer ────────────────────────────────────────────────── */
-    .form-footer {
-      display: flex; justify-content: flex-end; align-items: center; gap: 12px;
-      padding: 18px 32px;
-      border-top: 1px solid #f1f5f9;
-      background: #fafbfc;
-    }
-    .btn-action {
-      padding: 11px 28px; border-radius: 10px; font-size: 14px;
-      font-weight: 600; border: none; cursor: pointer;
-      transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
-    }
-    .btn-action svg { width: 16px; height: 16px; }
-    .btn-cancel {
-      background: #fff; color: #475569; border: 1.5px solid #e2e8f0;
-    }
-    .btn-cancel:hover { background: #f8fafc; border-color: #cbd5e1; }
-    .btn-submit {
-      background: var(--s-accent); color: #fff;
-      box-shadow: 0 2px 8px rgba(var(--s-accent-rgb), 0.25);
-    }
-    .btn-submit:hover {
-      background: var(--s-accent-700);
-      box-shadow: 0 4px 12px rgba(var(--s-accent-rgb), 0.3);
-      transform: translateY(-1px);
-    }
-
-    /* ── Errors ─────────────────────────────────────────────────────── */
-    .form-errors {
-      background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px;
-      padding: 14px 18px; margin-bottom: 20px; color: #991b1b; font-size: 13px;
-    }
-    .form-errors ul { margin: 4px 0 0 16px; }
-
-    /* ── Responsive ─────────────────────────────────────────────────── */
-    @media (max-width: 700px) {
-      .picker-row { grid-template-columns: 1fr; }
-      .form-row { grid-template-columns: 1fr; }
-      .form-body { padding: 20px 18px; }
-      .form-head { padding: 18px; }
-      .form-footer { padding: 14px 18px; }
-    }
-  </style>
-
-  <div class="atp">
-    <!-- ═══ STEP 1: SECTION PICKER ═══ -->
-    <div class="step-label">
-      <div class="step-num">1</div>
-      <div class="step-text">Section <span>&mdash; Where will this teacher be posted?</span></div>
-    </div>
-    <div class="picker-row">
-      <!-- Primary card -->
-      <div class="picker-card pri is-selected" onclick="pickSection('PRIMARY')" id="cardPrimary">
-        <div class="picker-check">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <div class="picker-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-        </div>
-        <div class="picker-info">
-          <div class="picker-title">Primary School</div>
-          <div class="picker-sub">Lower &amp; Upper Primary &mdash; Grades 1 through 6</div>
-        </div>
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="header-icon">
+        <i class="bi bi-people-fill"></i>
       </div>
-      <!-- JSS card -->
-      <div class="picker-card jss" onclick="pickSection('JSS')" id="cardJSS">
-        <div class="picker-check">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <div class="picker-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-        </div>
-        <div class="picker-info">
-          <div class="picker-title">Junior Secondary (JSS)</div>
-          <div class="picker-sub">Form-level education &mdash; Grades 7 through 9</div>
-        </div>
+      <div>
+        <h1 class="page-title">Faculty Assignment Matrix</h1>
+        <p class="page-subtitle">Link active teacher records to specialized subject parameters and target streams seamlessly.</p>
       </div>
     </div>
+    <button type="button" onclick="openCreateModal()" class="btn-create">
+      <i class="bi bi-plus-circle"></i> Create Teacher
+    </button>
+  </div>
 
-    <!-- Sub-section tabs (Primary only) -->
-    <div id="subSectionBar" style="margin-top:12px;">
-      <div class="sub-bar">
-        <button type="button" class="sub-btn is-selected" data-sub="LOWER" onclick="pickSub(this,'LOWER')">
-          <span class="sub-label">Lower Primary</span>
-          <span class="sub-range">Grades 1 &ndash; 3</span>
-        </button>
-        <button type="button" class="sub-btn" data-sub="UPPER" onclick="pickSub(this,'UPPER')">
-          <span class="sub-label">Upper Primary</span>
-          <span class="sub-range">Grades 4 &ndash; 6</span>
-        </button>
+  {% if messages %}
+    {% for message in messages %}
+      <div style="background: #f0fdf4; color: #166534; padding: 14px 18px; border-radius: 12px; border-left: 4px solid #22c55e; margin-bottom: 20px; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+        <i class="bi bi-check-circle-fill" style="color: #22c55e;"></i> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Section Summary Cards -->
+  <div class="section-summary-strip">
+    <div class="summary-card summary-lower">
+      <div class="summary-icon"><i class="bi bi-book-half"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.LOWER_PRIMARY }}</div>
+        <div class="summary-label">Lower Primary</div>
       </div>
     </div>
-
-    <!-- Connector -->
-    <div class="connector"><div class="connector-line"></div></div>
-
-    <!-- ═══ STEP 2: TEACHER DETAILS FORM ═══ -->
-    <div class="step-label">
-      <div class="step-num">2</div>
-      <div class="step-text">Teacher Details <span>&mdash; Fill in the teacher's information</span></div>
-    </div>
-
-    <div class="form-card" id="formCard">
-      <div class="form-head">
-        <div class="form-head-left">
-          <div class="form-head-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </div>
-          <div>
-            <h3>New Teacher Profile</h3>
-            <p>Create a login and assign this teacher to a section</p>
-          </div>
-        </div>
-        <div class="section-badge" id="sectionBadge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          <span id="badgeLabel">Lower Primary</span>
-        </div>
+    <div class="summary-card summary-upper">
+      <div class="summary-icon"><i class="bi bi-book"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.PRIMARY }}</div>
+        <div class="summary-label">Upper Primary</div>
       </div>
-
-      <form method="POST" id="addTeacherForm">
-        {% csrf_token %}
-        <input type="hidden" name="action_type" value="create_profile">
-        <input type="hidden" name="school_section_posting" id="sectionToken" value="LOWER_PRIMARY">
-
-        <div class="form-body">
-          {% if form_errors %}
-          <div class="form-errors">
-            <strong>Please fix the following:</strong>
-            <ul>{% for err in form_errors %}<li>{{ err }}</li>{% endfor %}</ul>
-          </div>
-          {% endif %}
-
-          <!-- Name fields -->
-          <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-text">Personal Information</div><div class="section-divider-line"></div></div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Surname</label>
-              <input type="text" name="surname" class="form-input" placeholder="Surname" value="{{ form_data.surname|default:'' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">First Name <span class="req">*</span></label>
-              <input type="text" name="full_name" class="form-input" placeholder="First Name" required value="{{ form_data.full_name|default:'' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Other Names</label>
-              <input type="text" name="other_names" class="form-input" placeholder="Other Names" value="{{ form_data.other_names|default:'' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Initials</label>
-              <input type="text" name="initials" class="form-input" placeholder="Auto-generated" maxlength="5" readonly id="fieldInitials" value="{{ form_data.initials|default:'' }}">
-            </div>
-          </div>
-
-          <!-- Contact & employment -->
-          <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-text">Contact &amp; Employment</div><div class="section-divider-line"></div></div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Phone Number <span class="req">*</span></label>
-              <input type="text" name="phone_number" class="form-input" placeholder="0712 345 678" required value="{{ form_data.phone_number|default:'' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Personal Email</label>
-              <input type="email" name="personal_email" class="form-input" placeholder="teacher@email.com" value="{{ form_data.personal_email|default:'' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">TSC Number</label>
-              <input type="text" name="tsc_number" class="form-input" placeholder="TSC Number" value="{{ form_data.tsc_number|default:'' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Employee Number</label>
-              <input type="text" name="employee_number" class="form-input" placeholder="Employee Number" value="{{ form_data.employee_number|default:'' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">National ID No.</label>
-              <input type="text" name="national_id" class="form-input" placeholder="ID Number" value="{{ form_data.national_id|default:'' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Address</label>
-              <input type="text" name="address" class="form-input" placeholder="P.O. Box or Physical Address" value="{{ form_data.address|default:'' }}">
-            </div>
-          </div>
-
-          <!-- Role & classification -->
-          <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-text">Role &amp; Classification</div><div class="section-divider-line"></div></div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Title <span class="req">*</span></label>
-              <select name="title" class="form-input" required>
-                <option value="Mr.">Mr.</option>
-                <option value="Ms.">Ms.</option>
-                <option value="Mrs.">Mrs.</option>
-                <option value="Dr.">Dr.</option>
-                <option value="Prof.">Prof.</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Gender</label>
-              <select name="gender" class="form-input">
-                <option value="">Select Gender...</option>
-                <option value="Male" {% if form_data.gender == 'Male' %}selected{% endif %}>Male</option>
-                <option value="Female" {% if form_data.gender == 'Female' %}selected{% endif %}>Female</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Assigned Role</label>
-              <select name="assigned_task" class="form-input" id="fieldRole">
-                <option value="Teacher">Regular Teacher</option>
-              </select>
-            </div>
-            <div class="form-group full-width">
-              <label class="form-label">Bio</label>
-              <textarea name="bio" class="form-input" placeholder="Short biography or notes about this teacher" rows="3">{{ form_data.bio|default:'' }}</textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-footer">
-          <button type="button" class="btn-action btn-cancel" onclick="window.location.href='{% url 'manage_faculty_matrix' %}?tab=manage'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            Cancel
-          </button>
-          <button type="submit" class="btn-action btn-submit">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Save Teacher
-          </button>
-        </div>
-      </form>
+    </div>
+    <div class="summary-card summary-jss">
+      <div class="summary-icon"><i class="bi bi-mortarboard-fill"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.JSS }}</div>
+        <div class="summary-label">JSS</div>
+      </div>
+    </div>
+    {% if section_summary.BOTH %}
+    <div class="summary-card summary-both">
+      <div class="summary-icon"><i class="bi bi-globe"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.BOTH }}</div>
+        <div class="summary-label">Cross-Section</div>
+      </div>
+    </div>
+    {% endif %}
+    <div class="summary-card summary-total">
+      <div class="summary-icon"><i class="bi bi-people-fill"></i></div>
+      <div>
+        <div class="summary-count">{{ section_summary.TOTAL }}</div>
+        <div class="summary-label">Total Active</div>
+      </div>
     </div>
   </div>
 
-  <script>
-    var _CURRENT_SUB = 'LOWER';
-
-    function pickSection(token) {
-      /* Update hidden field */
-      document.getElementById('sectionToken').value = (token === 'PRIMARY') ? 'LOWER_PRIMARY' : 'JSS';
-
-      /* Update body theme attribute */
-      document.body.setAttribute('data-section-theme', token);
-
-      /* Update picker cards */
-      document.getElementById('cardPrimary').classList.toggle('is-selected', token === 'PRIMARY');
-      document.getElementById('cardJSS').classList.toggle('is-selected', token === 'JSS');
-
-      /* Show/hide sub-section bar */
-      var subBar = document.getElementById('subSectionBar');
-      subBar.style.display = (token === 'PRIMARY') ? 'block' : 'none';
-
-      if (token === 'PRIMARY') {
-        _CURRENT_SUB = 'LOWER';
-        pickSub(document.querySelector('.sub-btn[data-sub="LOWER"]'), 'LOWER');
-      } else {
-        fetchRoleOptions('JSS');
-        updateBadge('JSS');
-      }
-    }
-
-    function pickSub(btn, sub) {
-      _CURRENT_SUB = sub;
-      var token = (sub === 'LOWER') ? 'LOWER_PRIMARY' : 'PRIMARY';
-      document.getElementById('sectionToken').value = token;
-
-      document.querySelectorAll('.sub-btn').forEach(function(b) { b.classList.remove('is-selected'); });
-      if (btn) btn.classList.add('is-selected');
-
-      fetchRoleOptions(token);
-      updateBadge(token);
-    }
-
-    function updateBadge(token) {
-      var badge = document.getElementById('badgeLabel');
-      var badgeIcon = document.querySelector('#sectionBadge svg');
-      var priSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
-      var jssSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>';
-
-      if (token === 'LOWER_PRIMARY') {
-        badge.textContent = 'Lower Primary';
-        badgeIcon.outerHTML = priSvg.replace('14" height="14"', '14" height="14" id="badgeSvg"');
-      } else if (token === 'PRIMARY') {
-        badge.textContent = 'Upper Primary';
-        badgeIcon.outerHTML = priSvg.replace('14" height="14"', '14" height="14" id="badgeSvg"');
-      } else {
-        badge.textContent = 'JSS';
-        badgeIcon.outerHTML = jssSvg.replace('14" height="14"', '14" height="14" id="badgeSvg"');
-      }
-    }
-
-    function fetchRoleOptions(section) {
-      fetch("{% url 'faculty_grade_streams' %}?section=" + encodeURIComponent(section))
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var sel = document.getElementById('fieldRole');
-          if (!sel) return;
-          sel.innerHTML = '<option value="Teacher" selected>Regular Teacher</option>';
-          (data.options || []).forEach(function(opt) {
-            var o = document.createElement('option');
-            o.value = opt; o.textContent = opt; sel.appendChild(o);
-          });
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-      var surname = document.querySelector('input[name="surname"]');
-      var fname = document.querySelector('input[name="full_name"]');
-      var initials = document.getElementById('fieldInitials');
-      function updateInitials() {
-        var s = (surname.value || '').charAt(0);
-        var f = (fname.value || '').charAt(0);
-        initials.value = (s + f).toUpperCase();
-      }
-      if (surname) surname.addEventListener('input', updateInitials);
-      if (fname) fname.addEventListener('input', updateInitials);
-
-      /* Set initial theme */
-      pickSection('PRIMARY');
-    });
-  </script>
+  {% if section == 'PRIMARY' %}
+  <!-- Sub-section tabs for Primary workspace -->
+  <div class="sub-section-tabs" id="subSectionTabs">
+    <div class="sub-section-tab active-lower" data-sub="LOWER" onclick="switchSubSection('LOWER')">
+      <div class="sub-section-tab-icon lower-icon"><i class="bi bi-book-half"></i></div>
+      <div class="sub-section-tab-text">
+        <div class="sub-tab-title">Lower Primary</div>
+        <div class="sub-tab-sub">Grades 1 - 3</div>
+      </div>
+      <span class="sub-tab-count">{{ section_summary.LOWER_PRIMARY }}</span>
+    </div>
+    <div class="sub-section-tab" data-sub="UPPER" onclick="switchSubSection('UPPER')">
+      <div class="sub-section-tab-icon upper-icon"><i class="bi bi-book"></i></div>
+      <div class="sub-section-tab-text">
+        <div class="sub-tab-title">Upper Primary</div>
+        <div class="sub-tab-sub">Grades 4 - 6</div>
+      </div>
+      <span class="sub-tab-count">{{ section_summary.PRIMARY }}</span>
+    </div>
+  </div>
   {% endif %}
 
-{% endblock %}
+  <div class="faculty-grid">
+    <!-- Left: Allocation Form -->
+    <div class="allocation-card">
+      <div class="allocation-header">
+        <div class="allocation-header-icon">
+          <i class="bi bi-link-45deg"></i>
+        </div>
+        <h3>Deploy Allocation</h3>
+        <span class="allocation-section-pill">
+          <i class="bi bi-geo-alt-fill"></i> {{ section_breadcrumb_label }}
+        </span>
+      </div>
+      <div class="allocation-body">
+        <form method="POST">
+          {% csrf_token %}
+
+          <div class="field-group">
+            <label class="field-label">Select Faculty Teacher</label>
+            <select name="teacher_id" class="field-select" required>
+              <option value="" selected disabled>Choose Faculty Profile</option>
+              {% for teacher in teachers %}
+                <option value="{{ teacher.id }}" data-sub-section="{% if teacher.school_section == 'PRIMARY' %}{{ teacher.sub_section|default:'UPPER' }}{% elif teacher.school_section == 'BOTH' %}BOTH{% else %}JSS{% endif %}">{{ teacher.get_full_title }} (TSC: {{ teacher.tsc_number }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Subject Parameter</label>
+            <select name="subject_code" class="field-select" required>
+              <option value="" selected disabled>Choose Subject Assignment</option>
+              {% for subject in subjects %}
+                <option value="{{ subject.id }}" data-sub-section="{{ subject.sub_section|default:'UPPER' }}">{{ subject.name }} ({{ subject.code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Target Class / Grade</label>
+            <select name="grade" class="field-select" required>
+              <option value="" selected disabled>Choose Grade</option>
+              {% for grade in grades %}
+                <option value="{{ grade }}" data-sub-section="{% if grade == 'Grade 1' or grade == 'Grade 2' or grade == 'Grade 3' %}LOWER{% else %}UPPER{% endif %}">{{ grade }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Target Stream Allocations</label>
+            <select name="stream" class="field-select" required>
+              <option value="" selected disabled>Choose Stream</option>
+              {% for stream in streams %}
+                <option value="{{ stream }}">{{ stream }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <button type="submit" class="btn-deploy">
+            <i class="bi bi-send-fill"></i> Deploy Allocation
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Right: Teacher Table -->
+    <div>
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div class="search-box">
+            <input
+              type="text"
+              id="matrixSearch"
+              placeholder="Search by teacher name or subject allocation..."
+              onkeyup="filterMatrixTable()"
+            >
+          </div>
+          <div class="teacher-count">
+            <span class="count-num">{{ teachers|length }}</span> Teachers
+          </div>
+        </div>
+
+        <div class="teacher-cards" id="facultyTable">
+          {% for teacher in teachers %}
+            <div class="teacher-card teacher-row" data-sub-section="{% if teacher.school_section == 'PRIMARY' %}{{ teacher.sub_section|default:'UPPER' }}{% elif teacher.school_section == 'BOTH' %}BOTH{% else %}JSS{% endif %}">
+              <div class="teacher-avatar">{{ teacher.title|first }}</div>
+              <div class="teacher-info">
+                <div class="teacher-name-row">
+                  <span class="teacher-name">{{ teacher.get_full_title }}</span>
+                  <span class="tsc-badge">TSC: {{ teacher.tsc_number }}</span>
+                  {% if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER' %}
+                    <span class="section-badge section-badge-lower">Lower Primary</span>
+                  {% elif teacher.school_section == 'PRIMARY' and teacher.sub_section == 'UPPER' %}
+                    <span class="section-badge section-badge-upper">Upper Primary</span>
+                  {% elif teacher.school_section == 'JSS' %}
+                    <span class="section-badge section-badge-jss">JSS</span>
+                  {% else %}
+                    <span class="section-badge section-badge-both">Cross-Section</span>
+                  {% endif %}
+                </div>
+                <div class="teacher-meta-row">
+                  <span class="meta-chip">
+                    <i class="bi bi-link-45deg"></i>
+                    {{ teacher.assignment_count }} assignment{{ teacher.assignment_count|pluralize }}
+                  </span>
+                  {% if teacher.last_login %}
+                  <span class="meta-chip meta-chip-muted">
+                    <i class="bi bi-clock-history"></i>
+                    Last login: {{ teacher.last_login|date:"M j, Y" }}
+                  </span>
+                  {% else %}
+                  <span class="meta-chip meta-chip-muted">
+                    <i class="bi bi-clock-history"></i>
+                    Never logged in
+                  </span>
+                  {% endif %}
+                </div>
+                <div class="assignments-grid">
+                  {% regroup teacher.filtered_assignments|dictsort:"subject.name" by subject as grouped_assignments %}
+                  {% if grouped_assignments %}
+                    {% for group in grouped_assignments %}
+                      <div class="assignment-group" id="group-{{ teacher.id }}-{{ group.grouper.id }}">
+                        <div class="assignment-group-header">
+                          <span class="chip-dot chip-dot-lg"></span>
+                          <span class="assignment-group-title">{{ group.grouper.name }}</span>
+                          <span class="assignment-group-count">{{ group.list|length }} class{{ group.list|length|pluralize:"es" }}</span>
+                          <div class="assignment-group-actions">
+                            <button type="button" class="btn-mini" title="Reassign this subject to a different teacher"
+                                    onclick="toggleReassign({{ teacher.id }}, {{ group.grouper.id }}, '{{ group.grouper.name|escapejs }}', {{ group.list|length }})">
+                              <i class="bi bi-arrow-left-right"></i> Reassign
+                            </button>
+                            <form method="POST" style="display: inline-block;"
+                                  onsubmit="return confirm('Remove {{ group.grouper.name|escapejs }} from {{ teacher.get_full_title|escapejs }}? This will unassign {{ group.list|length }} class{{ group.list|length|pluralize }}.');">
+                              {% csrf_token %}
+                              <input type="hidden" name="action_type" value="delete_subject_group">
+                              <input type="hidden" name="teacher_id" value="{{ teacher.id }}">
+                              <input type="hidden" name="subject_id" value="{{ group.grouper.id }}">
+                              <button type="submit" class="btn-mini btn-mini-danger" title="Remove all assignments of this subject">
+                                <i class="bi bi-x-lg"></i>
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                        <div class="assignment-group-classes">
+                          {% for assignment in group.list|dictsort:"class_name" %}
+                            <span class="class-pill">{{ assignment.class_name }} {{ assignment.stream }}</span>
+                          {% endfor %}
+                        </div>
+                        <div class="assignment-group-reassign" id="reassign-{{ teacher.id }}-{{ group.grouper.id }}" style="display: none;">
+                          <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action_type" value="reassign_subject_group">
+                            <input type="hidden" name="teacher_id" value="{{ teacher.id }}">
+                            <input type="hidden" name="subject_id" value="{{ group.grouper.id }}">
+                            <span class="reassign-label">Move to:</span>
+                            <select name="new_teacher_id" class="field-select-inline" required>
+                              <option value="" disabled selected>Pick teacher...</option>
+                              {% for t in reassign_targets %}
+                                {% if t.id != teacher.id %}
+                                  <option value="{{ t.id }}">{{ t.get_full_title }} ({{ t.section_label|default:t.school_section }})</option>
+                                {% endif %}
+                              {% endfor %}
+                            </select>
+                            <button type="submit" class="btn-mini btn-mini-primary">
+                              <i class="bi bi-check-lg"></i> Save
+                            </button>
+                            <button type="button" class="btn-mini" onclick="toggleReassign({{ teacher.id }}, {{ group.grouper.id }}, '{{ group.grouper.name|escapejs }}', {{ group.list|length }})">
+                              Cancel
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  {% else %}
+                    <span class="no-assignments">No active assignments mapped to this profile.</span>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="teacher-actions">
+                <button type="button" class="btn-action"
+                        data-id="{{ teacher.id }}"
+                        data-title="{{ teacher.title|default:'Mr.' }}"
+                        data-fullname="{{ teacher.user.first_name|default:teacher.user.username }}"
+                        data-tsc="{{ teacher.tsc_number }}"
+                        data-phone="{{ teacher.phone_number|default:'' }}"
+                        data-email="{{ teacher.email|default:'' }}"
+                        data-section="{{ teacher.section_label|default:'' }}"
+                        data-assigned-task="{{ teacher.assigned_task|default:'Teacher' }}"
+                        data-section-token="{% if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER' %}LOWER_PRIMARY{% elif teacher.school_section == 'PRIMARY' and teacher.sub_section == 'UPPER' %}PRIMARY{% elif teacher.school_section == 'JSS' %}JSS{% else %}BOTH{% endif %}"
+                        onclick="handleEditClick(this)">
+                  <i class="bi bi-pencil-square"></i> Edit
+                </button>
+                <form method="POST" action="" onsubmit="return confirm('Are you sure you want to delete this teacher? This will permanently remove their login credentials and all subject assignments.');" style="display: inline-block;">
+                      {% csrf_token %}
+                      <input type="hidden" name="action_type" value="delete_profile">
+                      <input type="hidden" name="teacher_id" value="{{ teacher.id }}">
+                      <button type="submit" class="btn-action btn-delete">
+                          <i class="bi bi-trash3"></i> Delete
+                      </button>
+                </form>
+              </div>
+            </div>
+          {% empty %}
+            <div class="empty-state">
+              <div class="empty-state-icon">ðŸ‘¨â€ðŸ«</div>
+              <div class="empty-state-title">No Faculty Found</div>
+              <div class="empty-state-text">No active faculty definitions found within this school account.</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <a href="{% url 'school_admin_dashboard' %}" class="back-link">
+        <i class="bi bi-arrow-left"></i> Back to Admin Control Deck
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Faculty Modal -->
+<div id="facultyModal" class="modal-overlay" style="display: none;">
+  <div class="modal-subnav">
+    <div class="modal-subnav-title">
+      <i class="bi bi-info-circle-fill"></i> Teacher Details
+    </div>
+    <button class="modal-close-btn" onclick="closeFacultyModal()">Ã—</button>
+  </div>
+
+  <form id="facultyActionForm" method="POST" action="/school-admin/faculty/" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" id="modal_action_type" name="action_type" value="">
+    <input type="hidden" id="modal_teacher_id" name="teacher_id" value="">
+    <input type="hidden" name="school_section_posting" id="school_section_posting" value="">
+
+    <div class="modal-content">
+      <!-- LEFT PANEL: Profile Preview -->
+      <div class="modal-left">
+        <div class="modal-avatar">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <h2 class="modal-teacher-name" id="previewName">â€”</h2>
+        <p class="modal-teacher-username" id="previewUsername">â€”</p>
+        <p class="modal-teacher-phone">Phone: <span id="previewPhone">â€”</span></p>
+        <div class="modal-signature-label">Signature</div>
+        <div class="modal-signature-box" id="signaturePreview">
+          <span>No signature</span>
+        </div>
+        <button type="button" class="modal-delete-btn" id="deleteTeacherBtn" style="display:none;" onclick="confirmDeleteTeacher()">
+          <i class="bi bi-trash-fill"></i> Delete
+        </button>
+      </div>
+
+      <!-- RIGHT PANEL: Edit Form -->
+      <div class="modal-right">
+        <h2 class="modal-form-title" id="modalFormTitle">Update details</h2>
+
+        <!-- Section Posting (hidden on edit) -->
+        <div id="sectionPickerBlock">
+          <div class="form-field-label" style="margin-bottom:8px;">
+            <i class="bi bi-geo-alt-fill" style="color:#22c55e;"></i> Where will this teacher be posted?
+          </div>
+          <div class="section-picker" id="sectionPicker" role="tablist">
+            <button type="button" class="section-pick-tab" data-section="LOWER_PRIMARY" role="tab">
+              <i class="bi bi-book-half"></i>
+              <div class="section-pick-title">Lower Primary</div>
+              <div class="section-pick-sub">Grades 1 - 3</div>
+            </button>
+            <button type="button" class="section-pick-tab" data-section="PRIMARY" role="tab">
+              <i class="bi bi-book"></i>
+              <div class="section-pick-title">Upper Primary</div>
+              <div class="section-pick-sub">Grades 4 - 6</div>
+            </button>
+            <button type="button" class="section-pick-tab" data-section="JSS" role="tab">
+              <i class="bi bi-mortarboard-fill"></i>
+              <div class="section-pick-title">Junior Secondary</div>
+              <div class="section-pick-sub">Grades 7 - 9</div>
+            </button>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Pick one. The teacher will only see data for this section. This is permanent.</div>
+        </div>
+        <div class="section-locked" id="sectionLockedChip" style="display: none;">
+          <span style="font-size:12px;color:#64748b;">Posted to</span>
+          <span id="sectionLockedValue" style="font-size:12px;font-weight:700;color:#0f172a;">â€”</span>
+          <i class="bi bi-lock-fill" style="color:#94a3b8;font-size:12px;"></i>
+        </div>
+
+        <div class="form-grid-2col" style="margin-top:20px;">
+          <div>
+            <label class="form-field-label">First Name <span class="req">*</span></label>
+            <input type="text" id="field_full_name" name="full_name" class="form-field-input" placeholder="First Name" required>
+          </div>
+          <div>
+            <label class="form-field-label">Surname</label>
+            <input type="text" id="field_surname" name="surname" class="form-field-input" placeholder="Surname">
+          </div>
+          <div>
+            <label class="form-field-label">Title <span class="req">*</span></label>
+            <select id="field_title" name="title" class="form-field-input">
+              <option value="Mr.">Mr.</option>
+              <option value="Ms.">Ms.</option>
+              <option value="Mrs.">Mrs.</option>
+              <option value="Dr.">Dr.</option>
+              <option value="Prof.">Prof.</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-field-label">Initials</label>
+            <input type="text" id="field_initials" name="initials" class="form-field-input" placeholder="e.g. LA" maxlength="5" readonly style="background:#f1f5f9;">
+          </div>
+          <div>
+            <label class="form-field-label">Personal Email</label>
+            <input type="email" id="field_personal_email" name="personal_email" class="form-field-input" placeholder="personal@email.com">
+          </div>
+          <div>
+            <label class="form-field-label">Phone Number <span class="req">*</span></label>
+            <input type="text" id="field_phone_number" name="phone_number" class="form-field-input" placeholder="e.g. 0712345678">
+          </div>
+          <div>
+            <label class="form-field-label">Gender</label>
+            <select id="field_gender" name="gender" class="form-field-input">
+              <option value="">-- Select Gender --</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-field-label">TSC Number</label>
+            <input type="text" id="field_tsc_number" name="tsc_number" class="form-field-input" placeholder="e.g. 123456">
+          </div>
+          <div>
+            <label class="form-field-label">National ID No.</label>
+            <input type="text" id="field_national_id" name="national_id" class="form-field-input" placeholder="National ID No.">
+          </div>
+          <div>
+            <label class="form-field-label">Address</label>
+            <input type="text" id="field_address" name="address" class="form-field-input" placeholder="Address">
+          </div>
+          <div>
+            <label class="form-field-label">Employee Number</label>
+            <input type="text" id="field_employee_number" name="employee_number" class="form-field-input" placeholder="Employee Number">
+          </div>
+          <div>
+            <label class="form-field-label">Assigned Role</label>
+            <select name="assigned_task" class="form-field-input">
+              <option value="Teacher">Regular Teacher</option>
+              {% for role in grade_streams %}
+                <option value="{{ role }}">{{ role }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <label class="form-field-label">Bio</label>
+          <textarea id="field_bio" name="bio" class="form-field-input" placeholder="Short biography or notes about the teacher" rows="3"></textarea>
+        </div>
+
+        <div style="margin-top:16px;">
+          <label class="form-field-label">Signature</label>
+          <input type="file" id="field_signature" name="signature" class="form-field-input" accept="image/*" style="padding:8px;">
+        </div>
+
+        <div class="modal-form-footer">
+          <button type="button" onclick="closeFacultyModal()" class="btn-back">
+            <i class="bi bi-arrow-left"></i> Back
+          </button>
+          <button type="submit" class="btn-save">
+            <i class="bi bi-save-fill"></i> Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  function filterTeacherCards() {
+    let input = document.getElementById("teacherSearch").value.toUpperCase();
+    let container = document.getElementById("teacherGrid");
+    let cards = container.getElementsByClassName("teacher-card-row");
+    for (let i = 0; i < cards.length; i++) {
+      let textContent = cards[i].textContent || cards[i].innerText;
+      if (textContent.toUpperCase().indexOf(input) > -1) {
+        cards[i].style.display = "";
+      } else {
+        cards[i].style.display = "none";
+      }
+    }
+  }
+
+  function filterMatrixTable() {
+    let input = document.getElementById("matrixSearch").value.toUpperCase();
+    let container = document.getElementById("facultyTable");
+    let cards = container.getElementsByClassName("teacher-row");
+    for (let i = 0; i < cards.length; i++) {
+      let textContent = cards[i].textContent || cards[i].innerText;
+      if (textContent.toUpperCase().indexOf(input) > -1) {
+        cards[i].style.display = "";
+      } else {
+        cards[i].style.display = "none";
+      }
+    }
+  }
+
+  function handleEditClick(buttonElement) {
+    const d = buttonElement.dataset;
+    openEditModal(d.id, d.title, d.firstname, d.surname, d.tsc, d.phone, d.email, d.section, d.sectionToken, d.assignedTask, d.gender, d.nationalId, d.address, d.employeeNumber, d.bio, d.username);
+  }
+
+  function openCreateModal() {
+    const modal = document.getElementById("facultyModal");
+    document.getElementById("modal_action_type").value = "create_profile";
+    document.getElementById("modal_teacher_id").value = "";
+    document.getElementById("modalFormTitle").textContent = "Register New Teacher";
+    document.getElementById("field_title").value = "Mr.";
+    document.getElementById("field_full_name").value = "";
+    document.getElementById("field_surname").value = "";
+    document.getElementById("field_initials").value = "";
+    document.getElementById("field_gender").value = "";
+    document.getElementById("field_tsc_number").value = "";
+    document.getElementById("field_phone_number").value = "";
+    document.getElementById("field_personal_email").value = "";
+    document.getElementById("field_national_id").value = "";
+    document.getElementById("field_address").value = "";
+    document.getElementById("field_employee_number").value = "";
+    document.getElementById("field_bio").value = "";
+    document.getElementById("previewName").textContent = "â€”";
+    document.getElementById("previewUsername").textContent = "â€”";
+    document.getElementById("previewPhone").textContent = "â€”";
+    document.getElementById("signaturePreview").innerHTML = "<span>No signature</span>";
+
+    document.getElementById("sectionPickerBlock").style.display = "block";
+    document.getElementById("sectionLockedChip").style.display = "none";
+    document.getElementById("deleteTeacherBtn").style.display = "none";
+
+    const ws = "{{ section|default:'JSS' }}";
+    const token = (ws === "LOWER_PRIMARY" || ws === "PRIMARY" || ws === "JSS") ? ws : "JSS";
+    selectSection(token);
+
+    modal.style.display = "block";
+    document.body.style.overflow = "hidden";
+  }
+
+  function openEditModal(id, title, firstName, surname, tscNumber, phoneNumber, email, sectionLabel, sectionToken, assignedTask, gender, nationalId, address, employeeNumber, bio, username) {
+    const modal = document.getElementById("facultyModal");
+    document.getElementById("modal_action_type").value = "edit_profile";
+    document.getElementById("modal_teacher_id").value = id;
+    document.getElementById("modalFormTitle").textContent = "Update details for " + (firstName || username || "Teacher");
+
+    document.getElementById("field_title").value = title || "Mr.";
+    document.getElementById("field_full_name").value = firstName || "";
+    document.getElementById("field_surname").value = surname || "";
+    document.getElementById("field_gender").value = gender || "";
+    document.getElementById("field_tsc_number").value = tscNumber || "";
+    document.getElementById("field_phone_number").value = phoneNumber || "";
+    document.getElementById("field_personal_email").value = email || "";
+    document.getElementById("field_national_id").value = nationalId || "";
+    document.getElementById("field_address").value = address || "";
+    document.getElementById("field_employee_number").value = employeeNumber || "";
+    document.getElementById("field_bio").value = bio || "";
+
+    const initials = ((firstName || "").charAt(0) + (surname || "").charAt(0)).toUpperCase();
+    document.getElementById("field_initials").value = initials;
+
+    document.getElementById("previewName").textContent = (title || "") + " " + (firstName || surname || username || "â€”");
+    document.getElementById("previewUsername").textContent = username || "â€”";
+    document.getElementById("previewPhone").textContent = phoneNumber || "â€”";
+
+    document.getElementById("sectionPickerBlock").style.display = "none";
+    document.getElementById("sectionLockedChip").style.display = "flex";
+    document.getElementById("sectionLockedValue").textContent = sectionLabel || sectionToken || "â€”";
+    document.getElementById("school_section_posting").value = sectionToken || "";
+    document.getElementById("deleteTeacherBtn").style.display = "flex";
+
+    // Fetch role options for the current section, then set the value
+    fetchGradeStreams(sectionToken || 'JSS');
+    setTimeout(function() {
+      var sel = document.querySelector('select[name="assigned_task"]');
+      if (sel) {
+        // Ensure the current value exists as an option
+        if (assignedTask && !Array.from(sel.options).some(function(o) { return o.value === assignedTask; })) {
+          var opt = document.createElement("option");
+          opt.value = assignedTask;
+          opt.textContent = assignedTask;
+          sel.appendChild(opt);
+        }
+        sel.value = assignedTask || 'Teacher';
+      }
+    }, 300);
+
+    modal.style.display = "block";
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeFacultyModal() {
+    document.getElementById("facultyModal").style.display = "none";
+    document.body.style.overflow = "";
+  }
+
+  function confirmDeleteTeacher() {
+    if (confirm('Are you sure you want to delete this teacher? This action cannot be undone.')) {
+      const teacherId = document.getElementById("modal_teacher_id").value;
+      if (teacherId) {
+        window.location.href = '/school-admin/faculty/?action=delete&teacher_id=' + teacherId;
+      }
+    }
+  }
+
+  function selectSection(token) {
+    document.getElementById("school_section_posting").value = token;
+    document.querySelectorAll(".section-pick-tab").forEach(function (el) {
+      el.classList.toggle("active", el.getAttribute("data-section") === token);
+    });
+    fetchGradeStreams(token);
+  }
+
+  function fetchGradeStreams(section) {
+    fetch("{% url 'faculty_grade_streams' %}?section=" + encodeURIComponent(section))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var sel = document.querySelector('select[name="assigned_task"]');
+        if (!sel) return;
+        sel.innerHTML = '<option value="Teacher" selected>Regular Teacher</option>';
+        (data.options || []).forEach(function(opt) {
+          var o = document.createElement("option");
+          o.value = opt;
+          o.textContent = opt;
+          sel.appendChild(o);
+        });
+      });
+  }
+
+  document.querySelectorAll(".section-pick-tab").forEach(function (el) {
+    el.addEventListener("click", function () {
+      selectSection(this.getAttribute("data-section"));
+    });
+  });
+
+  /* â”€â”€ Sub-section tab switching (Primary workspace) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  var currentSubSection = 'LOWER';
+  function switchSubSection(sub) {
+    currentSubSection = sub;
+    var tabs = document.querySelectorAll('.sub-section-tab');
+    tabs.forEach(function(t) {
+      t.classList.remove('active-lower', 'active-upper');
+      if (t.getAttribute('data-sub') === sub) {
+        t.classList.add(sub === 'LOWER' ? 'active-lower' : 'active-upper');
+      }
+    });
+    filterFacultyBySubSection(sub);
+  }
+
+  function filterFacultyBySubSection(sub) {
+    // Filter new card grid (Manage Teachers tab)
+    var cards = document.querySelectorAll('#teacherGrid .teacher-card-row');
+    cards.forEach(function(card) {
+      var cardSub = card.getAttribute('data-sub-section');
+      var show = false;
+      if (sub === 'LOWER') {
+        show = (cardSub === 'LOWER' || cardSub === 'BOTH');
+      } else {
+        show = (cardSub === 'UPPER' || cardSub === 'BOTH');
+      }
+      card.style.display = show ? '' : 'none';
+    });
+
+    // Filter old list view (Add New Teacher tab)
+    var oldCards = document.querySelectorAll('#facultyTable .teacher-row');
+    oldCards.forEach(function(card) {
+      var cardSub = card.getAttribute('data-sub-section');
+      var show = false;
+      if (sub === 'LOWER') {
+        show = (cardSub === 'LOWER' || cardSub === 'BOTH');
+      } else {
+        show = (cardSub === 'UPPER' || cardSub === 'BOTH');
+      }
+      card.style.display = show ? '' : 'none';
+    });
+  }
+
+  // Initialize on page load for PRIMARY workspace
+  (function() {
+    var tabs = document.getElementById('subSectionTabs');
+    if (tabs) {
+      filterFacultyBySubSection('LOWER');
+    }
+  })();
+
+  /* â”€â”€ List View Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  function toggleListView() {
+    var grid = document.querySelector('.teacher-directory');
+    var list = document.getElementById('listViewContainer');
+    if (!grid || !list) return;
+    if (list.style.display === 'block') {
+      list.style.display = 'none';
+      grid.style.display = '';
+    } else {
+      list.style.display = 'block';
+      grid.style.display = 'none';
+    }
+  }
+
+  function toggleListColumn(col, visible) {
+    var cells = document.querySelectorAll('#teachersListPaper [data-col="' + col + '"]');
+    cells.forEach(function(el) {
+      el.style.display = visible ? '' : 'none';
+    });
+  }
+
+  function printTeachersList() {
+    var paper = document.getElementById('teachersListPaper');
+    if (!paper) return;
+    var printWin = window.open('', '_blank', 'width=800,height=600');
+    printWin.document.write('<!DOCTYPE html><html><head><title>Teachers List</title>');
+    printWin.document.write('<style>');
+    printWin.document.write('@page { size: A4 portrait; margin: 15mm 12mm; }');
+    printWin.document.write('* { box-sizing: border-box; margin: 0; padding: 0; }');
+    printWin.document.write('body { font-family: "Times New Roman", Times, serif; color: #111; font-size: 12pt; line-height: 1.15; }');
+    printWin.document.write('.header { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 10pt; border-bottom: 3px solid #000; margin-bottom: 8pt; }');
+    printWin.document.write('.header-left { display: flex; align-items: center; gap: 14px; }');
+    printWin.document.write('.logo { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }');
+    printWin.document.write('.logo-placeholder { width: 72px; height: 72px; border-radius: 50%; background: #22c55e; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; color: #fff; }');
+    printWin.document.write('.school-name { font-size: 20pt; font-weight: 700; text-transform: uppercase; }');
+    printWin.document.write('.header-right { text-align: right; font-size: 10pt; line-height: 1.7; }');
+    printWin.document.write('.title { text-align: center; font-size: 14pt; font-weight: 700; padding: 6pt 0; border-bottom: 1px solid #000; margin-bottom: 0; }');
+    printWin.document.write('table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; }');
+    printWin.document.write('th, td { border: 1px solid #000; padding: 4pt 6pt; font-size: 11pt; text-align: left; }');
+    printWin.document.write('th { background: #f2f2f2; font-weight: 700; font-size: 10pt; text-transform: uppercase; letter-spacing: 0.2pt; }');
+    printWin.document.write('tr { page-break-inside: avoid; }');
+    printWin.document.write('.col-num { width: 28px; text-align: center; font-weight: 600; color: #444; }');
+    printWin.document.write('</style></head><body>');
+    printWin.document.write(paper.innerHTML);
+    printWin.document.write('</body></html>');
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(function() { printWin.print(); printWin.close(); }, 500);
+  }
+</script>
+

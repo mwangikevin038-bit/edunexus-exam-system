@@ -1528,6 +1528,7 @@ body.sidebar-collapsed .main-content {
     box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.03), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
     overflow: hidden;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-top-width: 3px;
 }
 
 .analysis-card:hover {
@@ -1631,12 +1632,11 @@ body.sidebar-collapsed .main-content {
     font-weight: 700;
     cursor: pointer;
     text-align: center;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, opacity 0.2s;
     border-top: 1px solid var(--en-border);
 }
-
 .btn-view-analysis:hover {
-    background-color: #8cd612;
+    opacity: 0.88;
 }
 
 /* ── Global Workspace Footer ──────────────────────────────── */

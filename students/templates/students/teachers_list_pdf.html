@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Teachers List</title>
+  <style>
+    @page { size: A4 portrait; margin: 15mm 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; font-size: 11px; }
+
+    .header { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 12px; border-bottom: 3px solid #0f172a; margin-bottom: 10px; }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .logo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 1px solid #e5e7eb; }
+    .logo-placeholder { width: 64px; height: 64px; border-radius: 50%; background: #22c55e; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #fff; }
+    .school-name { font-size: 16px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
+    .header-right { text-align: right; font-size: 10px; color: #475569; line-height: 1.7; }
+    .title { text-align: center; font-size: 14px; font-weight: 700; color: #334155; padding: 8px 0; border-bottom: 1px solid #e5e7eb; margin-bottom: 0; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th { background: #f1f5f9; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: #334155; padding: 7px 8px; border-bottom: 2px solid #cbd5e1; text-align: left; }
+    tbody tr { border-bottom: 1px solid #e5e7eb; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody td { padding: 6px 8px; font-size: 10.5px; vertical-align: middle; }
+    .col-num { width: 28px; text-align: center; font-weight: 600; color: #64748b; }
+
+    .footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      {% if school.logo %}
+        <img src="{{ logo_data_uri }}" alt="Logo" class="logo">
+      {% else %}
+        <div class="logo-placeholder">{{ school.name|truncatechars:1 }}</div>
+      {% endif %}
+      <div class="school-name">{{ school.name }}</div>
+    </div>
+    <div class="header-right">
+      {% if school.address %}{{ school.address }}<br>{% endif %}
+      {% if school.phone_number %}Tel: {{ school.phone_number }}<br>{% endif %}
+      {% if school.email %}{{ school.email }}{% endif %}
+    </div>
+  </div>
+
+  <div class="title">Teachers List</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="col-num">#</th>
+        <th>Title</th>
+        <th>Name</th>
+        <th>Username</th>
+        <th>Phone</th>
+        <th>Gender</th>
+        <th>TSC Number</th>
+        <th>Section</th>
+        <th>Role</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for teacher in teachers %}
+      <tr>
+        <td class="col-num">{{ forloop.counter }}</td>
+        <td>{{ teacher.title }}</td>
+        <td>{{ teacher.user.first_name|default:teacher.user.username }}</td>
+        <td>{{ teacher.user.username }}</td>
+        <td>{{ teacher.phone_number|default:"-" }}</td>
+        <td>{{ teacher.user.profile.gender|default:"-" }}</td>
+        <td>{{ teacher.tsc_number|default:"-" }}</td>
+        <td>{{ teacher.section_label }}</td>
+        <td>{{ teacher.assigned_task|default:"Teacher" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer">Generated on {{ generated_date }} &mdash; {{ school.name }}</div>
+</body>
+</html>

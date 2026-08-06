@@ -90,6 +90,8 @@ from .faculty import (  # noqa: F401
     manage_faculty_matrix,
     faculty_grade_streams,
     learner_profile,
+    download_teachers_list_pdf,
+    teacher_classes,
 )
 
 # ── PDF export views ─────────────────────────────────────────────────────────

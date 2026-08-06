@@ -9,7 +9,8 @@ import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Case, Count, IntegerField, Q, When, Value
+from django.db.models.functions import Cast, Substr
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 
@@ -18,6 +19,7 @@ from .helpers import get_teacher_for_user, get_class_teacher_scope, get_publishe
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
 from ..models import (
     Exam,
+    GradingConfig,
     Mark,
     MarkSubmission,
     Student,
@@ -195,7 +197,18 @@ def school_admin_dashboard(request):
     submission_qs = MarkSubmission.all_objects.filter(school=school)
     mark_qs = Mark.all_objects.filter(school=school)
 
-    active_exam = exam_qs.filter(status="active").order_by("-year", "term", "name").first()
+    # Exam name logical order: End of Term > Mid Term > Opener
+    exam_order = Case(
+        When(name__icontains='end of term', then=Value(3)),
+        When(name__icontains='mid term', then=Value(2)),
+        When(name__icontains='opener', then=Value(1)),
+        default=Value(0),
+        output_field=IntegerField(),
+    )
+    active_exam = exam_qs.filter(status="active").annotate(
+        term_num=Cast(Substr('term', 6), output_field=IntegerField()),
+        name_order=exam_order,
+    ).order_by("-year", "-term_num", "-name_order").first()
 
     # --- Headline counts ---
     total_students = student_qs.count()
@@ -249,58 +262,146 @@ def school_admin_dashboard(request):
     completed_assignments = max(total_assignments - missing_entries_count, 0)
     completion_rate = round((completed_assignments / total_assignments) * 100) if total_assignments else 0
 
-    # --- Grade performance averages ---
-    grade_colors = {
-        'Grade 1': '#f472b6', 'Grade 2': '#a78bfa', 'Grade 3': '#34d399',
-        'Grade 4': '#8ae325', 'Grade 5': '#38bdf8', 'Grade 6': '#f59e0b',
-        'Grade 7': '#8ae325', 'Grade 8': '#38bdf8', 'Grade 9': '#f59e0b',
+    # --- Grade performance cards (real data from latest published exam) ---
+    # Section-aware accent colors (canonical system colors)
+    SECTION_COLORS = {
+        'LOWER_PRIMARY': {'accent': '#B45309', 'bg': '#FFFBEB', 'border': '#fde68a', 'text': '#92400e'},
+        'PRIMARY':       {'accent': '#00674F', 'bg': '#ECFDF5', 'border': '#a7f3d0', 'text': '#065f46'},
+        'JSS':           {'accent': '#305CDE', 'bg': '#EFF6FF', 'border': '#bfdbfe', 'text': '#1e40af'},
     }
-    published_mark_filter = Q(pk__in=[])
-    if active_exam:
-        published_submissions = submission_qs.filter(
-            exam_name=active_exam.name,
-            term=active_exam.term,
-            year=active_exam.year,
-            status="published",
-        )
-        # Instead of Q-filter explosion, collect unique (class, stream, subject) tuples
-        # and use a single __in filter with tuples
-        published_tuples = set()
-        for submission in published_submissions:
-            published_tuples.add((submission.class_name, submission.stream, submission.subject_id))
-        
-        if published_tuples:
-            tuple_filter = Q()
-            for cls, strm, subj_id in published_tuples:
-                tuple_filter |= Q(
-                    student__class_name=cls,
-                    student__stream=strm,
-                    subject_id=subj_id,
-                )
-            published_mark_filter = tuple_filter
 
-    published_marks = mark_qs.filter(published_mark_filter)
-    grade_average_map = {
-        item['student__class_name']: round(item['avg_score'] or 0, 1)
-        for item in published_marks
-            .values('student__class_name').annotate(avg_score=Avg('score'))
-    }
-    grade_performance_rows = [
-        {'label': g, 'score': grade_average_map.get(g, 0), 'color': grade_colors[g]}
-        for g in grade_choices
-    ]
+    def _section_key_for_grade(g):
+        if g in ('Grade 1', 'Grade 2', 'Grade 3'):
+            return 'LOWER_PRIMARY'
+        if g in ('Grade 4', 'Grade 5', 'Grade 6'):
+            return 'PRIMARY'
+        return 'JSS'
+
+    def _mean_grade_from_score(avg_score, section_key):
+        scale = GradingConfig.get_default_subject_scale(section_key)
+        for entry in scale:
+            if entry['min_score'] <= avg_score < entry['max_score'] + 1:
+                return entry['level']
+        return '\u2014'
+
+    # Get the TWO most recent exams for deviation calculation
+    # term field is "Term X" — extract the number with Substr for proper numeric sort
+    recent_exams = Exam.all_objects.filter(
+        school=school
+    ).annotate(
+        term_num=Cast(Substr('term', 6), output_field=IntegerField()),
+        name_order=exam_order,
+    ).order_by('-year', '-term_num', '-name_order')[:2]
+    latest_exam = recent_exams[0] if recent_exams else None
+    previous_exam = recent_exams[1] if len(recent_exams) > 1 else None
+
+    exam_label = ''
+    if latest_exam:
+        exam_label = f"{latest_exam.name.upper()} - ({latest_exam.year} TERM {latest_exam.term})"
+
+    # Helper: compute per-grade stats for a given exam
+    def _compute_grade_stats(exam):
+        if not exam:
+            return {}
+        exam_mark_filter = Q(pk__in=[])
+        published_subs = submission_qs.filter(
+            exam_name=exam.name, term=exam.term, year=exam.year, status="published",
+        )
+        tuples = set()
+        for sub in published_subs:
+            tuples.add((sub.class_name, sub.stream, sub.subject_id))
+        if tuples:
+            f = Q()
+            for cls, strm, sid in tuples:
+                f |= Q(student__class_name=cls, student__stream=strm, subject_id=sid)
+            exam_mark_filter = f
+        marks = mark_qs.filter(exam_mark_filter)
+        stats = {}
+        for item in marks.values('student__class_name').annotate(
+            avg_score=Avg('score'), avg_points=Avg('points'), student_count=Count('student', distinct=True)
+        ):
+            g = item['student__class_name']
+            avg_sc = round(item['avg_score'] or 0, 2)
+            avg_pts = round(item['avg_points'] or 0, 4)
+            sk = _section_key_for_grade(g)
+            stats[g] = {
+                'mean_score': avg_sc,
+                'mean_points': avg_pts,
+                'mean_grade': _mean_grade_from_score(avg_sc, sk),
+                'student_count': item['student_count'],
+            }
+        return stats
+
+    current_stats = _compute_grade_stats(latest_exam)
+    previous_stats = _compute_grade_stats(previous_exam)
+
+    # Build performance cards list
+    grade_performance_cards = []
+    for g in grade_choices:
+        sk = _section_key_for_grade(g)
+        colors = SECTION_COLORS[sk]
+        cur = current_stats.get(g, {})
+        prev = previous_stats.get(g, {})
+
+        mean_score = cur.get('mean_score', 0)
+        mean_points = cur.get('mean_points', 0)
+        mean_grade = cur.get('mean_grade', '\u2014')
+        student_count = cur.get('student_count', 0)
+
+        # Deviation from previous exam
+        score_dev = round(mean_score - prev.get('mean_score', mean_score), 2) if prev else None
+        points_dev = round(mean_points - prev.get('mean_points', mean_points), 4) if prev else None
+
+        grade_performance_cards.append({
+            'label': g,
+            'section_key': sk,
+            'accent': colors['accent'],
+            'bg': colors['bg'],
+            'border': colors['border'],
+            'text': colors['text'],
+            'mean_score': mean_score,
+            'mean_points': mean_points,
+            'mean_grade': mean_grade,
+            'student_count': student_count,
+            'score_dev': score_dev,
+            'points_dev': points_dev,
+        })
 
     overall_average = round(
-        published_marks.aggregate(avg_score=Avg('score'))['avg_score'] or 0, 1
-    )
+        mark_qs.filter(
+            Q(pk__in=[]) if not latest_exam else Q(
+                student__class_name__in=grade_choices,
+            )
+        ).aggregate(avg_score=Avg('score'))['avg_score'] or 0, 1
+    ) if latest_exam else 0
 
-    best_stream_data = (
-        published_marks
-        .values('student__class_name', 'student__stream')
-        .annotate(avg_score=Avg('score'))
-        .order_by('-avg_score')
-        .first()
-    )
+    # Recalculate overall from actual published marks
+    if latest_exam:
+        published_tuples_all = set()
+        for sub in submission_qs.filter(exam_name=latest_exam.name, term=latest_exam.term, year=latest_exam.year, status="published"):
+            published_tuples_all.add((sub.class_name, sub.stream, sub.subject_id))
+        if published_tuples_all:
+            f = Q()
+            for cls, strm, sid in published_tuples_all:
+                f |= Q(student__class_name=cls, student__stream=strm, subject_id=sid)
+            overall_average = round(mark_qs.filter(f).aggregate(avg_score=Avg('score'))['avg_score'] or 0, 1)
+
+    best_stream_data = None
+    if latest_exam:
+        published_tuples_all = set()
+        for sub in submission_qs.filter(exam_name=latest_exam.name, term=latest_exam.term, year=latest_exam.year, status="published"):
+            published_tuples_all.add((sub.class_name, sub.stream, sub.subject_id))
+        if published_tuples_all:
+            f = Q()
+            for cls, strm, sid in published_tuples_all:
+                f |= Q(student__class_name=cls, student__stream=strm, subject_id=sid)
+            best_stream_data = (
+                mark_qs.filter(f)
+                .values('student__class_name', 'student__stream')
+                .annotate(avg_score=Avg('score'))
+                .order_by('-avg_score')
+                .first()
+            )
     best_stream = (
         f"{best_stream_data['student__class_name']} {best_stream_data['student__stream']}"
         if best_stream_data else "No Data"
@@ -336,7 +437,9 @@ def school_admin_dashboard(request):
         'completion_rate':      completion_rate,
         'exam_window_status':   "Open" if missing_entries_count > 0 else "Complete",
         'active_term_label':    f"{active_exam.term} | {active_exam.year}" if active_exam else f"Term 1 | {current_year}",
-        'grade_performance_rows': grade_performance_rows,
+        'grade_performance_cards': grade_performance_cards,
+        'exam_label':           exam_label,
+        'grade_performance_rows': [],  # deprecated, kept for compatibility
         'overall_average':      overall_average,
         'best_stream':          best_stream,
         'admin_override_enabled': user_has_main_school_admin_override(request.user),
