@@ -9,29 +9,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
-from ..security import get_request_school, get_request_school_section, school_admin_required
+from ..security import get_request_school, school_admin_required
 
 
 # Section-to-grade mapping
-LOWER_PRIMARY_GRADES = [f'Grade {i}' for i in range(1, 4)]
-PRIMARY_GRADES = [f'Grade {i}' for i in range(4, 7)]
-JSS_GRADES = [f'Grade {i}' for i in range(7, 10)]
 ALL_GRADES = [f'Grade {i}' for i in range(1, 13)]
 GRADE_ORDER = {f'Grade {i}': i for i in range(1, 13)}
-
-# Grade number → sub_section mapping
-GRADE_SUB_SECTION = {}
-for _i in range(1, 4):
-    GRADE_SUB_SECTION[f'Grade {_i}'] = 'LOWER'
-for _i in range(4, 7):
-    GRADE_SUB_SECTION[f'Grade {_i}'] = 'UPPER'
-
-
-def _resolve_db_section(section):
-    """Map workspace section to the DB school_section value used by Grade/Stream."""
-    if section in ('LOWER_PRIMARY', 'PRIMARY'):
-        return 'PRIMARY'
-    return 'JSS'
 
 
 @login_required(login_url='login')
@@ -39,9 +22,7 @@ def _resolve_db_section(section):
 def manage_classes(request):
     """
     School admin view to manage grades and streams.
-    Admin can add grades and name streams per grade.
-    Single-stream grades auto-name to 'Main'.
-    Grades are filtered by workspace section (Primary or JSS).
+    Admin sees ALL grades across all sections with no restrictions.
     """
     from ..models import Grade, Stream
 
@@ -49,18 +30,6 @@ def manage_classes(request):
     if not school:
         messages.error(request, "No school context found.")
         return redirect('school_admin_dashboard')
-
-    section = get_request_school_section(request)
-
-    # Determine which grades are allowed in this workspace
-    if section == 'LOWER_PRIMARY':
-        allowed_grades = LOWER_PRIMARY_GRADES
-    elif section == 'PRIMARY':
-        allowed_grades = PRIMARY_GRADES
-    elif section == 'JSS':
-        allowed_grades = JSS_GRADES
-    else:
-        allowed_grades = ALL_GRADES
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -72,26 +41,34 @@ def manage_classes(request):
                 messages.error(request, "Please select a grade.")
                 return redirect('manage_classes')
 
-            if grade_name not in allowed_grades:
-                messages.error(request, f"{grade_name} is not available in the {section or 'current'} workspace.")
-                return redirect('manage_classes')
-
             if Grade.all_objects.filter(school=school, name=grade_name).exists():
                 messages.error(request, f"{grade_name} already exists for this school.")
                 return redirect('manage_classes')
 
+            # Auto-detect section from grade number
+            grade_num = int(grade_name.replace('Grade ', ''))
+            if grade_num <= 3:
+                db_section = 'PRIMARY'
+                sub_section = 'LOWER'
+            elif grade_num <= 6:
+                db_section = 'PRIMARY'
+                sub_section = 'UPPER'
+            else:
+                db_section = 'JSS'
+                sub_section = None
+
             grade = Grade.all_objects.create(
                 school=school,
                 name=grade_name,
-                school_section=_resolve_db_section(section),
-                sub_section=GRADE_SUB_SECTION.get(grade_name),
+                school_section=db_section,
+                sub_section=sub_section,
                 order=GRADE_ORDER.get(grade_name, 99),
             )
             Stream.all_objects.create(
                 school=school,
                 grade=grade,
                 name='Main',
-                school_section=_resolve_db_section(section),
+                school_section=db_section,
             )
             messages.success(request, f"{grade_name} created with one stream: Main.")
             return redirect('manage_classes')
@@ -206,18 +183,66 @@ def manage_classes(request):
             return redirect('manage_classes')
 
     # ── GET — build context ───────────────────────────────────────────────────
-    # Use all_objects but filter by section to show correct grades
+    from ..models import Student, Teacher
+
     grades = (
         Grade.all_objects
-        .filter(school=school, school_section=_resolve_db_section(section))
+        .filter(school=school)
         .prefetch_related('streams')
         .order_by('order')
     )
 
     existing_grade_names = set(grades.values_list('name', flat=True))
-    available_grades = [g for g in allowed_grades if g not in existing_grade_names]
+    available_grades = [g for g in ALL_GRADES if g not in existing_grade_names]
+
+    active_tab = request.GET.get('tab', 'manage')
+
+    # ── Build grade rows for the table ────────────────────────────────────────
+    grade_rows = []
+    total_boys = 0
+    total_girls = 0
+    total_students = 0
+
+    for grade in grades:
+        students_qs = Student.all_objects.filter(
+            school=school, class_name=grade.name, is_active=True
+        )
+        boys = students_qs.filter(gender='Male').count()
+        girls = students_qs.filter(gender='Female').count()
+        total = students_qs.count()
+
+        # Class supervisor: teacher whose assigned_task mentions this grade
+        supervisor = ''
+        ct = Teacher.all_objects.filter(
+            school=school,
+            is_active=True,
+            assigned_task__icontains=grade.name,
+        ).filter(
+            assigned_task__icontains='Class Teacher'
+        ).first()
+        if ct:
+            supervisor = ct.get_full_title()
+
+        grade_rows.append({
+            'id': grade.id,
+            'name': grade.name,
+            'boys': boys,
+            'girls': girls,
+            'total': total,
+            'supervisor': supervisor,
+            'stream_count': grade.streams.count(),
+        })
+
+        total_boys += boys
+        total_girls += girls
+        total_students += total
 
     return render(request, 'students/manage_classes.html', {
         'grades': grades,
         'available_grades': available_grades,
+        'active_tab': active_tab,
+        'grade_rows': grade_rows,
+        'total_boys': total_boys,
+        'total_girls': total_girls,
+        'total_students': total_students,
     })
