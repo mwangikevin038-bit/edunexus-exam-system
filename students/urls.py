@@ -19,7 +19,9 @@ urlpatterns = [
     path('class-lists/download-pdf/', views.download_classlist_pdf, name='download_classlist_pdf'),
     path('printouts/', views.printouts_hub, name='printouts_hub'),
     path('printouts/class-list/', views.class_list_printout, name='class_list_printout'),
+    path('printouts/score-sheet/', views.score_sheet, name='score_sheet'),
     path('printouts/api/streams/', views.api_streams_for_grade_printout, name='api_streams_for_grade_printout'),
+    path('printouts/api/subjects/', views.api_subjects_for_grade, name='api_subjects_for_grade'),
     path('learner/<int:student_id>/', views.learner_profile, name='learner_profile'),
 
     # ── Marks & exams ─────────────────────────────────────────────────────

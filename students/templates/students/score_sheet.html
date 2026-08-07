@@ -1,0 +1,374 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block sub_tabs %}
+<style>
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#84cc16;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
+  .sub-nav-item{display:flex;align-items:stretch}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
+  .sub-nav-link:hover{color:#fff;background-color:#65a30d}
+  .sub-nav-link.active{color:#fff;background-color:#166534;font-weight:700}
+  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'printouts_hub' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Printouts
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'class_list_printout' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Class List
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'score_sheet' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+        Mark Sheet
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+  .ss-page{max-width:1100px;margin:0 auto;margin-top:-20px;padding:0 28px 60px}
+
+  .ss-hero{background:linear-gradient(135deg,#166534 0%,#15803d 50%,#22c55e 100%);border-radius:16px;padding:32px 36px;margin-bottom:24px;position:relative;overflow:hidden}
+  .ss-hero::before{content:'';position:absolute;top:-40%;right:-10%;width:300px;height:300px;background:radial-gradient(circle,rgba(255,255,255,0.1) 0%,transparent 70%);border-radius:50%}
+  .ss-hero::after{content:'';position:absolute;bottom:-30%;left:20%;width:200px;height:200px;background:radial-gradient(circle,rgba(255,255,255,0.07) 0%,transparent 70%);border-radius:50%}
+  .ss-hero-content{position:relative;z-index:1}
+  .ss-hero-row{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  .ss-hero-icon{width:44px;height:44px;background:rgba(255,255,255,0.18);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .ss-hero-icon svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .ss-hero h1{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:800;font-size:22px;color:#fff;margin:0;letter-spacing:-0.3px}
+  .ss-hero p{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:14px;color:rgba(255,255,255,0.82);margin:0;line-height:1.5}
+
+  .ss-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,0.05);overflow:hidden}
+  .ss-card-header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid #f1f5f9;background:#fafbfc}
+  .ss-card-header h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:16px;color:#111827;margin:0;display:flex;align-items:center;gap:8px}
+  .ss-card-header h2 svg{width:18px;height:18px;stroke:#6b7280;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .ss-toggle{background:none;border:none;cursor:pointer;padding:4px;color:#64748b;transition:color 0.15s;border-radius:6px}
+  .ss-toggle:hover{color:#1e293b;background:#f1f5f9}
+  .ss-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform 0.3s}
+  .ss-toggle.collapsed svg{transform:rotate(180deg)}
+  .ss-card-body{padding:24px 28px;transition:max-height 0.4s ease,opacity 0.3s ease,padding 0.4s ease;overflow:hidden}
+  .ss-card-body.collapsed{max-height:0!important;opacity:0;padding-top:0;padding-bottom:0}
+
+  .ss-filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px 24px}
+  .ss-field label{display:block;font-size:12px;font-weight:700;color:#6b7280;margin-bottom:6px;font-family:'Plus Jakarta Sans','Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px}
+  .ss-field select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;color:#1e293b;font-family:'Plus Jakarta Sans','Inter',sans-serif;background:#fff;transition:all .2s;height:42px;box-sizing:border-box;appearance:auto}
+  .ss-field select:focus{outline:none;border-color:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.12)}
+  .ss-field select:disabled{background:#f9fafb;color:#9ca3af;cursor:not-allowed}
+  @media(max-width:768px){.ss-filters{grid-template-columns:1fr}}
+
+  .ss-action-row{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:20px;border-top:1px solid #f1f5f9;opacity:0;max-height:0;overflow:hidden;transition:all 0.3s ease}
+  .ss-action-row.visible{opacity:1;max-height:80px}
+  .ss-btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.2s ease;text-decoration:none}
+  .ss-btn-primary{background:#22c55e;color:#fff;box-shadow:0 2px 8px rgba(34,197,94,0.3)}
+  .ss-btn-primary:hover{background:#16a34a;box-shadow:0 4px 14px rgba(34,197,94,0.4);transform:translateY(-1px)}
+  .ss-btn-secondary{background:#fff;color:#374151;border:1.5px solid #d1d5db}
+  .ss-btn-secondary:hover{background:#f9fafb;border-color:#9ca3af}
+  .ss-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .ss-mark-area{margin-top:24px;opacity:0;max-height:0;overflow:hidden;transition:all 0.4s ease}
+  .ss-mark-area.visible{opacity:1;max-height:5000px}
+  .ss-mark-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .ss-mark-header h3{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:15px;color:#111827;margin:0;display:flex;align-items:center;gap:8px}
+  .ss-mark-header h3 svg{width:18px;height:18px;stroke:#22c55e;fill:none;stroke-width:2}
+  .ss-mark-count{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:12px;font-weight:700;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;padding:3px 10px;border-radius:20px}
+
+  .ss-table-wrap{overflow-x:auto;border:1px solid #e5e7eb;border-radius:10px}
+  .ss-table{width:100%;border-collapse:collapse;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .ss-table thead th{background:#f8fafc;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;padding:12px 14px;text-align:left;border-bottom:2px solid #e5e7eb;white-space:nowrap;position:sticky;top:0}
+  .ss-table tbody tr{transition:background 0.15s}
+  .ss-table tbody tr:nth-child(even){background:#f9fafb}
+  .ss-table tbody tr:hover{background:#f0fdf4}
+  .ss-table tbody td{padding:11px 14px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+  .ss-table .ss-adm{font-weight:700;color:#2563eb;font-size:12px;font-family:'SF Mono','Fira Code',monospace}
+  .ss-table .ss-name{font-weight:600;color:#111827}
+  .ss-table .ss-assess{font-size:12px;color:#6b7280;font-family:'SF Mono','Fira Code',monospace}
+  .ss-mark-cell{width:70px;min-width:70px}
+  .ss-mark-input{width:100%;padding:6px 8px;border:1.5px solid #d1d5db;border-radius:6px;font-size:13px;text-align:center;font-family:'SF Mono','Fira Code',monospace;color:#1e293b;background:#fff;transition:all 0.15s;box-sizing:border-box}
+  .ss-mark-input:focus{outline:none;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,0.15);background:#f0fdf4}
+
+  .ss-loading{text-align:center;padding:32px}
+  .ss-spinner{display:inline-block;width:28px;height:28px;border:3px solid #e5e7eb;border-top-color:#22c55e;border-radius:50%;animation:ss-spin 0.7s linear infinite}
+  @keyframes ss-spin{to{transform:rotate(360deg)}}
+  .ss-loading-text{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:13px;color:#9ca3af;margin-top:8px}
+
+  .ss-error{text-align:center;padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-top:12px}
+  .ss-error p{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:13px;color:#dc2626;margin:0}
+
+  .ss-empty{text-align:center;padding:48px 24px}
+  .ss-empty-icon{width:64px;height:64px;margin:0 auto 16px;background:#f9fafb;border-radius:16px;display:flex;align-items:center;justify-content:center}
+  .ss-empty-icon svg{width:32px;height:32px;stroke:#d1d5db;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .ss-empty h4{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:15px;color:#374151;margin:0 0 6px}
+  .ss-empty p{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:13px;color:#9ca3af;margin:0;line-height:1.5}
+
+  @media print{.ss-page{padding:0}.ss-hero,.ss-card-header,.ss-toggle,.ss-action-row,.sub-nav-bar,.sidebar,.global-header,.bottom-nav{display:none!important}.ss-card{border:none;box-shadow:none;border-radius:0}.ss-mark-area{opacity:1!important;max-height:none!important;overflow:visible!important}.ss-mark-input{border:none;box-shadow:none;background:transparent;padding:0}.ss-table thead th{background:#f1f5f9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+
+<div class="ss-page">
+  <div class="ss-hero">
+    <div class="ss-hero-content">
+      <div class="ss-hero-row">
+        <div class="ss-hero-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+        </div>
+        <h1>Mark Sheet</h1>
+      </div>
+      <p>Select a form, stream and subject to generate a printable mark sheet for exam entry</p>
+    </div>
+  </div>
+
+  <div class="ss-card">
+    <div class="ss-card-header">
+      <h2>
+        <svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        Selection Panel
+      </h2>
+      <button type="button" class="ss-toggle" id="ssToggle" title="Collapse">
+        <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+    </div>
+    <div class="ss-card-body" id="ssBody">
+      <form method="GET" class="ss-filters" id="ssForm">
+        <div class="ss-field">
+          <label>Form / Grade</label>
+          <select name="grade" id="ssGrade">
+            <option value="">Select Form</option>
+            {% for g in grades %}<option value="{{ g }}" {% if selected_grade == g %}selected{% endif %}>{{ g }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="ss-field">
+          <label>Stream</label>
+          <select name="stream" id="ssStream" disabled>
+            <option value="">Select Stream</option>
+          </select>
+        </div>
+        <div class="ss-field">
+          <label>Subject</label>
+          <select name="subject" id="ssSubject" disabled>
+            <option value="">Select Subject</option>
+          </select>
+        </div>
+      </form>
+
+      <div class="ss-action-row" id="ssActionRow">
+        <button type="button" class="ss-btn ss-btn-secondary" id="ssResetBtn">
+          <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          Reset
+        </button>
+        <button type="button" class="ss-btn ss-btn-primary" id="ssPrintBtn">
+          <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print Mark Sheet
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ss-mark-area" id="ssMarkArea">
+    <div class="ss-mark-header">
+      <h3>
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Student Mark Sheet
+      </h3>
+      <span class="ss-mark-count" id="ssMarkCount">0 students</span>
+    </div>
+    <div class="ss-table-wrap">
+      <table class="ss-table" id="ssTable">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>Adm No.</th>
+            <th>Learner Name</th>
+            <th>Assessment No.</th>
+            <th class="ss-mark-cell">Mark</th>
+          </tr>
+        </thead>
+        <tbody id="ssTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ss-mark-area" id="ssLoadingArea">
+    <div class="ss-loading">
+      <div class="ss-spinner"></div>
+      <div class="ss-loading-text">Loading students...</div>
+    </div>
+  </div>
+
+  <div class="ss-mark-area" id="ssErrorArea">
+    <div class="ss-error">
+      <p id="ssErrorMsg"></p>
+    </div>
+  </div>
+
+  <div class="ss-mark-area" id="ssEmptyArea">
+    <div class="ss-empty">
+      <div class="ss-empty-icon">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <h4>No Students Found</h4>
+      <p>No active students found for this class. Register students first.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var grade=document.getElementById('ssGrade'),
+      stream=document.getElementById('ssStream'),
+      subject=document.getElementById('ssSubject'),
+      toggle=document.getElementById('ssToggle'),
+      body=document.getElementById('ssBody'),
+      actionRow=document.getElementById('ssActionRow'),
+      markArea=document.getElementById('ssMarkArea'),
+      markCount=document.getElementById('ssMarkCount'),
+      tableBody=document.getElementById('ssTableBody'),
+      loadingArea=document.getElementById('ssLoadingArea'),
+      errorArea=document.getElementById('ssErrorArea'),
+      errorMsg=document.getElementById('ssErrorMsg'),
+      emptyArea=document.getElementById('ssEmptyArea'),
+      resetBtn=document.getElementById('ssResetBtn'),
+      printBtn=document.getElementById('ssPrintBtn');
+
+  function hideAll(){
+    markArea.classList.remove('visible');
+    loadingArea.classList.remove('visible');
+    errorArea.classList.remove('visible');
+    emptyArea.classList.remove('visible');
+  }
+  function showError(msg){
+    hideAll();
+    errorMsg.textContent=msg||'An error occurred.';
+    errorArea.classList.add('visible');
+  }
+
+  function fetchJSON(url){
+    return fetch(url).then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.json();
+    });
+  }
+
+  function loadStudents(){
+    hideAll();
+    if(!grade.value)return;
+    loadingArea.classList.add('visible');
+    var url='{% url "api_class_list" %}?grade='+encodeURIComponent(grade.value);
+    if(stream.value)url+='&stream='+encodeURIComponent(stream.value);
+    fetchJSON(url)
+      .then(function(data){
+        loadingArea.classList.remove('visible');
+        if(!data.students||!data.students.length){
+          tableBody.innerHTML='';
+          emptyArea.classList.add('visible');
+          return;
+        }
+        var students=data.students;
+        markCount.textContent=students.length+(students.length===1?' student':' students');
+        tableBody.innerHTML='';
+        for(var i=0;i<students.length;i++){
+          var s=students[i];
+          var tr=document.createElement('tr');
+          tr.innerHTML='<td style="text-align:center;color:#9ca3af;font-size:12px">'+(i+1)+'</td>'
+            +'<td class="ss-adm">'+(s.admission_no||'')+'</td>'
+            +'<td class="ss-name">'+(s.name||'')+'</td>'
+            +'<td class="ss-assess">'+(s.assessment_no||'')+'</td>'
+            +'<td class="ss-mark-cell"><input type="number" class="ss-mark-input" min="0" max="100" placeholder="0" data-student-id="'+s.id+'"></td>';
+          tableBody.appendChild(tr);
+        }
+        markArea.classList.add('visible');
+      })
+      .catch(function(err){
+        console.error('Load students error:',err);
+        showError('Could not load students. Please try again.');
+      });
+  }
+
+  grade.addEventListener('change',function(){
+    stream.innerHTML='<option value="">Select Stream</option>';
+    subject.innerHTML='<option value="">Select Subject</option>';
+    stream.disabled=true;
+    subject.disabled=true;
+    actionRow.classList.remove('visible');
+    hideAll();
+    if(!grade.value)return;
+    fetchJSON('{% url "api_streams_for_grade_printout" %}?grade='+encodeURIComponent(grade.value))
+      .then(function(data){
+        if(data.streams&&data.streams.length){
+          for(var i=0;i<data.streams.length;i++){
+            var opt=document.createElement('option');
+            opt.value=data.streams[i];
+            opt.textContent=data.streams[i];
+            stream.appendChild(opt);
+          }
+          stream.disabled=false;
+        }
+        return fetchJSON('{% url "api_subjects_for_grade" %}?grade='+encodeURIComponent(grade.value));
+      })
+      .then(function(data){
+        if(data.subjects&&data.subjects.length){
+          for(var i=0;i<data.subjects.length;i++){
+            var opt=document.createElement('option');
+            opt.value=data.subjects[i].id;
+            opt.textContent=data.subjects[i].name+' ('+data.subjects[i].code+')';
+            subject.appendChild(opt);
+          }
+          subject.disabled=false;
+        }
+        actionRow.classList.add('visible');
+      })
+      .catch(function(err){
+        console.error('Score Sheet fetch error:',err);
+        showError('Could not load data for '+grade.value+'. Please try again.');
+      });
+  });
+
+  stream.addEventListener('change',function(){
+    hideAll();
+    if(grade.value&&stream.value){
+      loadStudents();
+    }
+  });
+
+  subject.addEventListener('change',function(){
+    hideAll();
+    if(grade.value&&stream.value){
+      loadStudents();
+    }
+  });
+
+  toggle.addEventListener('click',function(){
+    if(body.classList.contains('collapsed')){
+      body.classList.remove('collapsed');
+      toggle.classList.remove('collapsed');
+    }else{
+      body.classList.add('collapsed');
+      toggle.classList.add('collapsed');
+    }
+  });
+
+  resetBtn.addEventListener('click',function(){
+    grade.value='';
+    stream.innerHTML='<option value="">Select Stream</option>';
+    subject.innerHTML='<option value="">Select Subject</option>';
+    stream.disabled=true;
+    subject.disabled=true;
+    actionRow.classList.remove('visible');
+    hideAll();
+  });
+
+  printBtn.addEventListener('click',function(){
+    window.print();
+  });
+})();
+</script>
+{% endblock %}

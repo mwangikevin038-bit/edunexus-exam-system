@@ -2007,3 +2007,51 @@ def api_streams_for_grade_printout(request):
     if len(streams) > 1:
         streams.append('Combined')
     return JsonResponse({'streams': streams})
+
+
+@login_required(login_url='login')
+@school_admin_required
+def score_sheet(request):
+    """
+    Score Sheet page — Form + Stream + Subject selection for entering marks.
+    """
+    from ..models import Grade, Stream, Subject
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+
+    return render(request, 'students/score_sheet.html', {
+        'grades': grades,
+    })
+
+
+@login_required(login_url='login')
+@school_admin_required
+def api_subjects_for_grade(request):
+    """AJAX endpoint: returns subjects for a given grade, grouped by section."""
+    from django.http import JsonResponse
+    from ..models import Subject
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'subjects': []})
+
+    grade_name = request.GET.get('grade', '').strip()
+    if not grade_name:
+        return JsonResponse({'subjects': []})
+
+    subjects = list(
+        Subject.all_objects.filter(school=school, grade=grade_name, is_active=True)
+        .order_by('school_section', 'name')
+        .values('id', 'name', 'code', 'school_section')
+    )
+    import logging
+    logging.getLogger('students').info(
+        'api_subjects_for_grade: school=%s grade=%s count=%d',
+        getattr(school, 'pk', None), grade_name, len(subjects),
+    )
+    return JsonResponse({'subjects': subjects})
