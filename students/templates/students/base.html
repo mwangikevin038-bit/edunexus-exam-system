@@ -236,7 +236,7 @@
     </div>
 
     <!-- SUB-NAVIGATION BAR (rendered outside app-content for full-width flush positioning) -->
-    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' %}
+    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' %}
     {% block sub_tabs %}{% endblock %}
     {% endif %}
 

@@ -374,3 +374,226 @@ def manage_streams(request, grade_id):
         'total_girls': total_girls,
         'total_students': total_students,
     })
+
+
+@login_required(login_url='login')
+@school_admin_required
+def api_class_list(request):
+    """JSON endpoint: returns student list for a given grade+stream."""
+    from django.http import JsonResponse
+    from ..models import Student, Stream
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'students': [], 'has_multiple_streams': False})
+
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+
+    if not grade_name:
+        return JsonResponse({'students': [], 'has_multiple_streams': False})
+
+    stream_count = Stream.all_objects.filter(school=school, grade__name=grade_name).count()
+    has_multiple = stream_count > 1
+
+    students = Student.all_objects.filter(
+        school=school,
+        class_name=grade_name,
+        is_active=True,
+    )
+    if stream_name:
+        students = students.filter(stream=stream_name)
+
+    from django.db.models import CharField, Value
+    from django.db.models.functions import Substr, Length
+    from django.db.models import IntegerField
+    from django.db.models.functions import Cast
+
+    students = (
+        students
+        .annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
+        .order_by('adm_int')
+    )
+
+    student_list = []
+    for s in students:
+        student_list.append({
+            'id': s.id,
+            'admission_no': s.admission_no or '',
+            'name': s.name or '',
+            'stream': s.stream or '',
+            'gender': s.gender or '',
+            'assessment_no': s.assessment_no or '',
+            'guardian_name': s.guardian.name if s.guardian else '',
+            'guardian_phone': s.guardian.phone if s.guardian else '',
+        })
+
+    return JsonResponse({'students': student_list, 'has_multiple_streams': has_multiple})
+
+
+@login_required(login_url='login')
+@school_admin_required
+def manage_subjects(request, grade_id, stream_name):
+    """
+    School admin view to manage subjects within a specific stream.
+    Shows subjects table with teacher assignments, section-filtered teacher dropdowns.
+    """
+    from django.http import JsonResponse
+    from ..models import Grade, Stream, Subject, SubjectAssignment, Student, Teacher
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    try:
+        grade = Grade.all_objects.get(id=grade_id, school=school)
+    except Grade.DoesNotExist:
+        messages.error(request, "Grade not found.")
+        return redirect('manage_classes')
+
+    stream_name = stream_name.strip()
+    if not Stream.all_objects.filter(school=school, grade=grade, name=stream_name).exists():
+        messages.error(request, f"Stream '{stream_name}' not found in {grade.name}.")
+        return redirect('manage_streams', grade_id=grade.id)
+
+    grade_num = int(grade.name.replace('Grade ', ''))
+    if grade_num <= 3:
+        db_section = 'PRIMARY'
+        db_sub_section = 'LOWER'
+    elif grade_num <= 6:
+        db_section = 'PRIMARY'
+        db_sub_section = 'UPPER'
+    else:
+        db_section = 'JSS'
+        db_sub_section = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add_subject':
+            subject_id = request.POST.get('subject_id')
+            try:
+                subject = Subject.all_objects.get(id=subject_id, school=school, grade=grade.name)
+            except Subject.DoesNotExist:
+                messages.error(request, "Subject not found.")
+                return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
+
+            if SubjectAssignment.all_objects.filter(
+                school=school, subject=subject, class_name=grade.name, stream=stream_name,
+            ).exists():
+                messages.error(request, f"'{subject.name}' is already added to {grade.name} {stream_name}.")
+                return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
+
+            teacher_id = request.POST.get('teacher_id')
+            teacher = None
+            if teacher_id:
+                try:
+                    teacher = Teacher.all_objects.get(id=teacher_id, school=school)
+                except Teacher.DoesNotExist:
+                    pass
+
+            SubjectAssignment.all_objects.create(
+                school=school,
+                subject=subject,
+                teacher_profile=teacher,
+                class_name=grade.name,
+                stream=stream_name,
+                school_section=db_section,
+                sub_section=db_sub_section,
+            )
+            msg = f"'{subject.name}' added to {grade.name} {stream_name}"
+            if teacher:
+                msg += f" with {teacher.get_full_title()}"
+            messages.success(request, msg + ".")
+            return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
+
+        elif action == 'assign_teacher':
+            assignment_id = request.POST.get('assignment_id')
+            teacher_id = request.POST.get('teacher_id')
+            try:
+                assignment = SubjectAssignment.all_objects.get(id=assignment_id, school=school)
+                teacher = Teacher.all_objects.get(id=teacher_id, school=school)
+            except (SubjectAssignment.DoesNotExist, Teacher.DoesNotExist):
+                messages.error(request, "Assignment or teacher not found.")
+                return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
+
+            assignment.teacher_profile = teacher
+            assignment.save()
+            messages.success(request, f"{teacher.get_full_title()} assigned to {assignment.subject.name}.")
+            return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
+
+        elif action == 'unassign_teacher':
+            assignment_id = request.POST.get('assignment_id')
+            try:
+                assignment = SubjectAssignment.all_objects.get(id=assignment_id, school=school)
+            except SubjectAssignment.DoesNotExist:
+                messages.error(request, "Assignment not found.")
+                return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
+
+            subj_name = assignment.subject.name
+            assignment.teacher_profile = None
+            assignment.save()
+            messages.success(request, f"Teacher unassigned from {subj_name}.")
+            return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
+
+        elif action == 'delete_subject':
+            assignment_id = request.POST.get('assignment_id')
+            try:
+                assignment = SubjectAssignment.all_objects.get(id=assignment_id, school=school)
+            except SubjectAssignment.DoesNotExist:
+                messages.error(request, "Subject assignment not found.")
+                return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
+
+            subj_name = assignment.subject.name
+            assignment.delete()
+            messages.success(request, f"'{subj_name}' removed from {grade.name} {stream_name}.")
+            return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
+
+    assignments = SubjectAssignment.all_objects.filter(
+        school=school, class_name=grade.name, stream=stream_name,
+    ).select_related('subject', 'teacher_profile').order_by('subject__code')
+
+    assigned_subject_ids = set(a.subject_id for a in assignments)
+    available_subjects = Subject.all_objects.filter(
+        school=school, grade=grade.name, is_active=True,
+    ).exclude(id__in=assigned_subject_ids).order_by('code')
+
+    if db_sub_section:
+        teachers = Teacher.all_objects.filter(
+            school=school, is_active=True,
+        ).filter(
+            school_section__in=[db_section, 'BOTH'],
+            sub_section__in=[db_sub_section, None],
+        ).order_by('user__first_name')
+    else:
+        teachers = Teacher.all_objects.filter(
+            school=school, is_active=True,
+        ).filter(
+            school_section__in=[db_section, 'BOTH'],
+        ).order_by('user__first_name')
+
+    student_count = Student.all_objects.filter(
+        school=school, class_name=grade.name, stream=stream_name, is_active=True,
+    ).count()
+
+    subject_rows = []
+    for a in assignments:
+        subject_rows.append({
+            'id': a.id,
+            'subject_id': a.subject_id,
+            'subject_name': a.subject.name if a.subject else '',
+            'subject_code': a.subject.code if a.subject else '',
+            'teacher_id': a.teacher_profile_id,
+            'teacher_name': a.teacher_profile.get_full_title() if a.teacher_profile else '',
+        })
+
+    return render(request, 'students/manage_subjects.html', {
+        'grade': grade,
+        'stream_name': stream_name,
+        'subject_rows': subject_rows,
+        'available_subjects': available_subjects,
+        'teachers': teachers,
+        'student_count': student_count,
+        'total_subjects': len(subject_rows),
+    })

@@ -106,6 +106,8 @@ from .pdf_exports import (  # noqa: F401
 from .classes_manage import (  # noqa: F401
     manage_classes,
     manage_streams,
+    manage_subjects,
+    api_class_list,
 )
 
 # ── Grading configuration ────────────────────────────────────────────────────
