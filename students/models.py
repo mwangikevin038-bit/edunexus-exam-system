@@ -832,7 +832,7 @@ class SubjectAssignment(SchoolScopedModel):
         ('LOWER', 'Lower Primary'),
         ('UPPER', 'Upper Primary'),
     ]
-    teacher_profile = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='assignments')
+    teacher_profile = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='assignments', null=True, blank=True)
     subject = models.ForeignKey(
         'Subject',
         on_delete=models.PROTECT,
