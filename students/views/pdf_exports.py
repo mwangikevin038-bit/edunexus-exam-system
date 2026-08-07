@@ -495,72 +495,61 @@ def download_broadsheet_pdf(request):
 def download_classlist_pdf(request):
     """
     Renders the class_lists register sheet and converts it to a
-    high-quality PDF using Playwright (same approach as broadsheet).
+    high-quality PDF. Accepts either 'context' param or direct 'grade' + 'stream' params.
     """
     school = get_request_school(request)
     if not school:
         return JsonResponse({'error': 'School context is required.'}, status=400)
 
-    section = get_request_school_section(request)
+    from ..models import Grade, Stream, Student
+    from django.db.models import CharField, Value
+    from django.db.models.functions import Substr, Length
+    from django.db.models import IntegerField
+    from django.db.models.functions import Cast
 
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+    view_mode = request.GET.get('view_mode', 'teacher').strip()
+    if view_mode not in ('teacher', 'admin'):
+        view_mode = 'teacher'
+
+    # Section-aware accent color based on grade
     section_colors = {
         'JSS':           '#305CDE',
         'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
-    section_accent = section_colors.get(section, '#305CDE')
+    if grade_name in ['Grade 1', 'Grade 2', 'Grade 3']:
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif grade_name in ['Grade 4', 'Grade 5', 'Grade 6']:
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors['JSS']
 
-    # Reuse the same context-building logic as class_lists view
-    view_mode = request.GET.get('view_mode', 'teacher')
-    if view_mode not in ('teacher', 'admin'):
-        view_mode = 'teacher'
-
-    teacher = get_teacher_for_user(request.user)
-    class_teacher_scope = get_class_teacher_scope(teacher)
     is_admin_view = user_has_main_school_admin_override(request.user)
-    contexts = get_learner_contexts_for_user(request.user)
 
-    selected_key = request.GET.get('context')
-    selected_context = None
-    if selected_key:
-        selected_context = next((item for item in contexts if item['context_key'] == selected_key), None)
-    if not selected_context and contexts:
-        selected_context = contexts[0]
-
-    selected_grade = selected_context['class_name'] if selected_context else None
-    selected_stream = selected_context['stream'] if selected_context else None
-    can_access_admin_register = (
-        is_admin_view or
-        (class_teacher_scope == (selected_grade, selected_stream))
-    )
-    if view_mode == 'admin' and not can_access_admin_register:
-        view_mode = 'teacher'
-
-    students = Student.objects.none()
-    if selected_context:
-        student_manager = Student.all_objects if is_admin_view else Student.objects
-        students = (
-            student_manager
-            .filter(school=school, class_name=selected_grade, stream=selected_stream, is_active=True)
-            .filter(admission_no__regex=r'^[0-9]+[PJ]$')
-            .select_related('guardian')
-            .annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
-            .order_by('adm_int')
+    students = []
+    if grade_name and stream_name:
+        qs_base = Student.all_objects.filter(
+            school=school, class_name=grade_name, is_active=True
+        ).filter(
+            admission_no__regex=r'^[0-9]+[PJ]$'
+        ).select_related('guardian').annotate(
+            adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField())
         )
+        if stream_name == 'Combined':
+            students = list(qs_base.order_by('stream', 'adm_int'))
+        else:
+            students = list(qs_base.filter(stream=stream_name).order_by('adm_int'))
 
-    template_html = render_to_string('students/class_lists.html', {
+    template_html = render_to_string('students/class_list_printout_pdf.html', {
+        'school':                 school,
         'students':              students,
-        'selected_grade':        selected_grade,
-        'selected_stream':       selected_stream,
-        'selected_context_key':  selected_context['context_key'] if selected_context else '',
-        'learner_contexts':      contexts,
+        'selected_grade':        grade_name,
+        'selected_stream':       stream_name,
         'current_view_mode':     view_mode,
-        'can_access_admin_register': can_access_admin_register,
         'is_admin_view':         is_admin_view,
-        'access_label':          'PDF Export',
         'section_accent':        section_accent,
-        'grades':                GRADE_CHOICES,
-        'streams':               get_streams_for_school(school, section),
     }, request=request)
 
     template_html = _embed_logo_base64(template_html, request)
@@ -578,84 +567,55 @@ def download_classlist_pdf(request):
     overflow: visible !important;
   }}
 
-  /* Hide all screen chrome */
-  .sidebar, nav, header, .hamburger-btn, .sidebar-overlay,
-  .directory-hero, .summary-grid, .toolbar, .mode-tabs,
-  .no-print, .context-strip, .access-pill, .empty-state {{
-    display: none !important;
-    visibility: hidden !important;
-  }}
-
-  /* Kill sidebar layout offset */
-  body > *, .main-content, main, [class*="content"], [class*="wrapper"] {{
+  body > * {{
     margin-left: 0 !important;
     padding-left: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    transform: none !important;
-    position: static !important;
   }}
 
-  .directory-page {{
+  .pdf-sheet {{
     padding: 0 !important;
-    background: #ffffff !important;
-    min-height: unset !important;
     width: 100% !important;
   }}
 
-  .register-sheet {{
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    max-height: none !important;
-    height: auto !important;
-    background: #ffffff !important;
-  }}
-
-  .sheet-heading {{
-    text-align: left;
+  .pdf-heading {{
+    text-align: center !important;
+    position: relative !important;
+    padding: 0 130px !important;
+    min-height: 110px !important;
     margin-bottom: 10pt !important;
   }}
 
-  .sheet-letterhead {{
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 18px !important;
-    margin-bottom: 8pt !important;
-    padding-bottom: 8pt !important;
-    border-bottom: 4px solid {section_accent} !important;
-  }}
-
-  .sheet-logo {{
-    height: 122px !important;
-    width: 122px !important;
+  .pdf-logo {{
+    position: absolute !important;
+    left: 0 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 110px !important;
+    height: 110px !important;
     object-fit: contain !important;
-    flex: 0 0 122px !important;
   }}
 
-  .sheet-heading-copy {{
-    min-width: 0 !important;
+  .pdf-heading-copy {{
+    text-align: center !important;
   }}
 
-  .sheet-heading h2 {{
+  .pdf-heading-copy h2 {{
     font-family: "Times New Roman", Times, serif !important;
     font-size: 25pt !important;
     font-weight: 900 !important;
-    line-height: 1 !important;
-    color: #000 !important;
     text-transform: uppercase !important;
-    margin: 0 0 6pt !important;
+    color: {section_accent} !important;
+    margin: 0 !important;
   }}
 
-  .sheet-heading p {{
+  .pdf-heading-copy p {{
     font-family: "Times New Roman", Times, serif !important;
     font-size: 12pt !important;
-    color: #111 !important;
-    margin: 0 !important;
-    text-transform: uppercase !important;
+    color: #64748b !important;
+    margin: 2px 0 0 !important;
+    font-weight: 700 !important;
   }}
 
   .register-table {{
@@ -672,11 +632,12 @@ def download_classlist_pdf(request):
   .register-table th {{
     background: #f2f2f2 !important;
     color: #000 !important;
-    font-weight: 700 !important;
+    font-weight: 900 !important;
     font-size: 12pt !important;
     padding: 3pt 5pt !important;
     border: 1.5px solid #000 !important;
     text-align: left !important;
+    text-transform: uppercase !important;
     line-height: 1.05 !important;
   }}
 
@@ -684,28 +645,10 @@ def download_classlist_pdf(request):
     padding: 3pt 5pt !important;
     border: 1.5px solid #000 !important;
     color: #000 !important;
-    font-weight: 400 !important;
+    font-weight: 800 !important;
     font-size: 12pt !important;
     line-height: 1.05 !important;
     vertical-align: middle !important;
-  }}
-
-  .teacher-register th:nth-child(1),
-  .teacher-register td:nth-child(1) {{ width: 8% !important; }}
-  .teacher-register th:nth-child(2),
-  .teacher-register td:nth-child(2) {{ width: 23% !important; }}
-  .teacher-register th:nth-child(3),
-  .teacher-register td:nth-child(3) {{ width: 14% !important; }}
-  .teacher-register th:nth-child(n+4),
-  .teacher-register td:nth-child(n+4) {{
-    width: 3.6% !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }}
-
-  .register-table a {{
-    color: #000 !important;
-    text-decoration: none !important;
   }}
 
   .register-table tr {{
@@ -719,34 +662,33 @@ def download_classlist_pdf(request):
     background: #ffffff !important;
   }}
 
-  .print-watermark-footer {{
+  .clp-actions, .clp-card, .sub-nav-bar, .sidebar, .global-header {{
     display: none !important;
     visibility: hidden !important;
   }}
 
   @page {{
+    size: A4 portrait;
     margin: 0.62in 0.38in 0.72in 0.5in;
   }}
 </style>
 """
 
     pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
-
     patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
 
-    # ── WeasyPrint — generate PDF directly from HTML ──
     try:
         pdf_data = _generate_pdf(patched_html, landscape=False)
     except Exception as e:
         _log_pdf_error('download_classlist_pdf', e, {
-            'grade': selected_grade, 'stream': selected_stream,
-            'context': selected_key, 'view_mode': view_mode,
+            'grade': grade_name, 'stream': stream_name,
+            'view_mode': view_mode,
         })
         return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     if pdf_data.get('pdf'):
-        slug_grade  = slugify(selected_grade  or "class")
-        slug_stream = slugify(selected_stream or "stream")
+        slug_grade  = slugify(grade_name  or "class")
+        slug_stream = slugify(stream_name or "stream")
         year = datetime.date.today().year
         filename = f"{slug_grade}_{slug_stream}_Class_List_{year}.pdf"
 

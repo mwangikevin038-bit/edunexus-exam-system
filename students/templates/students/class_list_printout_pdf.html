@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Class List</title>
+</head>
+<body>
+  <div class="pdf-sheet">
+    <div class="pdf-heading">
+      {% if school.logo %}
+        <img class="pdf-logo" src="{{ school.logo.url }}" alt="{{ school.name }}">
+      {% endif %}
+      <div class="pdf-heading-copy">
+        <h2>{{ school.name }}</h2>
+        <p>{{ selected_grade }} {{ selected_stream }} | Teacher Mark Entry Sheet | {% now "Y" %}</p>
+      </div>
+    </div>
+
+    {% if students %}
+    <table class="register-table">
+      <thead>
+        <tr>
+          <th style="width:70px">Adm</th>
+          {% if selected_stream == 'Combined' %}
+            <th style="width:80px">Stream</th>
+          {% endif %}
+          <th style="width:220px">Learner Name</th>
+          <th style="width:120px">Assessment No</th>
+          {% for i in "123456789012345" %}
+            <th class="grid-cell"></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td>{{ s.admission_no }}</td>
+          {% if selected_stream == 'Combined' %}
+            <td>{{ s.stream }}</td>
+          {% endif %}
+          <td>{{ s.name }}</td>
+          <td>{{ s.assessment_no|default:"-" }}</td>
+          {% for i in "123456789012345" %}
+            <td class="grid-cell"></td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</body>
+</html>

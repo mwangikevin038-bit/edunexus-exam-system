@@ -13,8 +13,8 @@ from ..security import get_request_school, school_admin_required
 
 
 # Section-to-grade mapping
-ALL_GRADES = [f'Grade {i}' for i in range(1, 13)]
-GRADE_ORDER = {f'Grade {i}': i for i in range(1, 13)}
+ALL_GRADES = [f'Grade {i}' for i in range(1, 10)]
+GRADE_ORDER = {f'Grade {i}': i for i in range(1, 10)}
 
 
 @login_required(login_url='login')
@@ -573,19 +573,31 @@ def manage_subjects(request, grade_id, stream_name):
             school_section__in=[db_section, 'BOTH'],
         ).order_by('user__first_name')
 
-    student_count = Student.all_objects.filter(
+    all_students = Student.all_objects.filter(
         school=school, class_name=grade.name, stream=stream_name, is_active=True,
-    ).count()
+    )
+    total_stream_count = all_students.count()
+
+    RELIGION_SUBJECTS = ['908', '909', 'CRE', 'IRE']
+    RELIGION_TAG = {'908': 'CRE', '909': 'IRE', 'CRE': 'CRE', 'IRE': 'IRE'}
 
     subject_rows = []
     for a in assignments:
+        subj_code = a.subject.code if a.subject else ''
+        if subj_code in RELIGION_SUBJECTS:
+            tag = RELIGION_TAG.get(subj_code, '')
+            sc = all_students.filter(religion=tag).count() if tag else total_stream_count
+        else:
+            sc = total_stream_count
+
         subject_rows.append({
             'id': a.id,
             'subject_id': a.subject_id,
             'subject_name': a.subject.name if a.subject else '',
-            'subject_code': a.subject.code if a.subject else '',
+            'subject_code': subj_code,
             'teacher_id': a.teacher_profile_id,
             'teacher_name': a.teacher_profile.get_full_title() if a.teacher_profile else '',
+            'student_count': sc,
         })
 
     return render(request, 'students/manage_subjects.html', {
@@ -594,6 +606,343 @@ def manage_subjects(request, grade_id, stream_name):
         'subject_rows': subject_rows,
         'available_subjects': available_subjects,
         'teachers': teachers,
-        'student_count': student_count,
         'total_subjects': len(subject_rows),
+    })
+
+
+@login_required(login_url='login')
+@school_admin_required
+def class_list_page(request):
+    """
+    Full class list page with school header, student table, and print/download options.
+    Accepts ?grade=Grade+8&stream=Main as GET parameters.
+    """
+    from django.db.models import IntegerField
+    from django.db.models.functions import Cast, Substr, Length
+    from ..models import Student
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+
+    if not grade_name:
+        messages.error(request, "No grade specified.")
+        return redirect('manage_classes')
+
+    students = Student.all_objects.filter(
+        school=school, class_name=grade_name, is_active=True,
+    )
+    if stream_name:
+        students = students.filter(stream=stream_name)
+
+    students = (
+        students
+        .annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
+        .order_by('adm_int')
+    )
+
+    student_list = []
+    for idx, s in enumerate(students, 1):
+        student_list.append({
+            'id': s.id,
+            'admission_no': s.admission_no or '',
+            'name': s.name or '',
+            'stream': s.stream or '',
+            'gender': s.gender or '',
+            'assessment_no': s.assessment_no or '',
+            'guardian_name': s.guardian.name if s.guardian else '',
+            'guardian_phone': s.guardian.phone if s.guardian else '',
+            'religion': s.religion or '',
+        })
+
+    return render(request, 'students/class_list_page.html', {
+        'school': school,
+        'grade_name': grade_name,
+        'stream_name': stream_name,
+        'students': student_list,
+        'total_count': len(student_list),
+        'boys_count': sum(1 for s in student_list if s['gender'] == 'Male'),
+        'girls_count': sum(1 for s in student_list if s['gender'] == 'Female'),
+    })
+
+
+# ── Subject categories for Add New Class form ────────────────────────────────
+SUBJECT_CATEGORIES = {
+    'Mathematics': ['903', 'MAT'],
+    'Languages': ['901', 'ENG', '902', 'KIS', '904', 'KSL'],
+    'Sciences': ['905', 'SCI'],
+    'Humanities': ['907', 'SOC', '908', 'CRE', '909', 'IRE', '910', 'HRE'],
+    'Technicals': ['912', 'PRE', 'AGR'],
+    'Creative Arts': ['911', 'CAS'],
+}
+
+
+@login_required(login_url='login')
+@school_admin_required
+def add_new_class(request):
+    """
+    Class creation form: Grade + Streams + Subject selection.
+    - If grade doesn't exist: creates grade, streams, and subject assignments.
+    - If grade already exists: adds new streams to it and assigns subjects to new streams only.
+    """
+    from ..models import Grade, Stream, Subject, SubjectAssignment
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    if request.method == 'POST':
+        grade_name = request.POST.get('grade_name', '').strip()
+        streams_raw = request.POST.get('streams', '').strip()
+        selected_codes = request.POST.getlist('subjects')
+
+        if not grade_name:
+            messages.error(request, "Please select a grade.")
+            return redirect('add_new_class')
+
+        if not streams_raw:
+            messages.error(request, "Please enter at least one stream name.")
+            return redirect('add_new_class')
+
+        grade_num = int(grade_name.replace('Grade ', ''))
+        if grade_num <= 3:
+            db_section = 'PRIMARY'
+            sub_section = 'LOWER'
+        elif grade_num <= 6:
+            db_section = 'PRIMARY'
+            sub_section = 'UPPER'
+        else:
+            db_section = 'JSS'
+            sub_section = None
+
+        existing_grade = Grade.all_objects.filter(school=school, name=grade_name).first()
+
+        if existing_grade:
+            # Grade exists — add new streams only
+            existing_stream_names = set(
+                Stream.all_objects.filter(school=school, grade=existing_grade)
+                .values_list('name', flat=True)
+            )
+            stream_names = [s.strip().title() for s in streams_raw.split(',') if s.strip()]
+            new_stream_names = [s for s in stream_names if s not in existing_stream_names]
+            skipped = [s for s in stream_names if s in existing_stream_names]
+
+            if not new_stream_names:
+                msg = "All entered stream(s) already exist in " + grade_name + "."
+                if skipped:
+                    msg += " Skipped: " + ", ".join(skipped)
+                messages.error(request, msg)
+                return redirect('add_new_class')
+
+            created_streams = []
+            for sname in new_stream_names:
+                stream = Stream.all_objects.create(
+                    school=school,
+                    grade=existing_grade,
+                    name=sname,
+                    school_section=existing_grade.school_section,
+                )
+                created_streams.append(stream)
+
+            subjects_created = 0
+            for code in selected_codes:
+                subject = Subject.all_objects.filter(
+                    school=school, code=code, grade=grade_name, school_section=db_section
+                ).first()
+                if not subject:
+                    continue
+                for stream in created_streams:
+                    SubjectAssignment.all_objects.get_or_create(
+                        school=school,
+                        subject=subject,
+                        class_name=grade_name,
+                        stream=stream.name,
+                        defaults={
+                            'school_section': db_section,
+                            'sub_section': sub_section,
+                        },
+                    )
+                    subjects_created += 1
+
+            stream_label = ', '.join(new_stream_names)
+            msg = f"{len(new_stream_names)} stream(s) ({stream_label}) added to {grade_name}"
+            if skipped:
+                msg += f". Skipped existing: {', '.join(skipped)}"
+            if selected_codes:
+                msg += f" with {len(selected_codes)} subject(s) assigned."
+            else:
+                msg += "."
+            messages.success(request, msg)
+            return redirect('manage_classes')
+
+        else:
+            # Grade doesn't exist — create grade + streams + subjects
+            grade = Grade.all_objects.create(
+                school=school,
+                name=grade_name,
+                school_section=db_section,
+                sub_section=sub_section,
+                order=GRADE_ORDER.get(grade_name, 99),
+            )
+
+            stream_names = [s.strip().title() for s in streams_raw.split(',') if s.strip()]
+            created_streams = []
+            for sname in stream_names:
+                stream = Stream.all_objects.create(
+                    school=school,
+                    grade=grade,
+                    name=sname,
+                    school_section=db_section,
+                )
+                created_streams.append(stream)
+
+            subjects_created = 0
+            for code in selected_codes:
+                subject = Subject.all_objects.filter(
+                    school=school, code=code, grade=grade_name, school_section=db_section
+                ).first()
+                if not subject:
+                    continue
+                for stream in created_streams:
+                    SubjectAssignment.all_objects.get_or_create(
+                        school=school,
+                        subject=subject,
+                        class_name=grade_name,
+                        stream=stream.name,
+                        defaults={
+                            'school_section': db_section,
+                            'sub_section': sub_section,
+                        },
+                    )
+                    subjects_created += 1
+
+            stream_label = ', '.join(stream_names)
+            messages.success(
+                request,
+                f"{grade_name} created with {len(created_streams)} stream(s) ({stream_label}) "
+                f"and {len(selected_codes)} subject(s) assigned."
+            )
+            return redirect('manage_classes')
+
+    # GET — load available subjects grouped by category
+    all_subjects = Subject.all_objects.filter(school=school, is_active=True)
+    categories = {}
+    for cat_name, codes in SUBJECT_CATEGORIES.items():
+        cat_subjects = all_subjects.filter(code__in=codes)
+        if cat_subjects.exists():
+            categories[cat_name] = cat_subjects.order_by('code')
+
+    known_codes = set()
+    for codes in SUBJECT_CATEGORIES.values():
+        known_codes.update(codes)
+    uncategorized = all_subjects.exclude(code__in=known_codes)
+    if uncategorized.exists():
+        categories['Other Subjects'] = uncategorized.order_by('code')
+
+    return render(request, 'students/add_new_class.html', {
+        'grades': ALL_GRADES,
+    })
+
+
+@login_required(login_url='login')
+@school_admin_required
+def api_grade_subjects(request):
+    """
+    AJAX endpoint: returns subjects grouped by category for a given grade.
+    Usage: /school-admin/api/grade-subjects/?grade=Grade+7
+    """
+    import json
+    from django.http import JsonResponse
+    from ..models import Subject
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'error': 'No school context'}, status=400)
+
+    grade_name = request.GET.get('grade', '').strip()
+    if not grade_name:
+        return JsonResponse({'categories': {}})
+
+    grade_num = int(grade_name.replace('Grade ', ''))
+    if grade_num <= 3:
+        db_section = 'PRIMARY'
+        sub_section = 'LOWER'
+    elif grade_num <= 6:
+        db_section = 'PRIMARY'
+        sub_section = 'UPPER'
+    else:
+        db_section = 'JSS'
+        sub_section = None
+
+    subjects = Subject.all_objects.filter(
+        school=school, school_section=db_section, is_active=True
+    )
+    if sub_section:
+        subjects = subjects.filter(sub_section=sub_section)
+    else:
+        subjects = subjects.filter(sub_section__isnull=True)
+
+    # Deduplicate by code (same code may exist for multiple grades)
+    seen_codes = set()
+    unique_subjects = []
+    for s in subjects.order_by('code'):
+        if s.code not in seen_codes:
+            seen_codes.add(s.code)
+            unique_subjects.append({'code': s.code, 'name': s.name})
+
+    # Group by category
+    categories = {}
+    for cat_name, codes in SUBJECT_CATEGORIES.items():
+        cat_subjects = [s for s in unique_subjects if s['code'] in codes]
+        if cat_subjects:
+            categories[cat_name] = cat_subjects
+
+    # Uncategorized
+    known_codes = set()
+    for codes in SUBJECT_CATEGORIES.values():
+        known_codes.update(codes)
+    uncategorized = [s for s in unique_subjects if s['code'] not in known_codes]
+    if uncategorized:
+        categories['Other Subjects'] = uncategorized
+
+    return JsonResponse({'categories': categories})
+
+
+@login_required(login_url='login')
+@school_admin_required
+def api_check_grade_streams(request):
+    """
+    AJAX endpoint: checks if a grade already exists and returns its existing streams.
+    Usage: /school-admin/api/check-grade-streams/?grade=Grade+1
+    Returns: {exists: bool, grade_name: str, existing_streams: [str]}
+    """
+    from django.http import JsonResponse
+    from ..models import Grade, Stream
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'exists': False, 'existing_streams': []})
+
+    grade_name = request.GET.get('grade', '').strip()
+    if not grade_name:
+        return JsonResponse({'exists': False, 'existing_streams': []})
+
+    grade = Grade.all_objects.filter(school=school, name=grade_name).first()
+    if not grade:
+        return JsonResponse({'exists': False, 'grade_name': grade_name, 'existing_streams': []})
+
+    streams = list(
+        Stream.all_objects.filter(school=school, grade=grade)
+        .values_list('name', flat=True)
+        .order_by('name')
+    )
+    return JsonResponse({
+        'exists': True,
+        'grade_name': grade_name,
+        'existing_streams': streams,
     })

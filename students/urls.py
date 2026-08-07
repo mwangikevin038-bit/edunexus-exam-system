@@ -17,6 +17,9 @@ urlpatterns = [
     path('add-student/', views.add_student, name='add_student'),
     path('class-lists/', views.class_lists, name='class_lists'),
     path('class-lists/download-pdf/', views.download_classlist_pdf, name='download_classlist_pdf'),
+    path('printouts/', views.printouts_hub, name='printouts_hub'),
+    path('printouts/class-list/', views.class_list_printout, name='class_list_printout'),
+    path('printouts/api/streams/', views.api_streams_for_grade_printout, name='api_streams_for_grade_printout'),
     path('learner/<int:student_id>/', views.learner_profile, name='learner_profile'),
 
     # ── Marks & exams ─────────────────────────────────────────────────────
@@ -70,6 +73,10 @@ urlpatterns = [
     path('school-admin/classes/<int:grade_id>/streams/', views.manage_streams, name='manage_streams'),
     path('school-admin/classes/<int:grade_id>/streams/<str:stream_name>/subjects/', views.manage_subjects, name='manage_subjects'),
     path('school-admin/api/class-list/', views.api_class_list, name='api_class_list'),
+    path('school-admin/class-list/', views.class_list_page, name='class_list_page'),
+    path('school-admin/add-new-class/', views.add_new_class, name='add_new_class'),
+    path('school-admin/api/grade-subjects/', views.api_grade_subjects, name='api_grade_subjects'),
+    path('school-admin/api/check-grade-streams/', views.api_check_grade_streams, name='api_check_grade_streams'),
 
     # ── Premium CSV Onboarding Engine ────────────────────────────────────
     path('school-admin/csv-onboard/', views.premium_csv_upload_page, name='premium_csv_upload'),

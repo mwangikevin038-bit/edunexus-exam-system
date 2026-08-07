@@ -59,6 +59,9 @@ from .students_mgmt import (  # noqa: F401
     api_streams_for_grade,
     class_lists,
     get_section_info,
+    printouts_hub,
+    class_list_printout,
+    api_streams_for_grade_printout,
 )
 
 # ── Exam & mark entry views ──────────────────────────────────────────────────
@@ -108,6 +111,10 @@ from .classes_manage import (  # noqa: F401
     manage_streams,
     manage_subjects,
     api_class_list,
+    class_list_page,
+    add_new_class,
+    api_grade_subjects,
+    api_check_grade_streams,
 )
 
 # ── Grading configuration ────────────────────────────────────────────────────

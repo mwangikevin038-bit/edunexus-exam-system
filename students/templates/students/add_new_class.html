@@ -1,0 +1,215 @@
+{% extends 'students/base.html' %}
+{% load static %}
+{% block sub_tabs %}
+<style>
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#84cc16;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
+  .sub-nav-item{display:flex;align-items:stretch}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
+  .sub-nav-link:hover{color:#fff;background-color:#65a30d}
+  .sub-nav-link.active{color:#fff;background-color:#166534;font-weight:700}
+  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item"><a href="{% url 'manage_classes' %}" class="sub-nav-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Manage Classes</a></li>
+    <li class="sub-nav-item"><a href="{% url 'add_new_class' %}" class="sub-nav-link active"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Add New Class</a></li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+  .anc-page{max-width:1100px;margin:0 auto;padding:18px 24px 60px}
+  .anc-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:32px 36px;box-shadow:0 1px 4px rgba(0,0,0,0.05);transition:box-shadow 0.3s}
+  .anc-card.elevated{box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+  .anc-top-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:end}
+  .anc-field label{display:block;font-size:14px;font-weight:600;color:#1e293b;margin-bottom:6px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .anc-field label .req{color:#ef4444}
+  .anc-field select,.anc-field input[type=text]{width:100%;padding:11px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;color:#1e293b;font-family:'Plus Jakarta Sans','Inter',sans-serif;background:#fff;transition:all .2s;height:42px;box-sizing:border-box}
+  .anc-field select:focus,.anc-field input[type=text]:focus{outline:none;border-color:#84cc16;box-shadow:0 0 0 3px rgba(132,204,22,0.15)}
+  .anc-field .help-text{font-size:11px;color:#94a3b8;margin-top:3px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .anc-existing{margin-top:8px;display:none}
+  .anc-existing-label{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:5px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .anc-existing-tags{display:flex;flex-wrap:wrap;gap:6px}
+  .anc-tag{display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:3px 10px;font-size:12px;font-weight:600;color:#166534;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .anc-tag svg{width:12px;height:12px;stroke:#16a34a;fill:none;stroke-width:2}
+  .anc-mode-badge{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:5px 14px;font-size:13px;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif;margin-bottom:16px}
+  .anc-mode-badge.new{background:#eff6ff;border:1.5px solid #3b82f6;color:#1e40af}
+  .anc-mode-badge.existing{background:#fef3c7;border:1.5px solid #f59e0b;color:#92400e}
+  .anc-mode-badge svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2}
+  .anc-btn-row{display:flex;justify-content:flex-end;margin-top:20px}
+  .anc-add-btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:8px;padding:12px 28px;font-size:14px;font-weight:700;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.25s ease}
+  .anc-add-btn.inactive{background:#e5e7eb;color:#9ca3af;cursor:not-allowed;box-shadow:none}
+  .anc-add-btn.ready{background:linear-gradient(135deg,#84cc16 0%,#65a30d 100%);color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(132,204,22,0.35)}
+  .anc-add-btn.ready:hover{background:linear-gradient(135deg,#65a30d 0%,#4d7c0f 100%);box-shadow:0 4px 14px rgba(132,204,22,0.45);transform:translateY(-1px)}
+  .anc-add-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+
+  .anc-step2{margin-top:0;overflow:hidden;max-height:0;opacity:0;transition:max-height 0.5s ease,opacity 0.4s ease,margin-top 0.4s ease}
+  .anc-step2.visible{max-height:5000px;opacity:1;margin-top:28px}
+  .anc-step2-inner{border-top:2px solid #e5e7eb;padding-top:24px}
+  .anc-subjects-title{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:14px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .anc-select-all-wrap{display:flex;align-items:center;gap:20px;margin-bottom:16px}
+  .anc-select-all{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .anc-select-all input{accent-color:#84cc16;width:15px;height:15px}
+  .anc-count{font-size:12px;color:#84cc16;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .anc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 28px}
+  .anc-cat h4{font-size:13px;font-weight:700;color:#0f172a;margin:0 0 10px;font-family:'Plus Jakarta Sans','Inter',sans-serif;padding-bottom:6px;border-bottom:2px solid #84cc16;text-transform:uppercase;letter-spacing:0.3px}
+  .anc-cat .si{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;color:#334155;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .anc-cat .si input[type=checkbox]{width:16px;height:16px;accent-color:#84cc16;cursor:pointer;flex-shrink:0}
+  .anc-cat .si label{cursor:pointer;margin:0}
+  .anc-submit-row{display:flex;justify-content:flex-end;margin-top:24px;padding-top:20px;border-top:1px solid #e5e7eb}
+  .anc-submit-btn{display:inline-flex;align-items:center;gap:8px;background:#84cc16;color:#1a3a05;border:none;border-radius:8px;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.25s ease;box-shadow:0 2px 8px rgba(132,204,22,0.3)}
+  .anc-submit-btn:hover{background:#65a30d;box-shadow:0 4px 14px rgba(132,204,22,0.45);transform:translateY(-1px)}
+  .anc-submit-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+  .anc-loading{text-align:center;padding:30px;color:#64748b;font-size:13px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  @media(max-width:900px){.anc-top-row{grid-template-columns:1fr}.anc-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+<div class="anc-page">
+  <form method="POST" class="anc-card" id="ancForm">
+    {% csrf_token %}
+    <div class="anc-top-row">
+      <div class="anc-field">
+        <label>Form / Grade <span class="req">*</span></label>
+        <select name="grade_name" id="ancGrade">
+          <option value="">Select Form / Grade</option>
+          {% for g in grades %}<option value="{{ g }}">{{ g }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="anc-field">
+        <label>Stream(s) <span class="req">*</span></label>
+        <input type="text" name="streams" id="ancStreams" placeholder="e.g. North, South, East">
+        <div class="anc-existing" id="ancExisting">
+          <div class="anc-existing-label">Existing streams (will be skipped):</div>
+          <div class="anc-existing-tags" id="ancExistingTags"></div>
+        </div>
+      </div>
+    </div>
+    <div class="anc-btn-row">
+      <button type="button" class="anc-add-btn inactive" id="ancAddBtn">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Class
+      </button>
+    </div>
+
+    <div class="anc-step2" id="ancStep2">
+      <div class="anc-step2-inner">
+        <div class="anc-mode-badge" id="ancModeBadge"></div>
+        <div class="anc-subjects-title" id="ancSubjectsTitle">Select Subjects done by this class</div>
+        <div class="anc-select-all-wrap" id="ancSAW" style="display:none">
+          <label class="anc-select-all"><input type="checkbox" id="ancSA"> Select All</label>
+          <span class="anc-count" id="ancCnt">0 selected</span>
+        </div>
+        <div id="ancArea"></div>
+        <div class="anc-submit-row" id="ancSR" style="display:none">
+          <button type="submit" class="anc-submit-btn">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Save Class &amp; Subjects
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  var grade=document.getElementById('ancGrade'),
+      streams=document.getElementById('ancStreams'),
+      btn=document.getElementById('ancAddBtn'),
+      step2=document.getElementById('ancStep2'),
+      badge=document.getElementById('ancModeBadge'),
+      area=document.getElementById('ancArea'),
+      saw=document.getElementById('ancSAW'),
+      sr=document.getElementById('ancSR'),
+      cnt=document.getElementById('ancCnt'),
+      existingDiv=document.getElementById('ancExisting'),
+      existingTags=document.getElementById('ancExistingTags'),
+      subjectsTitle=document.getElementById('ancSubjectsTitle'),
+      existingStreams=[];
+
+  grade.addEventListener('change',function(){
+    checkReady();
+    existingStreams=[];
+    existingDiv.style.display='none';
+    existingTags.innerHTML='';
+    if(!grade.value)return;
+    fetch('{% url "api_check_grade_streams" %}?grade='+encodeURIComponent(grade.value))
+      .then(function(r){return r.json()})
+      .then(function(data){
+        if(data.exists&&data.existing_streams.length){
+          existingStreams=data.existing_streams;
+          var h='';
+          for(var i=0;i<data.existing_streams.length;i++){
+            h+='<span class="anc-tag"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+data.existing_streams[i]+'</span>';
+          }
+          existingTags.innerHTML=h;
+          existingDiv.style.display='block';
+        }
+      });
+  });
+
+  function checkReady(){
+    btn.className=(grade.value&&streams.value.trim())?'anc-add-btn ready':'anc-add-btn inactive';
+  }
+  streams.addEventListener('input',checkReady);
+
+  btn.addEventListener('click',function(){
+    if(!grade.value||!streams.value.trim())return;
+    var isNew=existingStreams.length===0;
+    if(isNew){
+      badge.className='anc-mode-badge new';
+      badge.innerHTML='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> New Grade: '+grade.value;
+      subjectsTitle.textContent='Select Subjects done by this class';
+    }else{
+      badge.className='anc-mode-badge existing';
+      badge.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Adding streams to: '+grade.value;
+      subjectsTitle.textContent='Select Subjects for the new stream(s)';
+    }
+    step2.className='anc-step2 visible';
+    area.innerHTML='<div class="anc-loading">Loading subjects for '+grade.value+'...</div>';
+    saw.style.display='none';
+    sr.style.display='none';
+    document.getElementById('ancForm').classList.add('elevated');
+
+    fetch('{% url "api_grade_subjects" %}?grade='+encodeURIComponent(grade.value))
+      .then(function(r){return r.json()})
+      .then(function(data){
+        var cats=data.categories;
+        if(!cats||!Object.keys(cats).length){
+          area.innerHTML='<div class="anc-loading" style="color:#94a3b8">No subjects available for '+grade.value+'</div>';
+          return;
+        }
+        var h='',cn=Object.keys(cats);
+        for(var c=0;c<cn.length;c++){
+          h+='<div class="anc-cat"><h4>'+cn[c]+'</h4>';
+          var ss=cats[cn[c]];
+          for(var i=0;i<ss.length;i++){
+            var s=ss[i],sid='s_'+s.code.replace(/[^a-zA-Z0-9]/g,'_');
+            h+='<div class="si"><input type="checkbox" name="subjects" value="'+s.code+'" id="'+sid+'" onchange="window._uc()"><label for="'+sid+'">'+s.name+'</label></div>';
+          }
+          h+='</div>';
+        }
+        area.innerHTML=h;
+        saw.style.display='flex';
+        sr.style.display='flex';
+        window._uc();
+      })
+      .catch(function(){area.innerHTML='<div class="anc-loading" style="color:#ef4444">Failed to load subjects.</div>';});
+  });
+
+  document.getElementById('ancSA').addEventListener('change',function(){
+    var c=this.checked;
+    document.querySelectorAll('input[name="subjects"]').forEach(function(cb){cb.checked=c});
+    window._uc();
+  });
+
+  window._uc=function(){
+    var t=document.querySelectorAll('input[name="subjects"]').length,
+        x=document.querySelectorAll('input[name="subjects"]:checked').length;
+    cnt.textContent=x+' of '+t+' selected';
+  };
+})();
+</script>
+{% endblock %}

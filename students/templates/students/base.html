@@ -151,8 +151,8 @@
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'premium_csv_upload' or request.resolver_match.url_name == 'learner_profile' %}active-section{% endif %}" href="{% url 'admin_add_student' %}">
                     <i class="ph ph-student"></i> <span>Students</span>
                 </a>
-                <a class="nav-link-card {% if request.resolver_match.url_name == 'class_lists' %}active-section{% endif %}" href="{% url 'class_lists' %}">
-                    <i class="ph ph-users"></i> <span>Class Lists</span>
+                <a class="nav-link-card {% if request.resolver_match.url_name == 'printouts_hub' %}active-section{% endif %}" href="{% url 'printouts_hub' %}">
+                    <i class="ph ph-printer"></i> <span>Printouts</span>
                 </a>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_classes' %}active-section{% endif %}" href="{% url 'manage_classes' %}">
                     <i class="ph ph-layout"></i> <span>Class Structure</span>
@@ -236,7 +236,7 @@
     </div>
 
     <!-- SUB-NAVIGATION BAR (rendered outside app-content for full-width flush positioning) -->
-    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' %}
+    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' or request.resolver_match.url_name == 'add_new_class' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' %}
     {% block sub_tabs %}{% endblock %}
     {% endif %}
 

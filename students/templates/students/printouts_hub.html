@@ -1,0 +1,164 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block sub_tabs %}
+<style>
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#84cc16;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
+  .sub-nav-item{display:flex;align-items:stretch}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
+  .sub-nav-link:hover{color:#fff;background-color:#65a30d}
+  .sub-nav-link.active{color:#fff;background-color:#166534;font-weight:700}
+  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'printouts_hub' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Printouts
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+  .po-page{max-width:1200px;margin:0 auto;padding:24px 28px 60px}
+  .po-header{margin-bottom:28px}
+  .po-header h1{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:22px;color:#111827;margin:0 0 6px}
+  .po-header p{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:14px;color:#6b7280;margin:0}
+
+  .po-section-label{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:12px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin:28px 0 14px;padding-left:2px}
+  .po-section-label:first-of-type{margin-top:0}
+
+  .po-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+
+  .po-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px 24px;cursor:pointer;text-decoration:none;display:flex;flex-direction:column;gap:12px;transition:all 0.2s ease;position:relative;overflow:hidden}
+  .po-card:hover{border-color:#84cc16;box-shadow:0 4px 16px rgba(132,204,22,0.12);transform:translateY(-2px)}
+  .po-card:hover .po-card-icon{color:#84cc16;border-color:#84cc16;background:#f0fdf4}
+  .po-card:hover .po-card-title{color:#166534}
+
+  .po-card-icon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:1.5px solid #d1d5db;border-radius:10px;color:#6b7280;transition:all 0.2s ease;background:#fff}
+  .po-card-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+  .po-card-title{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:16px;color:#1e293b;margin:0}
+  .po-card-desc{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:13px;color:#9ca3af;margin:0;line-height:1.4}
+
+  .po-card-badge{position:absolute;top:14px;right:14px;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:4px}
+  .po-badge-pdf{background:#dbeafe;color:#1d4ed8}
+  .po-badge-print{background:#f0fdf4;color:#166534}
+  .po-badge-soon{background:#fef3c7;color:#92400e}
+
+  .po-card.disabled{opacity:0.55;cursor:default;pointer-events:none}
+  .po-card.disabled:hover{transform:none;box-shadow:none;border-color:#e5e7eb}
+  .po-card.disabled .po-card-icon{color:#d1d5db;border-color:#e5e7eb;background:#f9fafb}
+
+  @media(max-width:1000px){.po-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:640px){.po-grid{grid-template-columns:1fr}.po-page{padding:16px 16px 40px}}
+</style>
+
+<div class="po-page">
+  <div class="po-header">
+    <h1>Printouts</h1>
+    <p>Select what documents you would want to print out</p>
+  </div>
+
+  <div class="po-section-label">Academic Reports</div>
+  <div class="po-grid">
+    <a href="{% url 'class_list_printout' %}" class="po-card">
+      <div class="po-card-icon">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <div class="po-card-title">Class List</div>
+      <div class="po-card-desc">Print student list with guardian contacts</div>
+      <span class="po-card-badge po-badge-pdf">PDF</span>
+    </a>
+
+    <a href="{% url 'class_lists' %}?view_mode=teacher" class="po-card">
+      <div class="po-card-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+      </div>
+      <div class="po-card-title">Mark Sheet</div>
+      <div class="po-card-desc">Print mark sheet with empty grid</div>
+      <span class="po-card-badge po-badge-pdf">PDF</span>
+    </a>
+
+    <a href="{% url 'results_list' %}" class="po-card">
+      <div class="po-card-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+      </div>
+      <div class="po-card-title">Analysis Report</div>
+      <div class="po-card-desc">Print exam analysis report</div>
+      <span class="po-card-badge po-badge-pdf">PDF</span>
+    </a>
+  </div>
+
+  <div class="po-section-label">Student Reports</div>
+  <div class="po-grid">
+    <a href="{% url 'report_card_select' %}" class="po-card">
+      <div class="po-card-icon">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div class="po-card-title">Report Cards</div>
+      <div class="po-card-desc">Print student or class report forms</div>
+      <span class="po-card-badge po-badge-pdf">PDF</span>
+    </a>
+
+    <div class="po-card disabled" title="Coming soon">
+      <div class="po-card-icon">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </div>
+      <div class="po-card-title">Merit List</div>
+      <div class="po-card-desc">Print exam merit lists</div>
+      <span class="po-card-badge po-badge-soon">Soon</span>
+    </div>
+
+    <div class="po-card disabled" title="Coming soon">
+      <div class="po-card-icon">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+      </div>
+      <div class="po-card-title">Assessments</div>
+      <div class="po-card-desc">Print evaluation report</div>
+      <span class="po-card-badge po-badge-soon">Soon</span>
+    </div>
+  </div>
+
+  <div class="po-section-label">Administration</div>
+  <div class="po-grid">
+    <a href="{% url 'download_teachers_list_pdf' %}" class="po-card">
+      <div class="po-card-icon">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="po-card-title">Teachers List</div>
+      <div class="po-card-desc">Print list of all teachers</div>
+      <span class="po-card-badge po-badge-pdf">PDF</span>
+    </a>
+
+    <div class="po-card disabled" title="Coming soon">
+      <div class="po-card-icon">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </div>
+      <div class="po-card-title">Transcripts</div>
+      <div class="po-card-desc">Print student academic transcripts</div>
+      <span class="po-card-badge po-badge-soon">Soon</span>
+    </div>
+
+    <div class="po-card disabled" title="Coming soon">
+      <div class="po-card-icon">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <div class="po-card-title">Leaving Certificates</div>
+      <div class="po-card-desc">Print student leaving certificate</div>
+      <span class="po-card-badge po-badge-soon">Soon</span>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.po-card.disabled').forEach(function(card){
+  card.addEventListener('click',function(e){e.preventDefault();});
+});
+</script>
+{% endblock %}

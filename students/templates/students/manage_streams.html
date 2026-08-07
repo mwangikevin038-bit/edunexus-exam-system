@@ -61,7 +61,7 @@
       </a>
     </li>
     <li class="sub-nav-item">
-      <a href="{% url 'manage_classes' %}?tab=add" class="sub-nav-link">
+      <a href="{% url 'add_new_class' %}" class="sub-nav-link">
         <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         Add New Class
       </a>
@@ -327,98 +327,6 @@
     .actions-dropdown .dropdown-delete { color: #dc2626; }
     .actions-dropdown .dropdown-delete:hover { background: #fef2f2; }
 
-    .cl-modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 999;
-        align-items: flex-start;
-        justify-content: center;
-        padding-top: 60px;
-    }
-    .cl-modal-overlay.show { display: flex; }
-    .cl-modal {
-        background: #fff;
-        border-radius: 0;
-        width: 90%;
-        max-width: 900px;
-        max-height: 80vh;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.2);
-    }
-    .cl-modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px 20px;
-        border-bottom: 2px solid #000000;
-        flex-shrink: 0;
-    }
-    .cl-modal-header h2 {
-        margin: 0;
-        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-        font-size: 16px;
-        font-weight: 700;
-        color: #111827;
-    }
-    .cl-modal-close {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-        color: #64748b;
-        display: flex;
-        align-items: center;
-    }
-    .cl-modal-close:hover { color: #111827; }
-    .cl-modal-close svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
-    .cl-modal-body {
-        overflow-y: auto;
-        flex: 1;
-    }
-    .cl-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .cl-table thead th {
-        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-        font-weight: 600;
-        font-size: 12px;
-        color: #64748b;
-        text-align: left;
-        padding: 10px 14px;
-        background: #f8fafc;
-        border-bottom: 2px solid #000000;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-    }
-    .cl-table tbody tr:nth-child(even) { background-color: #f1f5f9; }
-    .cl-table tbody td {
-        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-        font-size: 13px;
-        color: #334155;
-        padding: 8px 14px;
-        border-bottom: 1px solid #e2e8f0;
-    }
-    .cl-table tbody td:first-child { font-weight: 600; color: #1e293b; }
-    .cl-table tbody td a { color: #0f172a; text-decoration: none; font-weight: 700; }
-    .cl-table tbody td a:hover { text-decoration: underline; }
-    .cl-empty {
-        padding: 40px;
-        text-align: center;
-        color: #94a3b8;
-        font-size: 14px;
-        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    }
-    .cl-loading {
-        padding: 40px;
-        text-align: center;
-        color: #64748b;
-        font-size: 14px;
-        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    }
 
     .btn-add-stream {
         display: inline-flex;
@@ -461,6 +369,25 @@
         font-size: 14px;
         font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     }
+
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #64748b;
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.15s ease;
+        margin-top: 16px;
+    }
+    .btn-back:hover { background: #475569; }
 
     @media (max-width: 768px) {
         .classes-page { padding: 16px; }
@@ -531,7 +458,7 @@
                                     &hellip; Actions
                                 </button>
                                 <div class="actions-dropdown">
-                                    <a href="#" onclick="openClassList('{{ grade.name }}', '{{ row.name }}'); return false;">
+                                    <a href="{% url 'class_list_page' %}?grade={{ grade.name|urlencode }}&stream={{ row.name|urlencode }}">
                                         <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                                         Class list
                                     </a>
@@ -564,6 +491,8 @@
             {% endif %}
 
         </div>
+
+        <a href="{% url 'manage_classes' %}" class="btn-back">&larr; Back</a>
 
 </div>
 
@@ -625,20 +554,6 @@
     </div>
 </div>
 
-<div id="classListModal" class="cl-modal-overlay" onclick="if(event.target===this)this.classList.remove('show')">
-    <div class="cl-modal">
-        <div class="cl-modal-header">
-            <h2 id="classListTitle">Class List</h2>
-            <button class="cl-modal-close" onclick="document.getElementById('classListModal').classList.remove('show')">
-                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-        </div>
-        <div class="cl-modal-body" id="classListBody">
-            <div class="cl-loading">Loading students...</div>
-        </div>
-    </div>
-</div>
-
 <script>
 function toggleActionsDropdown(btn) {
     var dropdown = btn.nextElementSibling;
@@ -688,54 +603,7 @@ function openRenameModal(streamId, currentName) {
     document.getElementById('renameModal').style.display = 'flex';
 }
 
-function openClassList(gradeName, streamName) {
-    var modal = document.getElementById('classListModal');
-    var title = document.getElementById('classListTitle');
-    var body = document.getElementById('classListBody');
-    title.textContent = 'Class List \u2013 ' + gradeName + (streamName ? ' | ' + streamName : '');
-    body.innerHTML = '<div class="cl-loading">Loading students...</div>';
-    modal.classList.add('show');
 
-    var url = '{% url "api_class_list" %}?grade=' + encodeURIComponent(gradeName);
-    if (streamName) url += '&stream=' + encodeURIComponent(streamName);
-
-    fetch(url)
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            var students = data.students;
-            var showStream = data.has_multiple_streams && !streamName;
-            if (students.length === 0) {
-                body.innerHTML = '<div class="cl-empty">No students found in this class.</div>';
-                return;
-            }
-            var html = '<table class="cl-table"><thead><tr>';
-            html += '<th>Adm</th>';
-            html += '<th>Learner Name</th>';
-            if (showStream) html += '<th>Stream</th>';
-            html += '<th>Gender</th>';
-            html += '<th>Assessment No</th>';
-            html += '<th>Parent / Guardian</th>';
-            html += '<th>Parent Phone</th>';
-            html += '</tr></thead><tbody>';
-            for (var i = 0; i < students.length; i++) {
-                var s = students[i];
-                html += '<tr>';
-                html += '<td>' + s.admission_no + '</td>';
-                html += '<td><a href="/learner/' + s.id + '/">' + s.name + '</a></td>';
-                if (showStream) html += '<td>' + s.stream + '</td>';
-                html += '<td>' + s.gender + '</td>';
-                html += '<td>' + (s.assessment_no || '-') + '</td>';
-                html += '<td>' + (s.guardian_name || '-') + '</td>';
-                html += '<td>' + (s.guardian_phone || '-') + '</td>';
-                html += '</tr>';
-            }
-            html += '</tbody></table>';
-            body.innerHTML = html;
-        })
-        .catch(function() {
-            body.innerHTML = '<div class="cl-empty">Failed to load students. Please try again.</div>';
-        });
-}
 </script>
 
 {% endblock %}

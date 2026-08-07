@@ -1863,3 +1863,147 @@ def get_section_info(request):
     else:
         grades = GRADE_CHOICES
     return JsonResponse({'admission_no': next_adm, 'grades': grades})
+
+
+@login_required(login_url='login')
+@school_admin_required
+def printouts_hub(request):
+    """
+    Premium Printouts hub page — card grid of all printable documents.
+    """
+    return render(request, 'students/printouts_hub.html')
+
+
+@login_required(login_url='login')
+@school_admin_required
+def class_list_printout(request):
+    """
+    Class List printout page — Grade + Stream selection, then fetches students.
+    Supports view_mode: 'admin' (guardian contacts) or 'teacher' (mark sheet grid).
+    """
+    from ..models import Grade, Stream
+    from ..security.roles import user_has_main_school_admin_override
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+    view_mode = request.GET.get('view_mode', 'admin').strip()
+    if view_mode not in ('admin', 'teacher'):
+        view_mode = 'admin'
+
+    # Access control: admin register requires admin or class teacher of that stream
+    is_admin = user_has_main_school_admin_override(request.user)
+    can_see_admin = is_admin
+    if not is_admin and grade_name and stream_name:
+        from ..models import Teacher
+        teacher = Teacher.all_objects.filter(school=school, user=request.user, is_active=True).first()
+        if teacher and teacher.assigned_task:
+            task = teacher.assigned_task
+            if task.startswith('Class Teacher'):
+                remainder = task.replace('Class Teacher ', '').strip()
+                if remainder == f'{grade_name} {stream_name}':
+                    can_see_admin = True
+
+    # Force teacher mode if not authorized for admin register
+    if view_mode == 'admin' and not can_see_admin:
+        view_mode = 'teacher'
+
+    # Section-aware accent color based on grade
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if grade_name in ['Grade 1', 'Grade 2', 'Grade 3']:
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif grade_name in ['Grade 4', 'Grade 5', 'Grade 6']:
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors['JSS']
+
+    students = []
+    streams = []
+    selected_grade = grade_name
+    selected_stream = stream_name
+
+    if grade_name:
+        streams = list(
+            Stream.all_objects.filter(school=school, grade__name=grade_name)
+            .values_list('name', flat=True).order_by('name')
+        )
+
+    if grade_name and stream_name:
+        from django.db.models import CharField, Value
+        from django.db.models.functions import Substr, Length
+        from django.db.models import IntegerField
+        from django.db.models.functions import Cast
+        from ..models import Student
+
+        if stream_name == 'Combined':
+            qs = Student.all_objects.filter(
+                school=school, class_name=grade_name, is_active=True
+            )
+        else:
+            qs = Student.all_objects.filter(
+                school=school, class_name=grade_name, stream=stream_name, is_active=True
+            )
+        qs = (
+            qs.annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
+            .order_by('adm_int')
+        )
+        for s in qs:
+            students.append({
+                'id': s.id,
+                'admission_no': s.admission_no or '',
+                'name': s.name or '',
+                'gender': s.gender or '',
+                'stream': s.stream or '',
+                'assessment_no': s.assessment_no or '',
+                'guardian_name': s.guardian.name if s.guardian else '',
+                'guardian_phone': s.guardian.phone if s.guardian else '',
+                'religion': s.religion or '',
+            })
+
+    return render(request, 'students/class_list_printout.html', {
+        'grades': grades,
+        'streams': streams,
+        'students': students,
+        'selected_grade': selected_grade,
+        'selected_stream': selected_stream,
+        'view_mode': view_mode,
+        'can_see_admin': can_see_admin,
+        'total_count': len(students),
+        'boys_count': sum(1 for s in students if s['gender'] == 'Male'),
+        'girls_count': sum(1 for s in students if s['gender'] == 'Female'),
+        'section_accent': section_accent,
+    })
+
+
+@login_required(login_url='login')
+@school_admin_required
+def api_streams_for_grade_printout(request):
+    """AJAX endpoint: returns streams for a given grade. Adds 'Combined' if 2+ streams."""
+    from django.http import JsonResponse
+    from ..models import Stream
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'streams': []})
+
+    grade_name = request.GET.get('grade', '').strip()
+    if not grade_name:
+        return JsonResponse({'streams': []})
+
+    streams = list(
+        Stream.all_objects.filter(school=school, grade__name=grade_name)
+        .values_list('name', flat=True).order_by('name')
+    )
+    if len(streams) > 1:
+        streams.append('Combined')
+    return JsonResponse({'streams': streams})
