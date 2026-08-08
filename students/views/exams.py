@@ -1318,8 +1318,12 @@ def analyse_exam(request):
     exam_id = request.GET.get('exam_id')
     class_name_filter = request.GET.get('class_name', '').strip()
     if not exam_id:
-        messages.error(request, "No exam specified.")
-        return redirect('manage_exams')
+        latest_exam = Exam.all_objects.filter(school=school).order_by('-year', 'term', 'name').first()
+        if latest_exam:
+            exam_id = latest_exam.id
+        else:
+            messages.error(request, "No exams found.")
+            return redirect('manage_exams')
 
     exam = Exam.all_objects.filter(school=school, id=exam_id).first()
     if not exam:
@@ -1340,7 +1344,6 @@ def analyse_exam(request):
         auto_grades = (
             ExamSummary.all_objects.filter(
                 school=school, exam_name=exam.name, term=exam.term, year=exam.year,
-                school_section=section,
             )
             .values_list('student__class_name', flat=True)
             .distinct()
@@ -1348,15 +1351,6 @@ def analyse_exam(request):
         auto_grades_list = list(auto_grades)
         if len(auto_grades_list) >= 1:
             class_name_filter = auto_grades_list[0]
-
-    grading_config = None
-    for cfg_candidate in [
-        GradingConfig.all_objects.filter(school=school, school_section=section, sub_section=sub_section).first(),
-        GradingConfig.all_objects.filter(school=school, school_section=section, sub_section__isnull=True).first(),
-    ]:
-        if cfg_candidate:
-            grading_config = cfg_candidate
-            break
 
     all_students = Student.all_objects.filter(
         school=school,
@@ -1370,10 +1364,25 @@ def analyse_exam(request):
     )
     if class_name_filter:
         summaries = summaries.filter(student__class_name=class_name_filter)
-    if section == 'JSS':
-        summaries = summaries.filter(school_section='JSS')
-    elif section == 'PRIMARY' and sub_section:
-        summaries = summaries.filter(school_section='PRIMARY', sub_section=sub_section)
+
+    if class_name_filter:
+        detected_section = summaries.values_list('school_section', flat=True).distinct()
+        detected_sub = summaries.values_list('sub_section', flat=True).distinct()
+        if detected_section:
+            section = detected_section[0]
+        if detected_sub:
+            sub_section = [s for s in detected_sub if s]
+            sub_section = sub_section[0] if sub_section else sub_section
+
+    breakdown_levels = PRIMARY_ORDERED_LEVELS if section == 'PRIMARY' else ORDERED_LEVELS
+    grading_config = None
+    for cfg_candidate in [
+        GradingConfig.all_objects.filter(school=school, school_section=section, sub_section=sub_section).first(),
+        GradingConfig.all_objects.filter(school=school, school_section=section, sub_section__isnull=True).first(),
+    ]:
+        if cfg_candidate:
+            grading_config = cfg_candidate
+            break
 
     total_students = all_students.count()
     students_who_sat = summaries.values('student_id').distinct().count()
@@ -1385,13 +1394,6 @@ def analyse_exam(request):
     grade_name = summaries.values_list('student__class_name', flat=True).first() or exam.name
 
     subjects = Subject.all_objects.filter(school=school)
-    if section == 'JSS':
-        subjects = subjects.filter(grade__in=['Grade 7', 'Grade 8', 'Grade 9'])
-    elif section == 'PRIMARY' and sub_section:
-        if sub_section == 'LOWER':
-            subjects = subjects.filter(grade__in=['Grade 1', 'Grade 2', 'Grade 3'])
-        else:
-            subjects = subjects.filter(grade__in=['Grade 4', 'Grade 5', 'Grade 6'])
 
     all_marks = Mark.all_objects.filter(
         student__school=school,
@@ -1462,10 +1464,6 @@ def analyse_exam(request):
     other_exams = Exam.all_objects.filter(
         school=school, year=exam.year,
     ).exclude(id=exam.id).order_by('term', 'name')
-    if section == 'JSS':
-        other_exams = other_exams.filter(school_section='JSS')
-    elif section == 'PRIMARY' and sub_section:
-        other_exams = other_exams.filter(school_section='PRIMARY', sub_section=sub_section)
 
     # Compute comparison exam stats for change calculation
     prev_exam = other_exams.first() if other_exams else None
@@ -1477,10 +1475,6 @@ def analyse_exam(request):
         )
         if class_name_filter:
             prev_summaries = prev_summaries.filter(student__class_name=class_name_filter)
-        if section == 'JSS':
-            prev_summaries = prev_summaries.filter(school_section='JSS')
-        elif section == 'PRIMARY' and sub_section:
-            prev_summaries = prev_summaries.filter(school_section='PRIMARY', sub_section=sub_section)
 
         prev_student_ids = prev_summaries.values_list('student_id', flat=True).distinct()
         prev_all_marks = Mark.all_objects.filter(
@@ -1532,7 +1526,6 @@ def analyse_exam(request):
             if level_def.get('min_marks', 0) <= total_marks_800 <= level_def.get('max_marks', 0):
                 overall_plv = level_def.get('level', '-')
                 break
-
     grade_breakdown = []
     for s in streams:
         s_ids = summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
@@ -1563,8 +1556,23 @@ def analyse_exam(request):
                 if level_def.get('min_marks', 0) <= total_m <= level_def.get('max_marks', 0):
                     row['performance_level'] = level_def.get('level', '-')
                     break
+        else:
+            best_lvl = '-'
+            best_count = 0
+            for lvl in breakdown_levels:
+                if row.get(lvl, 0) > best_count:
+                    best_count = row[lvl]
+                    best_lvl = lvl
+            if best_count > 0:
+                row['performance_level'] = best_lvl
 
         grade_breakdown.append(row)
+
+    if overall_plv == '-':
+        all_plvs = [r.get('performance_level', '-') for r in grade_breakdown if r.get('performance_level', '-') != '-']
+        if all_plvs:
+            from collections import Counter
+            overall_plv = Counter(all_plvs).most_common(1)[0][0]
 
     total_row = {
         'form': grade_name,
@@ -1643,16 +1651,15 @@ def analyse_exam(request):
     all_exams_for_school = Exam.all_objects.filter(
         school=school, year=exam.year,
     ).order_by('-year', 'term', 'name')
-    if section == 'JSS':
-        all_exams_for_school = all_exams_for_school.filter(school_section='JSS')
-    elif section == 'PRIMARY' and sub_section:
-        all_exams_for_school = all_exams_for_school.filter(school_section='PRIMARY', sub_section=sub_section)
 
     # Group exams by grade + term for the custom dropdown
     exam_groups_dict = {}
+    seen_exam_keys = set()
     for ex in all_exams_for_school:
+        key = (ex.name, ex.term, ex.year)
+        if key in seen_exam_keys:
+            continue
         grade_label = ex.school_section or 'JSS'
-        # Try to get class name from first student summary for this exam
         first_summary = ExamSummary.all_objects.filter(
             school=school, exam_name=ex.name, term=ex.term, year=ex.year,
         ).select_related('student').first()
@@ -1665,6 +1672,7 @@ def analyse_exam(request):
             'id': ex.id,
             'name': ex.name,
         })
+        seen_exam_keys.add(key)
 
     # Build ordered list of groups
     exam_groups = []
@@ -1678,24 +1686,33 @@ def analyse_exam(request):
     pot_exams = Exam.all_objects.filter(
         school=school,
     ).order_by('year', 'term', 'name')
-    if section == 'JSS':
-        pot_exams = pot_exams.filter(school_section='JSS')
-    elif section == 'PRIMARY' and sub_section:
-        pot_exams = pot_exams.filter(school_section='PRIMARY', sub_section=sub_section)
+
+    # Deduplicate P-O-T by exam name to avoid same-named exams in different sections
+    seen_pot_names = set()
+    pot_unique_exams = []
+    for pe in pot_exams:
+        key = (pe.name, pe.term, pe.year)
+        if key in seen_pot_names:
+            continue
+        # Only include exams that have summaries for the current class
+        pe_summaries = ExamSummary.all_objects.filter(
+            school=school, exam_name=pe.name, term=pe.term, year=pe.year,
+        )
+        if class_name_filter:
+            pe_summaries = pe_summaries.filter(student__class_name=class_name_filter)
+        if pe_summaries.exists():
+            seen_pot_names.add(key)
+            pot_unique_exams.append(pe)
 
     # Build time-series data: labels = exam names, per-stream mean points
     pot_labels = []
     pot_streams_data = {s: [] for s in streams}
-    for pot_exam in pot_exams:
+    for pot_exam in pot_unique_exams:
         pot_summaries = ExamSummary.all_objects.filter(
             school=school, exam_name=pot_exam.name, term=pot_exam.term, year=pot_exam.year,
         )
         if class_name_filter:
             pot_summaries = pot_summaries.filter(student__class_name=class_name_filter)
-        if section == 'JSS':
-            pot_summaries = pot_summaries.filter(school_section='JSS')
-        elif section == 'PRIMARY' and sub_section:
-            pot_summaries = pot_summaries.filter(school_section='PRIMARY', sub_section=sub_section)
 
         if not pot_summaries.exists():
             continue
