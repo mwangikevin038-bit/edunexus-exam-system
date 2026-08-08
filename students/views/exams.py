@@ -1519,13 +1519,39 @@ def analyse_exam(request):
         .values_list('class_name', flat=True).distinct().order_by('class_name')
     )
 
-    available_exams_for_grade = Exam.all_objects.filter(
+    all_exams_for_school = Exam.all_objects.filter(
         school=school, year=exam.year,
-    ).order_by('term', 'name')
+    ).order_by('-year', 'term', 'name')
     if section == 'JSS':
-        available_exams_for_grade = available_exams_for_grade.filter(school_section='JSS')
+        all_exams_for_school = all_exams_for_school.filter(school_section='JSS')
     elif section == 'PRIMARY' and sub_section:
-        available_exams_for_grade = available_exams_for_grade.filter(school_section='PRIMARY', sub_section=sub_section)
+        all_exams_for_school = all_exams_for_school.filter(school_section='PRIMARY', sub_section=sub_section)
+
+    # Group exams by grade + term for the custom dropdown
+    exam_groups_dict = {}
+    for ex in all_exams_for_school:
+        grade_label = ex.school_section or 'JSS'
+        # Try to get class name from first student summary for this exam
+        first_summary = ExamSummary.all_objects.filter(
+            school=school, exam_name=ex.name, term=ex.term, year=ex.year,
+        ).select_related('student').first()
+        if first_summary and first_summary.student:
+            grade_label = first_summary.student.class_name
+        term_label = f"{grade_label} - {ex.term} ({ex.year})"
+        if term_label not in exam_groups_dict:
+            exam_groups_dict[term_label] = []
+        exam_groups_dict[term_label].append({
+            'id': ex.id,
+            'name': ex.name,
+        })
+
+    # Build ordered list of groups
+    exam_groups = []
+    for group_label, exams_list in exam_groups_dict.items():
+        exam_groups.append({
+            'label': group_label,
+            'exams': exams_list,
+        })
 
     import json
     context = {
@@ -1547,7 +1573,8 @@ def analyse_exam(request):
         'ordered_levels': ORDERED_LEVELS,
         'other_exams': other_exams,
         'available_grades': available_grades,
-        'available_exams_for_grade': available_exams_for_grade,
+        'exam_groups': exam_groups,
+        'current_exam_id': exam.id,
         'plv_labels': PLV_LABELS,
         'grade_breakdown_json': json.dumps(grade_breakdown),
         'total_row_json': json.dumps(total_row),
