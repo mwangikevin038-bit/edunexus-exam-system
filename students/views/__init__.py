@@ -76,6 +76,7 @@ from .exams import (  # noqa: F401
     return_mark_sheet,
     manage_exams,
     edit_exam,
+    analyse_exam,
     review_stream_submission,
     review_submission,
     manage_assessment_locks,

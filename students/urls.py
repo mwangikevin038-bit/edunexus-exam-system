@@ -70,6 +70,7 @@ urlpatterns = [
     path('school-admin/registration/analytics/<int:student_id>/', views.admin_student_analytics, name='admin_student_analytics'),
     path('school-admin/exams/', views.manage_exams, name='manage_exams'),
     path('school-admin/exams/edit/', views.edit_exam, name='edit_exam'),
+    path('school-admin/exams/analyse/', views.analyse_exam, name='analyse_exam'),
     path('school-admin/exams/review/', views.review_stream_submission, name='review_stream_submission'),
     path('school-admin/exams/review-submission/', views.review_submission, name='review_submission'),
     path('school-admin/classes/', views.manage_classes, name='manage_classes'),
