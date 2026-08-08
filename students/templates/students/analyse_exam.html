@@ -54,23 +54,27 @@
 <nav class="sub-nav-bar">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}" class="sub-nav-link">
-        <i class="ph ph-house"></i> Assessments
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}" class="sub-nav-link active">
-        <i class="ph ph-gear-six"></i> Manage Exams
+      <a href="{% url 'manage_exams' %}?tab=manage" class="sub-nav-link active">
+        <i class="ph ph-gear-six"></i>
+        Manage Exams
       </a>
     </li>
     <li class="sub-nav-item">
       <a href="{% url 'manage_exams' %}?tab=create" class="sub-nav-link">
-        <i class="ph ph-plus-circle"></i> Create Exam
+        <i class="ph ph-plus-circle"></i>
+        Create Exam
       </a>
     </li>
     <li class="sub-nav-item">
       <a href="{% url 'grading_configuration' %}" class="sub-nav-link">
-        <i class="ph ph-chart-line-up"></i> Grading Systems
+        <i class="ph ph-chart-line-up"></i>
+        Grading Systems
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=deleted" class="sub-nav-link">
+        <i class="ph ph-trash"></i>
+        Deleted Exams
       </a>
     </li>
   </ul>
@@ -89,7 +93,8 @@
     .analysis-page {
         min-height: 100vh;
         background: #f8fafc;
-        padding: 32px;
+        padding: 24px 32px;
+        padding-top: 44px;
     }
     .analysis-shell { max-width: 1200px; margin: 0 auto; }
 
@@ -355,61 +360,50 @@
         color: #0f172a;
         margin-bottom: 8px;
     }
-    .comparison-exam-select {
-        width: 100%;
-        max-width: 400px;
-        height: 44px;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 0 36px 0 12px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #1e293b;
-        background: #fff;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 5.646a.5.5 0 0 1 .708 0L8 8.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 12px center;
-        cursor: pointer;
-    }
 
-    .stat-cards {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+    .summary-cards-container {
+        display: flex;
         gap: 16px;
+        max-width: 500px;
+        margin-top: 16px;
         margin-bottom: 24px;
+        width: 100%;
     }
-    .stat-card {
-        background: #fff;
-        border: 1px solid #e2e8f0;
+    .metric-card {
+        flex: 1;
+        background-color: #ffffff;
+        border: 1px solid #e5e7eb;
         border-radius: 8px;
-        padding: 16px 20px;
+        padding: 12px 16px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
-    .stat-card .sc-label {
+    .metric-title {
         font-size: 13px;
-        color: #64748b;
-        font-weight: 600;
-        margin-bottom: 4px;
+        color: #4b5563;
+        font-weight: 500;
     }
-    .stat-card .sc-value {
+    .metric-value-row {
         display: flex;
         align-items: baseline;
         gap: 8px;
     }
-    .stat-card .sc-number {
+    .metric-number {
         font-size: 22px;
-        font-weight: 800;
-        color: #0f172a;
+        font-weight: 700;
+        color: #111827;
     }
-    .stat-card .sc-change {
-        font-size: 13px;
-        font-weight: 600;
+    .metric-trend {
         display: inline-flex;
         align-items: center;
-        gap: 2px;
+        gap: 4px;
+        font-size: 13px;
+        font-weight: 600;
     }
-    .stat-card .sc-change.down { color: #ef4444; }
-    .stat-card .sc-change.up { color: #16a34a; }
+    .trend-negative { color: #ea4335; }
+    .trend-positive { color: #34a853; }
 
     .subject-perf-section { margin-bottom: 32px; }
     .subject-perf-section h2 {
@@ -418,28 +412,44 @@
         color: #0f172a;
         margin: 0 0 16px;
     }
-    .subject-perf-table {
+    .table-container {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #ffffff;
+    }
+    .performance-table {
         width: 100%;
         border-collapse: collapse;
-    }
-    .subject-perf-table th {
         text-align: left;
-        padding: 12px 16px;
-        font-size: 13px;
-        font-weight: 700;
-        color: #64748b;
+        font-size: 14px;
+    }
+    .performance-table thead tr {
+        background-color: #f8fafc;
         border-bottom: 1px solid #e2e8f0;
     }
-    .subject-perf-table td {
+    .performance-table th {
         padding: 14px 16px;
-        font-size: 14px;
+        font-weight: 600;
+        color: #475569;
+    }
+    .performance-table td {
+        padding: 16px;
         color: #1e293b;
         border-bottom: 1px solid #f1f5f9;
     }
-    .subject-perf-table tr:last-child td { border-bottom: none; }
-    .change-up { color: #16a34a; }
-    .change-down { color: #ef4444; }
-    .change-neutral { color: #64748b; }
+    .performance-table tr:last-child td { border-bottom: none; }
+    .subject-name { font-weight: 500; }
+    .trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 600;
+    }
+    .trend-positive { color: #34a853; }
+    .trend-negative { color: #ea4335; }
+    .trend-neutral { color: #94a3b8; }
 
     .perf-over-time { margin-bottom: 32px; }
     .perf-over-time h2 {
@@ -586,11 +596,22 @@
                         </label>
                     </div>
                     <div class="comparison-exam-label">Comparison Exam</div>
-                    <select class="comparison-exam-select">
-                        {% for ex in other_exams %}
-                        <option value="{{ ex.id }}">{{ ex.name }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="custom-dropdown" id="compareDropdown">
+                        <button class="custom-dropdown-btn" id="compareDropdownBtn">
+                            <span id="compareDropdownLabel">{% if other_exams %}{{ other_exams.0.name }}{% endif %}</span>
+                            <i class="ph ph-caret-down"></i>
+                        </button>
+                        <div class="custom-dropdown-menu" id="compareDropdownMenu">
+                            {% for group in exam_groups %}
+                            <div class="dropdown-group-label">{{ group.label }}</div>
+                            {% for ex in group.exams %}
+                            {% if ex.id != current_exam_id %}
+                            <div class="dropdown-item" data-exam-id="{{ ex.id }}">{{ ex.name }}</div>
+                            {% endif %}
+                            {% endfor %}
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="chart-container">
@@ -598,22 +619,44 @@
             </div>
         </div>
 
-        <div class="stat-cards">
-            <div class="stat-card">
-                <div class="sc-label">Mean Marks</div>
-                <div class="sc-value">
-                    <span class="sc-number">{{ overall_mean_marks }} %</span>
-                    <span class="sc-change {% if mm_change < 0 %}down{% else %}up{% endif %}">
-                        {% if mm_change < 0 %}↘{% else %}↗{% endif %} {{ mm_change }}
+        <div class="summary-cards-container">
+            <div class="metric-card">
+                <span class="metric-title">Mean Marks</span>
+                <div class="metric-value-row">
+                    <span class="metric-number">{{ overall_mean_marks }} %</span>
+                    <span class="metric-trend {% if mm_change < 0 %}trend-negative{% else %}trend-positive{% endif %}">
+                        {% if mm_change < 0 %}
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 6L6 13L10 10L14 16L18 18" stroke="#ea4335" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 18H18V14" stroke="#ea4335" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        {% else %}
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 14L6 7L10 10L14 4L18 2" stroke="#34a853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 2H18V6" stroke="#34a853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        {% endif %}
+                        {{ mm_change }}
                     </span>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="sc-label">Mean Points</div>
-                <div class="sc-value">
-                    <span class="sc-number">{{ overall_mean_points }}</span>
-                    <span class="sc-change {% if mp_change < 0 %}down{% else %}up{% endif %}">
-                        {% if mp_change < 0 %}↘{% else %}↗{% endif %} {{ mp_change }}
+            <div class="metric-card">
+                <span class="metric-title">Mean Points</span>
+                <div class="metric-value-row">
+                    <span class="metric-number">{{ overall_mean_points }}</span>
+                    <span class="metric-trend {% if mp_change < 0 %}trend-negative{% else %}trend-positive{% endif %}">
+                        {% if mp_change < 0 %}
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 6L6 13L10 10L14 16L18 18" stroke="#ea4335" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 18H18V14" stroke="#ea4335" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        {% else %}
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 14L6 7L10 10L14 4L18 2" stroke="#34a853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 2H18V6" stroke="#34a853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        {% endif %}
+                        {{ mp_change }}
                     </span>
                 </div>
             </div>
@@ -621,34 +664,48 @@
 
         <div class="subject-perf-section">
             <h2>Subject Performance</h2>
-            <table class="subject-perf-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Points</th>
-                        <th>Change</th>
-                        <th>Performance Level</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in subject_rows %}
-                    <tr>
-                        <td>{{ row.name }}</td>
-                        <td>{{ row.points }}</td>
-                        <td>
-                            {% if row.change > 0 %}
-                            <span class="change-up">↗ {{ row.change }}</span>
-                            {% elif row.change < 0 %}
-                            <span class="change-down">↘ {{ row.change }}</span>
-                            {% else %}
-                            <span class="change-neutral">→ {{ row.change }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ row.performance_level_label }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-container">
+                <table class="performance-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Points</th>
+                            <th>Change</th>
+                            <th>Performance Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in subject_rows %}
+                        <tr>
+                            <td class="subject-name">{{ row.name }}</td>
+                            <td>{{ row.points }}</td>
+                            <td>
+                                {% if row.change > 0 %}
+                                <span class="trend trend-positive">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M2 14L6 7L10 10L14 4L18 2" stroke="#34a853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M14 2H18V6" stroke="#34a853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    {{ row.change }}
+                                </span>
+                                {% elif row.change < 0 %}
+                                <span class="trend trend-negative">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M2 6L6 13L10 10L14 16L18 18" stroke="#ea4335" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M14 18H18V14" stroke="#ea4335" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    {{ row.change }}
+                                </span>
+                                {% else %}
+                                <span class="trend trend-neutral">→ {{ row.change }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ row.performance_level_label }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="perf-over-time">
@@ -658,8 +715,11 @@
 
         <div class="grade-breakdown">
             <h2>Grade breakdown</h2>
-            <select class="grade-breakdown-select">
-                <option>Overall</option>
+            <select class="grade-breakdown-select" id="breakdownSelect">
+                <option value="overall">Overall</option>
+                {% for subj in subject_names %}
+                <option value="{{ subj }}">{{ subj }}</option>
+                {% endfor %}
             </select>
             <div class="breakdown-table-wrap">
                 <table class="breakdown-table" id="breakdownTable">
@@ -713,7 +773,7 @@ document.addEventListener('DOMContentLoaded', function() {
         items.forEach(function(item) {
             item.addEventListener('click', function() {
                 var examId = this.getAttribute('data-exam-id');
-                window.location.href = "{% url 'analyse_exam' %}?exam_id=" + examId;
+                window.location.href = "{% url 'analyse_exam' %}?exam_id=" + examId + "&class_name={{ grade_name|escapejs }}";
             });
         });
     }
@@ -723,6 +783,26 @@ document.addEventListener('DOMContentLoaded', function() {
     if (gradeSelect) {
         gradeSelect.addEventListener('change', function() {
             // TODO: redirect to analyse_exam with grade filter
+        });
+    }
+
+    // Compare exam dropdown toggle
+    var compareDropdownBtn = document.getElementById('compareDropdownBtn');
+    var compareDropdownMenu = document.getElementById('compareDropdownMenu');
+    if (compareDropdownBtn && compareDropdownMenu) {
+        compareDropdownBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            compareDropdownMenu.classList.toggle('open');
+        });
+        document.addEventListener('click', function() {
+            compareDropdownMenu.classList.remove('open');
+        });
+        var compareItems = compareDropdownMenu.querySelectorAll('.dropdown-item');
+        compareItems.forEach(function(item) {
+            item.addEventListener('click', function() {
+                document.getElementById('compareDropdownLabel').textContent = this.textContent;
+                compareDropdownMenu.classList.remove('open');
+            });
         });
     }
 
@@ -738,22 +818,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Stream Mean',
                     data: smData,
-                    borderColor: '#86efac',
-                    backgroundColor: 'rgba(134, 239, 172, 0.08)',
+                    fill: false,
+                    borderColor: '#bbf7d0',
                     borderWidth: 2.5,
-                    pointBackgroundColor: '#ffffff',
+                    tension: 0,
+                    pointBackgroundColor: '#bbf7d0',
                     pointBorderColor: '#86efac',
-                    pointBorderWidth: 2.5,
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    tension: 0.35,
-                    fill: true
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
+                interaction: {
+                    mode: 'nearest',
+                    intersect: true,
+                    axis: 'xy'
+                },
                 plugins: {
                     legend: {
                         display: true,
@@ -761,52 +845,62 @@ document.addEventListener('DOMContentLoaded', function() {
                         align: 'end',
                         labels: {
                             usePointStyle: true,
-                            pointStyle: 'circle',
-                            boxWidth: 10,
-                            padding: 16,
-                            font: { size: 13, weight: '600', family: "'Inter', sans-serif" },
-                            color: '#374151'
+                            boxWidth: 8
                         }
                     },
                     tooltip: {
+                        enabled: true,
                         backgroundColor: '#ffffff',
-                        titleColor: '#111827',
-                        bodyColor: '#374151',
+                        titleColor: '#1f2937',
+                        bodyColor: '#4b5563',
                         borderColor: '#e5e7eb',
                         borderWidth: 1,
-                        cornerRadius: 8,
                         padding: 12,
+                        cornerRadius: 6,
+                        caretSize: 7,
+                        caretPadding: 6,
                         displayColors: true,
-                        boxWidth: 8,
-                        boxHeight: 8,
-                        boxPadding: 4,
                         usePointStyle: true,
+                        boxWidth: 6,
+                        boxHeight: 6,
+                        boxPadding: 4,
+                        callbacks: {
+                            title: function(context) {
+                                return context[0].label;
+                            },
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
+                            }
+                        }
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: false,
-                        grid: { color: '#f3f4f6', drawBorder: false },
-                        border: { display: false },
+                    x: {
+                        offset: true,
+                        grid: { display: true, color: '#f3f4f6', drawTicks: false },
+                        border: { color: '#111827', width: 2 },
                         ticks: {
-                            font: { size: 12, family: "'Inter', sans-serif" },
-                            color: '#9ca3af',
-                            padding: 8
+                            color: '#374151',
+                            minRotation: 45,
+                            maxRotation: 45,
+                            padding: 12,
+                            font: { size: 12 }
                         }
                     },
-                    x: {
-                        grid: { display: false },
+                    y: {
+                        beginAtZero: false,
+                        grace: '10%',
+                        grid: { display: true, color: '#f3f4f6' },
                         border: { display: false },
                         ticks: {
-                            font: { size: 12, family: "'Inter', sans-serif" },
                             color: '#9ca3af',
-                            padding: 8
+                            padding: 12,
+                            font: { size: 12 },
+                            callback: function(value) {
+                                return value.toFixed(2);
+                            }
                         }
                     }
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
                 }
             }
         });
@@ -817,21 +911,25 @@ document.addEventListener('DOMContentLoaded', function() {
     var potStreamsData = {{ pot_streams_data_json|safe }};
     var ptCtx = document.getElementById('perfTimeChart');
     if (ptCtx && potLabels.length > 0) {
-        var potColors = ['#3b82f6','#1e3a8a','#86efac','#f97316','#94a3b8','#c084fc','#2dd4bf'];
+        var potColors = ['#3b82f6','#f43f5e','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899'];
         var potDatasets = streams.map(function(s, i) {
+            var color = potColors[i % potColors.length];
             return {
                 label: gradeName + ' ' + s,
                 data: potStreamsData[s] || [],
-                borderColor: potColors[i % potColors.length],
-                backgroundColor: potColors[i % potColors.length] + '18',
-                borderWidth: 2.5,
-                pointBackgroundColor: '#ffffff',
-                pointBorderColor: potColors[i % potColors.length],
-                pointBorderWidth: 2.5,
-                pointRadius: 5,
-                pointHoverRadius: 7,
-                tension: 0.3,
-                fill: false
+                fill: false,
+                borderColor: color,
+                backgroundColor: color,
+                borderWidth: 2,
+                tension: 0.1,
+                pointRadius: 4,
+                pointBackgroundColor: color,
+                pointBorderColor: 'transparent',
+                pointBorderWidth: 2,
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: color + '33',
+                pointHoverBorderColor: color,
+                pointHoverBorderWidth: 3
             };
         });
         new Chart(ptCtx.getContext('2d'), {
@@ -841,59 +939,74 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
+                interaction: {
+                    mode: 'nearest',
+                    intersect: true,
+                    axis: 'xy'
+                },
                 plugins: {
                     legend: {
                         position: 'bottom',
                         labels: {
                             usePointStyle: true,
-                            pointStyle: 'circle',
-                            boxWidth: 10,
-                            padding: 16,
-                            font: { size: 12, weight: '600', family: "'Inter', sans-serif" },
-                            color: '#374151'
+                            boxWidth: 6,
+                            boxHeight: 6,
+                            padding: 25,
+                            font: { family: 'sans-serif', size: 12, weight: '500' },
+                            color: '#4b5563'
                         }
                     },
                     tooltip: {
+                        enabled: true,
                         backgroundColor: '#ffffff',
-                        titleColor: '#111827',
-                        bodyColor: '#374151',
+                        titleColor: '#1f2937',
+                        bodyColor: '#4b5563',
                         borderColor: '#e5e7eb',
                         borderWidth: 1,
-                        cornerRadius: 8,
                         padding: 12,
+                        cornerRadius: 6,
+                        caretSize: 7,
+                        caretPadding: 6,
                         displayColors: true,
-                        boxWidth: 8,
-                        boxHeight: 8,
-                        boxPadding: 4,
                         usePointStyle: true,
+                        boxWidth: 6,
+                        boxHeight: 6,
+                        boxPadding: 4,
+                        callbacks: {
+                            title: function(context) {
+                                return context[0].label;
+                            },
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
+                            }
+                        }
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: false,
-                        grid: { color: '#f3f4f6', drawBorder: false },
-                        border: { display: false },
+                    x: {
+                        offset: true,
+                        grid: { display: true, color: '#f3f4f6', drawTicks: false },
+                        border: { color: '#111827', width: 1.5 },
                         ticks: {
-                            font: { size: 12, family: "'Inter', sans-serif" },
-                            color: '#9ca3af',
-                            padding: 8
+                            color: '#4b5563',
+                            padding: 12,
+                            font: { size: 12 }
                         }
                     },
-                    x: {
-                        grid: { display: false },
-                        border: { display: false },
+                    y: {
+                        beginAtZero: false,
+                        grace: '10%',
                         ticks: {
-                            font: { size: 11, family: "'Inter', sans-serif" },
                             color: '#9ca3af',
-                            padding: 8,
-                            maxRotation: 0,
-                            autoSkip: false
-                        }
+                            padding: 12,
+                            font: { size: 12 },
+                            callback: function(value) {
+                                return value.toFixed(2);
+                            }
+                        },
+                        grid: { color: '#f3f4f6', drawTicks: false },
+                        border: { display: false }
                     }
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
                 }
             }
         });
@@ -901,15 +1014,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var gradeBreakdown = {{ grade_breakdown_json|safe }};
     var totalRow = {{ total_row_json|safe }};
+    var subjectBreakdowns = {{ subject_breakdowns_json|safe }};
     var orderedLevels = [{% for lvl in ordered_levels %}'{{ lvl }}'{% if not forloop.last %},{% endif %}{% endfor %}];
     var plvLabels = {{ plv_labels_json|safe }};
 
-    function renderBreakdownTable() {
-        var tbody = document.getElementById('breakdownBody');
-        if (!tbody) return;
+    function renderBreakdownRows(data, tbody) {
         var html = '';
-
-        gradeBreakdown.forEach(function(row) {
+        data.rows.forEach(function(row) {
             html += '<tr>';
             html += '<td>' + row.form + '</td>';
             orderedLevels.forEach(function(lvl) {
@@ -925,25 +1036,44 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '<td class="perf-level">' + (plvLabels[row.performance_level] || row.performance_level || '') + '</td>';
             html += '</tr>';
         });
-
-        // Total row
+        var t = data.total;
         html += '<tr class="total-row">';
-        html += '<td>' + (totalRow.form || 'Total') + '</td>';
+        html += '<td>' + (t.form || 'Total') + '</td>';
         orderedLevels.forEach(function(lvl) {
-            html += '<td>' + (totalRow[lvl] !== undefined ? totalRow[lvl] : 0) + '</td>';
+            html += '<td>' + (t[lvl] !== undefined ? t[lvl] : 0) + '</td>';
         });
-        html += '<td>' + (totalRow.X || 0) + '</td>';
-        html += '<td>' + (totalRow.Y || 0) + '</td>';
-        html += '<td>' + (totalRow.entries || 0) + '</td>';
-        html += '<td>' + (totalRow.mean_marks || 0) + '</td>';
-        html += '<td>' + (totalRow.mm_dev || 0) + '</td>';
-        html += '<td>' + (totalRow.mean_points || 0) + '</td>';
-        html += '<td>' + (totalRow.mp_dev || 0) + '</td>';
-        html += '<td class="perf-level">' + (plvLabels[totalRow.performance_level] || totalRow.performance_level || '') + '</td>';
+        html += '<td>' + (t.X || 0) + '</td>';
+        html += '<td>' + (t.Y || 0) + '</td>';
+        html += '<td>' + (t.entries || 0) + '</td>';
+        html += '<td>' + (t.mean_marks || 0) + '</td>';
+        html += '<td>' + (t.mm_dev || 0) + '</td>';
+        html += '<td>' + (t.mean_points || 0) + '</td>';
+        html += '<td>' + (t.mp_dev || 0) + '</td>';
+        html += '<td class="perf-level">' + (plvLabels[t.performance_level] || t.performance_level || '') + '</td>';
         html += '</tr>';
-
         tbody.innerHTML = html;
     }
+
+    function renderBreakdownTable() {
+        var tbody = document.getElementById('breakdownBody');
+        if (!tbody) return;
+        renderBreakdownRows({rows: gradeBreakdown, total: totalRow}, tbody);
+    }
+
+    var breakdownSelect = document.getElementById('breakdownSelect');
+    if (breakdownSelect) {
+        breakdownSelect.addEventListener('change', function() {
+            var tbody = document.getElementById('breakdownBody');
+            if (!tbody) return;
+            var val = this.value;
+            if (val === 'overall') {
+                renderBreakdownRows({rows: gradeBreakdown, total: totalRow}, tbody);
+            } else if (subjectBreakdowns[val]) {
+                renderBreakdownRows(subjectBreakdowns[val], tbody);
+            }
+        });
+    }
+
     renderBreakdownTable();
 });
 </script>
