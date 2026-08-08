@@ -7,6 +7,7 @@ individual submission reviews, and assessment lock management.
 
 import datetime
 import json
+import re
 import time
 
 import bleach
@@ -707,7 +708,15 @@ def manage_exams(request):
             else:
                 messages.error(request, "Please provide assessment name, term, and year.")
 
-            redirect_url = f"{reverse('manage_exams')}?sub={post_sub}" if post_sub else reverse('manage_exams')
+            redirect_url = reverse('manage_exams')
+            params = []
+            if post_sub:
+                params.append(f"sub={post_sub}")
+            post_year = request.POST.get('year') or request.GET.get('year')
+            if post_year:
+                params.append(f"year={post_year}")
+            if params:
+                redirect_url += '?' + '&'.join(params)
             return redirect(redirect_url)
 
         if action_type == "toggle_status":
@@ -719,7 +728,15 @@ def manage_exams(request):
 
             messages.success(request, "Assessment status has been updated.")
             post_sub = request.POST.get("sub", "").strip().upper()
-            redirect_url = f"{reverse('manage_exams')}?sub={post_sub}" if post_sub else reverse('manage_exams')
+            redirect_url = reverse('manage_exams')
+            params = []
+            if post_sub:
+                params.append(f"sub={post_sub}")
+            post_year = request.POST.get('year') or request.GET.get('year')
+            if post_year:
+                params.append(f"year={post_year}")
+            if params:
+                redirect_url += '?' + '&'.join(params)
             return redirect(redirect_url)
 
         if action_type == "delete_exam":
@@ -729,7 +746,15 @@ def manage_exams(request):
 
             messages.success(request, "Assessment has been deleted.")
             post_sub = request.POST.get("sub", "").strip().upper()
-            redirect_url = f"{reverse('manage_exams')}?sub={post_sub}" if post_sub else reverse('manage_exams')
+            redirect_url = reverse('manage_exams')
+            params = []
+            if post_sub:
+                params.append(f"sub={post_sub}")
+            post_year = request.POST.get('year') or request.GET.get('year')
+            if post_year:
+                params.append(f"year={post_year}")
+            if params:
+                redirect_url += '?' + '&'.join(params)
             return redirect(redirect_url)
 
     # -----------------------------
@@ -747,14 +772,35 @@ def manage_exams(request):
         request.session['active_sub'] = active_sub
         request.session.modified = True
 
-    exams = Exam.all_objects.filter(school=school)
+    # -----------------------------
+    # Year filter
+    # -----------------------------
+    all_exams = Exam.all_objects.filter(school=school)
     if section == 'LOWER_PRIMARY':
-        exams = exams.filter(school_section='PRIMARY', sub_section='LOWER')
+        all_exams = all_exams.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
-        exams = exams.filter(school_section='PRIMARY', sub_section=active_sub)
+        all_exams = all_exams.filter(school_section='PRIMARY', sub_section=active_sub)
     elif section == 'JSS':
-        exams = exams.filter(school_section='JSS')
-    exams = exams.order_by("-year", "term", "name")
+        all_exams = all_exams.filter(school_section='JSS')
+
+    available_years = list(
+        all_exams
+        .values_list('year', flat=True)
+        .distinct()
+        .order_by('-year')
+    )
+
+    selected_year = request.GET.get('year')
+    if selected_year and selected_year.isdigit():
+        selected_year = int(selected_year)
+    else:
+        selected_year = current_year
+
+    # If selected year has no exams, fall back to latest year with exams
+    if selected_year not in available_years and available_years:
+        selected_year = available_years[0]
+
+    exams = all_exams.filter(year=selected_year).order_by("-term", "name")
 
     selected_exam_id = request.GET.get("exam_id")
     selected_exam = None
@@ -977,12 +1023,166 @@ def manage_exams(request):
             else "Not Started"
         )
 
+    # -----------------------------
+    # Exam list grouped by term
+    # -----------------------------
+    exam_list_by_term = {}
+    all_year_exams = list(Exam.all_objects.filter(school=school, year=selected_year).order_by("-term", "name"))
+
+    def _normalize_exam_name(name):
+        lower = name.strip().lower()
+        if 'opener' in lower or 'opening' in lower:
+            return 'Opener Assessment'
+        if 'mid' in lower:
+            return 'Mid Term Assessment'
+        if 'end' in lower or 'final' in lower:
+            return 'End Term Assessment'
+        return name.strip()
+
+    seen_exam_keys = set()
+    unique_year_exams = []
+    for ex in all_year_exams:
+        norm_name = _normalize_exam_name(ex.name)
+        exam_key = (norm_name, ex.term, ex.year)
+        if exam_key not in seen_exam_keys:
+            seen_exam_keys.add(exam_key)
+            ex._normalized_name = norm_name
+            unique_year_exams.append(ex)
+    all_year_exams = unique_year_exams
+
+    if all_year_exams:
+        all_submissions = list(MarkSubmission.all_objects.filter(
+            school=school,
+            year=selected_year,
+        ).select_related('teacher', 'teacher__user', 'subject').order_by('-submitted_at'))
+
+        for sub in all_submissions:
+            sub._normalized_exam_name = _normalize_exam_name(sub.exam_name)
+
+        sub_index = {}
+        for sub in all_submissions:
+            key = (sub._normalized_exam_name, sub.term, sub.class_name)
+            candidate_date = sub.submitted_at
+            if sub.published_at and sub.published_at > candidate_date:
+                candidate_date = sub.published_at
+            if sub.reviewed_at and sub.reviewed_at > candidate_date:
+                candidate_date = sub.reviewed_at
+            if key not in sub_index or candidate_date > sub_index[key][1]:
+                sub_index[key] = (sub, candidate_date)
+
+        sub_counts = {}
+        for sub in all_submissions:
+            key = (sub._normalized_exam_name, sub.term, sub.class_name)
+            if key not in sub_counts:
+                sub_counts[key] = {
+                    'total': 0, 'submitted': 0, 'returned': 0,
+                    'approved': 0, 'published': 0,
+                }
+            sub_counts[key]['total'] += 1
+            if sub.status in sub_counts[key]:
+                sub_counts[key][sub.status] += 1
+
+        total_subjects_by_class = {}
+        for row in SubjectAssignment.all_objects.filter(school=school).values('class_name').annotate(cnt=Count('id')):
+            total_subjects_by_class[row['class_name']] = row['cnt']
+
+        exam_class_subject_counts = {}
+        for sub in all_submissions:
+            key = (sub._normalized_exam_name, sub.term, sub.class_name)
+            exam_class_subject_counts[key] = exam_class_subject_counts.get(key, 0) + 1
+
+        def _compute_class_status(exam_name_norm, term, class_name):
+            counts = sub_counts.get((exam_name_norm, term, class_name), None)
+            if not counts or counts['total'] == 0:
+                return 'Not Started'
+            total = counts['total']
+            published = counts.get('published', 0)
+            approved = counts.get('approved', 0)
+            submitted = counts.get('submitted', 0)
+            returned = counts.get('returned', 0)
+            if published == total:
+                return 'Published'
+            if approved + published == total:
+                return 'Approved'
+            if returned > 0:
+                return 'Returned'
+            if submitted + approved + published == total:
+                return 'Pending'
+            return 'In Progress'
+
+        for exam in all_year_exams:
+            term_key = exam.term
+            if term_key not in exam_list_by_term:
+                exam_list_by_term[term_key] = {
+                    'term': term_key,
+                    'exams': [],
+                }
+
+            classes_seen = set()
+            class_rows = []
+            for sub in all_submissions:
+                if sub._normalized_exam_name != exam._normalized_name or sub.term != exam.term:
+                    continue
+                class_key = sub.class_name
+                if class_key in classes_seen:
+                    continue
+                classes_seen.add(class_key)
+
+                last_sub_entry = sub_index.get((exam._normalized_name, exam.term, sub.class_name))
+                updated_by = ''
+                updated_on = exam.created_at
+                if last_sub_entry:
+                    last_sub, updated_on = last_sub_entry
+                    if last_sub.teacher and last_sub.teacher.user:
+                        updated_by = last_sub.teacher.user.get_full_name() or last_sub.teacher.user.username
+
+                status_display = _compute_class_status(exam._normalized_name, exam.term, sub.class_name)
+
+                class_rows.append({
+                    'class_name': sub.class_name,
+                    'status': status_display,
+                    'updated_by': updated_by,
+                    'updated_on': updated_on,
+                    'exam_id': exam.id,
+                })
+
+            if not class_rows:
+                status_display = 'Not Started'
+                class_rows.append({
+                    'class_name': '-',
+                    'status': status_display,
+                    'updated_by': '',
+                    'updated_on': exam.created_at,
+                    'exam_id': exam.id,
+                })
+
+            class_rows.sort(key=lambda r: -int(re.search(r'\d+', r['class_name']).group()) if re.search(r'\d+', r['class_name']) else 0)
+
+            exam_list_by_term[term_key]['exams'].append({
+                'id': exam.id,
+                'name': exam._normalized_name,
+                'status': exam.status,
+                'classes': class_rows,
+                'rowspan': len(class_rows),
+            })
+
+    term_order = {'Term 3': 1, 'Term 2': 2, 'Term 1': 3}
+    exam_list_by_term = dict(
+        sorted(
+            exam_list_by_term.items(),
+            key=lambda x: term_order.get(x[0], 99)
+        )
+    )
+
     context = {
         "exams": exams,
         "selected_exam": selected_exam,
         "grouped_streams": grouped_streams.values(),
         "monitor_summary": monitor_summary,
         "current_year": current_year,
+        "selected_year": selected_year,
+        "available_years": available_years,
+        "exam_list_by_term": exam_list_by_term,
         "terms": TERM_CHOICES,
         "status_choices": status_choices,
         "section": section,
@@ -997,6 +1197,106 @@ def manage_exams(request):
         context["upper_exam_count"] = upper_count
 
     return render(request, "students/manage_exams.html", context)
+
+
+@login_required(login_url='login')
+@school_admin_required
+def edit_exam(request):
+    """
+    Edit exam name page. Shows a form to rename the exam and handles the update.
+    """
+    if not user_has_main_school_admin_override(request.user):
+        messages.error(request, "You are not allowed to edit exams.")
+        return redirect('select_exam')
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "School context is required.")
+        return redirect('welcome_page')
+
+    exam_id = request.GET.get('exam_id') or request.POST.get('exam_id')
+    if not exam_id:
+        messages.error(request, "No exam specified.")
+        return redirect('manage_exams')
+
+    # Admin can access any exam in their school — no section filtering
+    exam = Exam.all_objects.filter(school=school, id=exam_id).first()
+    if not exam:
+        messages.error(request, "Exam not found.")
+        return redirect('manage_exams')
+
+    # Get classes taking this exam (from submissions)
+    classes_taking = (
+        MarkSubmission.all_objects
+        .filter(
+            school=school,
+            exam_name=exam.name,
+            term=exam.term,
+            year=exam.year,
+        )
+        .values_list('class_name', flat=True)
+        .distinct()
+        .order_by('class_name')
+    )
+    classes_list = ', '.join(classes_taking) if classes_taking else 'No classes assigned'
+
+    if request.method == 'POST':
+        new_name = request.POST.get('exam_name', '').strip()
+        if not new_name:
+            messages.error(request, "Exam name cannot be empty.")
+            return redirect(f'{reverse("edit_exam")}?exam_id={exam_id}')
+
+        # Check if new name would violate unique_together constraint
+        existing = Exam.all_objects.filter(
+            school=school,
+            name=new_name,
+            term=exam.term,
+            year=exam.year,
+            school_section=exam.school_section,
+            sub_section=exam.sub_section,
+        ).exclude(id=exam.id).exists()
+
+        if existing:
+            messages.error(request, "An exam with this name already exists for this term and year.")
+            return redirect(f'{reverse("edit_exam")}?exam_id={exam_id}')
+
+        old_name = exam.name
+        exam.name = new_name
+        exam.save()
+
+        # Update all submissions with the old exam name to use the new name
+        MarkSubmission.all_objects.filter(
+            school=school,
+            exam_name=old_name,
+            term=exam.term,
+            year=exam.year,
+        ).update(exam_name=new_name)
+
+        # Update all marks with the old exam name
+        Mark.all_objects.filter(
+            student__school=school,
+            exam_type=old_name,
+            term=exam.term,
+            year=exam.year,
+        ).update(exam_type=new_name)
+
+        # Update all exam summaries with the old exam name
+        from ..models import ExamSummary
+        ExamSummary.all_objects.filter(
+            school=school,
+            exam_name=old_name,
+            term=exam.term,
+            year=exam.year,
+        ).update(exam_name=new_name)
+
+        messages.success(request, "✓ Exam name updated")
+        return redirect(f'{reverse("edit_exam")}?exam_id={exam_id}')
+
+    context = {
+        'exam': exam,
+        'classes_list': classes_list,
+    }
+    return render(request, 'students/edit_exam.html', context)
 
 
 @login_required(login_url='login')
@@ -1073,19 +1373,19 @@ def review_stream_submission(request):
                 "totals": totals,
             })
 
-        context = {
-            "exam": exam,
-            "exams": exams,
-            "stream_cards": stream_cards,
-            "section": section,
-            "active_sub": active_sub,
-        }
-        if section == 'PRIMARY':
-            lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').count()
-            upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').count()
-            context["lower_exam_count"] = lower_count
-            context["upper_exam_count"] = upper_count
-        return render(request, "students/stream_review_list.html", context)
+    context = {
+        "exam": exam,
+        "exams": exams,
+        "stream_cards": stream_cards,
+        "section": section,
+        "active_sub": active_sub,
+    }
+    if section == 'PRIMARY':
+        lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').count()
+        upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').count()
+        context["lower_exam_count"] = lower_count
+        context["upper_exam_count"] = upper_count
+    return render(request, "students/stream_review_list.html", context)
 
     section = get_request_school_section(request)
     valid_pairs = set(

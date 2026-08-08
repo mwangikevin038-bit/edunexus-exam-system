@@ -144,22 +144,22 @@
                 <!-- ═══ ADMIN SIDEBAR ═══ -->
                 <div class="nav-section-label">Overview</div>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'school_admin_dashboard' %}active-section{% endif %}" href="{% url 'school_admin_dashboard' %}">
-                    <i class="ph ph-house-line"></i> <span>Home</span>
+                    <i class="ph ph-squares-four"></i> <span>Dashboard</span><span class="nav-modified-dot"></span>
                 </a>
 
                 <div class="nav-section-label">Students</div>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'premium_csv_upload' or request.resolver_match.url_name == 'learner_profile' %}active-section{% endif %}" href="{% url 'admin_add_student' %}">
-                    <i class="ph ph-student"></i> <span>Students</span>
+                    <i class="ph ph-student"></i> <span>Students</span><span class="nav-modified-dot"></span>
                 </a>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'printouts_hub' %}active-section{% endif %}" href="{% url 'printouts_hub' %}">
-                    <i class="ph ph-printer"></i> <span>Printouts</span>
+                    <i class="ph ph-printer"></i> <span>Printouts</span><span class="nav-modified-dot"></span>
                 </a>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_classes' %}active-section{% endif %}" href="{% url 'manage_classes' %}">
-                    <i class="ph ph-layout"></i> <span>Class Structure</span>
+                    <i class="ph ph-books"></i> <span>Classes</span><span class="nav-modified-dot"></span>
                 </a>
 
                 <div class="nav-section-label">Assessments</div>
-                <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' %}active-section{% endif %}" href="{% url 'manage_exams' %}">
+                <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'edit_exam' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' %}active-section{% endif %}" href="{% url 'manage_exams' %}">
                     <i class="ph ph-clipboard-text"></i> <span>Assessments & Reviews</span>
                 </a>
 
@@ -170,7 +170,7 @@
 
                 <div class="nav-section-label">Staff</div>
                 <a class="nav-link-card {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active-section{% endif %}" href="{% url 'manage_faculty_matrix' %}">
-                    <i class="ph ph-users-three"></i> <span>Faculty</span>
+                    <i class="ph ph-chalkboard-teacher"></i> <span>Teachers</span><span class="nav-modified-dot"></span>
                 </a>
 
                 <div class="nav-section-label">Settings</div>
@@ -236,7 +236,7 @@
     </div>
 
     <!-- SUB-NAVIGATION BAR (rendered outside app-content for full-width flush positioning) -->
-    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' or request.resolver_match.url_name == 'add_new_class' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' %}
+    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' or request.resolver_match.url_name == 'add_new_class' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'edit_exam' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' or request.resolver_match.url_name == 'review_submission' %}
     {% block sub_tabs %}{% endblock %}
     {% endif %}
 
@@ -264,7 +264,7 @@
                 <i class="ph ph-student"></i>
                 <span>Students</span>
             </a>
-            <a class="bottom-nav-item nav-center {% if request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' %}active{% endif %}"
+            <a class="bottom-nav-item nav-center {% if request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'edit_exam' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' %}active{% endif %}"
                href="{% url 'manage_exams' %}"
                aria-label="Assessments">
                 <div class="nav-center-ring">
