@@ -812,31 +812,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Performance over time chart (placeholder - needs historical data)
+    // Performance over time chart
+    var potLabels = {{ pot_labels_json|safe }};
+    var potStreamsData = {{ pot_streams_data_json|safe }};
     var ptCtx = document.getElementById('perfTimeChart');
-    if (ptCtx) {
-        var potColors = ['#86efac','#93c5fd','#fca5a5','#fde68a','#c4b5fd','#fbcfe8','#a5f3fc'];
+    if (ptCtx && potLabels.length > 0) {
+        var potColors = ['#3b82f6','#1e3a8a','#86efac','#f97316','#94a3b8','#c084fc','#2dd4bf'];
+        var potDatasets = streams.map(function(s, i) {
+            return {
+                label: gradeName + ' ' + s,
+                data: potStreamsData[s] || [],
+                borderColor: potColors[i % potColors.length],
+                backgroundColor: potColors[i % potColors.length] + '18',
+                borderWidth: 2.5,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: potColors[i % potColors.length],
+                pointBorderWidth: 2.5,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                tension: 0.3,
+                fill: false
+            };
+        });
         new Chart(ptCtx.getContext('2d'), {
             type: 'line',
-            data: {
-                labels: ['{{ exam.term }} {{ exam.year }}'],
-                datasets: streams.map(function(s, i) {
-                    return {
-                        label: gradeName + ' ' + s,
-                        data: [streamStats[s] ? streamStats[s].mean_points : 0],
-                        borderColor: potColors[i % potColors.length],
-                        backgroundColor: potColors[i % potColors.length] + '18',
-                        borderWidth: 2.5,
-                        pointBackgroundColor: '#ffffff',
-                        pointBorderColor: potColors[i % potColors.length],
-                        pointBorderWidth: 2.5,
-                        pointRadius: 6,
-                        pointHoverRadius: 8,
-                        tension: 0.35,
-                        fill: true
-                    };
-                })
-            },
+            data: { labels: potLabels, datasets: potDatasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -883,9 +883,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         grid: { display: false },
                         border: { display: false },
                         ticks: {
-                            font: { size: 12, family: "'Inter', sans-serif" },
+                            font: { size: 11, family: "'Inter', sans-serif" },
                             color: '#9ca3af',
-                            padding: 8
+                            padding: 8,
+                            maxRotation: 0,
+                            autoSkip: false
                         }
                     }
                 },

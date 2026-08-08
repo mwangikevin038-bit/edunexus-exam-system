@@ -1553,6 +1553,51 @@ def analyse_exam(request):
             'exams': exams_list,
         })
 
+    # Performance over time: collect all exams for same grade across years
+    pot_exams = Exam.all_objects.filter(
+        school=school,
+    ).order_by('year', 'term', 'name')
+    if section == 'JSS':
+        pot_exams = pot_exams.filter(school_section='JSS')
+    elif section == 'PRIMARY' and sub_section:
+        pot_exams = pot_exams.filter(school_section='PRIMARY', sub_section=sub_section)
+
+    # Build time-series data: labels = exam names, per-stream mean points
+    pot_labels = []
+    pot_streams_data = {s: [] for s in streams}
+    for pot_exam in pot_exams:
+        pot_summaries = ExamSummary.all_objects.filter(
+            school=school, exam_name=pot_exam.name, term=pot_exam.term, year=pot_exam.year,
+        )
+        if section == 'JSS':
+            pot_summaries = pot_summaries.filter(school_section='JSS')
+        elif section == 'PRIMARY' and sub_section:
+            pot_summaries = pot_summaries.filter(school_section='PRIMARY', sub_section=sub_section)
+
+        if not pot_summaries.exists():
+            continue
+
+        # Get class name for label
+        first_summ = pot_summaries.select_related('student').first()
+        cls = first_summ.student.class_name if first_summ and first_summ.student else grade_name
+        pot_labels.append(f"{cls} {pot_exam.term}, {pot_exam.name}, {pot_exam.year}")
+
+        pot_all_marks = Mark.all_objects.filter(
+            student__school=school,
+            student_id__in=pot_summaries.values_list('student_id', flat=True).distinct(),
+            term=pot_exam.term,
+            year=pot_exam.year,
+            exam_type=pot_exam.name,
+        )
+
+        for s in streams:
+            s_ids = pot_summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+            s_marks = pot_all_marks.filter(student_id__in=s_ids)
+            total_pts = sum(m.points for m in s_marks)
+            count = s_marks.count() if s_marks.count() > 0 else 1
+            mean_pts = round(total_pts / count, 4) if count else 0
+            pot_streams_data[s].append(mean_pts)
+
     import json
     context = {
         'exam': exam,
@@ -1575,6 +1620,8 @@ def analyse_exam(request):
         'available_grades': available_grades,
         'exam_groups': exam_groups,
         'current_exam_id': exam.id,
+        'pot_labels_json': json.dumps(pot_labels),
+        'pot_streams_data_json': json.dumps(pot_streams_data),
         'plv_labels': PLV_LABELS,
         'grade_breakdown_json': json.dumps(grade_breakdown),
         'total_row_json': json.dumps(total_row),
