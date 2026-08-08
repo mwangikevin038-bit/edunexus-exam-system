@@ -1390,6 +1390,15 @@ def analyse_exam(request):
             subject_perf[subj_name]['total_points'] += mark.points
             subject_perf[subj_name]['count'] += 1
 
+    PLV_LABELS = {
+        'EE1': 'Exceeding Expectations', 'EE2': 'Exceeding Expectations',
+        'ME1': 'Meeting Expectations', 'ME2': 'Meeting Expectations',
+        'AE1': 'Approaching Expectations', 'AE2': 'Approaching Expectations',
+        'BE1': 'Below Expectations', 'BE2': 'Below Expectations',
+        'EE': 'Exceeding Expectations', 'ME': 'Meeting Expectations',
+        'AE': 'Approaching Expectations', 'BE': 'Below Expectations',
+    }
+
     subject_rows = []
     for subj_name, data in sorted(subject_perf.items()):
         if data['count'] > 0:
@@ -1442,15 +1451,6 @@ def analyse_exam(request):
             if level_def.get('min_marks', 0) <= total_marks_800 <= level_def.get('max_marks', 0):
                 overall_plv = level_def.get('level', '-')
                 break
-
-    PLV_LABELS = {
-        'EE1': 'Exceeding Expectations', 'EE2': 'Exceeding Expectations',
-        'ME1': 'Meeting Expectations', 'ME2': 'Meeting Expectations',
-        'AE1': 'Approaching Expectations', 'AE2': 'Approaching Expectations',
-        'BE1': 'Below Expectations', 'BE2': 'Below Expectations',
-        'EE': 'Exceeding Expectations', 'ME': 'Meeting Expectations',
-        'AE': 'Approaching Expectations', 'BE': 'Below Expectations',
-    }
 
     grade_breakdown = []
     for s in streams:
