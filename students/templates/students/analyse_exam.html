@@ -302,9 +302,10 @@
 
     .chart-container {
         background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
         padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .chart-container canvas {
         width: 100% !important;
@@ -737,24 +738,75 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Stream Mean',
                     data: smData,
-                    borderColor: '#84cc16',
-                    backgroundColor: 'rgba(132,204,22,0.1)',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#84cc16',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 5,
-                    tension: 0.3,
+                    borderColor: '#86efac',
+                    backgroundColor: 'rgba(134, 239, 172, 0.08)',
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#86efac',
+                    pointBorderWidth: 2.5,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    tension: 0.35,
                     fill: true
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: true, position: 'top', align: 'end' } },
+                layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            boxWidth: 10,
+                            padding: 16,
+                            font: { size: 13, weight: '600', family: "'Inter', sans-serif" },
+                            color: '#374151'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#ffffff',
+                        titleColor: '#111827',
+                        bodyColor: '#374151',
+                        borderColor: '#e5e7eb',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
+                        displayColors: true,
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        boxPadding: 4,
+                        usePointStyle: true,
+                    }
+                },
                 scales: {
-                    y: { beginAtZero: false, grid: { color: '#f1f5f9' } },
-                    x: { grid: { display: false } }
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: '#f3f4f6', drawBorder: false },
+                        border: { display: false },
+                        ticks: {
+                            font: { size: 12, family: "'Inter', sans-serif" },
+                            color: '#9ca3af',
+                            padding: 8
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: {
+                            font: { size: 12, family: "'Inter', sans-serif" },
+                            color: '#9ca3af',
+                            padding: 8
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
                 }
             }
         });
@@ -763,29 +815,83 @@ document.addEventListener('DOMContentLoaded', function() {
     // Performance over time chart (placeholder - needs historical data)
     var ptCtx = document.getElementById('perfTimeChart');
     if (ptCtx) {
+        var potColors = ['#86efac','#93c5fd','#fca5a5','#fde68a','#c4b5fd','#fbcfe8','#a5f3fc'];
         new Chart(ptCtx.getContext('2d'), {
             type: 'line',
             data: {
                 labels: ['{{ exam.term }} {{ exam.year }}'],
                 datasets: streams.map(function(s, i) {
-                    var colors = ['#3b82f6','#8b5cf6','#22c55e','#f97316','#6366f1','#ec4899','#06b6d4'];
                     return {
                         label: gradeName + ' ' + s,
                         data: [streamStats[s] ? streamStats[s].mean_points : 0],
-                        borderColor: colors[i % colors.length],
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        tension: 0.3
+                        borderColor: potColors[i % potColors.length],
+                        backgroundColor: potColors[i % potColors.length] + '18',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderColor: potColors[i % potColors.length],
+                        pointBorderWidth: 2.5,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        tension: 0.35,
+                        fill: true
                     };
                 })
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } },
+                layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            boxWidth: 10,
+                            padding: 16,
+                            font: { size: 12, weight: '600', family: "'Inter', sans-serif" },
+                            color: '#374151'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#ffffff',
+                        titleColor: '#111827',
+                        bodyColor: '#374151',
+                        borderColor: '#e5e7eb',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
+                        displayColors: true,
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        boxPadding: 4,
+                        usePointStyle: true,
+                    }
+                },
                 scales: {
-                    y: { beginAtZero: false, grid: { color: '#f1f5f9' } },
-                    x: { grid: { display: false } }
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: '#f3f4f6', drawBorder: false },
+                        border: { display: false },
+                        ticks: {
+                            font: { size: 12, family: "'Inter', sans-serif" },
+                            color: '#9ca3af',
+                            padding: 8
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: {
+                            font: { size: 12, family: "'Inter', sans-serif" },
+                            color: '#9ca3af',
+                            padding: 8
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
                 }
             }
         });
