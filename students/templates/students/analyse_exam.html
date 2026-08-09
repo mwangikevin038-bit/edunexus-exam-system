@@ -1060,12 +1060,15 @@ document.addEventListener('DOMContentLoaded', function() {
         renderBreakdownRows({rows: gradeBreakdown, total: totalRow}, tbody);
     }
 
+    console.log('subjectBreakdowns keys:', Object.keys(subjectBreakdowns));
+    console.log('subjectBreakdowns:', subjectBreakdowns);
     var breakdownSelect = document.getElementById('breakdownSelect');
     if (breakdownSelect) {
         breakdownSelect.addEventListener('change', function() {
             var tbody = document.getElementById('breakdownBody');
             if (!tbody) return;
             var val = this.value;
+            console.log('Dropdown changed to:', val, 'Has data:', !!subjectBreakdowns[val]);
             if (val === 'overall') {
                 renderBreakdownRows({rows: gradeBreakdown, total: totalRow}, tbody);
             } else if (subjectBreakdowns[val]) {
