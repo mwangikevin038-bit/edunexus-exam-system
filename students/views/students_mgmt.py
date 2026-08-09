@@ -2024,9 +2024,15 @@ def score_sheet(request):
 
     grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
 
-    return render(request, 'students/score_sheet.html', {
+    ctx = {
         'grades': grades,
-    })
+        'school_name': school.name,
+        'school_logo': school.logo.url if school.logo else '',
+        'school_address': school.address or '',
+        'school_phone': school.phone_number or '',
+        'school_email': school.email or '',
+    }
+    return render(request, 'students/score_sheet.html', ctx)
 
 
 @login_required(login_url='login')
@@ -2055,3 +2061,39 @@ def api_subjects_for_grade(request):
         getattr(school, 'pk', None), grade_name, len(subjects),
     )
     return JsonResponse({'subjects': subjects})
+
+
+@login_required(login_url='login')
+@school_admin_required
+def api_teacher_for_subject(request):
+    """AJAX endpoint: returns the teacher assigned to a given grade+stream+subject."""
+    from django.http import JsonResponse
+    from ..models import SubjectAssignment
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'teacher': None})
+
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+    subject_id = request.GET.get('subject_id', '').strip()
+
+    if not grade_name or not subject_id:
+        return JsonResponse({'teacher': None})
+
+    assignment = SubjectAssignment.objects.filter(
+        school=school,
+        class_name=grade_name,
+        subject_id=subject_id,
+    )
+    if stream_name:
+        assignment = assignment.filter(stream=stream_name)
+
+    assignment = assignment.select_related('teacher_profile__user').first()
+
+    if assignment and assignment.teacher_profile and assignment.teacher_profile.user:
+        teacher_name = assignment.teacher_profile.user.get_full_name() or assignment.teacher_profile.user.username
+    else:
+        teacher_name = None
+
+    return JsonResponse({'teacher': teacher_name})

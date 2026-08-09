@@ -22,6 +22,7 @@ urlpatterns = [
     path('printouts/score-sheet/', views.score_sheet, name='score_sheet'),
     path('printouts/api/streams/', views.api_streams_for_grade_printout, name='api_streams_for_grade_printout'),
     path('printouts/api/subjects/', views.api_subjects_for_grade, name='api_subjects_for_grade'),
+    path('printouts/api/teacher/', views.api_teacher_for_subject, name='api_teacher_for_subject'),
     path('learner/<int:student_id>/', views.learner_profile, name='learner_profile'),
 
     # ── Marks & exams ─────────────────────────────────────────────────────

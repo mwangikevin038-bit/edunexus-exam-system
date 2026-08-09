@@ -825,16 +825,14 @@ function toggleSelectAll(checkbox) {
                             <label>Section <span class="required">*</span></label>
                             <select name="school_section" class="gs-form-input" id="gsSectionSelect" required onchange="gsFilterSubjects()">
                                 <option value="JSS">Junior Secondary (JSS)</option>
-                                <option value="PRIMARY">Primary (Upper — Grade 4-6)</option>
+                                <option value="PRIMARY_UPPER">Upper Primary (Grade 4-6)</option>
                                 <option value="PRIMARY_LOWER">Lower Primary (Grade 1-3)</option>
                             </select>
                         </div>
                         <div class="gs-form-group">
                             <label>Sub-section</label>
-                            <select name="sub_section" class="gs-form-input" id="gsSubsectionSelect">
-                                <option value="">None (JSS / whole section)</option>
-                                <option value="UPPER">Upper (Grade 4-6)</option>
-                                <option value="LOWER">Lower (Grade 1-3)</option>
+                            <select name="sub_section" class="gs-form-input" id="gsSubsectionSelect" disabled>
+                                <option value="">Auto-set based on section</option>
                             </select>
                         </div>
                     </div>
@@ -892,13 +890,31 @@ var GS_SUBJECTS = {{ subjects_json|safe }};
 var gsCurrentTab = '';
 
 function gsFilterSubjects() {
-    var section = document.getElementById('gsSectionSelect').value;
+    var sectionVal = document.getElementById('gsSectionSelect').value;
     var sel = document.getElementById('gsSubjectSelect');
     var prevVal = sel.value;
+
+    // Map form values to DB values
+    var dbSection, dbSubSection;
+    if (sectionVal === 'JSS') {
+        dbSection = 'JSS';
+        dbSubSection = null;
+    } else if (sectionVal === 'PRIMARY_UPPER') {
+        dbSection = 'PRIMARY';
+        dbSubSection = 'UPPER';
+    } else if (sectionVal === 'PRIMARY_LOWER') {
+        dbSection = 'PRIMARY';
+        dbSubSection = 'LOWER';
+    }
+
+    // Auto-set hidden sub_section field
+    document.getElementById('gsSubsectionSelect').value = dbSubSection || '';
+
+    // Filter subjects
     sel.innerHTML = '<option value="">General — all subjects in this section</option>';
     for (var i = 0; i < GS_SUBJECTS.length; i++) {
         var s = GS_SUBJECTS[i];
-        if (s.section === section) {
+        if (s.section === dbSection && (!dbSubSection || s.sub_section === dbSubSection)) {
             var opt = document.createElement('option');
             opt.value = s.id;
             opt.textContent = s.name + ' (' + s.code + ')';

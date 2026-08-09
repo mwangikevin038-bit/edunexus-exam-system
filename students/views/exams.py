@@ -756,8 +756,18 @@ def manage_exams(request):
 
             from ..models import GradingScale, GradingAssignment
             subject_id = request.POST.get("subject")
-            school_section = request.POST.get("school_section", "JSS")
-            sub_section = request.POST.get("sub_section") or None
+            raw_section = request.POST.get("school_section", "JSS")
+
+            # Map form values to DB values
+            if raw_section == 'PRIMARY_UPPER':
+                school_section = 'PRIMARY'
+                sub_section = 'UPPER'
+            elif raw_section == 'PRIMARY_LOWER':
+                school_section = 'PRIMARY'
+                sub_section = 'LOWER'
+            else:
+                school_section = raw_section
+                sub_section = request.POST.get("sub_section") or None
 
             subject_obj = None
             if subject_id:
@@ -1297,10 +1307,13 @@ def manage_exams(request):
         for assign in assignments:
             scale = assign.grading_scale
             subject_name = assign.subject.name if assign.subject else None
+            section_label = assign.school_section
+            if assign.school_section == 'PRIMARY' and assign.sub_section:
+                section_label = f"Primary ({assign.sub_section.title()})"
             if subject_name:
                 display = f"{scale.name} — {subject_name}"
             else:
-                display = f"{scale.name} — General ({assign.school_section})"
+                display = f"{scale.name} — General ({section_label})"
             scale_data = scale.subject_scale or []
             grading_configs.append({
                 'id': assign.id,
