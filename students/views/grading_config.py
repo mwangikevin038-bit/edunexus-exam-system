@@ -84,16 +84,19 @@ def grading_configuration(request):
             except json.JSONDecodeError:
                 scale_data = []
 
+            config_name = SECTION_LABELS.get(section, section)
+            if sub_section:
+                config_name = f"{config_name} ({sub_section.title()})"
             config, _ = GradingConfig.all_objects.update_or_create(
                 school=school,
-                school_section=section,
-                sub_section=sub_section,
-                defaults={'subject_scale': scale_data},
+                name=config_name,
+                defaults={
+                    'school_section': section,
+                    'sub_section': sub_section,
+                    'subject_scale': scale_data,
+                },
             )
-            label = SECTION_LABELS.get(section, section)
-            if sub_section:
-                label = f"{label} ({sub_section.title()})"
-            messages.success(request, f"Subject grading scale saved for {label}.")
+            messages.success(request, f"Subject grading scale saved for {config_name}.")
             return redirect(f'{request.path}?section={section}')
 
         elif action == 'save_total_scale':
@@ -107,16 +110,19 @@ def grading_configuration(request):
             except json.JSONDecodeError:
                 scale_data = []
 
+            config_name = SECTION_LABELS.get(section, section)
+            if sub_section:
+                config_name = f"{config_name} ({sub_section.title()})"
             config, _ = GradingConfig.all_objects.update_or_create(
                 school=school,
-                school_section=section,
-                sub_section=sub_section,
-                defaults={'total_scale': scale_data},
+                name=config_name,
+                defaults={
+                    'school_section': section,
+                    'sub_section': sub_section,
+                    'total_scale': scale_data,
+                },
             )
-            label = SECTION_LABELS.get(section, section)
-            if sub_section:
-                label = f"{label} ({sub_section.title()})"
-            messages.success(request, f"Total marks scale saved for {label}.")
+            messages.success(request, f"Total marks scale saved for {config_name}.")
             return redirect(f'{request.path}?section={section}')
 
         elif action == 'reset_subject_scale':
@@ -126,16 +132,19 @@ def grading_configuration(request):
                 return redirect(request.path)
             sub_section = request.POST.get('sub_section', '').strip() or None
             default_scale = GradingConfig.get_default_subject_scale(section)
+            config_name = SECTION_LABELS.get(section, section)
+            if sub_section:
+                config_name = f"{config_name} ({sub_section.title()})"
             config, _ = GradingConfig.all_objects.update_or_create(
                 school=school,
-                school_section=section,
-                sub_section=sub_section,
-                defaults={'subject_scale': default_scale},
+                name=config_name,
+                defaults={
+                    'school_section': section,
+                    'sub_section': sub_section,
+                    'subject_scale': default_scale,
+                },
             )
-            label = SECTION_LABELS.get(section, section)
-            if sub_section:
-                label = f"{label} ({sub_section.title()})"
-            messages.success(request, f"Subject scale reset to defaults for {label}.")
+            messages.success(request, f"Subject scale reset to defaults for {config_name}.")
             return redirect(f'{request.path}?section={section}')
 
         elif action == 'reset_total_scale':
@@ -145,16 +154,19 @@ def grading_configuration(request):
                 return redirect(request.path)
             sub_section = request.POST.get('sub_section', '').strip() or None
             default_scale = GradingConfig.get_default_total_scale(section)
+            config_name = SECTION_LABELS.get(section, section)
+            if sub_section:
+                config_name = f"{config_name} ({sub_section.title()})"
             config, _ = GradingConfig.all_objects.update_or_create(
                 school=school,
-                school_section=section,
-                sub_section=sub_section,
-                defaults={'total_scale': default_scale},
+                name=config_name,
+                defaults={
+                    'school_section': section,
+                    'sub_section': sub_section,
+                    'total_scale': default_scale,
+                },
             )
-            label = SECTION_LABELS.get(section, section)
-            if sub_section:
-                label = f"{label} ({sub_section.title()})"
-            messages.success(request, f"Total marks scale reset to defaults for {label}.")
+            messages.success(request, f"Total marks scale reset to defaults for {config_name}.")
             return redirect(f'{request.path}?section={section}')
 
         elif action == 'test_score':
@@ -193,6 +205,7 @@ def grading_configuration(request):
         if not config:
             config = GradingConfig.all_objects.create(
                 school=school,
+                name=SECTION_LABELS.get(section_key, section_key),
                 school_section=section_key,
                 subject_scale=GradingConfig.get_default_subject_scale(section_key),
                 total_scale=GradingConfig.get_default_total_scale(section_key),

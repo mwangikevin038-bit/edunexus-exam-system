@@ -1095,7 +1095,7 @@ def teacher_classes(request, teacher_id):
     latest_exams = {}
     for section_key in ('JSS', 'PRIMARY'):
         exam = Exam.all_objects.filter(
-            school=school, school_section=section_key, year=now.year, status='active'
+            school=school, school_section=section_key, year=now.year, status='active', is_deleted=False
         ).order_by('-created_at').first()
         if exam:
             latest_exams[section_key] = exam

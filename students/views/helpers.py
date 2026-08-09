@@ -69,24 +69,6 @@ def get_cached_class_averages(school, class_name, stream, year, term, assessment
     return avg_map
 
 
-def _resolve_grading_config(school, section, sub_section):
-    """
-    Resolve GradingConfig with a 3-step fallback, using _get_grading_config
-    which already has a per-process dict cache.
-    """
-    config = _get_grading_config(school, section, sub_section)
-    if config:
-        return config
-    if section == 'PRIMARY' and sub_section == 'LOWER':
-        config = _get_grading_config(school, 'PRIMARY', 'LOWER')
-        if not config:
-            config = _get_grading_config(school, 'LOWER_PRIMARY', None)
-    elif section == 'PRIMARY':
-        config = _get_grading_config(school, 'PRIMARY', 'UPPER')
-    else:
-        config = _get_grading_config(school, 'JSS', None)
-    return config
-
 
 def generate_default_password():
     """Generate a random 8-digit numeric password for new teachers."""
@@ -467,70 +449,85 @@ def user_can_edit_learner_profile(user, student):
     )
 
 
-_grading_config_cache = {}  # (school_id, section, sub_section) -> GradingConfig or None
+_grading_config_cache = {}  # Kept for backward compat — delegates to grading_engine
 
-
-def _get_grading_config(school, section, sub_section=None):
-    """Fetch and cache a GradingConfig by (school, section, sub_section)."""
-    if not school or not section:
-        return None
-    key = (school.pk, section, sub_section)
-    if key not in _grading_config_cache:
-        from ..models import GradingConfig
-        _grading_config_cache[key] = GradingConfig.all_objects.filter(
-            school=school, school_section=section, sub_section=sub_section
-        ).first()
-    return _grading_config_cache[key]
 
 
 # ═══════════════════════════════════════════════════════════════════════
 # Fast Grading Lookup — bisect + module-level parsed cache
 # ═══════════════════════════════════════════════════════════════════════
 
-# Parsed lookup tables: config_id → sorted tuple list
-# Built once per GradingConfig instance, never re-parsed.
-_subject_lookup_cache = {}   # config_id → [(min, max, level, pts), ...]
-_total_lookup_cache = {}     # config_id → [(min, max, level, pts), ...]
+# Parsed lookup tables: scale_id → sorted tuple list
+# Built once per GradingScale instance, never re-parsed.
+_subject_lookup_cache = {}   # scale_id → [(min, max, level, pts), ...]
+_total_lookup_cache = {}     # scale_id → [(min, max, level, pts), ...]
 
 
-def _build_subject_lookup(config):
-    """Parse config.subject_scale JSON into a sorted tuple list (once per config).
+def _build_subject_lookup(scale):
+    """Parse subject_scale into a sorted tuple list (once per scale).
+
+    Accepts either a GradingScale model instance (with .pk, .subject_scale)
+    or a raw list of scale entries.
 
     Returns two parallel lists for O(log n) bisect lookup:
       - mins:  [min_score, min_score, ...]  (sorted ascending)
       - entries: [(min, max, level, pts), ...]
     """
-    if config is None or not config.pk:
+    if scale is None:
         return (), ()
-    cid = config.pk
-    if cid not in _subject_lookup_cache:
-        raw = config.subject_scale or []
+
+    # Handle raw list input (from resolve_scale_fast)
+    if isinstance(scale, list):
+        if not scale:
+            return (), ()
+        raw = scale
+        cache_key = id(scale)
+    else:
+        if not scale.pk:
+            return (), ()
+        cache_key = scale.pk
+        raw = scale.subject_scale or []
+
+    if cache_key not in _subject_lookup_cache:
         entries = tuple(
             sorted((e['min_score'], e['max_score'], e['level'], e['points']) for e in raw)
         )
         mins = tuple(e[0] for e in entries)
-        _subject_lookup_cache[cid] = (mins, entries)
-    return _subject_lookup_cache[cid]
+        _subject_lookup_cache[cache_key] = (mins, entries)
+    return _subject_lookup_cache[cache_key]
 
 
-def _build_total_lookup(config):
-    """Parse config.total_scale JSON into a sorted tuple list (once per config).
+def _build_total_lookup(scale):
+    """Parse total_scale into a sorted tuple list (once per scale).
+
+    Accepts either a GradingScale model instance (with .pk, .total_scale)
+    or a raw list of scale entries.
 
     Returns two parallel lists for O(log n) bisect lookup:
       - mins:  [min_marks, min_marks, ...]  (sorted ascending)
       - entries: [(min, max, level, pts), ...]
     """
-    if config is None or not config.pk:
+    if scale is None:
         return (), ()
-    cid = config.pk
-    if cid not in _total_lookup_cache:
-        raw = config.total_scale or []
+
+    if isinstance(scale, list):
+        if not scale:
+            return (), ()
+        raw = scale
+        cache_key = id(scale)
+    else:
+        if not scale.pk:
+            return (), ()
+        cache_key = scale.pk
+        raw = scale.total_scale or []
+
+    if cache_key not in _total_lookup_cache:
         entries = tuple(
             sorted((e['min_marks'], e['max_marks'], e['level'], e['points']) for e in raw)
         )
         mins = tuple(e[0] for e in entries)
-        _total_lookup_cache[cid] = (mins, entries)
-    return _total_lookup_cache[cid]
+        _total_lookup_cache[cache_key] = (mins, entries)
+    return _total_lookup_cache[cache_key]
 
 
 def get_subject_level_fast(score, config):
@@ -598,24 +595,13 @@ def get_performance_level(score, sub_section=None):
     section = get_current_school_section()
 
     if school and section:
-        if sub_section:
-            config = _get_grading_config(school, section, sub_section)
-            if config and config.subject_scale:
-                return get_subject_level_fast(score, config)
-        config = _get_grading_config(school, section)
-        if config and config.subject_scale:
-            return get_subject_level_fast(score, config)
-        if section == 'LOWER_PRIMARY':
-            config = _get_grading_config(school, 'PRIMARY', 'LOWER')
-            if config and config.subject_scale:
-                return get_subject_level_fast(score, config)
-        if section == 'PRIMARY':
-            config = _get_grading_config(school, 'PRIMARY', 'UPPER')
-            if config and config.subject_scale:
-                return get_subject_level_fast(score, config)
+        from .grading_engine import resolve_scale_fast
+        scale_data = resolve_scale_fast(school.pk, section, sub_section, subject_id=None)
+        if scale_data:
+            return get_subject_level_fast(score, scale_data)
 
     logging.getLogger("students.helpers").error(
-        "GradingConfig missing for school_id=%s section=%s sub_section=%s.",
+        "GradingScale missing for school_id=%s section=%s sub_section=%s.",
         getattr(school, 'id', None), section, sub_section,
     )
     return 'NO CONFIG', 0
@@ -625,7 +611,7 @@ def calculate_report_plv(total_points, total_marks, sub_section=None, school=Non
     """
     2-tier JSS Performance Level used for report card comment matching.
     Uses the school's GradingConfig.total_scale from the DB.
-    NO hardcoded fallback — if config is missing, logs error and returns '-'.
+    NO hardcoded fallback — if scale is missing, logs error and returns '-'.
 
     Optional `school` and `section` parameters bypass the thread-local lookup,
     making this safe to call from Celery tasks or management commands.
@@ -642,12 +628,16 @@ def calculate_report_plv(total_points, total_marks, sub_section=None, school=Non
         section = get_current_school_section()
 
     if school and section:
-        config = _resolve_grading_config(school, section, sub_section)
-        if config and config.total_scale:
-            return get_total_level_fast(mks, config)[0] if mks else '-'
+        from .grading_engine import resolve_scale_fast
+        scale_data = resolve_scale_fast(
+            school.pk, section, sub_section,
+            subject_id=None, is_total_calculation=True,
+        )
+        if scale_data:
+            return get_total_level_fast(mks, scale_data)[0] if mks else '-'
 
     logging.getLogger("students.helpers").error(
-        "GradingConfig.total_scale missing for school_id=%s section=%s sub_section=%s. "
+        "GradingScale.total_scale missing for school_id=%s section=%s sub_section=%s. "
         "Configure it at /school-admin/grading-config/.",
         getattr(school, 'id', None), section, sub_section,
     )
@@ -666,16 +656,10 @@ def calculate_broadsheet_plv(total_marks, total_points, sub_section=None, school
 
 def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None, school=None, section=None):
     """
-    Primary broadsheet PLV based on the school's GradingConfig.total_scale.
+    Primary broadsheet PLV based on the school's GradingScale.total_scale.
 
     PLV is computed from the **total marks** against the configured total_scale
-    ranges (e.g. 0-400 for 4-subject Lower Primary). This connects directly
-    to the grading config set up in the admin section.
-
-    Lookup order:
-      1. Sub-section-specific config (PRIMARY/LOWER or PRIMARY/UPPER)
-      2. Falls back to section-wide PRIMARY config
-    NO hardcoded fallback.
+    ranges (e.g. 0-400 for 4-subject Lower Primary).
     """
     import logging
     from ..school_scope import get_current_school, get_current_school_section
@@ -689,9 +673,13 @@ def calculate_primary_plv(total_marks, assessed_subjects, sub_section=None, scho
         section = get_current_school_section()
 
     if school and section:
-        config = _resolve_grading_config(school, section, sub_section)
-        if config and config.total_scale:
-            level, _ = get_total_level_fast(total_marks, config)
+        from .grading_engine import resolve_scale_fast
+        scale_data = resolve_scale_fast(
+            school.pk, section, sub_section,
+            subject_id=None, is_total_calculation=True,
+        )
+        if scale_data:
+            level, _ = get_total_level_fast(total_marks, scale_data)
             if level and level != '-':
                 return level
 

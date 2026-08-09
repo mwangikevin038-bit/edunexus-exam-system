@@ -420,6 +420,778 @@
     }
 </style>
 
+{% if active_tab == 'create' %}
+
+<style>
+    .create-exam-page {
+        min-height: 100vh;
+        background: #f6f8fb;
+        padding: 34px;
+    }
+    .create-exam-shell {
+        max-width: 960px;
+        margin: 0 auto;
+    }
+    .create-exam-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 32px 36px;
+    }
+    .create-exam-title {
+        font-size: 20px;
+        font-weight: 800;
+        color: #1a1a2e;
+        margin: 0 0 28px 0;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .ce-field-row {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+    .ce-field {
+        flex: 1;
+    }
+    .ce-field label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .ce-field input[type="text"],
+    .ce-field select {
+        width: 100%;
+        height: 42px;
+        border: 1.5px solid #d1d5db;
+        border-radius: 6px;
+        background: #f0fdf4;
+        color: #1f2937;
+        font-size: 14px;
+        font-weight: 500;
+        padding: 0 14px;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        transition: border-color 0.15s ease;
+        appearance: none;
+        -webkit-appearance: none;
+    }
+    .ce-field select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 5.646a.5.5 0 0 1 .708 0L8 8.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        background-size: 14px;
+        padding-right: 36px;
+    }
+    .ce-field input:focus,
+    .ce-field select:focus {
+        outline: none;
+        border-color: #84cc16;
+        box-shadow: 0 0 0 2px rgba(132, 204, 22, 0.12);
+    }
+    .ce-field input::placeholder {
+        color: #9ca3af;
+    }
+    .ce-divider {
+        font-size: 15px;
+        font-weight: 700;
+        color: #5b7a2e;
+        margin: 8px 0 16px 0;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .ce-select-all {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1.5px solid #e5e7eb;
+        margin-bottom: 2px;
+    }
+    .ce-select-all input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #5b7a2e;
+        cursor: pointer;
+        margin: 0;
+    }
+    .ce-select-all label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        cursor: pointer;
+        margin: 0;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .ce-class-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .ce-class-row:last-child {
+        border-bottom: none;
+    }
+    .ce-class-row input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #5b7a2e;
+        cursor: pointer;
+        margin: 0;
+        flex-shrink: 0;
+    }
+    .ce-class-row .ce-class-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        min-width: 100px;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .ce-class-row .ce-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 4px;
+        background: #dcfce7;
+        color: #166534;
+        letter-spacing: 0.3px;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        white-space: nowrap;
+    }
+    .ce-btn-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 28px;
+    }
+    .ce-btn-create {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 28px;
+        background: #0d9488;
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .ce-btn-create:hover {
+        background: #0f766e;
+    }
+    .ce-btn-create i {
+        font-size: 16px;
+    }
+    .ce-empty-grades {
+        color: #9ca3af;
+        font-size: 14px;
+        padding: 20px 0;
+        text-align: center;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+</style>
+
+<div class="create-exam-page">
+    <div class="create-exam-shell">
+        <div class="create-exam-card">
+            <h2 class="create-exam-title">Create New Assessment</h2>
+
+            <form method="POST" id="createForm">
+                {% csrf_token %}
+                <input type="hidden" name="action_type" value="create_exam">
+
+                <div class="ce-field-row">
+                    <div class="ce-field" style="flex: 2;">
+                        <label>Exam Name</label>
+                        <input type="text" name="exam_name" placeholder="Name" required>
+                    </div>
+                </div>
+
+                <div class="ce-field-row">
+                    <div class="ce-field">
+                        <label>Term</label>
+                        <select name="term" required>
+                            <option value="">Select Term</option>
+                            {% for term in terms %}
+                            <option value="{{ term }}">{{ term }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="ce-field">
+                        <label>Year</label>
+                        <select name="year" required>
+                            {% for y in year_range %}
+                            <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <p class="ce-divider">Form that sat for the exam</p>
+
+                <div class="ce-select-all">
+                    <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
+                    <label for="selectAll">Select All</label>
+                </div>
+
+                <div class="ce-classes-list">
+                    {% for grade in available_grades %}
+                    <div class="ce-class-row">
+                        <input type="checkbox" name="selected_classes" value="{{ grade.name }}" id="class_{{ grade.name }}">
+                        <span class="ce-class-name">{{ grade.name }}</span>
+                        <span class="ce-badge">{{ grade.school_section }}{% if grade.sub_section %} - {{ grade.sub_section }}{% endif %}</span>
+                    </div>
+                    {% empty %}
+                    <p class="ce-empty-grades">No grades available. Please set up grades in School Setup first.</p>
+                    {% endfor %}
+                </div>
+
+                <div class="ce-btn-row">
+                    <button type="submit" class="ce-btn-create">
+                        <i class="ph ph-floppy-disk"></i>
+                        Create
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleSelectAll(checkbox) {
+    document.querySelectorAll('.ce-classes-list input[type="checkbox"]').forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+}
+</script>
+
+{% elif active_tab == 'grading' %}
+
+<style>
+    .gs-page{min-height:100vh;background:#f6f8fb;padding:34px}
+    .gs-shell{max-width:1100px;margin:0 auto}
+    .gs-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+    .gs-header h2{font-size:24px;font-weight:800;color:#1a1a2e;margin:0;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-btn-create{display:inline-flex;align-items:center;gap:6px;padding:12px 28px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:all .15s;box-shadow:0 2px 8px rgba(13,148,136,.25)}
+    .gs-btn-create:hover{background:#0f766e;box-shadow:0 4px 12px rgba(13,148,136,.35)}
+    .gs-card{background:#fff;border-radius:14px;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .gs-list-table{width:100%;border-collapse:collapse}
+    .gs-list-table th{background:#fff;color:#1e293b;padding:16px 24px;text-align:left;font-size:15px;font-weight:700;border-bottom:2px solid #e5e7eb;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-list-table th:last-child{text-align:right;width:260px;border-bottom:2px solid #e5e7eb}
+    .gs-list-table td{padding:0 24px;color:#1e293b;font-size:15px;font-weight:500;font-family:'Inter','Plus Jakarta Sans',sans-serif;vertical-align:middle;border-bottom:1px solid #e5e7eb}
+    .gs-list-table tr td{height:62px}
+    .gs-list-table tr:last-child td{border-bottom:none}
+    .gs-list-table tr:hover td{background:#f9fafb}
+    .gs-list-table td:last-child{text-align:right}
+    .gs-action-cell{display:inline-flex;gap:10px;justify-content:flex-end;align-items:center}
+    .gs-btn-view{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:#e5e7eb;color:#374151;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background .15s;white-space:nowrap}
+    .gs-btn-view:hover{background:#d1d5db}
+    .gs-btn-delete{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background .15s;white-space:nowrap}
+    .gs-btn-delete:hover{background:#ea580c}
+    .gs-scale-card{background:#fff;border-radius:12px;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .gs-scale-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #f3f4f6}
+    .gs-scale-name{font-size:16px;font-weight:700;color:#111827;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-btn-close{display:inline-flex;align-items:center;gap:4px;padding:8px 18px;background:#374151;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background .15s}
+    .gs-btn-close:hover{background:#1f2937}
+    .gs-scale-table{width:100%;border-collapse:collapse}
+    .gs-scale-table th{background:#f9fafb;color:#6b7280;padding:12px 24px;text-align:left;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #e5e7eb;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-scale-table td{padding:12px 24px;color:#374151;font-size:14px;font-weight:500;border-bottom:1px solid #f3f4f6;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-scale-table tr:last-child td{border-bottom:none}
+    .gs-scale-table tr:hover td{background:#f9fafb}
+    .gs-form-group{margin-bottom:20px}
+    .gs-form-group label{display:block;font-size:14px;font-weight:600;color:#1e293b;margin-bottom:6px;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-form-group .required{color:#ef4444}
+    .gs-form-input{width:100%;height:44px;border:1.5px solid #d1d5db;border-radius:6px;background:#fff;color:#1f2937;font-size:14px;font-weight:500;padding:0 14px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:border-color .15s}
+    .gs-form-input:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 2px rgba(13,148,136,.12)}
+    .gs-form-input::placeholder{color:#9ca3af}
+    .gs-hint-italic{font-size:14px;font-weight:600;color:#5b7a2e;font-style:italic;margin:8px 0 16px;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-hint-green{font-size:13px;color:#0d9488;font-style:italic;margin:12px 0 4px;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-grid-wrap{overflow-x:auto;margin-bottom:8px}
+    .gs-grid-table{width:100%;border-collapse:collapse;min-width:650px}
+    .gs-grid-table th{background:#f9fafb;color:#6b7280;padding:10px 14px;text-align:left;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #e5e7eb;font-family:'Inter','Plus Jakarta Sans',sans-serif;white-space:nowrap}
+    .gs-grid-table td{padding:8px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-grid-table td:first-child{color:#6b7280;font-weight:600;font-size:13px;text-align:center;width:40px}
+    .gs-grid-input{width:100%;height:38px;border:1.5px solid #d1d5db;border-radius:6px;background:#fff;color:#1f2937;font-size:14px;font-weight:500;padding:0 12px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:border-color .15s}
+    .gs-grid-input:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 2px rgba(13,148,136,.1)}
+    .gs-grid-input.grade-input{background:#fff;border-color:#e2e8f0;color:#1e293b;font-weight:600}
+    .gs-grid-input.pts-input{background:#fff;border-color:#e2e8f0;color:#1e293b;font-weight:600;text-align:center;width:70px}
+    .gs-actions-cell{white-space:nowrap;display:flex;gap:6px;align-items:center}
+    .gs-btn-add{display:inline-flex;align-items:center;gap:3px;padding:6px 12px;background:#0d9488;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;white-space:nowrap;transition:background .15s}
+    .gs-btn-add:hover{background:#0f766e}
+    .gs-btn-remove{display:inline-flex;align-items:center;gap:3px;padding:6px 12px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;white-space:nowrap;transition:background .15s}
+    .gs-btn-remove:hover{background:#dc2626}
+    .gs-sample-toggle{display:inline-block;font-size:14px;font-weight:600;color:#1e293b;cursor:pointer;margin:8px 0 16px;font-family:'Inter','Plus Jakarta Sans',sans-serif;user-select:none}
+    .gs-sample-toggle:hover{color:#0d9488}
+    .gs-sample-tabs{display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px}
+    .gs-sample-tab{padding:10px 18px;font-size:14px;font-weight:600;color:#64748b;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:all .15s}
+    .gs-sample-tab:hover{color:#1e293b}
+    .gs-sample-tab.active{color:#0d9488;border-bottom-color:#0d9488}
+    .gs-sample-table{width:100%;border-collapse:collapse}
+    .gs-sample-table th{background:#f8fafc;color:#374151;padding:12px 20px;text-align:left;font-size:14px;font-weight:700;border-bottom:2px solid #e5e7eb;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-sample-table td{padding:12px 20px;border-bottom:1px solid #f1f5f9;color:#1f2937;font-size:14px;font-weight:500;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-sample-table tr:nth-child(even) td{background:#f8fafc}
+    .gs-btn-row{display:flex;justify-content:flex-end;margin-top:16px;gap:12px}
+    .gs-btn-autofill{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background .15s}
+    .gs-btn-autofill:hover{background:#334155}
+    .gs-btn-save{display:inline-flex;align-items:center;gap:6px;padding:10px 28px;background:#0d9488;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background .15s}
+    .gs-btn-save:hover{background:#0f766e}
+    .gs-save-row{display:flex;justify-content:flex-end;margin-top:24px}
+    .gs-hidden{display:none}
+    .gs-empty{padding:48px 24px;text-align:center;color:#9ca3af;font-size:14px;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-empty i{font-size:40px;margin-bottom:10px;display:block}
+    .gs-back-btn{display:inline-flex;align-items:center;gap:4px;padding:8px 18px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background .15s}
+    .gs-back-btn:hover{background:#334155}
+</style>
+
+<div class="gs-page">
+    <div class="gs-shell">
+
+        <!-- ====== LIST VIEW ====== -->
+        <div id="gsListView">
+            <div class="gs-header">
+                <h2>Grading Systems</h2>
+                <button class="gs-btn-create" onclick="gsShowForm()">+ Create Grading System</button>
+            </div>
+
+            <div class="gs-card">
+                <table class="gs-list-table">
+                    <thead>
+                        <tr><th>Name</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for config in grading_configs %}
+                        <tr>
+                            <td>{{ config.display_name }}</td>
+                            <td>
+                                <div class="gs-action-cell">
+                                    <button class="gs-btn-view" onclick="gsViewScale({{ config.id }})"><i class="ph ph-eye"></i> View</button>
+                                    <button class="gs-btn-delete" onclick="gsDeleteConfig({{ config.id }}, '{{ config.display_name }}')"><i class="ph ph-trash"></i> Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2">
+                                <div class="gs-empty">
+                                    <i class="ph ph-folder-database"></i>
+                                    <p>No grading systems configured yet.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ====== SCALE VIEW (hidden by default) ====== -->
+        <div id="gsScaleView" class="gs-hidden">
+            <div class="gs-scale-card">
+                <div class="gs-scale-header">
+                    <span class="gs-scale-name" id="gsScaleTitle"></span>
+                    <button class="gs-btn-close" onclick="gsCloseScale()">Close</button>
+                </div>
+                <table class="gs-scale-table">
+                    <thead>
+                        <tr><th>Low</th><th>High</th><th>Grade</th><th>Points</th></tr>
+                    </thead>
+                    <tbody id="gsScaleBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ====== CREATE FORM (hidden by default) ====== -->
+        <div id="gsFormView" class="gs-hidden">
+            <div class="gs-header">
+                <h2>Grading Systems</h2>
+                <button class="gs-back-btn" onclick="gsShowList()">&#8592; Close</button>
+            </div>
+
+            <div class="gs-card" style="padding:32px 36px;">
+                <form method="POST" id="gsForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action_type" value="save_grading_config">
+
+                    <div class="gs-form-group">
+                        <label>Grading System Name <span class="required">*</span></label>
+                        <input type="text" name="grading_name" class="gs-form-input" placeholder="e.g. KCSE Standard, Primary CBC" required id="gsNameInput">
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                        <div class="gs-form-group">
+                            <label>Section <span class="required">*</span></label>
+                            <select name="school_section" class="gs-form-input" id="gsSectionSelect" required onchange="gsFilterSubjects()">
+                                <option value="JSS">Junior Secondary (JSS)</option>
+                                <option value="PRIMARY">Primary (Upper — Grade 4-6)</option>
+                                <option value="PRIMARY_LOWER">Lower Primary (Grade 1-3)</option>
+                            </select>
+                        </div>
+                        <div class="gs-form-group">
+                            <label>Sub-section</label>
+                            <select name="sub_section" class="gs-form-input" id="gsSubsectionSelect">
+                                <option value="">None (JSS / whole section)</option>
+                                <option value="UPPER">Upper (Grade 4-6)</option>
+                                <option value="LOWER">Lower (Grade 1-3)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="gs-form-group">
+                        <label>Subject <span style="color:#9ca3af;font-weight:400">(leave blank for general — applies to all subjects)</span></label>
+                        <select name="subject" class="gs-form-input" id="gsSubjectSelect">
+                            <option value="">General — all subjects in this section</option>
+                        </select>
+                    </div>
+
+                    <p class="gs-hint-italic">Grading Grid (Start with the lowest)</p>
+
+                    <div class="gs-grid-wrap">
+                        <table class="gs-grid-table">
+                            <thead>
+                                <tr><th>#</th><th>Low</th><th>High</th><th>Grade</th><th>Points</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody id="gsGridBody"></tbody>
+                        </table>
+                    </div>
+
+                    <p class="gs-hint-green">Add marks upto 100</p>
+
+                    <span class="gs-sample-toggle" id="gsSampleToggle" onclick="gsToggleSample()">Show Sample &#8744;</span>
+
+                    <div class="gs-hidden" id="gsSampleSection">
+                        <div class="gs-sample-tabs" id="gsSampleTabs"></div>
+                        <table class="gs-sample-table">
+                            <thead>
+                                <tr><th>Low</th><th>High</th><th>Grade</th><th>Points</th></tr>
+                            </thead>
+                            <tbody id="gsSampleBody"></tbody>
+                        </table>
+                        <div class="gs-btn-row">
+                            <button type="button" class="gs-btn-autofill" onclick="gsAutofill()"><i class="ph ph-copy"></i> Autofill with sample</button>
+                        </div>
+                    </div>
+
+                    <div class="gs-save-row">
+                        <button type="submit" class="gs-btn-save">Save Grading System</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+var GS_SAMPLES = {};
+var GS_SAMPLE_KEYS = [];
+var GS_CONFIG_DATA = {{ grading_configs_json|safe }};
+var GS_SUBJECTS = {{ subjects_json|safe }};
+var gsCurrentTab = '';
+
+function gsFilterSubjects() {
+    var section = document.getElementById('gsSectionSelect').value;
+    var sel = document.getElementById('gsSubjectSelect');
+    var prevVal = sel.value;
+    sel.innerHTML = '<option value="">General — all subjects in this section</option>';
+    for (var i = 0; i < GS_SUBJECTS.length; i++) {
+        var s = GS_SUBJECTS[i];
+        if (s.section === section) {
+            var opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name + ' (' + s.code + ')';
+            sel.appendChild(opt);
+        }
+    }
+    if (prevVal && sel.querySelector('option[value="'+prevVal+'"]')) {
+        sel.value = prevVal;
+    }
+}
+gsFilterSubjects();
+
+function gsBuildSampleTabs() {
+    var tabsEl = document.getElementById('gsSampleTabs');
+    if (!tabsEl) return;
+    tabsEl.innerHTML = '';
+    GS_SAMPLES = {};
+    GS_SAMPLE_KEYS = [];
+    for (var i = 0; i < GS_CONFIG_DATA.length; i++) {
+        var cfg = GS_CONFIG_DATA[i];
+        var key = 'cfg_' + cfg.id;
+        var scale = cfg.subject_scale || [];
+        GS_SAMPLES[key] = scale.map(function(s) {
+            return {min: s.min_score, max: s.max_score, level: s.level, points: s.points};
+        });
+        GS_SAMPLE_KEYS.push(key);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'gs-sample-tab' + (i === 0 ? ' active' : '');
+        btn.textContent = cfg.display_name;
+        btn.setAttribute('data-key', key);
+        btn.onclick = function() {
+            gsCurrentTab = this.getAttribute('data-key');
+            document.querySelectorAll('.gs-sample-tab').forEach(function(t){ t.classList.remove('active'); });
+            this.classList.add('active');
+            gsRenderSample(gsCurrentTab);
+        };
+        tabsEl.appendChild(btn);
+    }
+    if (GS_SAMPLE_KEYS.length > 0) {
+        gsCurrentTab = GS_SAMPLE_KEYS[0];
+    }
+}
+
+function gsShowList() {
+    document.getElementById('gsListView').classList.remove('gs-hidden');
+    document.getElementById('gsScaleView').classList.add('gs-hidden');
+    document.getElementById('gsFormView').classList.add('gs-hidden');
+}
+function gsShowForm() {
+    document.getElementById('gsListView').classList.add('gs-hidden');
+    document.getElementById('gsScaleView').classList.add('gs-hidden');
+    document.getElementById('gsFormView').classList.remove('gs-hidden');
+    gsInitGrid();
+}
+function gsViewScale(configId) {
+    var cfg = GS_CONFIG_DATA.find(function(c){ return c.id === configId; });
+    if (!cfg) return;
+    document.getElementById('gsListView').classList.add('gs-hidden');
+    document.getElementById('gsScaleView').classList.remove('gs-hidden');
+    document.getElementById('gsFormView').classList.add('gs-hidden');
+    document.getElementById('gsScaleTitle').textContent = cfg.display_name;
+    var tbody = document.getElementById('gsScaleBody');
+    tbody.innerHTML = '';
+    var scale = cfg.subject_scale_reversed || [];
+    for (var i = 0; i < scale.length; i++) {
+        var r = scale[i];
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+r.min_score+'</td><td>'+r.max_score+'</td><td>'+r.level+'</td><td>'+r.points+'</td>';
+        tbody.appendChild(tr);
+    }
+}
+function gsCloseScale() { gsShowList(); }
+function gsDeleteConfig(id, name) {
+    if (!confirm('Delete "' + name + '" grading system?')) return;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.innerHTML = '<input type="hidden" name="csrfmiddlewaretoken" value="' + document.querySelector('[name=csrfmiddlewaretoken]').value + '">' +
+        '<input type="hidden" name="action_type" value="delete_grading_config">' +
+        '<input type="hidden" name="config_id" value="' + id + '">';
+    document.body.appendChild(form);
+    form.submit();
+}
+function gsInitGrid() {
+    var grades = ['E','D-','D','D+','C-','C','C+','B-','B','B+','A-','A'];
+    var tbody = document.getElementById('gsGridBody');
+    tbody.innerHTML = '';
+    for (var i = 0; i < grades.length; i++) gsAddRow(tbody, '', '', grades[i], i + 1);
+}
+function gsAddRow(tbody, low, high, grade, pts) {
+    if (!tbody) tbody = document.getElementById('gsGridBody');
+    var idx = tbody.rows.length + 1;
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>'+idx+'</td>' +
+        '<td><input type="number" class="gs-grid-input" name="low[]" value="'+(low||'')+'" placeholder="0"></td>' +
+        '<td><input type="number" class="gs-grid-input" name="high[]" value="'+(high||'')+'" placeholder="100"></td>' +
+        '<td><input type="text" class="gs-grid-input grade-input" name="grade[]" value="'+(grade||'')+'"></td>' +
+        '<td><input type="number" class="gs-grid-input pts-input" name="points[]" value="'+(pts||'')+'"></td>' +
+        '<td><div class="gs-actions-cell">' +
+        '<button type="button" class="gs-btn-add" onclick="gsInsertRow(this)">+ Add</button>' +
+        '<button type="button" class="gs-btn-remove" onclick="gsRemoveRow(this)">Remove</button>' +
+        '</div></td>';
+    tbody.appendChild(tr);
+}
+function gsInsertRow(btn) {
+    var tr = btn.closest('tr');
+    var tbody = tr.parentNode;
+    var newTr = document.createElement('tr');
+    newTr.innerHTML = '<td>0</td>' +
+        '<td><input type="number" class="gs-grid-input" name="low[]" placeholder="0"></td>' +
+        '<td><input type="number" class="gs-grid-input" name="high[]" placeholder="100"></td>' +
+        '<td><input type="text" class="gs-grid-input grade-input" name="grade[]"></td>' +
+        '<td><input type="number" class="gs-grid-input pts-input" name="points[]"></td>' +
+        '<td><div class="gs-actions-cell">' +
+        '<button type="button" class="gs-btn-add" onclick="gsInsertRow(this)">+ Add</button>' +
+        '<button type="button" class="gs-btn-remove" onclick="gsRemoveRow(this)">Remove</button>' +
+        '</div></td>';
+    tbody.insertBefore(newTr, tr.nextSibling);
+    gsRenumber();
+}
+function gsRemoveRow(btn) {
+    var tbody = document.getElementById('gsGridBody');
+    if (tbody.rows.length <= 1) return;
+    btn.closest('tr').remove();
+    gsRenumber();
+}
+function gsRenumber() {
+    var rows = document.getElementById('gsGridBody').rows;
+    for (var i = 0; i < rows.length; i++) rows[i].cells[0].textContent = i + 1;
+}
+function gsToggleSample() {
+    var sec = document.getElementById('gsSampleSection');
+    var lbl = document.getElementById('gsSampleToggle');
+    if (sec.classList.contains('gs-hidden')) {
+        sec.classList.remove('gs-hidden');
+        lbl.innerHTML = 'Hide Sample &#8743;';
+        gsBuildSampleTabs();
+        if (gsCurrentTab) gsRenderSample(gsCurrentTab);
+    } else {
+        sec.classList.add('gs-hidden');
+        lbl.innerHTML = 'Show Sample &#8744;';
+    }
+}
+function gsSwitchTab(key, btn) {
+    gsCurrentTab = key;
+    document.querySelectorAll('.gs-sample-tab').forEach(function(t){ t.classList.remove('active'); });
+    btn.classList.add('active');
+    gsRenderSample(key);
+}
+function gsRenderSample(tab) {
+    var data = GS_SAMPLES[tab] || [];
+    var tbody = document.getElementById('gsSampleBody');
+    tbody.innerHTML = '';
+    for (var i = data.length - 1; i >= 0; i--) {
+        var r = data[i];
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+r.min+'</td><td>'+r.max+'</td><td>'+r.level+'</td><td>'+r.points+'</td>';
+        tbody.appendChild(tr);
+    }
+}
+function gsAutofill() {
+    var data = GS_SAMPLES[gsCurrentTab] || [];
+    var tbody = document.getElementById('gsGridBody');
+    tbody.innerHTML = '';
+    for (var i = 0; i < data.length; i++) { var r = data[i]; gsAddRow(tbody, r.min, r.max, r.level, r.points); }
+    gsRenumber();
+}
+</script>
+
+{% elif active_tab == 'deleted' %}
+<style>
+.deleted-exams-wrap { padding: 30px 40px; max-width: 1100px; }
+.deleted-exams-title {
+    font-size: 20px; font-weight: 700; color: #1e293b;
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.deleted-year-label {
+    font-size: 13px; font-weight: 600; color: #4a6fa5;
+    margin-bottom: 6px;
+}
+.deleted-year-select {
+    width: 100%; padding: 12px 16px; font-size: 14px;
+    border: 1px solid #c8e6c9; border-radius: 6px;
+    background: #f1f8e9; color: #1e293b; margin-bottom: 28px;
+    appearance: auto;
+}
+.deleted-section-header {
+    background: #f1f8e9; border: 1px solid #c8e6c9;
+    padding: 10px 16px; font-size: 14px; font-weight: 700;
+    color: #1e293b; border-radius: 6px 6px 0 0; margin-bottom: 0;
+}
+.deleted-exam-table {
+    width: 100%; border-collapse: collapse;
+    border: 1px solid #d5e8d4; border-radius: 0 0 6px 6px; overflow: hidden;
+}
+.deleted-exam-table th {
+    background: #fff; padding: 12px 16px; font-size: 12px;
+    font-weight: 700; color: #4a6fa5; text-transform: uppercase;
+    letter-spacing: 0.3px; border-bottom: 1px solid #d5e8d4;
+    text-align: left;
+}
+.deleted-exam-table th.group-header {
+    text-align: center; border-bottom: 1px solid #d5e8d4;
+}
+.deleted-exam-table td {
+    padding: 14px 16px; font-size: 13px; color: #334155;
+    border-bottom: 1px solid #e8f5e9; vertical-align: middle;
+}
+.deleted-exam-table tr:last-child td { border-bottom: none; }
+.deleted-exam-table td.center { text-align: center; }
+.btn-recover {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #00897b; color: #fff; border: none; border-radius: 6px;
+    padding: 8px 20px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
+}
+.btn-recover:hover { background: #00796b; }
+.deleted-empty {
+    text-align: center; padding: 40px 20px; color: #94a3b8;
+    font-size: 14px;
+}
+</style>
+
+<div class="deleted-exams-wrap">
+    <div class="deleted-exams-title">Deleted Exams</div>
+
+    <label class="deleted-year-label">Select Academic Year</label>
+    <select class="deleted-year-select" id="deletedYearSelect" onchange="window.location.href='?tab=deleted&year='+this.value">
+        {% for y in deleted_years %}
+        <option value="{{ y }}" {% if y == deleted_selected_year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+    </select>
+
+    <div class="deleted-section-header">Ordinary Exams</div>
+
+    {% if deleted_exam_rows %}
+    <table class="deleted-exam-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Academic Year</th>
+                <th>Term</th>
+                <th class="group-header" colspan="4">Offered in Form</th>
+            </tr>
+            <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th>Class</th>
+                <th>Deleted by</th>
+                <th>Deletion Date</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in deleted_exam_rows %}
+            <tr>
+                <td>{{ row.name }}</td>
+                <td>{{ row.year }}</td>
+                <td>{{ row.term }}</td>
+                <td>
+                    {% if row.school_section == 'JSS' %}JSS
+                    {% elif row.sub_section == 'LOWER' %}Lower Primary
+                    {% elif row.sub_section == 'UPPER' %}Upper Primary
+                    {% else %}Primary{% endif %}
+                </td>
+                <td>{{ row.deleted_by }}</td>
+                <td>{{ row.deleted_at }}</td>
+                <td class="center">
+                    <form method="POST" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action_type" value="recover_exam">
+                        <input type="hidden" name="exam_id" value="{{ row.id }}">
+                        <button type="submit" class="btn-recover">
+                            <i class="ph ph-arrow-counter-clockwise"></i> Recover
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="deleted-empty">
+        <i class="ph ph-trash" style="font-size:32px;display:block;margin-bottom:8px;"></i>
+        No deleted exams found for {{ deleted_selected_year }}.
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+
 <div class="manage-exams-page">
     <div class="manage-exams-shell">
 
@@ -427,6 +1199,7 @@
             <label>Academic Year</label>
             <form method="GET" id="yearFilterForm">
                 {% if active_sub %}<input type="hidden" name="sub" value="{{ active_sub }}">{% endif %}
+                {% if active_tab %}<input type="hidden" name="tab" value="{{ active_tab }}">{% endif %}
                 <select name="year" onchange="this.form.submit()">
                     {% for year in available_years %}
                         <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
@@ -505,5 +1278,7 @@
 
     </div>
 </div>
+
+{% endif %}
 
 {% endblock %}

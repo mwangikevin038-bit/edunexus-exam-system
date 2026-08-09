@@ -31,7 +31,7 @@ from pypdf import PdfWriter
 from weasyprint import HTML
 
 from .constants import ASSESSMENT_MAP, GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_NAMES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_DISPLAY_ORDER, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
-from .reports import PRIMARY_ORDERED_LEVELS, _grading_config_for
+from .reports import PRIMARY_ORDERED_LEVELS
 from .exams import _get_primary_performance
 from .helpers import (
     calculate_broadsheet_plv,
@@ -716,6 +716,9 @@ def download_individual_report_pdf(request, student_id):
     if not school:
         return JsonResponse({'error': 'School context is required.'}, status=400)
 
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    prefetch_school_grading(school)
+
     student = get_school_object_or_403(Student, request, using="all_objects", id=student_id)
     if not student:
         return JsonResponse({'error': 'Student not found.'}, status=404)
@@ -726,8 +729,6 @@ def download_individual_report_pdf(request, student_id):
     term       = request.GET.get('term', 'Term 1')
     assessment = request.GET.get('assessment', 'opener')
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
-
-    from .reports import _grading_config_for
 
     student_sub_section = 'LOWER' if student.class_name in LOWER_PRIMARY_GRADE_CHOICES else ('UPPER' if student.school_section == 'PRIMARY' else None)
 
@@ -817,8 +818,7 @@ def download_individual_report_pdf(request, student_id):
         else:
             mark.deviation = None
 
-    grading_config = _grading_config_for(school, student.school_section, student.sub_section)
-    grade_descriptors = grading_config.subject_scale if grading_config else []
+    grade_descriptors = resolve_scale_fast(school.pk, student.school_section, student.sub_section)
 
     assessed_subjects   = sum(1 for m in marks_list if m.score is not None and not m.is_absent)
     max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
@@ -1068,6 +1068,9 @@ def download_bulk_report_pdf(request):
     if not school:
         return JsonResponse({'error': 'School context is required.'}, status=400)
 
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    prefetch_school_grading(school)
+
     student_ids   = [sid for sid in request.GET.get('ids', '').split(',') if sid]
     year          = request.GET.get('year', str(datetime.date.today().year))
     term          = request.GET.get('term', 'Term 1')
@@ -1125,8 +1128,7 @@ def download_bulk_report_pdf(request):
         year, term, db_assessment, published_subjects_qs,
     )
 
-    grading_config = _grading_config_for(school, sample.school_section, sample.sub_section)
-    grade_descriptors = grading_config.subject_scale if grading_config else []
+    grade_descriptors = resolve_scale_fast(school.pk, sample.school_section, sample.sub_section)
     max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
 
     teacher_map = {

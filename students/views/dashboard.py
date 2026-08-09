@@ -83,7 +83,7 @@ def dashboard(request):
     assignments_qs = SubjectAssignment.objects.filter(school=school, teacher_profile=teacher).order_by(
         'class_name', 'stream', 'subject__code'
     ) if teacher and school else SubjectAssignment.objects.none()
-    active_exams = Exam.objects.filter(school=school, status='active').order_by('-year', 'term', 'name') if school else Exam.objects.none()
+    active_exams = Exam.objects.filter(school=school, status='active', is_deleted=False).order_by('-year', 'term', 'name') if school else Exam.objects.none()
     submissions = MarkSubmission.objects.filter(school=school, teacher=teacher) if teacher and school else MarkSubmission.objects.none()
     section = get_request_school_section(request)
     if section == 'LOWER_PRIMARY':
@@ -192,7 +192,7 @@ def school_admin_dashboard(request):
     # Unfiltered querysets — admin sees everything
     student_qs = Student.all_objects.filter(school=school, is_active=True)
     teacher_qs = Teacher.all_objects.filter(school=school)
-    exam_qs = Exam.all_objects.filter(school=school)
+    exam_qs = Exam.all_objects.filter(school=school, is_deleted=False)
     assignment_qs = SubjectAssignment.all_objects.filter(school=school)
     submission_qs = MarkSubmission.all_objects.filter(school=school)
     mark_qs = Mark.all_objects.filter(school=school)
@@ -287,7 +287,7 @@ def school_admin_dashboard(request):
     # Get the TWO most recent exams for deviation calculation
     # term field is "Term X" — extract the number with Substr for proper numeric sort
     recent_exams = Exam.all_objects.filter(
-        school=school
+        school=school, is_deleted=False
     ).annotate(
         term_num=Cast(Substr('term', 6), output_field=IntegerField()),
         name_order=exam_order,

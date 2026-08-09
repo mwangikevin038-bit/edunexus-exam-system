@@ -495,35 +495,14 @@ def report_card_select(request):
     if is_primary:
         from ..models import Exam
         school_obj = get_request_school(request)
-        context_data['lower_exam_count'] = Exam.all_objects.filter(school=school_obj, school_section='PRIMARY', sub_section='LOWER', status='active').count()
-        context_data['upper_exam_count'] = Exam.all_objects.filter(school=school_obj, school_section='PRIMARY', sub_section='UPPER', status='active').count()
+        context_data['lower_exam_count'] = Exam.all_objects.filter(school=school_obj, school_section='PRIMARY', sub_section='LOWER', status='active', is_deleted=False).count()
+        context_data['upper_exam_count'] = Exam.all_objects.filter(school=school_obj, school_section='PRIMARY', sub_section='UPPER', status='active', is_deleted=False).count()
 
     return render(request, template, context_data)
 
 
-_grading_config_cache = {}  # (school_id, section, sub_section) -> GradingConfig or None
+_grading_config_cache = {}  # Kept for backward compat — delegates to grading_engine
 
-
-def _grading_config_for(school, section, sub_section):
-    """Fetch the GradingConfig for a section/sub_section, with per-request caching."""
-    if not school:
-        return None
-    key = (school.pk, section, sub_section)
-    if key in _grading_config_cache:
-        return _grading_config_cache[key]
-    config = GradingConfig.all_objects.filter(
-        school=school, school_section=section, sub_section=sub_section,
-    ).first()
-    if not config:
-        config = GradingConfig.all_objects.filter(
-            school=school, school_section=section, sub_section__isnull=True,
-        ).first()
-    if not config and section == 'PRIMARY' and sub_section == 'LOWER':
-        config = GradingConfig.all_objects.filter(
-            school=school, school_section='LOWER_PRIMARY',
-        ).first()
-    _grading_config_cache[key] = config
-    return config
 
 
 @login_required(login_url='login')
@@ -537,6 +516,9 @@ def individual_report(request, student_id):
     if not school:
         messages.error(request, "School context is required.")
         return redirect('report_card_select')
+
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    prefetch_school_grading(school)
 
     student = get_school_object_or_403(Student, request, using="all_objects", id=student_id)
     if not user_can_access_class_stream(request.user, student.class_name, student.stream, require_class_teacher=True):
@@ -694,8 +676,7 @@ def individual_report(request, student_id):
             mark.deviation = None
 
     # ── Grade descriptors, pulled live from GradingConfig (no hardcoding) ──
-    grading_config = _grading_config_for(school, student.school_section, student.sub_section)
-    grade_descriptors = grading_config.subject_scale if grading_config else []
+    grade_descriptors = resolve_scale_fast(school.pk, student.school_section, student.sub_section)
 
     # ── Mean points + denominators for the stat boxes ──────────────────────
     max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
@@ -847,6 +828,9 @@ def bulk_report_cards(request):
         messages.error(request, "School context is required.")
         return redirect('report_card_select')
 
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    prefetch_school_grading(school)
+
     student_ids   = [sid for sid in request.GET.get('ids', '').split(',') if sid]
     year          = request.GET.get('year', datetime.date.today().year)
     term          = request.GET.get('term', 'Term 1')
@@ -940,8 +924,7 @@ def bulk_report_cards(request):
         year, term, db_assessment, published_subjects_qs,
     )
 
-    grading_config = _grading_config_for(school, sample.school_section, sample.sub_section) if sample else None
-    grade_descriptors = grading_config.subject_scale if grading_config else []
+    grade_descriptors = resolve_scale_fast(school.pk, sample.school_section, sample.sub_section) if sample else []
     max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
 
     # Teacher map for this class

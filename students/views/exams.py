@@ -46,6 +46,7 @@ from .helpers import (
 from ..models import (
     AssessmentLock,
     Exam,
+    Grade,
     GradingConfig,
     Mark,
     MarkSubmission,
@@ -81,25 +82,12 @@ def _get_grading_scale_json():
     school = get_current_school()
     section = get_current_school_section()
     if school and section:
-        # Map session section to GradingConfig lookup fields
-        if section == 'LOWER_PRIMARY':
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='PRIMARY', sub_section='LOWER'
-            ).first()
-            if not config:
-                config = GradingConfig.all_objects.filter(
-                    school=school, school_section='LOWER_PRIMARY', sub_section__isnull=True
-                ).first()
-        elif section == 'PRIMARY':
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='PRIMARY', sub_section='UPPER'
-            ).first()
-        else:
-            config = GradingConfig.all_objects.filter(
-                school=school, school_section='JSS', sub_section__isnull=True
-            ).first()
-        if config and config.subject_scale:
-            return json.dumps(config.subject_scale)
+        from .grading_engine import prefetch_school_grading, resolve_scale_fast
+        prefetch_school_grading(school)
+        scale_data = resolve_scale_fast(school.pk, section, None, subject_id=None)
+        if scale_data:
+            return json.dumps(scale_data)
+    from ..models import GradingConfig
     if section in ('LOWER_PRIMARY', 'PRIMARY'):
         return json.dumps(GradingConfig.get_default_subject_scale(section))
     return json.dumps(GradingConfig.get_default_subject_scale('JSS'))
@@ -146,7 +134,7 @@ def select_exam(request):
         .order_by('class_name', 'stream', 'subject__code')
     )
 
-    active_exams = Exam.objects.filter(school=school, status='active', school_section='JSS').order_by('-year', 'term', 'name')
+    active_exams = Exam.objects.filter(school=school, status='active', school_section='JSS', is_deleted=False).order_by('-year', 'term', 'name')
 
     selected_assignment = None
     selected_exam = None
@@ -327,13 +315,15 @@ def select_exam(request):
             deleted_count = 0
             saved_count = 0
 
-            # ── Pre-fetch grading config + HMAC key (single queries) ────
-            from .helpers import _resolve_grading_config
-            grading_config = _resolve_grading_config(
-                school, selected_assignment.school_section, selected_assignment.sub_section,
+            # ── Pre-fetch grading scale + HMAC key (single queries) ────
+            from .grading_engine import prefetch_school_grading, resolve_scale_fast
+            prefetch_school_grading(school)
+            subject_id = selected_assignment.subject.id if selected_assignment.subject else None
+            grading_scale = resolve_scale_fast(
+                school.pk, selected_assignment.school_section, selected_assignment.sub_section,
+                subject_id=subject_id,
             )
             from ..security.integrity import compute_mark_checksum
-            subject_id = selected_assignment.subject.id if selected_assignment.subject else None
 
             with transaction.atomic():
                 existing_marks = {
@@ -399,8 +389,8 @@ def select_exam(request):
                     score = round((value / maximum_marks) * 100)
 
                     # Compute grading from percentage
-                    if grading_config and grading_config.subject_scale:
-                        perf_level, perf_points = get_subject_level_fast(score, grading_config)
+                    if grading_scale:
+                        perf_level, perf_points = get_subject_level_fast(score, grading_scale)
                     else:
                         perf_level, perf_points = '-', 0
 
@@ -650,6 +640,7 @@ def manage_exams(request):
         return redirect('select_exam')
 
     current_year = datetime.date.today().year
+    active_tab = request.GET.get('tab', 'manage')
 
     school = get_request_school(request)
     if not school:
@@ -677,47 +668,137 @@ def manage_exams(request):
             term = request.POST.get("term")
             year = int(request.POST.get("year") or current_year)
             status = request.POST.get("status", "active")
-            section = get_request_school_section(request)
+            selected_classes = request.POST.getlist("selected_classes")
 
-            # Support sub-section toggle in PRIMARY workspace
-            post_sub = request.POST.get('active_sub', '').strip().upper()
+            if not exam_name or not term or not year:
+                messages.error(request, "Please provide assessment name, term, and year.")
+                return redirect(reverse('manage_exams') + '?tab=create')
 
-            if section == 'LOWER_PRIMARY':
-                exam_db_section = 'PRIMARY'
-                exam_sub_section = 'LOWER'
-            elif section == 'PRIMARY':
-                exam_db_section = 'PRIMARY'
-                exam_sub_section = post_sub if post_sub in ('LOWER', 'UPPER') else 'LOWER'
-            else:
-                exam_db_section = 'JSS'
-                exam_sub_section = None
+            if not selected_classes:
+                messages.error(request, "Please select at least one class.")
+                return redirect(reverse('manage_exams') + '?tab=create')
 
-            if exam_name and term and year:
-                Exam.all_objects.update_or_create(
+            LOWER_PRIMARY_GRADES = ['Grade 1', 'Grade 2', 'Grade 3']
+            PRIMARY_GRADES = ['Grade 4', 'Grade 5', 'Grade 6']
+
+            # Group selected classes by (school_section, sub_section)
+            section_groups = {}
+            for class_name in selected_classes:
+                if class_name in LOWER_PRIMARY_GRADES:
+                    key = ('PRIMARY', 'LOWER')
+                elif class_name in PRIMARY_GRADES:
+                    key = ('PRIMARY', 'UPPER')
+                else:
+                    key = ('JSS', None)
+                section_groups.setdefault(key, []).append(class_name)
+
+            created_count = 0
+            skipped_count = 0
+            created_sections = []
+
+            for (exam_db_section, exam_sub_section), classes in section_groups.items():
+                _, created = Exam.all_objects.update_or_create(
                     school=school,
                     name=exam_name,
                     term=term,
                     year=year,
                     school_section=exam_db_section,
                     sub_section=exam_sub_section,
-                    defaults={
-                        "status": status,
-                    },
+                    defaults={"status": status},
                 )
-                messages.success(request, "Assessment has been saved successfully.")
-            else:
-                messages.error(request, "Please provide assessment name, term, and year.")
+                if created:
+                    created_count += 1
+                    label = exam_db_section
+                    if exam_sub_section:
+                        label += f' ({exam_sub_section})'
+                    created_sections.append(label)
+                else:
+                    skipped_count += 1
 
-            redirect_url = reverse('manage_exams')
-            params = []
-            if post_sub:
-                params.append(f"sub={post_sub}")
-            post_year = request.POST.get('year') or request.GET.get('year')
-            if post_year:
-                params.append(f"year={post_year}")
-            if params:
-                redirect_url += '?' + '&'.join(params)
-            return redirect(redirect_url)
+            if created_count:
+                msg = f"Assessment created for: {', '.join(created_sections)}."
+                if skipped_count:
+                    msg += f" {skipped_count} section(s) already existed."
+                messages.success(request, msg)
+            else:
+                messages.info(request, "All selected assessments already exist.")
+
+            return redirect(reverse('manage_exams') + '?tab=create')
+
+        if action_type == "save_grading_config":
+            grading_name = request.POST.get("grading_name", "").strip()
+            lows = request.POST.getlist("low[]")
+            highs = request.POST.getlist("high[]")
+            grades_list = request.POST.getlist("grade[]")
+            points_list = request.POST.getlist("points[]")
+
+            if not grading_name:
+                messages.error(request, "Please provide a grading system name.")
+                return redirect(reverse('manage_exams') + '?tab=grading')
+
+            _scale = []
+            for i in range(len(grades_list)):
+                grade = grades_list[i].strip() if i < len(grades_list) else ''
+                pts = int(points_list[i]) if i < len(points_list) and points_list[i].strip().isdigit() else 0
+                low_val = int(lows[i]) if i < len(lows) and lows[i].strip().lstrip('-').isdigit() else 0
+                high_val = int(highs[i]) if i < len(highs) and highs[i].strip().lstrip('-').isdigit() else 100
+                if grade:
+                    _scale.append({
+                        "level": grade,
+                        "min_score": low_val,
+                        "max_score": high_val,
+                        "points": pts,
+                    })
+
+            if not _scale:
+                messages.error(request, "Please add at least one grading level.")
+                return redirect(reverse('manage_exams') + '?tab=grading')
+
+            from ..models import GradingScale, GradingAssignment
+            subject_id = request.POST.get("subject")
+            school_section = request.POST.get("school_section", "JSS")
+            sub_section = request.POST.get("sub_section") or None
+
+            subject_obj = None
+            if subject_id:
+                subject_obj = Subject.all_objects.filter(school=school, id=subject_id).first()
+
+            existing_scale = GradingScale.objects.filter(school=school, name=grading_name).first()
+            if existing_scale:
+                existing_scale.subject_scale = _scale
+                existing_scale.save()
+                messages.success(request, "Grading system updated successfully.")
+            else:
+                existing_scale = GradingScale.objects.create(
+                    school=school,
+                    name=grading_name,
+                    subject_scale=_scale,
+                )
+                messages.success(request, "Grading system created successfully.")
+
+            GradingAssignment.objects.update_or_create(
+                school=school,
+                school_section=school_section,
+                sub_section=sub_section,
+                subject=subject_obj,
+                defaults={'grading_scale': existing_scale},
+            )
+            from .grading_engine import clear_grading_cache
+            clear_grading_cache()
+            return redirect(reverse('manage_exams') + '?tab=grading')
+
+        if action_type == "delete_grading_config":
+            config_id = request.POST.get("config_id")
+            if config_id:
+                from ..models import GradingAssignment, GradingScale
+                assignment = GradingAssignment.objects.filter(school=school, id=config_id).first()
+                if assignment:
+                    scale = assignment.grading_scale
+                    assignment.delete()
+                    if not scale.assignments.exists():
+                        scale.delete()
+                messages.success(request, "Grading system deleted.")
+            return redirect(reverse('manage_exams') + '?tab=grading')
 
         if action_type == "toggle_status":
             exam_id = request.POST.get("exam_id")
@@ -742,7 +823,10 @@ def manage_exams(request):
         if action_type == "delete_exam":
             exam_id = request.POST.get("exam_id")
             exam = get_school_object_or_403(Exam, request, id=exam_id)
-            exam.delete()
+            exam.is_deleted = True
+            exam.deleted_at = timezone.now()
+            exam.deleted_by = request.user
+            exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
 
             messages.success(request, "Assessment has been deleted.")
             post_sub = request.POST.get("sub", "").strip().upper()
@@ -756,6 +840,16 @@ def manage_exams(request):
             if params:
                 redirect_url += '?' + '&'.join(params)
             return redirect(redirect_url)
+
+        if action_type == "recover_exam":
+            exam_id = request.POST.get("exam_id")
+            exam = get_school_object_or_403(Exam, request, using="all_objects", id=exam_id, is_deleted=True)
+            exam.is_deleted = False
+            exam.deleted_at = None
+            exam.deleted_by = None
+            exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
+            messages.success(request, "Exam has been recovered.")
+            return redirect(reverse('manage_exams') + '?tab=deleted')
 
     # -----------------------------
     # Exam registry
@@ -775,7 +869,7 @@ def manage_exams(request):
     # -----------------------------
     # Year filter
     # -----------------------------
-    all_exams = Exam.all_objects.filter(school=school)
+    all_exams = Exam.all_objects.filter(school=school, is_deleted=False)
     if section == 'LOWER_PRIMARY':
         all_exams = all_exams.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
@@ -806,7 +900,7 @@ def manage_exams(request):
     selected_exam = None
 
     if selected_exam_id:
-        selected_exam = Exam.all_objects.filter(school=school, id=selected_exam_id).first()
+        selected_exam = Exam.all_objects.filter(school=school, id=selected_exam_id, is_deleted=False).first()
         if selected_exam:
             if section == 'LOWER_PRIMARY' and selected_exam.sub_section != 'LOWER':
                 selected_exam = None
@@ -816,7 +910,7 @@ def manage_exams(request):
                 selected_exam = None
 
     if not selected_exam:
-        selected_exam = Exam.all_objects.filter(school=school, status="active")
+        selected_exam = Exam.all_objects.filter(school=school, status="active", is_deleted=False)
         if section == 'LOWER_PRIMARY':
             selected_exam = selected_exam.filter(school_section='PRIMARY', sub_section='LOWER')
         elif section == 'PRIMARY':
@@ -1027,7 +1121,7 @@ def manage_exams(request):
     # Exam list grouped by term
     # -----------------------------
     exam_list_by_term = {}
-    all_year_exams = list(Exam.all_objects.filter(school=school, year=selected_year).order_by("-term", "name"))
+    all_year_exams = list(Exam.all_objects.filter(school=school, year=selected_year, is_deleted=False).order_by("-term", "name"))
 
     def _normalize_exam_name(name):
         lower = name.strip().lower()
@@ -1187,12 +1281,90 @@ def manage_exams(request):
         "status_choices": status_choices,
         "section": section,
         "active_sub": active_sub,
+        "active_tab": active_tab,
+        "year_range": range(current_year - 2, current_year + 3),
+        "available_grades": Grade.all_objects.filter(school=school).order_by('order'),
     }
+
+    # ── Grading configs for the Grading Systems tab ──
+    if active_tab == 'grading':
+        import json
+        from ..models import GradingAssignment, GradingScale
+        assignments = GradingAssignment.objects.filter(
+            school=school,
+        ).select_related('grading_scale', 'subject').order_by('grading_scale__name')
+        grading_configs = []
+        for assign in assignments:
+            scale = assign.grading_scale
+            subject_name = assign.subject.name if assign.subject else None
+            if subject_name:
+                display = f"{scale.name} — {subject_name}"
+            else:
+                display = f"{scale.name} — General ({assign.school_section})"
+            scale_data = scale.subject_scale or []
+            grading_configs.append({
+                'id': assign.id,
+                'display_name': display,
+                'school_section': assign.school_section,
+                'sub_section': assign.sub_section,
+                'subject_name': subject_name,
+                'subject_scale': scale_data,
+                'subject_scale_reversed': list(reversed(scale_data)),
+            })
+        context['grading_configs'] = grading_configs
+        context['grading_configs_json'] = json.dumps(grading_configs)
+
+        # Distinct subjects grouped by code for the dropdown
+        all_subjects = Subject.all_objects.filter(
+            school=school, is_active=True,
+        ).order_by('school_section', 'code', 'name').distinct('code', 'school_section')
+        context['available_subjects'] = all_subjects
+
+        # JSON for dynamic filtering by section in JS
+        subjects_json = []
+        seen_codes = set()
+        for subj in Subject.all_objects.filter(school=school, is_active=True).order_by('school_section', 'code', 'name'):
+            key = (subj.code, subj.school_section)
+            if key in seen_codes:
+                continue
+            seen_codes.add(key)
+            subjects_json.append({
+                'id': subj.id,
+                'code': subj.code,
+                'name': subj.name,
+                'section': subj.school_section,
+                'sub_section': subj.sub_section or '',
+            })
+        context['subjects_json'] = json.dumps(subjects_json)
+
+    # ── Deleted Exams tab context ──
+    if active_tab == 'deleted':
+        deleted_year = request.GET.get('year', current_year)
+        deleted_exams = Exam.all_objects.filter(
+            school=school, is_deleted=True, year=deleted_year,
+        ).order_by('-term', 'name').select_related('deleted_by')
+
+        deleted_exam_rows = []
+        for exam in deleted_exams:
+            deleted_exam_rows.append({
+                'id': exam.id,
+                'name': exam.name,
+                'year': exam.year,
+                'term': exam.term,
+                'school_section': exam.school_section,
+                'sub_section': exam.sub_section or '',
+                'deleted_by': exam.deleted_by.get_full_name() if exam.deleted_by else 'System',
+                'deleted_at': exam.deleted_at.strftime('%d/%m/%Y') if exam.deleted_at else '-',
+            })
+
+        context['deleted_exam_rows'] = deleted_exam_rows
+        context['deleted_years'] = list(range(current_year - 5, current_year + 1))
+        context['deleted_selected_year'] = int(deleted_year)
 
     # Add sub-section counts when in PRIMARY workspace
     if section == 'PRIMARY':
-        lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').count()
-        upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').count()
+        lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER', is_deleted=False).count()
+        upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER', is_deleted=False).count()
         context["lower_exam_count"] = lower_count
         context["upper_exam_count"] = upper_count
 
@@ -1220,7 +1392,7 @@ def edit_exam(request):
         return redirect('manage_exams')
 
     # Admin can access any exam in their school — no section filtering
-    exam = Exam.all_objects.filter(school=school, id=exam_id).first()
+    exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
     if not exam:
         messages.error(request, "Exam not found.")
         return redirect('manage_exams')
@@ -1254,6 +1426,7 @@ def edit_exam(request):
             year=exam.year,
             school_section=exam.school_section,
             sub_section=exam.sub_section,
+            is_deleted=False,
         ).exclude(id=exam.id).exists()
 
         if existing:
@@ -1318,14 +1491,14 @@ def analyse_exam(request):
     exam_id = request.GET.get('exam_id')
     class_name_filter = request.GET.get('class_name', '').strip()
     if not exam_id:
-        latest_exam = Exam.all_objects.filter(school=school).order_by('-year', 'term', 'name').first()
+        latest_exam = Exam.all_objects.filter(school=school, is_deleted=False).order_by('-year', 'term', 'name').first()
         if latest_exam:
             exam_id = latest_exam.id
         else:
             messages.error(request, "No exams found.")
             return redirect('manage_exams')
 
-    exam = Exam.all_objects.filter(school=school, id=exam_id).first()
+    exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
     if not exam:
         messages.error(request, "Exam not found.")
         return redirect('manage_exams')
@@ -1375,14 +1548,12 @@ def analyse_exam(request):
             sub_section = sub_section[0] if sub_section else sub_section
 
     breakdown_levels = PRIMARY_ORDERED_LEVELS if section == 'PRIMARY' else ORDERED_LEVELS
-    grading_config = None
-    for cfg_candidate in [
-        GradingConfig.all_objects.filter(school=school, school_section=section, sub_section=sub_section).first(),
-        GradingConfig.all_objects.filter(school=school, school_section=section, sub_section__isnull=True).first(),
-    ]:
-        if cfg_candidate:
-            grading_config = cfg_candidate
-            break
+    from .grading_engine import resolve_scale_fast, get_grading_scale
+    grade_descriptors = resolve_scale_fast(
+        school.pk, section, sub_section,
+        subject_id=None, is_total_calculation=False,
+    )
+    grading_scale_obj = get_grading_scale(school.pk, section, sub_section, subject_id=None)
 
     total_students = all_students.count()
     students_who_sat = summaries.values('student_id').distinct().count()
@@ -1426,8 +1597,8 @@ def analyse_exam(request):
         if data['count'] > 0:
             mean_pts = data['total_points'] / data['count']
             plv = '-'
-            if grading_config and grading_config.subject_scale:
-                for level_def in grading_config.subject_scale:
+            if grade_descriptors:
+                for level_def in grade_descriptors:
                     if level_def.get('points') == round(mean_pts):
                         plv = level_def.get('level', '-')
                         break
@@ -1462,7 +1633,7 @@ def analyse_exam(request):
     overall_mean_marks = round(sum(all_stream_marks) / len(all_stream_marks), 1) if all_stream_marks else 0
 
     other_exams = Exam.all_objects.filter(
-        school=school, year=exam.year,
+        school=school, year=exam.year, is_deleted=False,
     ).exclude(id=exam.id).order_by('term', 'name')
 
     # Compute comparison exam stats for change calculation
@@ -1520,9 +1691,9 @@ def analyse_exam(request):
             row['change'] = 0.0
 
     overall_plv = '-'
-    if grading_config and grading_config.total_scale:
+    if grading_scale_obj and grading_scale_obj.total_scale:
         total_marks_800 = overall_mean_marks * 8
-        for level_def in grading_config.total_scale:
+        for level_def in grading_scale_obj.total_scale:
             if level_def.get('min_marks', 0) <= total_marks_800 <= level_def.get('max_marks', 0):
                 overall_plv = level_def.get('level', '-')
                 break
@@ -1550,9 +1721,9 @@ def analyse_exam(request):
         row['mean_points'] = stream_stats.get(s, {}).get('mean_points', 0)
         row['mp_dev'] = round(row['mean_points'] - overall_mean_points, 4)
 
-        if grading_config and grading_config.total_scale:
+        if grading_scale_obj and grading_scale_obj.total_scale:
             total_m = row['mean_marks'] * 8
-            for level_def in grading_config.total_scale:
+            for level_def in grading_scale_obj.total_scale:
                 if level_def.get('min_marks', 0) <= total_m <= level_def.get('max_marks', 0):
                     row['performance_level'] = level_def.get('level', '-')
                     break
@@ -1607,8 +1778,8 @@ def analyse_exam(request):
                     plv_key = m.primary_descriptor
                 else:
                     plv_key = '-'
-                    if grading_config and grading_config.subject_scale:
-                        for level_def in grading_config.subject_scale:
+                    if grade_descriptors:
+                        for level_def in grade_descriptors:
                             converted = (m.score / m.maximum_marks * 100) if m.maximum_marks else 0
                             if level_def.get('min_marks', 0) <= converted <= level_def.get('max_marks', 0):
                                 plv_key = level_def.get('level', '-')
@@ -1621,8 +1792,8 @@ def analyse_exam(request):
             row['mean_points'] = round(mean_pts, 4)
             row['mp_dev'] = round(mean_pts - overall_mean_points, 4)
             row['performance_level'] = '-'
-            if grading_config and grading_config.subject_scale:
-                for level_def in grading_config.subject_scale:
+            if grade_descriptors:
+                for level_def in grade_descriptors:
                     if level_def.get('points') == round(mean_pts):
                         row['performance_level'] = level_def.get('level', '-')
                         break
@@ -1649,7 +1820,7 @@ def analyse_exam(request):
     )
 
     all_exams_for_school = Exam.all_objects.filter(
-        school=school, year=exam.year,
+        school=school, year=exam.year, is_deleted=False,
     ).order_by('-year', 'term', 'name')
 
     # Group exams by grade + term for the custom dropdown
@@ -1684,7 +1855,7 @@ def analyse_exam(request):
 
     # Performance over time: collect all exams for same grade across years
     pot_exams = Exam.all_objects.filter(
-        school=school,
+        school=school, is_deleted=False,
     ).order_by('year', 'term', 'name')
 
     # Deduplicate P-O-T by exam name to avoid same-named exams in different sections
@@ -1794,13 +1965,13 @@ def review_stream_submission(request):
     # Determine the exam section (Exams don't have LOWER_PRIMARY, they use PRIMARY)
     exam_section_filter = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
 
-    exam = Exam.all_objects.filter(school=school, id=exam_id).first() if exam_id else None
+    exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first() if exam_id else None
     if exam and exam.school_section != exam_section_filter:
         exam = None
     if not exam:
-        exam = Exam.all_objects.filter(school=school, status="active", school_section=exam_section_filter).order_by("-year", "term", "name").first()
+        exam = Exam.all_objects.filter(school=school, status="active", school_section=exam_section_filter, is_deleted=False).order_by("-year", "term", "name").first()
     if not exam:
-        exam = Exam.all_objects.filter(school=school, school_section=exam_section_filter).order_by("-year", "term", "name").first()
+        exam = Exam.all_objects.filter(school=school, school_section=exam_section_filter, is_deleted=False).order_by("-year", "term", "name").first()
     if not exam:
         messages.error(request, "Create an assessment first before reviewing stream submissions.")
         return redirect("manage_exams")
@@ -1809,7 +1980,7 @@ def review_stream_submission(request):
     stream = request.GET.get("stream") or request.POST.get("stream")
 
     if not class_name or not stream:
-        exams = Exam.all_objects.filter(school=school).order_by("-year", "term", "name")
+        exams = Exam.all_objects.filter(school=school, is_deleted=False).order_by("-year", "term", "name")
         stream_cards = []
         pairs = (
             SubjectAssignment.all_objects.filter(school=school)
@@ -1854,8 +2025,8 @@ def review_stream_submission(request):
         "active_sub": active_sub,
     }
     if section == 'PRIMARY':
-        lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER').count()
-        upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER').count()
+        lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER', is_deleted=False).count()
+        upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER', is_deleted=False).count()
         context["lower_exam_count"] = lower_count
         context["upper_exam_count"] = upper_count
     return render(request, "students/stream_review_list.html", context)
@@ -2476,9 +2647,8 @@ LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
 def _get_primary_performance(percentage, school=None, section=None, sub_section=None):
     """Return (descriptor, points) for a primary percentage score.
-    Uses cached GradingConfig lookups to avoid repeated DB hits."""
+    Uses the unified grading engine for instant cached lookups."""
     import logging
-    from .helpers import _get_grading_config
     from ..school_scope import get_current_school, get_current_school_section
 
     if not school:
@@ -2487,20 +2657,13 @@ def _get_primary_performance(percentage, school=None, section=None, sub_section=
         section = get_current_school_section()
 
     if school and section:
-        if section == 'LOWER_PRIMARY' or (section == 'PRIMARY' and sub_section == 'LOWER'):
-            config = _get_grading_config(school, 'PRIMARY', 'LOWER')
-            if not config:
-                config = _get_grading_config(school, 'LOWER_PRIMARY', None)
-        elif section == 'PRIMARY':
-            config = _get_grading_config(school, 'PRIMARY', 'UPPER')
-        else:
-            config = _get_grading_config(school, 'JSS', None)
-
-        if config and config.subject_scale:
-            return get_subject_level_fast(percentage, config)
+        from .grading_engine import resolve_scale_fast
+        scale_data = resolve_scale_fast(school.pk, section, sub_section, subject_id=None)
+        if scale_data:
+            return get_subject_level_fast(percentage, scale_data)
 
     logging.getLogger("students.exams").error(
-        "GradingConfig.subject_scale missing for school_id=%s section=%s. "
+        "GradingScale.subject_scale missing for school_id=%s section=%s. "
         "Primary descriptor cannot be resolved. "
         "Configure it at /school-admin/grading-config/.",
         getattr(school, 'id', None), section,
@@ -2553,7 +2716,7 @@ def select_exam_primary(request):
         assignments = assignments.filter(sub_section=exam_sub_section)
 
     active_exams = Exam.all_objects.filter(
-        school=school, status='active', school_section=exam_section
+        school=school, status='active', school_section=exam_section, is_deleted=False
     ).order_by('-year', 'term', 'name')
     if exam_sub_section:
         active_exams = active_exams.filter(sub_section=exam_sub_section)
@@ -3280,9 +3443,9 @@ def update_maximum_marks(request):
     students_map = Student.all_objects.filter(is_active=True).in_bulk(student_ids)
     subjects_map = Subject.all_objects.in_bulk(subject_ids)
 
-    # ── Pre-fetch: GradingConfig (single query) ──────────────────────────
-    from .helpers import _resolve_grading_config
-    grading_config = _resolve_grading_config(school, assignment.school_section, assignment.sub_section)
+    # ── Pre-fetch: GradingScale (single query) ──────────────────────────
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    prefetch_school_grading(school)
 
     # ── Pre-fetch: HMAC key (single read) ────────────────────────────────
     from ..security.integrity import compute_mark_checksum, _integrity_key
@@ -3307,9 +3470,14 @@ def update_maximum_marks(request):
                 mark.maximum_marks = new_maximum
                 mark.score = new_pct
                 mark.raw_score = raw
-                # Recompute grading from new percentage
-                if grading_config and grading_config.subject_scale:
-                    mark.performance_level, mark.points = get_subject_level_fast(new_pct, grading_config)
+                # Recompute grading — subject-specific scale
+                mark_subject_id = mark.subject_id or (subjects_map.get(mark.subject_id).pk if mark.subject_id else None)
+                mark_scale = resolve_scale_fast(
+                    school.pk, assignment.school_section, assignment.sub_section,
+                    subject_id=mark_subject_id,
+                )
+                if mark_scale:
+                    mark.performance_level, mark.points = get_subject_level_fast(new_pct, mark_scale)
                 else:
                     mark.performance_level = mark.performance_level or '-'
                     mark.points = mark.points or 0

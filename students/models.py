@@ -480,51 +480,32 @@ class Mark(SchoolScopedModel):
                 })
 
     def _resolve_grading(self, score):
-        """Return (performance_level, points) using the school's GradingConfig.
+        """Return (performance_level, points) using the school's GradingScale.
 
-        Looks up the config by (school_section, sub_section) so:
-          - Grade 1-3 (sub=LOWER)  -> LOWER_PRIMARY scale
-          - Grade 4-6 (sub=UPPER)  -> PRIMARY scale
-          - Grade 7-9              -> JSS scale
+        Looks up via the unified grading engine with subject-specific fallback:
+          1. Try subject-specific scale for (section, sub_section, subject)
+          2. Fall back to general scale for (section, sub_section)
 
-        There is NO hardcoded fallback. If no config exists, we log a
-        loud error and return ('NO CONFIG', 0) so the admin notices and
-        can fix it via /school-admin/grading-config/.
-
-        Already-saved Mark rows are unaffected because their
-        performance_level was computed and stored at save time.
+        There is NO hardcoded fallback. If no scale exists, we log a
+        loud error and return ('NO CONFIG', 0) so the admin notices.
         """
         score = max(0, min(100, round(score or 0)))
 
         if self.school_id and self.school_section:
-            # Look up by school_section + sub_section (when sub_section is set).
-            # For JSS marks (sub_section=None) the second filter is skipped.
-            lookup = {'school': self.school, 'school_section': self.school_section}
-            if self.sub_section:
-                lookup['sub_section'] = self.sub_section
-            else:
-                lookup['sub_section__isnull'] = True
-            config = GradingConfig.all_objects.filter(**lookup).first()
-            # Fallback: if no sub-section-specific config, try without the
-            # sub_section filter (covers PRIMARY-scale applying to all primary).
-            if not config and 'sub_section' in lookup:
-                config = GradingConfig.all_objects.filter(
-                    school=self.school, school_section=self.school_section
-                ).first()
-            # Fallback: try LOWER_PRIMARY section for Lower Primary marks
-            if not config and self.sub_section == 'LOWER':
-                config = GradingConfig.all_objects.filter(
-                    school=self.school, school_section='LOWER_PRIMARY'
-                ).first()
-            if config and config.subject_scale:
-                return config.get_subject_level(score)
+            from .views.grading_engine import resolve_scale_fast
+            scale = resolve_scale_fast(
+                self.school_id, self.school_section, self.sub_section,
+                subject_id=self.subject_id,
+            )
+            if scale and scale.subject_scale:
+                return scale.get_subject_level(score)
 
-        # No config found — log it loudly and return a sentinel.
+        # No scale found — log it loudly and return a sentinel.
         logger.error(
-            "GradingConfig missing for school_id=%s school_section=%s sub_section=%s. "
+            "GradingScale missing for school_id=%s school_section=%s sub_section=%s subject_id=%s. "
             "Mark performance_level cannot be resolved. "
             "Configure it at /school-admin/grading-config/.",
-            self.school_id, self.school_section, self.sub_section,
+            self.school_id, self.school_section, self.sub_section, self.subject_id,
         )
         return 'NO CONFIG', 0
 
@@ -1067,6 +1048,13 @@ class Exam(SchoolScopedModel):
     term = models.CharField(max_length=20, choices=Student.TERM_CHOICES)
     year = models.IntegerField(default=current_year)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='deleted_exams',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     integrity_checksum = models.CharField(max_length=64, editable=False, blank=True, default="")
 
@@ -1339,6 +1327,7 @@ class GradingConfig(SchoolScopedModel):
             {"level": "BE", "min_marks": 0,   "max_marks": 199, "points": 1},
         ]
     """
+    name = models.CharField(max_length=150, blank=True, default='', help_text="Display name for this grading system")
     SECTION_CHOICES = [
         ('LOWER_PRIMARY', 'Lower Primary (Grades 1-3)'),
         ('PRIMARY', 'Primary (Grades 4-6)'),
@@ -1365,12 +1354,11 @@ class GradingConfig(SchoolScopedModel):
     )
 
     class Meta:
-        unique_together = ('school', 'school_section', 'sub_section')
         verbose_name = "Grading Configuration"
         verbose_name_plural = "Grading Configurations"
 
     def __str__(self):
-        return f"Grading Config - {self.get_school_section_display()} ({self.school})"
+        return self.name or f"Grading Config - {self.get_school_section_display()} ({self.school})"
 
     def get_subject_level(self, score):
         """Return (level, points) for a given individual subject score (0-100).
@@ -1486,6 +1474,110 @@ class GradingConfig(SchoolScopedModel):
             {"level": "BE1", "min_marks": 88,  "max_marks": 167, "points": 2},
             {"level": "BE2", "min_marks": 0,   "max_marks": 87,  "points": 1},
         ]
+
+
+class GradingScale(models.Model):
+    """A reusable grading scale definition — the actual brackets/rules.
+
+    Separated from assignment logic so the same scale can be reused
+    across multiple sections or subjects.
+    """
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='grading_scales')
+    name = models.CharField(max_length=100, help_text="e.g. 'Standard JSS Scale', 'KCSE Style'")
+    subject_scale = models.JSONField(
+        default=list, blank=True,
+        help_text="Mark ranges for individual subject performance levels",
+    )
+    total_scale = models.JSONField(
+        default=list, blank=True,
+        help_text="Mark ranges for overall/aggregated performance levels",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['school', 'name']
+        verbose_name = "Grading Scale"
+        verbose_name_plural = "Grading Scales"
+
+    def __str__(self):
+        return f"{self.name} ({self.school})"
+
+    def get_subject_level(self, score):
+        """Return (level, points) for a given individual subject score (0-100)."""
+        import bisect
+        score = max(0, min(100, round(score or 0)))
+        raw = self.subject_scale or []
+        if not raw:
+            return '-', 0
+        entries = sorted((e['min_score'], e['max_score'], e['level'], e['points']) for e in raw)
+        mins = [e[0] for e in entries]
+        idx = bisect.bisect_right(mins, score) - 1
+        if 0 <= idx < len(entries):
+            min_s, max_s, level, pts = entries[idx]
+            if min_s <= score <= max_s:
+                return level, pts
+        return '-', 0
+
+    def get_total_level(self, total_marks):
+        """Return (level, points) for aggregate total marks."""
+        import bisect
+        total_marks = max(0, round(total_marks or 0))
+        raw = self.total_scale or []
+        if not raw:
+            return '-', 0
+        entries = sorted((e['min_marks'], e['max_marks'], e['level'], e['points']) for e in raw)
+        mins = [e[0] for e in entries]
+        idx = bisect.bisect_right(mins, total_marks) - 1
+        if 0 <= idx < len(entries):
+            min_m, max_m, level, pts = entries[idx]
+            if min_m <= total_marks <= max_m:
+                return level, pts
+        return '-', 0
+
+
+class GradingAssignment(models.Model):
+    """Maps a GradingScale to a section+subject combination.
+
+    Rules:
+       - subject=NULL  → general fallback for the section (used for totals)
+       - subject=X     → applies only when grading subject X in that section
+    """
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='grading_assignments')
+    school_section = models.CharField(max_length=20, help_text="e.g. 'JSS', 'PRIMARY'")
+    sub_section = models.CharField(
+        max_length=10, null=True, blank=True,
+        help_text="LOWER or UPPER primary. NULL for JSS.",
+    )
+    subject = models.ForeignKey(
+        'Subject', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='grading_assignments',
+        help_text="NULL = general fallback for section. Set = subject-specific.",
+    )
+    grading_scale = models.ForeignKey(
+        'GradingScale', on_delete=models.PROTECT,
+        related_name='assignments',
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['school', 'school_section', 'sub_section'],
+                condition=models.Q(subject__isnull=True),
+                name='uniq_general_scale_assignment',
+            ),
+            models.UniqueConstraint(
+                fields=['school', 'school_section', 'sub_section', 'subject'],
+                condition=models.Q(subject__isnull=False),
+                name='uniq_subject_scale_assignment',
+            ),
+        ]
+        verbose_name = "Grading Assignment"
+        verbose_name_plural = "Grading Assignments"
+
+    def __str__(self):
+        subj = self.subject.name if self.subject else 'General'
+        return f"{self.school_section}/{self.sub_section or '-'} → {subj} → {self.grading_scale.name}"
 
 
 class ExamSummary(SchoolScopedModel):
