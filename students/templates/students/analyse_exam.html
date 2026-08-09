@@ -715,7 +715,7 @@
 
         <div class="grade-breakdown">
             <h2>Grade breakdown</h2>
-            <select class="grade-breakdown-select" id="breakdownSelect">
+            <select class="grade-breakdown-select" id="breakdownSelect" onchange="handleBreakdownChange(this.value)">
                 <option value="overall">Overall</option>
                 {% for subj in subject_names %}
                 <option value="{{ subj }}">{{ subj }}</option>
@@ -749,6 +749,53 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
+var _bdData = {};
+function handleBreakdownChange(val) {
+    var tbody = document.getElementById('breakdownBody');
+    if (!tbody || !_bdData.gradeBreakdown) return;
+    if (val === 'overall') {
+        _renderBD({rows: _bdData.gradeBreakdown, total: _bdData.totalRow}, tbody);
+    } else if (_bdData.subjectBreakdowns[val]) {
+        _renderBD(_bdData.subjectBreakdowns[val], tbody);
+    }
+}
+function _renderBD(data, tbody) {
+    var html = '';
+    var levels = _bdData.orderedLevels || [];
+    var labels = _bdData.plvLabels || {};
+    data.rows.forEach(function(row) {
+        html += '<tr>';
+        html += '<td>' + row.form + '</td>';
+        levels.forEach(function(lvl) {
+            html += '<td>' + (row[lvl] !== undefined ? row[lvl] : 0) + '</td>';
+        });
+        html += '<td>' + (row.X || 0) + '</td>';
+        html += '<td>' + (row.Y || 0) + '</td>';
+        html += '<td>' + (row.entries || 0) + '</td>';
+        html += '<td>' + (row.mean_marks || 0) + '</td>';
+        html += '<td>' + (row.mm_dev || 0) + '</td>';
+        html += '<td>' + (row.mean_points || 0) + '</td>';
+        html += '<td>' + (row.mp_dev || 0) + '</td>';
+        html += '<td class="perf-level">' + (labels[row.performance_level] || row.performance_level || '') + '</td>';
+        html += '</tr>';
+    });
+    var t = data.total;
+    html += '<tr class="total-row">';
+    html += '<td>' + (t.form || 'Total') + '</td>';
+    levels.forEach(function(lvl) {
+        html += '<td>' + (t[lvl] !== undefined ? t[lvl] : 0) + '</td>';
+    });
+    html += '<td>' + (t.X || 0) + '</td>';
+    html += '<td>' + (t.Y || 0) + '</td>';
+    html += '<td>' + (t.entries || 0) + '</td>';
+    html += '<td>' + (t.mean_marks || 0) + '</td>';
+    html += '<td>' + (t.mm_dev || 0) + '</td>';
+    html += '<td>' + (t.mean_points || 0) + '</td>';
+    html += '<td>' + (t.mp_dev || 0) + '</td>';
+    html += '<td class="perf-level">' + (labels[t.performance_level] || t.performance_level || '') + '</td>';
+    html += '</tr>';
+    tbody.innerHTML = html;
+}
 document.addEventListener('DOMContentLoaded', function() {
     var gradeName = "{{ grade_name|escapejs }}";
     var streams = {{ streams_json|safe }};
@@ -1018,66 +1065,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var orderedLevels = [{% for lvl in ordered_levels %}'{{ lvl }}'{% if not forloop.last %},{% endif %}{% endfor %}];
     var plvLabels = {{ plv_labels_json|safe }};
 
-    function renderBreakdownRows(data, tbody) {
-        var html = '';
-        data.rows.forEach(function(row) {
-            html += '<tr>';
-            html += '<td>' + row.form + '</td>';
-            orderedLevels.forEach(function(lvl) {
-                html += '<td>' + (row[lvl] !== undefined ? row[lvl] : 0) + '</td>';
-            });
-            html += '<td>' + (row.X || 0) + '</td>';
-            html += '<td>' + (row.Y || 0) + '</td>';
-            html += '<td>' + (row.entries || 0) + '</td>';
-            html += '<td>' + (row.mean_marks || 0) + '</td>';
-            html += '<td>' + (row.mm_dev || 0) + '</td>';
-            html += '<td>' + (row.mean_points || 0) + '</td>';
-            html += '<td>' + (row.mp_dev || 0) + '</td>';
-            html += '<td class="perf-level">' + (plvLabels[row.performance_level] || row.performance_level || '') + '</td>';
-            html += '</tr>';
-        });
-        var t = data.total;
-        html += '<tr class="total-row">';
-        html += '<td>' + (t.form || 'Total') + '</td>';
-        orderedLevels.forEach(function(lvl) {
-            html += '<td>' + (t[lvl] !== undefined ? t[lvl] : 0) + '</td>';
-        });
-        html += '<td>' + (t.X || 0) + '</td>';
-        html += '<td>' + (t.Y || 0) + '</td>';
-        html += '<td>' + (t.entries || 0) + '</td>';
-        html += '<td>' + (t.mean_marks || 0) + '</td>';
-        html += '<td>' + (t.mm_dev || 0) + '</td>';
-        html += '<td>' + (t.mean_points || 0) + '</td>';
-        html += '<td>' + (t.mp_dev || 0) + '</td>';
-        html += '<td class="perf-level">' + (plvLabels[t.performance_level] || t.performance_level || '') + '</td>';
-        html += '</tr>';
-        tbody.innerHTML = html;
-    }
+    _bdData.gradeBreakdown = gradeBreakdown;
+    _bdData.totalRow = totalRow;
+    _bdData.subjectBreakdowns = subjectBreakdowns;
+    _bdData.orderedLevels = orderedLevels;
+    _bdData.plvLabels = plvLabels;
 
-    function renderBreakdownTable() {
-        var tbody = document.getElementById('breakdownBody');
-        if (!tbody) return;
-        renderBreakdownRows({rows: gradeBreakdown, total: totalRow}, tbody);
-    }
-
-    console.log('subjectBreakdowns keys:', Object.keys(subjectBreakdowns));
-    console.log('subjectBreakdowns:', subjectBreakdowns);
-    var breakdownSelect = document.getElementById('breakdownSelect');
-    if (breakdownSelect) {
-        breakdownSelect.addEventListener('change', function() {
-            var tbody = document.getElementById('breakdownBody');
-            if (!tbody) return;
-            var val = this.value;
-            console.log('Dropdown changed to:', val, 'Has data:', !!subjectBreakdowns[val]);
-            if (val === 'overall') {
-                renderBreakdownRows({rows: gradeBreakdown, total: totalRow}, tbody);
-            } else if (subjectBreakdowns[val]) {
-                renderBreakdownRows(subjectBreakdowns[val], tbody);
-            }
-        });
-    }
-
-    renderBreakdownTable();
+    handleBreakdownChange('overall');
 });
 </script>
 
