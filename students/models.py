@@ -32,6 +32,7 @@ class School(models.Model):
     address = models.CharField(max_length=255, blank=True, null=True, verbose_name="Postal Address", help_text="e.g., P.O. BOX 31-80402")
     phone_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="Official Phone")
     email = models.EmailField(blank=True, null=True, verbose_name="Billing/Contact Email")
+    motto = models.CharField(max_length=255, blank=True, null=True, verbose_name="School Motto", help_text="e.g., Excellence · Discipline · Character")
     
     # Subscription Management (Zeraki Style)
     SUBSCRIPTION_TIERS = [

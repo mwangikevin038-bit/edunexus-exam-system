@@ -2031,6 +2031,7 @@ def score_sheet(request):
         'school_address': school.address or '',
         'school_phone': school.phone_number or '',
         'school_email': school.email or '',
+        'school_motto': school.motto or '',
     }
     return render(request, 'students/score_sheet.html', ctx)
 

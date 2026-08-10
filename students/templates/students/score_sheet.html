@@ -63,13 +63,17 @@
   .ss-sheet{display:none;background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
   .ss-sheet.visible{display:block}
 
-  .ss-sheet-header{padding:28px 32px;border-bottom:1px solid #e5e7eb}
-  .ss-school-row{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:16px}
-  .ss-school-logo{width:100px;height:100px;border:2px solid #dc2626;border-radius:8px;object-fit:contain;background:#fff;flex-shrink:0}
-  .ss-school-center{text-align:center;flex:1}
-  .ss-school-name{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:800;font-size:22px;color:#1e293b;margin:0 0 4px;text-transform:uppercase;letter-spacing:1px}
-  .ss-sheet-label{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:600;font-size:16px;color:#374151;margin:0}
-  .ss-school-right{text-align:right;flex-shrink:0;font-family:'Inter',sans-serif;font-size:13px;color:#374151;line-height:1.7}
+  .ss-sheet-header{padding:0;border-bottom:none}
+  .ss-school-header{display:flex;align-items:center;gap:0;padding:0 0 12px;margin-bottom:16px;position:relative;border-bottom:3px solid #2563EB}
+  .ss-school-header::after{content:'';position:absolute;left:0;right:0;bottom:-3px;height:3px;background:linear-gradient(90deg,#2563EB 0%,#1d4ed8 55%,transparent 100%)}
+  .ss-blue-accent{width:8px;min-height:100px;background:#2563EB;border-radius:0 4px 4px 0;flex-shrink:0}
+  .ss-school-logo{width:90px;height:90px;object-fit:contain;flex-shrink:0;margin-left:12px}
+  .ss-school-info{flex:1;text-align:center}
+  .ss-school-info h1{font-size:18pt;font-weight:800;color:#2563EB;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 4px;font-family:'Times New Roman',Times,serif}
+  .ss-school-motto{font-size:9pt;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:0.18em;margin:0 0 4px;font-family:'Times New Roman',Times,serif}
+  .ss-school-addr{font-size:11pt;font-weight:600;color:#1e293b;margin:0 0 2px;font-family:'Times New Roman',Times,serif}
+  .ss-school-contact{font-size:9pt;color:#333;font-weight:500;margin:0;font-family:'Times New Roman',Times,serif}
+  .ss-school-spacer{width:110px;flex-shrink:0}
 
   .ss-info-bar{border:1px solid #d1d5db;border-radius:6px;padding:10px 16px;margin-bottom:12px}
   .ss-info-text{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#1e293b;text-align:center;text-transform:uppercase;letter-spacing:0.3px}
@@ -99,8 +103,9 @@
   @media print{
     .sub-nav-bar,.ss-card,.ss-sheet-toolbar,.sidebar,.global-header,.bottom-nav{display:none!important}
     .ss-sheet{border:none;box-shadow:none;border-radius:0}
-    .ss-sheet-header{padding:20px 0}
-    .ss-school-row{margin-bottom:12px}
+    .ss-sheet-header{padding:16px 0}
+    .ss-school-header{margin-bottom:10px;padding-bottom:8px}
+    .ss-school-header::after{display:none}
     .ss-mark-input{border:none;box-shadow:none;background:transparent;padding:0;width:60px}
     .ss-table thead th{background:#f1f5f9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
@@ -167,21 +172,24 @@
 
   <div class="ss-sheet" id="ssSheet">
     <div class="ss-sheet-header">
-      <div class="ss-school-row">
+      <div class="ss-school-header">
+        <div class="ss-blue-accent"></div>
         {% if school_logo %}
-        <img src="{{ school_logo }}" alt="School Logo" class="ss-school-logo">
-        {% else %}
-        <div class="ss-school-logo"></div>
+        <img src="{{ school_logo }}" alt="Logo" class="ss-school-logo">
         {% endif %}
-        <div class="ss-school-center">
-          <h2 class="ss-school-name">{{ school_name }}</h2>
-          <p class="ss-sheet-label">Score Sheet</p>
+        <div class="ss-school-info">
+          <h1>{{ school_name }}</h1>
+          {% if school_motto %}<p class="ss-school-motto">{{ school_motto }}</p>{% endif %}
+          {% if school_address %}<p class="ss-school-addr">Address: {{ school_address }}</p>{% endif %}
+          {% if school_phone or school_email %}
+          <p class="ss-school-contact">
+            {% if school_phone %}Tel {{ school_phone }}{% endif %}
+            {% if school_phone and school_email %} &nbsp;|&nbsp; {% endif %}
+            {% if school_email %}Email {{ school_email }}{% endif %}
+          </p>
+          {% endif %}
         </div>
-        <div class="ss-school-right">
-          {% if school_address %}{{ school_address }}{% endif %}
-          {% if school_phone %}<br>{{ school_phone }}{% endif %}
-          {% if school_email %}<br>{{ school_email }}{% endif %}
-        </div>
+        {% if school_logo %}<div class="ss-school-spacer"></div>{% endif %}
       </div>
 
       <div class="ss-info-bar">
