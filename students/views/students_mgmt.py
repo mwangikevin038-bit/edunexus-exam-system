@@ -2038,6 +2038,54 @@ def score_sheet(request):
 
 @login_required(login_url='login')
 @school_admin_required
+def analysis_report(request):
+    from ..models import Grade
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+
+    ctx = {
+        'grades': grades,
+    }
+    return render(request, 'students/analysis_report.html', ctx)
+
+
+@login_required(login_url='login')
+@school_admin_required
+def api_exams_for_class(request):
+    """AJAX endpoint: returns exams for a given grade."""
+    from django.http import JsonResponse
+    from ..models import Exam
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'exams': []})
+
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+    if not grade_name:
+        return JsonResponse({'exams': []})
+
+    qs = Exam.all_objects.filter(school=school, is_deleted=False)
+
+    if grade_name.startswith('Grade 1') or grade_name.startswith('Grade 2') or grade_name.startswith('Grade 3'):
+        qs = qs.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif grade_name.startswith('Grade 4') or grade_name.startswith('Grade 5') or grade_name.startswith('Grade 6'):
+        qs = qs.filter(school_section='PRIMARY', sub_section='UPPER')
+    else:
+        qs = qs.filter(school_section='JSS')
+
+    exams = list(qs.order_by('-year', 'term', 'name').values('id', 'name', 'term', 'year'))
+
+    return JsonResponse({'exams': exams})
+
+
+@login_required(login_url='login')
+@school_admin_required
 def api_subjects_for_grade(request):
     """AJAX endpoint: returns subjects for a given grade, grouped by section."""
     from django.http import JsonResponse
@@ -2082,7 +2130,7 @@ def api_teacher_for_subject(request):
     if not grade_name or not subject_id:
         return JsonResponse({'teacher': None})
 
-    assignment = SubjectAssignment.objects.filter(
+    assignment = SubjectAssignment.all_objects.filter(
         school=school,
         class_name=grade_name,
         subject_id=subject_id,
@@ -2098,3 +2146,561 @@ def api_teacher_for_subject(request):
         teacher_name = None
 
     return JsonResponse({'teacher': teacher_name})
+
+
+@login_required(login_url='login')
+@school_admin_required
+def api_analysis_data(request):
+    """JSON endpoint: returns all analysis data for a given exam+class for inline report rendering."""
+    import json
+    from collections import Counter, defaultdict
+    from django.db.models import Q
+    from ..models import Exam, ExamSummary, Subject, Mark, Student
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'error': 'No school context'}, status=400)
+
+    exam_id = request.GET.get('exam_id')
+    class_name_filter = request.GET.get('class_name', '').strip()
+    stream_filter = request.GET.get('stream', '').strip()
+
+    if not exam_id:
+        return JsonResponse({'error': 'exam_id required'}, status=400)
+
+    exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
+    if not exam:
+        return JsonResponse({'error': 'Exam not found'}, status=404)
+
+    section = exam.school_section
+    PRIMARY_ORDERED_LEVELS = ['EE', 'ME', 'AE', 'BE']
+    from .constants import ORDERED_LEVELS
+    breakdown_levels = PRIMARY_ORDERED_LEVELS if section == 'PRIMARY' else ORDERED_LEVELS
+    sub_section = exam.sub_section
+
+    # Auto-detect class_name if not provided
+    if not class_name_filter:
+        auto_grades = (
+            ExamSummary.all_objects.filter(
+                school=school, exam_name=exam.name, term=exam.term, year=exam.year,
+            )
+            .values_list('student__class_name', flat=True)
+            .distinct()
+        )
+        auto_grades_list = list(auto_grades)
+        if auto_grades_list:
+            class_name_filter = auto_grades_list[0]
+
+    all_students = Student.all_objects.filter(school=school, is_active=True, status='Active')
+    if class_name_filter:
+        all_students = all_students.filter(class_name=class_name_filter)
+
+    summaries_all = ExamSummary.all_objects.filter(
+        school=school, exam_name=exam.name, term=exam.term, year=exam.year,
+    )
+    if class_name_filter:
+        summaries_all = summaries_all.filter(student__class_name=class_name_filter)
+
+    # summaries = stream-filtered subset for stats; summaries_all = full grade for chart
+    summaries = summaries_all
+    if stream_filter:
+        summaries = summaries_all.filter(student__stream=stream_filter)
+
+    # Detect section/sub_section from actual student data (not the exam)
+    # Admin accounts have no section restrictions — use what the data tells us
+    detected_sec = summaries_all.values_list('school_section', flat=True).distinct()
+    detected_sec_list = [s for s in detected_sec if s]
+    if detected_sec_list:
+        section = detected_sec_list[0]
+    detected_sub_vals = summaries_all.values_list('sub_section', flat=True).distinct()
+    detected_sub_list = [s for s in detected_sub_vals if s and isinstance(s, str)]
+    if detected_sub_list:
+        sub_section = detected_sub_list[0]
+    else:
+        sub_section = None
+
+    breakdown_levels = PRIMARY_ORDERED_LEVELS if section == 'PRIMARY' else ORDERED_LEVELS
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast, get_grading_scale
+    prefetch_school_grading(school)
+    grade_descriptors = resolve_scale_fast(school.pk, section, sub_section, subject_id=None, is_total_calculation=False)
+    grading_scale_obj = get_grading_scale(school.pk, section, sub_section, subject_id=None)
+
+    total_students = all_students.count()
+    students_who_sat = summaries.values('student_id').distinct().count()
+    student_ids = summaries.values_list('student_id', flat=True).distinct()
+
+    # streams for chart = ALL streams in the grade; streams for breakdown = filtered
+    streams_all = list(
+        summaries_all.values_list('student__stream', flat=True).distinct().order_by('student__stream')
+    )
+    streams = list(
+        summaries.values_list('student__stream', flat=True).distinct().order_by('student__stream')
+    )
+    grade_name = summaries_all.values_list('student__class_name', flat=True).first() or exam.name
+
+    student_ids_all = summaries_all.values_list('student_id', flat=True).distinct()
+
+    all_marks = Mark.all_objects.filter(
+        student__school=school,
+        student_id__in=student_ids_all,
+        term=exam.term,
+        year=exam.year,
+        exam_type=exam.name,
+    ).select_related('subject', 'student')
+
+    # filtered marks = for stats only (selected stream)
+    filtered_marks = Mark.all_objects.filter(
+        student__school=school,
+        student_id__in=student_ids,
+        term=exam.term,
+        year=exam.year,
+        exam_type=exam.name,
+    ).select_related('subject', 'student')
+
+    PLV_LABELS = {
+        'EE1': 'Exceeding Expectations', 'EE2': 'Exceeding Expectations',
+        'ME1': 'Meeting Expectations', 'ME2': 'Meeting Expectations',
+        'AE1': 'Approaching Expectations', 'AE2': 'Approaching Expectations',
+        'BE1': 'Below Expectations', 'BE2': 'Below Expectations',
+        'EE': 'Exceeding Expectations', 'ME': 'Meeting Expectations',
+        'AE': 'Approaching Expectations', 'BE': 'Below Expectations',
+    }
+
+    # ── Subject performance ──────────────────────────────────────────────
+    subject_perf = {}
+    for mark in filtered_marks:
+        if mark.subject_id and mark.subject:
+            subj_name = mark.subject.name
+            if subj_name not in subject_perf:
+                subject_perf[subj_name] = {'total_points': 0, 'count': 0, 'scores': []}
+            subject_perf[subj_name]['total_points'] += mark.points
+            subject_perf[subj_name]['count'] += 1
+
+    subject_rows = []
+    for subj_name, data in sorted(subject_perf.items()):
+        if data['count'] > 0:
+            mean_pts = data['total_points'] / data['count']
+            plv = '-'
+            if grade_descriptors:
+                for ld in grade_descriptors:
+                    if ld.get('points') == round(mean_pts):
+                        plv = ld.get('level', '-')
+                        break
+            subject_rows.append({
+                'name': subj_name,
+                'points': round(mean_pts, 4),
+                'change': 0.0,
+                'performance_level': plv,
+                'performance_level_label': PLV_LABELS.get(plv, plv),
+            })
+    subject_rows.sort(key=lambda x: x['points'], reverse=True)
+
+    # ── Previous exam for change calculation ─────────────────────────────
+    other_exams = Exam.all_objects.filter(school=school, year=exam.year, is_deleted=False).exclude(id=exam.id).order_by('term', 'name')
+    prev_exam = other_exams.first() if other_exams else None
+    prev_mean_marks = 0
+    prev_mean_points = 0
+    prev_subject_perf = {}
+    if prev_exam:
+        prev_summaries = ExamSummary.all_objects.filter(
+            school=school, exam_name=prev_exam.name, term=prev_exam.term, year=prev_exam.year,
+        )
+        if class_name_filter:
+            prev_summaries = prev_summaries.filter(student__class_name=class_name_filter)
+        prev_student_ids = prev_summaries.values_list('student_id', flat=True).distinct()
+        prev_all_marks = Mark.all_objects.filter(
+            student__school=school, student_id__in=prev_student_ids,
+            term=prev_exam.term, year=prev_exam.year, exam_type=prev_exam.name,
+        )
+        prev_stream_pts = []
+        prev_stream_marks = []
+        for s in streams:
+            s_ids = prev_summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+            s_marks = prev_all_marks.filter(student_id__in=s_ids)
+            count = s_marks.count() if s_marks.count() > 0 else 1
+            prev_stream_pts.append(sum(m.points for m in s_marks) / count)
+            prev_stream_marks.append(sum(m.score for m in s_marks) / count)
+        if prev_stream_marks:
+            prev_mean_marks = round(sum(prev_stream_marks) / len(prev_stream_marks), 1)
+        if prev_stream_pts:
+            prev_mean_points = round(sum(prev_stream_pts) / len(prev_stream_pts), 4)
+        for mark in prev_all_marks:
+            if mark.subject_id and mark.subject:
+                sn = mark.subject.name
+                if sn not in prev_subject_perf:
+                    prev_subject_perf[sn] = {'total_points': 0, 'count': 0}
+                prev_subject_perf[sn]['total_points'] += mark.points
+                prev_subject_perf[sn]['count'] += 1
+
+    for row in subject_rows:
+        pd = prev_subject_perf.get(row['name'])
+        if pd and pd['count'] > 0:
+            row['change'] = round(row['points'] - pd['total_points'] / pd['count'], 4)
+
+    # ── Stream stats (for chart — ALL streams) ────────────────────────────
+    stream_stats = {}
+    for s in streams_all:
+        s_ids = summaries_all.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+        s_marks = all_marks.filter(student_id__in=s_ids)
+        total_pts = sum(m.points for m in s_marks)
+        count = s_marks.count() if s_marks.count() > 0 else 1
+        total_marks_sum = sum(m.score for m in s_marks)
+        stream_stats[s] = {
+            'mean_points': round(total_pts / count, 4),
+            'mean_marks': round(total_marks_sum / count, 1),
+            'entries': len(s_ids),
+        }
+
+    # Overall = from selected stream (summary card data)
+    if stream_filter and stream_filter in stream_stats:
+        overall_mean_points = stream_stats[stream_filter]['mean_points']
+        overall_mean_marks = stream_stats[stream_filter]['mean_marks']
+    else:
+        all_stream_pts = [v['mean_points'] for v in stream_stats.values()]
+        overall_mean_points = round(sum(all_stream_pts) / len(all_stream_pts), 4) if all_stream_pts else 0
+        all_stream_marks = [v['mean_marks'] for v in stream_stats.values()]
+        overall_mean_marks = round(sum(all_stream_marks) / len(all_stream_marks), 1) if all_stream_marks else 0
+    mm_change = round(overall_mean_marks - prev_mean_marks, 1) if prev_mean_marks else 0
+    mp_change = round(overall_mean_points - prev_mean_points, 4) if prev_mean_points else 0
+
+    # ── Overall PLV ──────────────────────────────────────────────────────
+    overall_plv = '-'
+    if grading_scale_obj and grading_scale_obj.total_scale:
+        total_marks_800 = overall_mean_marks * 8
+        for ld in grading_scale_obj.total_scale:
+            if ld.get('min_marks', 0) <= total_marks_800 <= ld.get('max_marks', 0):
+                overall_plv = ld.get('level', '-')
+                break
+
+    # ── Grade breakdown ──────────────────────────────────────────────────
+    grade_breakdown = []
+    for s in streams:
+        s_ids = summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+        s_summaries = summaries.filter(student__stream=s)
+        row = {'form': f"{grade_name} {s}", 'X': 0, 'Y': 0, 'entries': len(s_ids)}
+        for lvl in breakdown_levels:
+            row[lvl] = 0
+        row.update({
+            'mean_marks': stream_stats.get(s, {}).get('mean_marks', 0),
+            'mm_dev': 0,
+            'mean_points': stream_stats.get(s, {}).get('mean_points', 0),
+            'mp_dev': 0,
+            'performance_level': '-',
+        })
+        for summ in s_summaries:
+            raw_plv = summ.overall_plv
+            if raw_plv in row:
+                row[raw_plv] += 1
+        row['mean_marks'] = stream_stats.get(s, {}).get('mean_marks', 0)
+        row['mm_dev'] = round(row['mean_marks'] - overall_mean_marks, 4)
+        row['mean_points'] = stream_stats.get(s, {}).get('mean_points', 0)
+        row['mp_dev'] = round(row['mean_points'] - overall_mean_points, 4)
+        if grading_scale_obj and grading_scale_obj.total_scale:
+            total_m = row['mean_marks'] * 8
+            for ld in grading_scale_obj.total_scale:
+                if ld.get('min_marks', 0) <= total_m <= ld.get('max_marks', 0):
+                    row['performance_level'] = ld.get('level', '-')
+                    break
+        else:
+            best_lvl = '-'
+            best_count = 0
+            for lvl in breakdown_levels:
+                if row.get(lvl, 0) > best_count:
+                    best_count = row[lvl]
+                    best_lvl = lvl
+            if best_count > 0:
+                row['performance_level'] = best_lvl
+        grade_breakdown.append(row)
+
+    if overall_plv == '-':
+        all_plvs = [r.get('performance_level', '-') for r in grade_breakdown if r.get('performance_level', '-') != '-']
+        if all_plvs:
+            overall_plv = Counter(all_plvs).most_common(1)[0][0]
+
+    total_row = {
+        'form': grade_name, 'X': 0, 'Y': 0,
+        'entries': sum(r['entries'] for r in grade_breakdown),
+        'mean_marks': overall_mean_marks, 'mm_dev': 0,
+        'mean_points': overall_mean_points, 'mp_dev': 0,
+        'performance_level': overall_plv,
+    }
+    for lvl in breakdown_levels:
+        total_row[lvl] = sum(r.get(lvl, 0) for r in grade_breakdown)
+
+    # ── Subject breakdowns (per stream) ──────────────────────────────────
+    subject_breakdowns = {}
+    for subj_name, data in sorted(subject_perf.items()):
+        if data['count'] == 0:
+            continue
+        subj_rows = []
+        for s in streams:
+            s_ids_list = summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+            subj_marks = all_marks.filter(student_id__in=s_ids_list, subject__name=subj_name)
+            row = {'form': f"{grade_name} {s}", 'X': 0, 'Y': 0, 'entries': len(s_ids_list)}
+            for lvl in breakdown_levels:
+                row[lvl] = 0
+            total_pts = 0
+            count = 0
+            for m in subj_marks:
+                total_pts += m.points
+                count += 1
+                if section == 'PRIMARY':
+                    plv_key = m.primary_descriptor
+                else:
+                    plv_key = '-'
+                    if grade_descriptors:
+                        for ld in grade_descriptors:
+                            converted = (m.score / m.maximum_marks * 100) if m.maximum_marks else 0
+                            if ld.get('min_marks', 0) <= converted <= ld.get('max_marks', 0):
+                                plv_key = ld.get('level', '-')
+                                break
+                if plv_key in row:
+                    row[plv_key] += 1
+            mean_pts = total_pts / count if count else 0
+            row['mean_marks'] = round(sum(m.score for m in subj_marks) / count, 1) if count else 0
+            row['mm_dev'] = round(row['mean_marks'] - overall_mean_marks, 4)
+            row['mean_points'] = round(mean_pts, 4)
+            row['mp_dev'] = round(mean_pts - overall_mean_points, 4)
+            row['performance_level'] = '-'
+            if grade_descriptors:
+                for ld in grade_descriptors:
+                    if ld.get('points') == round(mean_pts):
+                        row['performance_level'] = ld.get('level', '-')
+                        break
+            row['entries'] = count
+            subj_rows.append(row)
+        subj_total = {
+            'form': grade_name, 'X': 0, 'Y': 0,
+            'entries': sum(r['entries'] for r in subj_rows),
+            'mean_marks': round(sum(r['mean_marks'] for r in subj_rows) / len(subj_rows), 1) if subj_rows else 0,
+            'mm_dev': 0,
+            'mean_points': round(sum(r['mean_points'] for r in subj_rows) / len(subj_rows), 4) if subj_rows else 0,
+            'mp_dev': 0,
+            'performance_level': '-',
+        }
+        for lvl in breakdown_levels:
+            subj_total[lvl] = sum(r.get(lvl, 0) for r in subj_rows)
+        subject_breakdowns[subj_name] = {'rows': subj_rows, 'total': subj_total}
+
+    subject_names = sorted(subject_perf.keys())
+
+    # ── Gender breakdown (overall) ───────────────────────────────────────
+    gender_streams = {}
+    for s in streams:
+        s_student_ids = list(
+            summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+        )
+        s_students = Student.all_objects.filter(id__in=s_student_ids)
+        girls = s_students.filter(gender='Female').count()
+        boys = s_students.filter(gender='Male').count()
+        gender_streams[s] = {'girls': girls, 'boys': boys}
+    total_girls = sum(g['girls'] for g in gender_streams.values())
+    total_boys = sum(g['boys'] for g in gender_streams.values())
+
+    # ── Per-subject gender breakdown ─────────────────────────────────────
+    subject_gender = {}
+    for subj_name in subject_names:
+        sg = {}
+        for s in streams:
+            s_ids_list = list(
+                summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+            )
+            subj_marks = all_marks.filter(student_id__in=s_ids_list, subject__name=subj_name)
+            marked_ids = list(subj_marks.values_list('student_id', flat=True).distinct())
+            subj_students = Student.all_objects.filter(id__in=marked_ids)
+            sg[s] = {
+                'girls': subj_students.filter(gender='Female').count(),
+                'boys': subj_students.filter(gender='Male').count(),
+            }
+        subject_gender[subj_name] = sg
+
+    # ── Top students ─────────────────────────────────────────────────────
+    student_totals = defaultdict(lambda: {'total_score': 0, 'total_points': 0, 'subject_count': 0, 'student_id': None})
+    for mark in all_marks:
+        st = student_totals[mark.student_id]
+        st['total_score'] += mark.score
+        st['total_points'] += mark.points
+        st['subject_count'] += 1
+        st['student_id'] = mark.student_id
+
+    student_summaries_map = {}
+    for summ in summaries:
+        student_summaries_map[summ.student_id] = summ
+
+    ranked_students = []
+    for sid, data in student_totals.items():
+        summ = student_summaries_map.get(sid)
+        if not summ or data['subject_count'] == 0:
+            continue
+        mean_marks = data['total_score'] / data['subject_count']
+        mean_points = data['total_points'] / data['subject_count']
+        student_obj = Student.all_objects.filter(id=sid).first()
+        if not student_obj:
+            continue
+        student_name = ''
+        if student_obj.user:
+            student_name = student_obj.user.get_full_name() or student_obj.user.username
+        else:
+            student_name = student_obj.name or student_obj.admission_no or f'Student {sid}'
+        plv = '-'
+        if grading_scale_obj and grading_scale_obj.total_scale:
+            total_m80 = mean_marks * 8
+            for ld in grading_scale_obj.total_scale:
+                if ld.get('min_marks', 0) <= total_m80 <= ld.get('max_marks', 0):
+                    plv = ld.get('level', '-')
+                    break
+        ranked_students.append({
+            'admission_no': student_obj.admission_no or '',
+            'name': student_name,
+            'stream': student_obj.stream or '',
+            'gender': student_obj.gender or 'Not Specified',
+            'mean_marks': round(mean_marks, 1),
+            'mean_points': round(mean_points, 4),
+            'total_marks': data['total_score'],
+            'performance_level': plv,
+            'performance_level_label': PLV_LABELS.get(plv, plv),
+        })
+
+    ranked_students.sort(key=lambda x: x['mean_marks'], reverse=True)
+    for i, st in enumerate(ranked_students):
+        st['rank'] = i + 1
+
+    # Stream rank
+    stream_counters = Counter()
+    for st in ranked_students:
+        stream_counters[st['stream']] += 1
+        st['stream_rank'] = stream_counters[st['stream']]
+
+    top_students = ranked_students[:3]
+    top_boys = [s for s in ranked_students if s['gender'] == 'Male'][:3]
+    top_girls = [s for s in ranked_students if s['gender'] == 'Female'][:3]
+
+    # ── Performance over time ────────────────────────────────────────────
+    pot_exams = Exam.all_objects.filter(school=school, is_deleted=False).order_by('year', 'term', 'name')
+    seen_pot_names = set()
+    pot_unique_exams = []
+    for pe in pot_exams:
+        key = (pe.name, pe.term, pe.year)
+        if key in seen_pot_names:
+            continue
+        pe_summaries = ExamSummary.all_objects.filter(
+            school=school, exam_name=pe.name, term=pe.term, year=pe.year,
+        )
+        if class_name_filter:
+            pe_summaries = pe_summaries.filter(student__class_name=class_name_filter)
+        if pe_summaries.exists():
+            seen_pot_names.add(key)
+            pot_unique_exams.append(pe)
+
+    pot_labels = []
+    pot_streams_data = {s: [] for s in streams_all}
+    for pot_exam in pot_unique_exams:
+        pot_summaries = ExamSummary.all_objects.filter(
+            school=school, exam_name=pot_exam.name, term=pot_exam.term, year=pot_exam.year,
+        )
+        if class_name_filter:
+            pot_summaries = pot_summaries.filter(student__class_name=class_name_filter)
+        if not pot_summaries.exists():
+            continue
+        pot_labels.append(f"{grade_name} {pot_exam.term}, {pot_exam.name}, {pot_exam.year}")
+        pot_all_marks = Mark.all_objects.filter(
+            student__school=school,
+            student_id__in=pot_summaries.values_list('student_id', flat=True).distinct(),
+            term=pot_exam.term, year=pot_exam.year, exam_type=pot_exam.name,
+        )
+        for s in streams_all:
+            s_ids = pot_summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+            s_marks = pot_all_marks.filter(student_id__in=s_ids)
+            total_pts = sum(m.points for m in s_marks)
+            count = s_marks.count() if s_marks.count() > 0 else 1
+            pot_streams_data[s].append(round(total_pts / count, 4))
+
+    # ── Exam groups for dropdown ─────────────────────────────────────────
+    all_exams_for_school = Exam.all_objects.filter(school=school, year=exam.year, is_deleted=False).order_by('-year', 'term', 'name')
+    exam_groups_dict = {}
+    seen_exam_keys = set()
+    for ex in all_exams_for_school:
+        key = (ex.name, ex.term, ex.year)
+        if key in seen_exam_keys:
+            continue
+        grade_label = ex.school_section or 'JSS'
+        first_summary = ExamSummary.all_objects.filter(
+            school=school, exam_name=ex.name, term=ex.term, year=ex.year,
+        ).select_related('student').first()
+        if first_summary and first_summary.student:
+            grade_label = first_summary.student.class_name
+        term_label = f"{grade_label} - {ex.term} ({ex.year})"
+        if term_label not in exam_groups_dict:
+            exam_groups_dict[term_label] = []
+        exam_groups_dict[term_label].append({'id': ex.id, 'name': ex.name})
+        seen_exam_keys.add(key)
+    exam_groups = [{'label': k, 'exams': v} for k, v in exam_groups_dict.items()]
+
+    available_grades = list(
+        Student.all_objects.filter(school=school, is_active=True, status='Active')
+        .values_list('class_name', flat=True).distinct().order_by('class_name')
+    )
+
+    # ── Subject teachers ─────────────────────────────────────────────────
+    from ..models import SubjectAssignment
+    subject_teachers = {}
+    for subj_name in subject_names:
+        assignment = SubjectAssignment.all_objects.filter(
+            school=school, class_name=grade_name, subject__name=subj_name,
+        ).select_related('teacher_profile__user').first()
+        if assignment and assignment.teacher_profile and assignment.teacher_profile.user:
+            subject_teachers[subj_name] = assignment.teacher_profile.user.get_full_name() or assignment.teacher_profile.user.username
+        else:
+            subject_teachers[subj_name] = '-'
+
+    data = {
+        'school': {
+            'name': school.name,
+            'logo': school.logo.url if school.logo else '',
+            'address': school.address or '',
+            'phone': school.phone_number or '',
+            'email': school.email or '',
+            'motto': school.motto or '',
+        },
+        'exam': {
+            'id': exam.id,
+            'name': exam.name,
+            'term': exam.term,
+            'year': exam.year,
+        },
+        'grade_name': grade_name,
+        'stream_filter': stream_filter or '',
+        'streams': streams,
+        'streams_all': streams_all,
+        'students_who_sat': students_who_sat,
+        'total_students': total_students,
+        'subject_rows': subject_rows,
+        'stream_stats': stream_stats,
+        'overall_mean_points': overall_mean_points,
+        'overall_mean_marks': overall_mean_marks,
+        'mm_change': mm_change,
+        'mp_change': mp_change,
+        'overall_plv': overall_plv,
+        'overall_plv_label': PLV_LABELS.get(overall_plv, overall_plv),
+        'grade_breakdown': grade_breakdown,
+        'total_row': total_row,
+        'ordered_levels': breakdown_levels,
+        'subject_breakdowns': subject_breakdowns,
+        'subject_names': subject_names,
+        'gender_streams': gender_streams,
+        'total_girls': total_girls,
+        'total_boys': total_boys,
+        'top_students': top_students,
+        'top_boys': top_boys,
+        'top_girls': top_girls,
+        'subject_gender': subject_gender,
+        'subject_teachers': subject_teachers,
+        'pot_labels': pot_labels,
+        'pot_streams_data': pot_streams_data,
+        'plv_labels': PLV_LABELS,
+        'exam_groups': exam_groups,
+        'available_grades': available_grades,
+        'current_exam_id': exam.id,
+        'all_ranked_students': ranked_students,
+    }
+    return JsonResponse(data)

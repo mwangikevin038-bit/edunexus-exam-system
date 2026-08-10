@@ -63,8 +63,11 @@ from .students_mgmt import (  # noqa: F401
     class_list_printout,
     api_streams_for_grade_printout,
     score_sheet,
+    analysis_report,
+    api_exams_for_class,
     api_subjects_for_grade,
     api_teacher_for_subject,
+    api_analysis_data,
 )
 
 # ── Exam & mark entry views ──────────────────────────────────────────────────
