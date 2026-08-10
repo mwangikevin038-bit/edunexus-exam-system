@@ -2307,6 +2307,8 @@ def api_analysis_data(request):
         )
         if class_name_filter:
             prev_summaries = prev_summaries.filter(student__class_name=class_name_filter)
+        if stream_filter:
+            prev_summaries = prev_summaries.filter(student__stream=stream_filter)
         prev_student_ids = prev_summaries.values_list('student_id', flat=True).distinct()
         prev_all_marks = Mark.all_objects.filter(
             student__school=school, student_id__in=prev_student_ids,
