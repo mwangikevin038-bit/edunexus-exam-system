@@ -2296,8 +2296,18 @@ def api_analysis_data(request):
     subject_rows.sort(key=lambda x: x['points'], reverse=True)
 
     # ── Previous exam for change calculation ─────────────────────────────
-    other_exams = Exam.all_objects.filter(school=school, year=exam.year, is_deleted=False).exclude(id=exam.id).order_by('term', 'name')
-    prev_exam = other_exams.first() if other_exams else None
+    TERM_ORDER = {'Term 1': 1, 'Term 2': 2, 'Term 3': 3}
+    all_exams = Exam.all_objects.filter(school=school, is_deleted=False).order_by('year', 'term', 'name')
+    exam_list = []
+    for ex in all_exams:
+        to = TERM_ORDER.get(ex.term, 0)
+        exam_list.append((ex.year, to, ex.name, ex))
+    exam_list.sort(key=lambda x: (x[0], x[1], x[2]))
+    prev_exam = None
+    for i, (yr, tn, nm, ex) in enumerate(exam_list):
+        if ex.id == exam.id and i > 0:
+            prev_exam = exam_list[i-1][3]
+            break
     prev_mean_marks = 0
     prev_mean_points = 0
     prev_subject_perf = {}
@@ -2307,8 +2317,6 @@ def api_analysis_data(request):
         )
         if class_name_filter:
             prev_summaries = prev_summaries.filter(student__class_name=class_name_filter)
-        if stream_filter:
-            prev_summaries = prev_summaries.filter(student__stream=stream_filter)
         prev_student_ids = prev_summaries.values_list('student_id', flat=True).distinct()
         prev_all_marks = Mark.all_objects.filter(
             student__school=school, student_id__in=prev_student_ids,
