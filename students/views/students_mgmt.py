@@ -2297,14 +2297,16 @@ def api_analysis_data(request):
 
     # ── Previous exam for change calculation ─────────────────────────────
     TERM_ORDER = {'Term 1': 1, 'Term 2': 2, 'Term 3': 3}
-    all_exams = Exam.all_objects.filter(school=school, is_deleted=False).order_by('year', 'term', 'name')
+    EXAM_ORDER = {'Opener Assessment': 1, 'Mid Term Assessment': 2, 'End Term Assessment': 3}
+    all_exams = Exam.all_objects.filter(school=school, is_deleted=False)
     exam_list = []
     for ex in all_exams:
         to = TERM_ORDER.get(ex.term, 0)
-        exam_list.append((ex.year, to, ex.name, ex))
+        eo = EXAM_ORDER.get(ex.name, 4)
+        exam_list.append((ex.year, to, eo, ex))
     exam_list.sort(key=lambda x: (x[0], x[1], x[2]))
     prev_exam = None
-    for i, (yr, tn, nm, ex) in enumerate(exam_list):
+    for i, (yr, tn, en, ex) in enumerate(exam_list):
         if ex.id == exam.id and i > 0:
             prev_exam = exam_list[i-1][3]
             break
