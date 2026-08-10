@@ -2297,12 +2297,20 @@ def api_analysis_data(request):
 
     # ── Previous exam for change calculation ─────────────────────────────
     TERM_ORDER = {'Term 1': 1, 'Term 2': 2, 'Term 3': 3}
-    EXAM_ORDER = {'Opener Assessment': 1, 'Mid Term Assessment': 2, 'End Term Assessment': 3}
+    def _exam_sort_key(name):
+        nl = (name or '').lower()
+        if 'opener' in nl or 'opening' in nl:
+            return 1
+        if 'mid' in nl:
+            return 2
+        if 'end' in nl or 'final' in nl:
+            return 3
+        return 4
     all_exams = Exam.all_objects.filter(school=school, is_deleted=False)
     exam_list = []
     for ex in all_exams:
         to = TERM_ORDER.get(ex.term, 0)
-        eo = EXAM_ORDER.get(ex.name, 4)
+        eo = _exam_sort_key(ex.name)
         exam_list.append((ex.year, to, eo, ex))
     exam_list.sort(key=lambda x: (x[0], x[1], x[2]))
     prev_exam = None
