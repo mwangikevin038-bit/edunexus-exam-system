@@ -64,6 +64,7 @@ from .students_mgmt import (  # noqa: F401
     api_streams_for_grade_printout,
     score_sheet,
     analysis_report,
+    analysis_report_pdf,
     api_exams_for_class,
     api_subjects_for_grade,
     api_teacher_for_subject,

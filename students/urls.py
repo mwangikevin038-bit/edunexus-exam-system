@@ -26,6 +26,7 @@ urlpatterns = [
     path('printouts/api/subjects/', views.api_subjects_for_grade, name='api_subjects_for_grade'),
     path('printouts/api/teacher/', views.api_teacher_for_subject, name='api_teacher_for_subject'),
     path('printouts/api/analysis-data/', views.api_analysis_data, name='api_analysis_data'),
+    path('printouts/api/analysis-report-pdf/', views.analysis_report_pdf, name='analysis_report_pdf'),
     path('learner/<int:student_id>/', views.learner_profile, name='learner_profile'),
 
     # ── Marks & exams ─────────────────────────────────────────────────────

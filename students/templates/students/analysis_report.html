@@ -203,6 +203,10 @@
     .ar-charts-row{padding:0 16px}
     .ar-pot-section{padding:0 16px}
     .ar-summary-cards{padding:12px 20px}
+    .ar-summary-chart canvas{max-width:100%!important;height:auto!important}
+    .ar-pot-wrap canvas{max-width:100%!important;height:auto!important}
+    .target-data-table{page-break-inside:avoid}
+    .ar-accent-bar,.ar-exam-banner,.ar-summary-row,.ar-summary-cards{page-break-inside:avoid}
     @page{size:portrait;margin:10mm 12mm}
   }
 </style>
@@ -377,6 +381,13 @@
   getBtn.addEventListener('click',function(){
     if(!grade.value||!exam.value)return;
     loadReport(grade.value, exam.value, stream.value);
+  });
+
+  document.getElementById('arDownloadBtn').addEventListener('click',function(){
+    if(!grade.value||!exam.value){alert('Please select a grade and exam first.');return}
+    var url='{% url "analysis_report_pdf" %}?exam_id='+encodeURIComponent(exam.value)+'&class_name='+encodeURIComponent(grade.value);
+    if(stream.value) url+='&stream='+encodeURIComponent(stream.value);
+    window.location.href=url;
   });
 
   function loadReport(className, examId, streamName){

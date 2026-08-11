@@ -2150,6 +2150,43 @@ def api_teacher_for_subject(request):
 
 @login_required(login_url='login')
 @school_admin_required
+def analysis_report_pdf(request):
+    """Generate PDF of the analysis report using WeasyPrint."""
+    import json, base64, mimetypes
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from weasyprint import HTML
+    from .analysis_report_pdf_builder import build_pdf_html
+
+    api_response = api_analysis_data(request)
+    data = json.loads(api_response.content)
+    if 'error' in data:
+        return HttpResponse(data['error'], status=400)
+
+    body_html = build_pdf_html(data)
+    html_string = render_to_string('students/analysis_report_pdf.html', {'html_content': body_html})
+
+    # Embed school logo as base64 for WeasyPrint
+    school = get_request_school(request)
+    if school and school.logo:
+        try:
+            logo_type = mimetypes.guess_type(school.logo.url)[0] or 'image/png'
+            with school.logo.open('rb') as f:
+                logo_b64 = base64.b64encode(f.read()).decode('ascii')
+            data_uri = f'data:{logo_type};base64,{logo_b64}'
+            html_string = html_string.replace(f'src="{school.logo.url}"', f'src="{data_uri}"')
+        except Exception:
+            pass
+
+    pdf = HTML(string=html_string).write_pdf()
+    grade_name = data.get('grade_name', 'Report')
+    exam_name = data.get('exam', {}).get('name', '')
+    filename = f"Analysis_Report_{grade_name}_{exam_name}.pdf".replace(' ', '_')
+    return HttpResponse(pdf, content_type='application/pdf', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+
+
+@login_required(login_url='login')
+@school_admin_required
 def api_analysis_data(request):
     """JSON endpoint: returns all analysis data for a given exam+class for inline report rendering."""
     import json
