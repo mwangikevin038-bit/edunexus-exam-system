@@ -2352,25 +2352,6 @@ def api_analysis_data(request):
                 prev_subject_perf[sn]['total_points'] += mark.points
                 prev_subject_perf[sn]['count'] += 1
 
-    # ── DEBUG: temporary info for change column debugging ──────────────
-    _debug_exams = [{'id': e[3].id, 'name': e[3].name, 'term': e[3].term, 'year': e[3].year} for e in exam_list]
-    debug_change = {
-        'all_exams': _debug_exams,
-        'exam_list_order': [(e[0], e[1], e[2], e[3].name) for e in exam_list],
-        'current_exam_id': exam.id,
-        'current_exam_name': exam.name,
-        'current_exam_term': exam.term,
-        'current_exam_year': exam.year,
-        'prev_exam_found': prev_exam is not None,
-        'prev_exam_name': prev_exam.name if prev_exam else None,
-        'prev_exam_term': prev_exam.term if prev_exam else None,
-        'prev_exam_year': prev_exam.year if prev_exam else None,
-        'num_prev_summaries': prev_summaries.count() if prev_exam else 0,
-        'num_prev_all_marks': prev_all_marks.count() if prev_exam else 0,
-        'num_prev_subject_perf': len(prev_subject_perf),
-        'prev_subject_perf_detail': {k: dict(v) for k, v in prev_subject_perf.items()},
-    }
-
     for row in subject_rows:
         pd = prev_subject_perf.get(row['name'])
         if pd and pd['count'] > 0:
@@ -2741,6 +2722,5 @@ def api_analysis_data(request):
         'available_grades': available_grades,
         'current_exam_id': exam.id,
         'all_ranked_students': ranked_students,
-        'debug_change': debug_change,
     }
     return JsonResponse(data)
