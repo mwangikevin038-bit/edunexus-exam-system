@@ -115,7 +115,7 @@
 
   /* Section headings */
   .ar-section-title{font-size:16px;font-weight:800;color:#0f172a;margin:28px 0 14px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;font-family:'Inter','Plus Jakarta Sans',sans-serif}
-  .ar-subject-banner{background:#f1f5f9;padding:10px 32px;font-size:15px;font-weight:700;color:#334155;border-bottom:1px solid #e2e8f0;margin-top:24px;text-transform:uppercase;letter-spacing:0.3px}
+  .ar-subject-banner{background:#e5e7eb;padding:10px 16px;font-size:14px;font-weight:800;color:#111827;letter-spacing:0.3px;margin:0 32px 16px;border-radius:4px}
 
   /* Tables */
   .ar-table-wrap{overflow-x:auto;padding:0 32px;margin-bottom:16px}
@@ -134,6 +134,15 @@
   .statistics-table-wrapper .target-data-table{width:100%;border-collapse:collapse;font-size:13px;border:2px solid #111827}
   .statistics-table-wrapper .target-data-table th{background:transparent;padding:10px 14px;font-weight:700;color:#374151;border-bottom:1px solid #d1d5db;font-size:13px}
   .statistics-table-wrapper .target-data-table td{padding:5px 14px;border-bottom:1px solid #e5e7eb;color:#111827;white-space:nowrap;font-weight:600}
+
+  /* Class Grade Summary — consistent font, natural fit */
+  .statistics-table-wrapper.cgs .target-data-table{font-size:13px}
+  .statistics-table-wrapper.cgs .target-data-table th{padding:8px 6px;font-size:13px;white-space:normal;border-left:1px solid #d1d5db;border-right:1px solid #d1d5db}
+  .statistics-table-wrapper.cgs .target-data-table td{padding:6px 6px;font-size:13px;white-space:normal;word-break:break-word;border-left:1px solid #d1d5db;border-right:1px solid #d1d5db}
+  .statistics-table-wrapper.cgs .target-data-table .col-name{min-width:120px}
+  .statistics-table-wrapper.cgs .target-data-table .cell-center{text-align:center}
+  .statistics-table-wrapper.cgs .target-data-table .cgs-trend svg{width:14px;height:14px}
+  .statistics-table-wrapper.cgs .target-data-table .cgs-plv{text-align:center;min-width:30px}
   .statistics-table-wrapper .target-data-table tbody tr:nth-child(even){background:#e9ecef}
   .statistics-table-wrapper .target-data-table tr:last-child td{border-bottom:none}
   .statistics-table-wrapper .col-name{text-align:left;min-width:180px}
@@ -143,25 +152,12 @@
   .statistics-table-wrapper .target-data-table .trend-positive,
   .statistics-table-wrapper .target-data-table .trend-negative,
   .statistics-table-wrapper .target-data-table .trend-zero{
-    font-size:0 !important;font-weight:900;display:inline-block;width:14px;height:22px;position:relative;vertical-align:middle;
+    display:inline-block;vertical-align:middle;line-height:0;
   }
-  .statistics-table-wrapper .target-data-table .trend-positive::before{
-    content:'';position:absolute;left:50%;bottom:2px;width:2px;height:15px;background:#16a34a;transform:translateX(-50%);
-  }
-  .statistics-table-wrapper .target-data-table .trend-positive::after{
-    content:'';position:absolute;left:0;top:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:8px solid #16a34a;
-  }
-  .statistics-table-wrapper .target-data-table .trend-negative::before{
-    content:'';position:absolute;left:50%;top:2px;width:2px;height:15px;background:#ea580c;transform:translateX(-50%);
-  }
-  .statistics-table-wrapper .target-data-table .trend-negative::after{
-    content:'';position:absolute;left:0;bottom:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #ea580c;
-  }
-  .statistics-table-wrapper .target-data-table .trend-zero::before{
-    content:'';position:absolute;left:calc(50% - 5px);top:50%;width:10px;height:2px;background:#94a3b8;transform:translateY(-50%);
-  }
-  .statistics-table-wrapper .target-data-table .trend-zero::after{
-    content:'';position:absolute;right:0;top:50%;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid #94a3b8;transform:translateY(-50%);
+  .statistics-table-wrapper .target-data-table .trend-positive svg,
+  .statistics-table-wrapper .target-data-table .trend-negative svg,
+  .statistics-table-wrapper .target-data-table .trend-zero svg{
+    width:18px;height:18px;
   }
 
   /* Gender badge */
@@ -177,13 +173,13 @@
 
   /* Charts */
   .ar-charts-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 32px;margin-bottom:20px}
-  .ar-chart-box{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px}
+  .ar-chart-box{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;min-height:320px}
   .ar-chart-box canvas{width:100%!important;max-height:280px}
-  .ar-chart-title{font-size:13px;font-weight:700;color:#334155;margin-bottom:10px;text-align:center}
+  .ar-chart-title{background:#e5e7eb;padding:10px 16px;font-size:14px;font-weight:800;color:#111827;letter-spacing:0.3px;margin:-16px -16px 16px -16px;text-align:left}
 
   /* Performance over time */
   .ar-pot-section{padding:0 32px;margin-bottom:32px}
-  .ar-pot-section canvas{width:100%!important;max-height:300px}
+  .ar-pot-section canvas{width:100%!important;height:400px!important}
 
   /* Loading */
   .ar-loading{text-align:center;padding:60px 20px;color:#64748b;font-size:14px}
@@ -201,6 +197,9 @@
     .ar-report{position:absolute;left:0;top:0;width:100%}
     .ar-school-hdr{padding:4mm 0 2mm;align-items:center}
     .ar-table-wrap{padding:0 16px}
+    .statistics-table-wrapper.cgs .target-data-table{font-size:11px}
+    .statistics-table-wrapper.cgs .target-data-table th{padding:4px 4px;font-size:11px}
+    .statistics-table-wrapper.cgs .target-data-table td{padding:3px 4px;font-size:11px}
     .ar-charts-row{padding:0 16px}
     .ar-pot-section{padding:0 16px}
     .ar-summary-cards{padding:12px 20px}
@@ -411,11 +410,14 @@
 
   function esc(s){return s?s.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
 
+  var _svgUp='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
+  var _svgDown='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
+  var _svgRight='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
   function trendIcon(val){
     var v=parseFloat(val);
-    if(v>0) return '<span style="color:#16a34a;font-weight:700">&#8593; +'+v.toFixed(4)+'</span>';
-    if(v<0) return '<span style="color:#f97316;font-weight:700">&#8595; '+v.toFixed(4)+'</span>';
-    return '<span style="color:#94a3b8">&#8594; 0</span>';
+    if(v>0) return '<span style="font-weight:700">'+_svgUp+' +'+v.toFixed(4)+'</span>';
+    if(v<0) return '<span style="font-weight:700">'+_svgDown+' '+v.toFixed(4)+'</span>';
+    return '<span>'+_svgRight+' 0</span>';
   }
 
   function plvBadge(plv,labels){
@@ -437,44 +439,51 @@
   function streamLabel(gradeName,stream){return gradeName+' '+stream}
 
   function breakdownTable(rows,totalRow,levels,labels,showTeacher,subjectTeachers){
-    var h='<div class="ar-table-wrap"><table class="ar-table"><thead><tr>';
-    h+='<th>Form</th>';
-    for(var i=0;i<levels.length;i++) h+='<th class="center">'+esc(levels[i])+'</th>';
-    h+='<th class="center">X</th><th class="center">Y</th><th class="center">Entries</th>';
-    h+='<th class="center">Mean Marks</th><th class="center">MM Dev</th>';
-    h+='<th class="center">Mean Points</th><th class="center">MP Dev</th>';
-    h+='<th>Performance Level</th>';
-    if(showTeacher) h+='<th>Teacher</th>';
+    var h='<div class="statistics-table-wrapper cgs"><table class="target-data-table"><thead><tr>';
+    h+='<th class="col-name">Form</th>';
+    for(var i=0;i<levels.length;i++) h+='<th class="cell-center">'+esc(levels[i])+'</th>';
+    h+='<th class="cell-center">X</th><th class="cell-center">Y</th><th class="cell-center">Entries</th>';
+    h+='<th class="cell-center">Mean<br>Marks</th><th class="cell-center">MM<br>Dev</th>';
+    h+='<th class="cell-center">Mean<br>Points</th><th class="cell-center">MP<br>Dev</th>';
+    h+='<th class="cell-center">Performance<br>Level</th>';
+    if(showTeacher) h+='<th>Class<br>Teacher</th>';
+    else if(subjectTeachers) h+='<th>Subject<br>Teacher</th>';
     h+='</tr></thead><tbody>';
+
+    var bestIdx=-1,bestMean=-Infinity;
+    for(var r=0;r<rows.length;r++){
+      if((rows[r].mean_points||0)>bestMean){bestMean=rows[r].mean_points||0;bestIdx=r}
+    }
 
     for(var r=0;r<rows.length;r++){
       var row=rows[r];
-      h+='<tr><td>'+esc(row.form)+'</td>';
-      for(var i=0;i<levels.length;i++) h+='<td class="center">'+(row[levels[i]]||0)+'</td>';
-      h+='<td class="center">'+(row.X||0)+'</td>';
-      h+='<td class="center">'+(row.Y||0)+'</td>';
-      h+='<td class="center">'+(row.entries||0)+'</td>';
-      h+='<td class="center">'+(row.mean_marks||0)+'</td>';
-      h+='<td class="center">'+trendIcon(row.mm_dev||0)+'</td>';
-      h+='<td class="center">'+(row.mean_points||0)+'</td>';
-      h+='<td class="center">'+trendIcon(row.mp_dev||0)+'</td>';
-      h+='<td>'+plvBadge(row.performance_level,labels)+'</td>';
-      if(showTeacher) h+='<td>-</td>';
+      var rowCls=r===bestIdx?' style="background:#dcfce7;font-weight:700"':'';
+      h+='<tr'+rowCls+'><td class="col-name">'+esc(row.form)+'</td>';
+      for(var i=0;i<levels.length;i++) h+='<td class="cell-center">'+(row[levels[i]]||0)+'</td>';
+      h+='<td class="cell-center">'+(row.X||0)+'</td>';
+      h+='<td class="cell-center">'+(row.Y||0)+'</td>';
+      h+='<td class="cell-center">'+(row.entries||0)+'</td>';
+      h+='<td class="cell-center">'+(row.mean_marks||0)+'</td>';
+      h+='<td class="cell-center">'+(row.mm_dev||0)+'</td>';
+      h+='<td class="cell-center">'+(row.mean_points||0)+'</td>';
+      h+='<td class="cell-center">'+(row.mp_dev||0)+'</td>';
+      h+='<td class="cell-center">'+plvBadge(row.performance_level,labels)+'</td>';
+      if(showTeacher||subjectTeachers) h+='<td>'+esc(row.teacher||'-')+'</td>';
       h+='</tr>';
     }
 
     if(totalRow){
-      h+='<tr class="total-row"><td>'+esc(totalRow.form||'Total')+'</td>';
-      for(var i=0;i<levels.length;i++) h+='<td class="center">'+(totalRow[levels[i]]||0)+'</td>';
-      h+='<td class="center">'+(totalRow.X||0)+'</td>';
-      h+='<td class="center">'+(totalRow.Y||0)+'</td>';
-      h+='<td class="center">'+(totalRow.entries||0)+'</td>';
-      h+='<td class="center">'+(totalRow.mean_marks||0)+'</td>';
-      h+='<td class="center">'+trendIcon(totalRow.mm_dev||0)+'</td>';
-      h+='<td class="center">'+(totalRow.mean_points||0)+'</td>';
-      h+='<td class="center">'+trendIcon(totalRow.mp_dev||0)+'</td>';
-      h+='<td>'+plvBadge(totalRow.performance_level,labels)+'</td>';
-      if(showTeacher) h+='<td>-</td>';
+      h+='<tr class="total-row"><td class="col-name">'+esc(totalRow.form||'Total')+'</td>';
+      for(var i=0;i<levels.length;i++) h+='<td class="cell-center">'+(totalRow[levels[i]]||0)+'</td>';
+      h+='<td class="cell-center">'+(totalRow.X||0)+'</td>';
+      h+='<td class="cell-center">'+(totalRow.Y||0)+'</td>';
+      h+='<td class="cell-center">'+(totalRow.entries||0)+'</td>';
+      h+='<td class="cell-center">'+(totalRow.mean_marks||0)+'</td>';
+      h+='<td class="cell-center">'+(totalRow.mm_dev||0)+'</td>';
+      h+='<td class="cell-center">'+(totalRow.mean_points||0)+'</td>';
+      h+='<td class="cell-center">'+(totalRow.mp_dev||0)+'</td>';
+      h+='<td class="cell-center">'+plvBadge(totalRow.performance_level,labels)+'</td>';
+      if(showTeacher||subjectTeachers) h+='<td>'+esc(totalRow.teacher||'-')+'</td>';
       h+='</tr>';
     }
     h+='</tbody></table></div>';
@@ -551,7 +560,10 @@
       var sr=d.subject_rows[i];
       var chg=sr.change||0;
       var chgVal=(chg>0?'+':'')+chg.toFixed(4);
-      var trendArrow=chg>0?'&#8593;':(chg<0?'&#8595;':'&#8594;');
+      var svgUp='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
+      var svgDown='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
+      var svgRight='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
+      var trendArrow=chg>0?svgUp:(chg<0?svgDown:svgRight);
       var trendCls=chg>0?'trend-positive':(chg<0?'trend-negative':'trend-zero');
       html+='<tr>';
       html+='<td class="col-name">'+esc(sr.name)+'</td>';
@@ -564,96 +576,192 @@
     html+='</tbody></table></div>';
 
     // ── Class Grade Summary ─────────────────────────────────────────
-    html+='<div style="padding:0 32px"><div class="ar-section-title">Class Grade Summary</div></div>';
-    html+=breakdownTable(d.grade_breakdown,d.total_row,levels,labels,true,d.subject_teachers);
+    html+='<div class="statistics-table-wrapper cgs">';
+    html+='<div class="subject-statistics-title-bar">CLASS GRADE SUMMARY</div>';
+    html+='<table class="target-data-table"><thead><tr>';
+    html+='<th class="col-name">Subject</th>';
+    for(var li=0;li<d.breakdown_levels.length;li++) html+='<th class="cell-center">'+esc(d.breakdown_levels[li])+'</th>';
+    html+='<th class="cell-center">X</th><th class="cell-center">Y</th><th class="cell-center">Entries</th>';
+    html+='<th class="cell-center">Mean<br>Marks</th><th class="cell-center">MM<br>Dev</th>';
+    html+='<th class="cell-center">Mean<br>Points</th><th class="cell-center">MP<br>Dev</th>';
+    html+='<th class="cell-center">Performance<br>Level</th><th>Teacher</th>';
+    html+='</tr></thead><tbody>';
+    // Total row first
+    var tr=d.total_row||{};
+    html+='<tr style="font-weight:700">';
+    html+='<td class="col-name">'+esc(tr.form||d.grade_name)+'</td>';
+    for(var li=0;li<d.breakdown_levels.length;li++) html+='<td class="cell-center">'+(tr[d.breakdown_levels[li]]||0)+'</td>';
+    html+='<td class="cell-center">'+(tr.X||0)+'</td><td class="cell-center">'+(tr.Y||0)+'</td>';
+    html+='<td class="cell-center">'+(tr.entries||0)+'</td>';
+    html+='<td class="cell-center">'+(tr.mean_marks||0)+'</td>';
+    html+='<td class="cell-center">'+trendIcon(tr.mm_dev||0)+'</td>';
+    html+='<td class="cell-center">'+(tr.mean_points||0)+'</td>';
+    html+='<td class="cell-center">'+trendIcon(tr.mp_dev||0)+'</td>';
+    html+='<td class="cell-center">'+plvBadge(tr.performance_level,labels)+'</td>';
+    html+='<td>'+esc(tr.teacher||'-')+'</td>';
+    html+='</tr>';
+    // Per-subject rows
+    for(var ri=0;ri<d.class_grade_summary_rows.length;ri++){
+      var sr=d.class_grade_summary_rows[ri];
+      html+='<tr>';
+      html+='<td class="col-name">'+esc(sr.name)+'</td>';
+      for(var li=0;li<d.breakdown_levels.length;li++) html+='<td class="cell-center">'+(sr[d.breakdown_levels[li]]||0)+'</td>';
+      html+='<td class="cell-center">'+(sr.X||0)+'</td><td class="cell-center">'+(sr.Y||0)+'</td>';
+      html+='<td class="cell-center">'+(sr.entries||0)+'</td>';
+      html+='<td class="cell-center">'+(sr.mean_marks||0)+'</td>';
+      html+='<td class="cell-center">'+trendIcon(sr.mm_dev||0)+'</td>';
+      html+='<td class="cell-center">'+(sr.mean_points||0)+'</td>';
+      html+='<td class="cell-center">'+trendIcon(sr.mp_dev||0)+'</td>';
+      html+='<td class="cell-center">'+plvBadge(sr.performance_level,labels)+'</td>';
+      html+='<td>'+esc(sr.teacher)+'</td>';
+      html+='</tr>';
+    }
+    html+='</tbody></table></div>';
 
     // ── Charts row: Class Subject Means + Overall Class Statistics ──
     html+='<div class="ar-charts-row">';
-    html+='<div class="ar-chart-box"><div class="ar-chart-title">Class Subject Means</div><canvas id="arSubjectMeansChart"></canvas></div>';
-    html+='<div class="ar-chart-box"><div class="ar-chart-title">Overall Class Statistics</div><canvas id="arOverallChart"></canvas></div>';
+    html+='<div class="ar-chart-box"><div class="ar-chart-title">CLASS SUBJECT MEANS</div><canvas id="arSubjectMeansChart"></canvas></div>';
+    html+='<div class="ar-chart-box"><div class="ar-chart-title">OVERALL CLASS STATISTICS</div><canvas id="arOverallChart"></canvas></div>';
     html+='</div>';
 
     // ── OVERALL section ─────────────────────────────────────────────
     html+='<div class="ar-subject-banner">OVERALL</div>';
 
     // Overall grade summary
-    html+='<div style="padding:8px 32px 0"><div class="ar-section-title" style="margin-top:8px">Grade Summary</div></div>';
-    html+=breakdownTable(d.grade_breakdown,d.total_row,levels,labels,false,null);
+    html+='<div class="statistics-table-wrapper" style="margin:0 32px 16px"><div class="subject-statistics-title-bar">Grade Summary – Overall</div></div>';
+    html+=breakdownTable(d.grade_breakdown,d.total_row,levels,labels,true,null);
 
-    // Gender breakdown overall
-    html+='<div style="padding:0 32px"><div class="ar-section-title">Gender Breakdown</div></div>';
-    html+='<div class="ar-table-wrap"><table class="ar-table"><thead><tr><th>Stream</th><th class="center">Girls</th><th class="center">Boys</th></tr></thead><tbody>';
-    for(var si=0;si<d.streams.length;si++){
-      var s=d.streams[si];
-      var gs=d.gender_streams[s]||{girls:0,boys:0};
-      html+='<tr><td>'+esc(streamLabel(d.grade_name,s))+'</td><td class="center">'+gs.girls+'</td><td class="center">'+gs.boys+'</td></tr>';
+    // Gender performance analysis
+    if(d.gender_perf_rows && d.gender_perf_rows.length){
+      html+='<div class="statistics-table-wrapper" style="margin:0 32px 16px"><div class="subject-statistics-title-bar">Gender Performance Analysis</div></div>';
+      var gpRows=d.gender_perf_rows;
+      var h2='<div class="statistics-table-wrapper cgs"><table class="target-data-table"><thead><tr>';
+      h2+='<th class="col-name">Gender</th>';
+      for(var i=0;i<levels.length;i++) h2+='<th class="cell-center">'+esc(levels[i])+'</th>';
+      h2+='<th class="cell-center">X</th><th class="cell-center">Y</th><th class="cell-center">Entries</th>';
+      h2+='<th class="cell-center">Mean<br>Marks</th><th class="cell-center">MM<br>Dev</th>';
+      h2+='<th class="cell-center">Mean<br>Points</th><th class="cell-center">MP<br>Dev</th>';
+      h2+='<th class="cell-center">Performance<br>Level</th>';
+      h2+='</tr></thead><tbody>';
+      for(var gi=0;gi<gpRows.length;gi++){
+        var gr=gpRows[gi];
+        h2+='<tr><td class="col-name">'+esc(gr.gender)+'</td>';
+        for(var i=0;i<levels.length;i++) h2+='<td class="cell-center">'+(gr[levels[i]]||0)+'</td>';
+        h2+='<td class="cell-center">'+(gr.X||0)+'</td>';
+        h2+='<td class="cell-center">'+(gr.Y||0)+'</td>';
+        h2+='<td class="cell-center">'+(gr.entries||0)+'</td>';
+        h2+='<td class="cell-center">'+(gr.mean_marks||0)+'</td>';
+        h2+='<td class="cell-center">'+trendIcon(gr.mm_dev||0)+'</td>';
+        h2+='<td class="cell-center">'+(gr.mean_points||0)+'</td>';
+        h2+='<td class="cell-center">'+trendIcon(gr.mp_dev||0)+'</td>';
+        h2+='<td class="cell-center">'+plvBadge(gr.performance_level,labels)+'</td>';
+        h2+='</tr>';
+      }
+      h2+='</tbody></table></div>';
+      html+=h2;
     }
-    html+='<tr class="total-row"><td>'+esc(d.grade_name)+'</td><td class="center">'+d.total_girls+'</td><td class="center">'+d.total_boys+'</td></tr>';
-    html+='</tbody></table></div>';
 
-    // Top Students
+    // Top Students – Overall
     if(d.top_students&&d.top_students.length){
-      html+='<div style="padding:0 32px"><div class="ar-section-title">Top Students</div></div>';
-      html+='<div class="ar-table-wrap"><table class="ar-table"><thead><tr>';
-      html+='<th class="center">Rank</th><th>Adm No</th><th>Name</th><th>Stream</th>';
-      html+='<th class="center">Mean Marks</th><th class="center">MM Dev</th><th class="center">Total Marks</th>';
-      html+='<th class="center">Mean Points</th><th class="center">MP Dev</th><th>Performance Level</th><th class="center">Gender</th>';
+      var tov=d.total_overall||0;
+      html+='<div class="statistics-table-wrapper cgs" style="margin:0 32px 16px">';
+      html+='<div style="font-weight:800;font-size:14px;color:#111827;padding:10px 16px 0">Top Students – Overall</div>';
+      html+='<table class="target-data-table"><thead><tr>';
+      html+='<th class="cell-center">Admno</th><th>Name</th><th>Stream</th>';
+      html+='<th class="cell-center">Strm<br>Rank</th><th class="cell-center">Ovrl<br>Rank</th>';
+      html+='<th class="cell-center">Mean<br>Marks</th><th class="cell-center">MM<br>Dev</th>';
+      html+='<th class="cell-center">Total<br>Marks</th>';
+      html+='<th class="cell-center">Mean<br>Points</th><th class="cell-center">MP<br>Dev</th>';
+      html+='<th class="cell-center">Performance<br>Level</th><th class="cell-center">Gender</th>';
       html+='</tr></thead><tbody>';
       for(var i=0;i<d.top_students.length;i++){
         var st=d.top_students[i];
-        html+='<tr><td class="center">'+rankBadge(st.rank)+'</td>';
-        html+='<td>'+esc(st.admission_no)+'</td><td>'+esc(st.name)+'</td><td>'+esc(st.stream)+'</td>';
-        html+='<td class="center">'+st.mean_marks+'</td>';
-        html+='<td class="center">'+trendIcon(st.mean_marks-d.overall_mean_marks)+'</td>';
-        html+='<td class="center">'+st.total_marks+'</td>';
-        html+='<td class="center">'+st.mean_points+'</td>';
-        html+='<td class="center">'+trendIcon(st.mean_points-d.overall_mean_points)+'</td>';
-        html+='<td>'+plvBadge(st.performance_level,labels)+'</td>';
-        html+='<td class="center">'+genderBadge(st.gender)+'</td></tr>';
+        var mmDev=(st.mm_dev!=null)?st.mm_dev:0;
+        var mpDev=(st.mp_dev!=null)?st.mp_dev:0;
+        html+='<tr>';
+        html+='<td class="cell-center">'+esc(st.admission_no)+'</td>';
+        html+='<td>'+esc(st.name)+'</td>';
+        html+='<td>'+esc(st.stream)+'</td>';
+        html+='<td class="cell-center">'+(st.strm_rank||0)+' / '+(st.strm_total||0)+'</td>';
+        html+='<td class="cell-center">'+(st.overall_rank||0)+' / '+tov+'</td>';
+        html+='<td class="cell-center">'+st.mean_marks+'</td>';
+        html+='<td class="cell-center">'+mmDev+'</td>';
+        html+='<td class="cell-center">'+st.total_marks+'</td>';
+        html+='<td class="cell-center">'+st.mean_points+'</td>';
+        html+='<td class="cell-center">'+mpDev+'</td>';
+        html+='<td class="cell-center">'+plvBadge(st.performance_level,labels)+'</td>';
+        html+='<td class="cell-center">'+esc(st.gender)+'</td>';
+        html+='</tr>';
       }
       html+='</tbody></table></div>';
     }
 
-    // Top Boys
+    // Top Boys – Overall
     if(d.top_boys&&d.top_boys.length){
-      html+='<div style="padding:0 32px"><div class="ar-section-title">Top Boys</div></div>';
-      html+='<div class="ar-table-wrap"><table class="ar-table"><thead><tr>';
-      html+='<th class="center">Rank</th><th>Adm No</th><th>Name</th><th>Stream</th>';
-      html+='<th class="center">Mean Marks</th><th class="center">MM Dev</th><th class="center">Total Marks</th>';
-      html+='<th class="center">Mean Points</th><th class="center">MP Dev</th><th>Performance Level</th>';
+      var tbg=d.total_boys_in_grade||0;
+      html+='<div class="statistics-table-wrapper cgs" style="margin:0 32px 16px">';
+      html+='<div style="font-weight:800;font-size:14px;color:#111827;padding:10px 16px 0">Top Boys – Overall</div>';
+      html+='<table class="target-data-table"><thead><tr>';
+      html+='<th class="cell-center">Admno</th><th>Name</th><th>Stream</th>';
+      html+='<th class="cell-center">Strm<br>Rank</th><th class="cell-center">Ovrl<br>Rank</th>';
+      html+='<th class="cell-center">Mean<br>Marks</th><th class="cell-center">MM<br>Dev</th>';
+      html+='<th class="cell-center">Total<br>Marks</th>';
+      html+='<th class="cell-center">Mean<br>Points</th><th class="cell-center">MP<br>Dev</th>';
+      html+='<th class="cell-center">Performance<br>Level</th><th class="cell-center">Gender</th>';
       html+='</tr></thead><tbody>';
       for(var i=0;i<d.top_boys.length;i++){
         var st=d.top_boys[i];
-        html+='<tr><td class="center">'+rankBadge(st.rank)+'</td>';
-        html+='<td>'+esc(st.admission_no)+'</td><td>'+esc(st.name)+'</td><td>'+esc(st.stream)+'</td>';
-        html+='<td class="center">'+st.mean_marks+'</td>';
-        html+='<td class="center">'+trendIcon(st.mean_marks-d.overall_mean_marks)+'</td>';
-        html+='<td class="center">'+st.total_marks+'</td>';
-        html+='<td class="center">'+st.mean_points+'</td>';
-        html+='<td class="center">'+trendIcon(st.mean_points-d.overall_mean_points)+'</td>';
-        html+='<td>'+plvBadge(st.performance_level,labels)+'</td></tr>';
+        var mmDev=(st.mm_dev!=null)?st.mm_dev:0;
+        var mpDev=(st.mp_dev!=null)?st.mp_dev:0;
+        html+='<tr>';
+        html+='<td class="cell-center">'+esc(st.admission_no)+'</td>';
+        html+='<td>'+esc(st.name)+'</td>';
+        html+='<td>'+esc(st.stream)+'</td>';
+        html+='<td class="cell-center">'+(st.boys_strm_rank||0)+' / '+(st.boys_strm_total||0)+'<br>boys</td>';
+        html+='<td class="cell-center">'+(st.overall_boys_rank||0)+' / '+tbg+'<br>boys</td>';
+        html+='<td class="cell-center">'+st.mean_marks+'</td>';
+        html+='<td class="cell-center">'+mmDev+'</td>';
+        html+='<td class="cell-center">'+st.total_marks+'</td>';
+        html+='<td class="cell-center">'+st.mean_points+'</td>';
+        html+='<td class="cell-center">'+mpDev+'</td>';
+        html+='<td class="cell-center">'+plvBadge(st.performance_level,labels)+'</td>';
+        html+='<td class="cell-center">'+esc(st.gender)+'</td>';
+        html+='</tr>';
       }
       html+='</tbody></table></div>';
     }
 
-    // Top Girls
+    // Top Girls – Overall
     if(d.top_girls&&d.top_girls.length){
-      html+='<div style="padding:0 32px"><div class="ar-section-title">Top Girls</div></div>';
-      html+='<div class="ar-table-wrap"><table class="ar-table"><thead><tr>';
-      html+='<th class="center">Rank</th><th>Adm No</th><th>Name</th><th>Stream</th>';
-      html+='<th class="center">Mean Marks</th><th class="center">MM Dev</th><th class="center">Total Marks</th>';
-      html+='<th class="center">Mean Points</th><th class="center">MP Dev</th><th>Performance Level</th>';
+      var tgg=d.total_girls_count||d.total_girls||0;
+      html+='<div class="statistics-table-wrapper cgs" style="margin:0 32px 16px">';
+      html+='<div style="font-weight:800;font-size:14px;color:#111827;padding:10px 16px 0">Top Girls – Overall</div>';
+      html+='<table class="target-data-table"><thead><tr>';
+      html+='<th class="cell-center">Admno</th><th>Name</th><th>Stream</th>';
+      html+='<th class="cell-center">Strm<br>Rank</th><th class="cell-center">Ovrl<br>Rank</th>';
+      html+='<th class="cell-center">Mean<br>Marks</th><th class="cell-center">MM<br>Dev</th>';
+      html+='<th class="cell-center">Total<br>Marks</th>';
+      html+='<th class="cell-center">Mean<br>Points</th><th class="cell-center">MP<br>Dev</th>';
+      html+='<th class="cell-center">Performance<br>Level</th><th class="cell-center">Gender</th>';
       html+='</tr></thead><tbody>';
       for(var i=0;i<d.top_girls.length;i++){
         var st=d.top_girls[i];
-        html+='<tr><td class="center">'+rankBadge(st.rank)+'</td>';
-        html+='<td>'+esc(st.admission_no)+'</td><td>'+esc(st.name)+'</td><td>'+esc(st.stream)+'</td>';
-        html+='<td class="center">'+st.mean_marks+'</td>';
-        html+='<td class="center">'+trendIcon(st.mean_marks-d.overall_mean_marks)+'</td>';
-        html+='<td class="center">'+st.total_marks+'</td>';
-        html+='<td class="center">'+st.mean_points+'</td>';
-        html+='<td class="center">'+trendIcon(st.mean_points-d.overall_mean_points)+'</td>';
-        html+='<td>'+plvBadge(st.performance_level,labels)+'</td></tr>';
+        var mmDev=(st.mm_dev!=null)?st.mm_dev:0;
+        var mpDev=(st.mp_dev!=null)?st.mp_dev:0;
+        html+='<tr>';
+        html+='<td class="cell-center">'+esc(st.admission_no)+'</td>';
+        html+='<td>'+esc(st.name)+'</td>';
+        html+='<td>'+esc(st.stream)+'</td>';
+        html+='<td class="cell-center">'+(st.girls_strm_rank||0)+' / '+(st.girls_strm_total||0)+'<br>girls</td>';
+        html+='<td class="cell-center">'+(st.overall_girls_rank||0)+' / '+tgg+'<br>girls</td>';
+        html+='<td class="cell-center">'+st.mean_marks+'</td>';
+        html+='<td class="cell-center">'+mmDev+'</td>';
+        html+='<td class="cell-center">'+st.total_marks+'</td>';
+        html+='<td class="cell-center">'+st.mean_points+'</td>';
+        html+='<td class="cell-center">'+mpDev+'</td>';
+        html+='<td class="cell-center">'+plvBadge(st.performance_level,labels)+'</td>';
+        html+='<td class="cell-center">'+esc(st.gender)+'</td>';
+        html+='</tr>';
       }
       html+='</tbody></table></div>';
     }
@@ -667,30 +775,43 @@
       html+='<div class="ar-subject-banner">'+esc(subjName)+'</div>';
 
       // Grade summary for this subject
-      html+='<div style="padding:8px 32px 0"><div class="ar-section-title" style="margin-top:8px">Grade Summary</div></div>';
-      html+=breakdownTable(bd.rows,bd.total,levels,labels,false,null);
+      html+='<div style="padding:8px 32px 0"><div class="ar-section-title" style="margin-top:8px">Grade Summary – '+esc(subjName)+'</div></div>';
+      html+=breakdownTable(bd.rows,bd.total,levels,labels,false,d.subject_teachers);
 
-      // Gender breakdown for this subject
-      var sg=d.subject_gender[subjName]||{};
-      html+='<div style="padding:0 32px"><div class="ar-section-title">Gender Breakdown</div></div>';
-      html+='<div class="ar-table-wrap"><table class="ar-table"><thead><tr><th>Stream</th><th class="center">Girls</th><th class="center">Boys</th></tr></thead><tbody>';
-      for(var j=0;j<d.streams.length;j++){
-        var s=d.streams[j];
-        var gs=sg[s]||{girls:0,boys:0};
-        html+='<tr><td>'+esc(streamLabel(d.grade_name,s))+'</td><td class="center">'+gs.girls+'</td><td class="center">'+gs.boys+'</td></tr>';
+      // Gender performance analysis for this subject
+      var sgr=bd.gender_rows||[];
+      if(sgr.length){
+        html+='<div style="margin:0 32px 16px"><div class="subject-statistics-title-bar">Gender Performance Analysis</div></div>';
+        var h3='<div class="statistics-table-wrapper cgs"><table class="target-data-table"><thead><tr>';
+        h3+='<th class="col-name">Gender</th>';
+        for(var li=0;li<levels.length;li++) h3+='<th class="cell-center">'+esc(levels[li])+'</th>';
+        h3+='<th class="cell-center">X</th><th class="cell-center">Y</th><th class="cell-center">Entries</th>';
+        h3+='<th class="cell-center">Mean<br>Marks</th><th class="cell-center">MM<br>Dev</th>';
+        h3+='<th class="cell-center">Mean<br>Points</th><th class="cell-center">MP<br>Dev</th>';
+        h3+='<th class="cell-center">Performance<br>Level</th>';
+        h3+='</tr></thead><tbody>';
+        for(var gi=0;gi<sgr.length;gi++){
+          var gr=sgr[gi];
+          h3+='<tr><td class="col-name">'+esc(gr.gender)+'</td>';
+          for(var li=0;li<levels.length;li++) h3+='<td class="cell-center">'+(gr[levels[li]]||0)+'</td>';
+          h3+='<td class="cell-center">'+(gr.X||0)+'</td>';
+          h3+='<td class="cell-center">'+(gr.Y||0)+'</td>';
+          h3+='<td class="cell-center">'+(gr.entries||0)+'</td>';
+          h3+='<td class="cell-center">'+(gr.mean_marks||0)+'</td>';
+          h3+='<td class="cell-center">'+(gr.mm_dev||0)+'</td>';
+          h3+='<td class="cell-center">'+(gr.mean_points||0)+'</td>';
+          h3+='<td class="cell-center">'+(gr.mp_dev||0)+'</td>';
+          h3+='<td class="cell-center">'+plvBadge(gr.performance_level,labels)+'</td>';
+          h3+='</tr>';
+        }
+        h3+='</tbody></table></div>';
+        html+=h3;
       }
-      var subjTotalGirls=0,subjTotalBoys=0;
-      for(var j=0;j<d.streams.length;j++){
-        var gs2=sg[d.streams[j]]||{girls:0,boys:0};
-        subjTotalGirls+=gs2.girls; subjTotalBoys+=gs2.boys;
-      }
-      html+='<tr class="total-row"><td>'+esc(d.grade_name)+'</td><td class="center">'+subjTotalGirls+'</td><td class="center">'+subjTotalBoys+'</td></tr>';
-      html+='</tbody></table></div>';
     }
 
     // ── Performance Over Time ───────────────────────────────────────
     if(d.pot_labels&&d.pot_labels.length){
-      html+='<div style="padding:0 32px"><div class="ar-section-title">Performance Over Time</div></div>';
+      html+='<div class="statistics-table-wrapper" style="margin:0 32px 16px"><div class="subject-statistics-title-bar">Performance Over Time</div></div>';
       html+='<div class="ar-pot-section"><canvas id="arPOTChart"></canvas></div>';
     }
 
@@ -801,36 +922,57 @@
       });
     }
 
-    // Subject Means Chart (bar chart)
+    // Subject Means Chart (vertical bar, sorted desc, all light blue)
     var smCtx=document.getElementById('arSubjectMeansChart');
     if(smCtx){
-      var smLabels=d.subject_rows.map(function(r){return r.name});
-      var smData=d.subject_rows.map(function(r){return r.points});
-      var smColors=smData.map(function(v){
-        var rounded=Math.round(v);
-        if(rounded>=7) return '#22c55e';
-        if(rounded>=5) return '#3b82f6';
-        if(rounded>=3) return '#f59e0b';
-        return '#ef4444';
-      });
+      var sorted=d.subject_rows.slice().sort(function(a,b){return b.points-a.points});
+      var smLabels=sorted.map(function(r){return r.code||r.name});
+      var smData=sorted.map(function(r){return r.points});
       new Chart(smCtx.getContext('2d'),{
         type:'bar',
-        data:{labels:smLabels,datasets:[{label:'Mean Points',data:smData,backgroundColor:smColors,borderRadius:4}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},maxRotation:45}},y:{beginAtZero:true,grid:{color:'#f3f4f6'}}}}
+        data:{labels:smLabels,datasets:[{
+          label:'Mean Points',data:smData,
+          backgroundColor:'#42a5f5',borderRadius:3,barPercentage:0.7,categoryPercentage:0.8
+        }]},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},
+            tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toFixed(4)}}}
+          },
+          scales:{
+            x:{ticks:{font:{size:11},maxRotation:45,minRotation:30},grid:{display:false}},
+            y:{beginAtZero:true,grid:{color:'#e5e7eb'},ticks:{font:{size:11},stepSize:1},
+              title:{display:true,text:'Points',font:{size:12,weight:'600'},color:'#374151'}
+            }
+          }
+        }
       });
     }
 
-    // Overall Class Statistics (horizontal bar)
+    // Overall Class Statistics (vertical bar — PLV distribution from total row)
     var ocCtx=document.getElementById('arOverallChart');
     if(ocCtx){
-      var ocStreams=d.streams_all&&d.streams_all.length?d.streams_all:d.streams;
-      var ocLabels=ocStreams.map(function(s){return gradeName+' '+s});
-      var ocData=ocStreams.map(function(s){return d.stream_stats[s]?d.stream_stats[s].mean_points:0});
-      var ocColors=['#3b82f6','#f43f5e','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899'];
+      var tr=d.total_row||{};
+      var ocLabels=d.breakdown_levels.slice();
+      var ocData=ocLabels.map(function(lv){return tr[lv]||0});
       new Chart(ocCtx.getContext('2d'),{
         type:'bar',
-        data:{labels:ocLabels,datasets:[{label:'Mean Points',data:ocData,backgroundColor:ocColors.slice(0,ocStreams.length),borderRadius:4}]},
-        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'#f3f4f6'}},y:{ticks:{font:{size:11}}}}}
+        data:{labels:ocLabels,datasets:[{
+          label:'Number of Students',data:ocData,
+          backgroundColor:'#42a5f5',borderRadius:3,barPercentage:0.65,categoryPercentage:0.8
+        }]},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},
+            tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y+' students'}}}
+          },
+          scales:{
+            x:{ticks:{font:{size:11}},grid:{display:false}},
+            y:{beginAtZero:true,grid:{color:'#e5e7eb'},ticks:{font:{size:11},stepSize:5},
+              title:{display:true,text:'Number of Students',font:{size:12,weight:'600'},color:'#374151'}
+            }
+          }
+        }
       });
     }
 
@@ -838,13 +980,40 @@
     var potCtx=document.getElementById('arPOTChart');
     if(potCtx&&d.pot_labels&&d.pot_labels.length){
       var potColors=['#3b82f6','#f43f5e','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899'];
-      var potDatasets=(d.streams_all&&d.streams_all.length?d.streams_all:d.streams).map(function(s,i){
-        return{label:gradeName+' '+s,data:d.pot_streams_data[s]||[],fill:false,borderColor:potColors[i%potColors.length],backgroundColor:potColors[i%potColors.length],borderWidth:2,tension:0.1,pointRadius:4,pointBackgroundColor:potColors[i%potColors.length]};
+      var potDatasets=[];
+      var allStreams=d.streams_all&&d.streams_all.length?d.streams_all:d.streams;
+      // Overall grade line (average of all streams)
+      if(d.pot_labels.length>1||allStreams.length>1){
+        var overallData=d.pot_labels.map(function(_,li){
+          var sum=0,cnt=0;
+          allStreams.forEach(function(s){
+            var arr=d.pot_streams_data[s]||[];
+            if(arr[li]!=null){sum+=arr[li];cnt++}
+          });
+          return cnt?+(sum/cnt).toFixed(4):null;
+        });
+        potDatasets.push({label:gradeName,data:overallData,fill:false,borderColor:'#111827',backgroundColor:'#111827',borderWidth:2.5,tension:0.3,pointRadius:3,pointBackgroundColor:'#111827',pointBorderColor:'#111827'});
+      }
+      allStreams.forEach(function(s,i){
+        potDatasets.push({label:gradeName+' '+s,data:d.pot_streams_data[s]||[],fill:false,borderColor:potColors[i%potColors.length],backgroundColor:potColors[i%potColors.length],borderWidth:2,tension:0.3,pointRadius:3,pointBackgroundColor:potColors[i%potColors.length],pointBorderColor:potColors[i%potColors.length]});
       });
       new Chart(potCtx.getContext('2d'),{
         type:'line',
         data:{labels:d.pot_labels,datasets:potDatasets},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:6,padding:20,font:{size:11}}}},scales:{x:{ticks:{font:{size:10},maxRotation:30},grid:{color:'#f3f4f6'}},y:{beginAtZero:false,grace:'10%',ticks:{font:{size:11}},grid:{color:'#f3f4f6'}}}}
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          layout:{padding:{left:15,right:15,bottom:25}},
+          plugins:{
+            legend:{position:'right',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:14,font:{size:12}}},
+            tooltip:{mode:'index',intersect:false}
+          },
+          scales:{
+            x:{offset:true,ticks:{font:{size:10},maxRotation:0,autoSkip:false,callback:function(value,index){var label=this.getLabelForValue(value);if(label.length>25){var mid=Math.ceil(label.length/2);var spaceBefore=mid;var spaceAfter=mid;for(var i=mid;i>=0;i--){if(label[i]===' '||label[i]===','){spaceBefore=i;break}}for(var i=mid;i<label.length;i++){if(label[i]===' '||label[i]===','){spaceAfter=i;break}}if(spaceAfter-spaceBefore<5){spaceAfter=mid+5}return[label.substring(0,spaceAfter+1).trim(),label.substring(spaceAfter+1).trim()]}return label},font:{size:10}},grid:{color:'#cbd5e1',drawOnChartArea:true,drawTicks:true,tickMarkLength:6}},
+            y:{min:1,grace:'5%',ticks:{font:{size:11},stepSize:1},grid:{color:'#e5e7eb',drawOnChartArea:true},border:{display:false}}
+          },
+          interaction:{mode:'nearest',axis:'x',intersect:false}
+        }
       });
     }
   }
