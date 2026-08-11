@@ -2164,7 +2164,12 @@ def analysis_report_pdf(request):
         return HttpResponse(data['error'], status=400)
 
     body_html = build_pdf_html(data)
-    html_string = render_to_string('students/analysis_report_pdf.html', {'html_content': body_html})
+    school = get_request_school(request)
+    watermark = school.name if school else 'EduNexus Exam System'
+    html_string = render_to_string('students/analysis_report_pdf.html', {
+        'html_content': body_html,
+        'watermark_text': watermark,
+    })
 
     # Embed school logo as base64 for WeasyPrint
     school = get_request_school(request)

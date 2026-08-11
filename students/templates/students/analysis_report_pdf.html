@@ -4,11 +4,42 @@
 <meta charset="UTF-8">
 <title>Analysis Report</title>
 <style>
-@page{size:portrait;margin:10mm 12mm}
+@page{
+  size:landscape;
+  margin:12mm 15mm 18mm 15mm;
+  @bottom-center{
+    content:"Page " counter(page) " of " counter(pages);
+    font-size:9px;color:#64748b;font-family:'Helvetica','Arial',sans-serif;
+  }
+  @bottom-left{
+    content:"{{ watermark_text|default:'EduNexus Exam System' }}";
+    font-size:8px;color:#94a3b8;font-family:'Helvetica','Arial',sans-serif;
+  }
+  @bottom-right{
+    content:"{{ watermark_text|default:'EduNexus Exam System' }}";
+    font-size:8px;color:#94a3b8;font-family:'Helvetica','Arial',sans-serif;
+  }
+}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Helvetica','Arial',sans-serif;font-size:11px;color:#1e293b;line-height:1.4}
+body{font-family:'Helvetica','Arial',sans-serif;font-size:11px;color:#1e293b;line-height:1.4;position:relative}
+body::before{
+  content:"";
+  position:fixed;
+  bottom:40%;
+  left:50%;
+  transform:translate(-50%,-50%) rotate(-35deg);
+  font-size:80px;
+  font-weight:800;
+  color:rgba(0,0,0,0.03);
+  white-space:nowrap;
+  pointer-events:none;
+  z-index:0;
+  font-family:'Helvetica','Arial',sans-serif;
+  letter-spacing:8px;
+  text-transform:uppercase;
+}
 .hdr-accent{height:6px;background:#1e3a5f}
-.school-hdr{display:flex;align-items:center;padding:6mm 0 3mm;border-bottom:2px solid #1e3a5f}
+.school-hdr{display:flex;align-items:center;padding:6mm 0 3mm;border-bottom:2px solid #1e3a5f;position:relative;z-index:1}
 .school-logo{width:60px;height:60px;object-fit:contain;margin-right:12px}
 .school-info{text-align:center;flex:1}
 .school-name{font-size:20px;font-weight:800;color:#1e3a5f;letter-spacing:2px;text-transform:uppercase}
