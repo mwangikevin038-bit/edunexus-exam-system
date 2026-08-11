@@ -140,9 +140,29 @@
   .statistics-table-wrapper .col-points,.statistics-table-wrapper .col-change,.statistics-table-wrapper .col-trend{text-align:center}
   .statistics-table-wrapper .col-performance{text-align:left}
   .statistics-table-wrapper .cell-center{text-align:center}
-  .statistics-table-wrapper .target-data-table .trend-positive{color:#16a34a !important;font-size:15px;font-weight:900;font-family:Georgia,serif}
-  .statistics-table-wrapper .target-data-table .trend-negative{color:#ea580c !important;font-size:15px;font-weight:900;font-family:Georgia,serif}
-  .statistics-table-wrapper .target-data-table .trend-zero{color:#94a3b8 !important;font-size:15px;font-weight:900;font-family:Georgia,serif}
+  .statistics-table-wrapper .target-data-table .trend-positive,
+  .statistics-table-wrapper .target-data-table .trend-negative,
+  .statistics-table-wrapper .target-data-table .trend-zero{
+    font-size:0 !important;font-weight:900;display:inline-block;width:14px;height:22px;position:relative;vertical-align:middle;
+  }
+  .statistics-table-wrapper .target-data-table .trend-positive::before{
+    content:'';position:absolute;left:50%;bottom:2px;width:2px;height:15px;background:#16a34a;transform:translateX(-50%);
+  }
+  .statistics-table-wrapper .target-data-table .trend-positive::after{
+    content:'';position:absolute;left:0;top:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:8px solid #16a34a;
+  }
+  .statistics-table-wrapper .target-data-table .trend-negative::before{
+    content:'';position:absolute;left:50%;top:2px;width:2px;height:15px;background:#ea580c;transform:translateX(-50%);
+  }
+  .statistics-table-wrapper .target-data-table .trend-negative::after{
+    content:'';position:absolute;left:0;bottom:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #ea580c;
+  }
+  .statistics-table-wrapper .target-data-table .trend-zero::before{
+    content:'';position:absolute;left:calc(50% - 5px);top:50%;width:10px;height:2px;background:#94a3b8;transform:translateY(-50%);
+  }
+  .statistics-table-wrapper .target-data-table .trend-zero::after{
+    content:'';position:absolute;right:0;top:50%;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid #94a3b8;transform:translateY(-50%);
+  }
 
   /* Gender badge */
   .ar-gender-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase}
