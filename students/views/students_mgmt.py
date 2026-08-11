@@ -2150,6 +2150,37 @@ def api_teacher_for_subject(request):
 
 @login_required(login_url='login')
 @school_admin_required
+def report_forms(request):
+    """Report Forms page — Grade + Stream selection, then download report forms."""
+    from ..models import Grade, Stream
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+
+    streams = []
+    if grade_name:
+        streams = list(
+            Stream.all_objects.filter(school=school, grade__name=grade_name)
+            .values_list('name', flat=True).order_by('name')
+        )
+
+    return render(request, 'students/report_forms.html', {
+        'grades': grades,
+        'streams': streams,
+        'selected_grade': grade_name,
+        'selected_stream': stream_name,
+    })
+
+
+@login_required(login_url='login')
+@school_admin_required
 def analysis_report_pdf(request):
     """Generate PDF of the analysis report using WeasyPrint."""
     import json, base64, mimetypes
