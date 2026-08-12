@@ -41,6 +41,8 @@
   .rf-field label .req{color:#ef4444;margin-left:2px}
   .rf-field select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;color:#1e293b;font-family:'Plus Jakarta Sans','Inter',sans-serif;background:#fff;transition:all .2s;height:42px;box-sizing:border-box;appearance:auto}
   .rf-field select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+  .rf-field-full{grid-column:1 / -1}
+  .rf-field-hidden{display:none}
   .rf-btn-row{display:flex;justify-content:flex-end;margin-top:24px}
   .rf-fetch-btn{display:inline-flex;align-items:center;gap:8px;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.2s ease;box-shadow:0 2px 8px rgba(22,163,74,0.3)}
   .rf-fetch-btn:hover{background:#15803d;box-shadow:0 4px 14px rgba(22,163,74,0.4);transform:translateY(-1px)}
@@ -74,6 +76,12 @@
             <option value="">Select Stream</option>
           </select>
         </div>
+        <div class="rf-field rf-field-full rf-field-hidden" id="rfExamWrap">
+          <label>Exam <span class="req">*</span></label>
+          <select name="exam" id="rfExam" disabled>
+            <option value="">Select Exam</option>
+          </select>
+        </div>
       </form>
       <div class="rf-btn-row">
         <button type="button" class="rf-fetch-btn" id="rfFetchBtn">
@@ -92,6 +100,8 @@
 (function(){
   var grade=document.getElementById('rfGrade'),
       stream=document.getElementById('rfStream'),
+      exam=document.getElementById('rfExam'),
+      examWrap=document.getElementById('rfExamWrap'),
       fetchBtn=document.getElementById('rfFetchBtn'),
       toggle=document.getElementById('rfToggle'),
       body=document.getElementById('rfBody');
@@ -109,6 +119,9 @@
   grade.addEventListener('change',function(){
     stream.innerHTML='<option value="">Select Stream</option>';
     stream.disabled=true;
+    exam.innerHTML='<option value="">Select Exam</option>';
+    exam.disabled=true;
+    examWrap.classList.add('rf-field-hidden');
     if(!grade.value) return;
     fetch('{% url "api_streams_for_grade_printout" %}?grade='+encodeURIComponent(grade.value))
       .then(function(r){return r.json()})
@@ -124,12 +137,30 @@
         }
       })
       .catch(function(err){console.error('Streams fetch error:',err)});
+    fetch('{% url "api_exams_for_class" %}?grade='+encodeURIComponent(grade.value))
+      .then(function(r){return r.json()})
+      .then(function(data){
+        if(data.exams && data.exams.length){
+          exam.innerHTML='<option value="">Select Exam</option>';
+          for(var i=0;i<data.exams.length;i++){
+            var e=data.exams[i];
+            var opt=document.createElement('option');
+            opt.value=e.id;
+            opt.textContent=e.name+' ('+e.term+' '+e.year+')';
+            exam.appendChild(opt);
+          }
+          exam.disabled=false;
+          examWrap.classList.remove('rf-field-hidden');
+        }
+      })
+      .catch(function(err){console.error('Exams fetch error:',err)});
   });
 
   fetchBtn.addEventListener('click',function(){
     if(!grade.value){alert('Please select a Form / Grade.');return}
     if(!stream.value){alert('Please select a Stream.');return}
-    window.location.href='{% url "report_forms" %}?grade='+encodeURIComponent(grade.value)+'&stream='+encodeURIComponent(stream.value);
+    if(!exam.value){alert('Please select an Exam.');return}
+    window.location.href='{% url "report_forms" %}?grade='+encodeURIComponent(grade.value)+'&stream='+encodeURIComponent(stream.value)+'&exam_id='+encodeURIComponent(exam.value);
   });
 })();
 </script>
