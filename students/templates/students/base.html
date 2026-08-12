@@ -205,7 +205,7 @@
                     <i class="ph ph-chart-bar"></i> <span>Published Results</span>
                 </a>
                 {% if "Class Teacher" in request.user.teacher_profile.assigned_task %}
-                <a class="nav-link-card {% if request.resolver_match.url_name == 'report_card_select' %}active-section{% endif %}" href="{% url 'report_card_select' %}">
+                <a class="nav-link-card {% if request.resolver_match.url_name == 'report_forms' %}active-section{% endif %}" href="{% url 'report_forms' %}">
                     <i class="ph ph-certificate"></i> <span>Report Cards</span>
                 </a>
                 {% endif %}
