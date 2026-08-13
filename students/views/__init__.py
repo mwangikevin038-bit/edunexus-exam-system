@@ -66,6 +66,7 @@ from .students_mgmt import (  # noqa: F401
     analysis_report,
     analysis_report_pdf,
     report_forms,
+    report_forms_display,
     api_exams_for_class,
     api_subjects_for_grade,
     api_teacher_for_subject,
@@ -94,6 +95,7 @@ from .reports import (  # noqa: F401
     report_card_select,
     individual_report,
     bulk_report_cards,
+    report_card_poll_status,
 )
 
 # ── Faculty & comments views ─────────────────────────────────────────────────

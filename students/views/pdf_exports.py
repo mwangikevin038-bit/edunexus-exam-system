@@ -65,13 +65,14 @@ def generate_python_chart_base64(labels, student_scores, class_averages):
         try:
             from scipy.interpolate import make_interp_spline
             x_smooth = np.linspace(x.min(), x.max(), 200)
-            spline_student = make_interp_spline(x, student_scores, k=3)
+            spline_k = min(3, len(x) - 1) if len(x) > 1 else 1
+            spline_student = make_interp_spline(x, student_scores, k=spline_k)
             student_smooth = np.clip(spline_student(x_smooth), 0, 100)
-            spline_class = make_interp_spline(x, class_averages, k=3)
+            spline_class = make_interp_spline(x, class_averages, k=spline_k)
             class_smooth = np.clip(spline_class(x_smooth), 0, 100)
             ax.plot(x_smooth, student_smooth, color='#4f46e5', linewidth=2, label='Student', zorder=3)
             ax.plot(x_smooth, class_smooth, color='#94a3b8', linewidth=1.5, linestyle='--', label='Class Avg', zorder=2)
-        except ImportError:
+        except (ImportError, ValueError, Exception):
             ax.plot(x, student_scores, marker='o', color='#4f46e5', linewidth=2, label='Student', zorder=3)
             ax.plot(x, class_averages, marker='s', linestyle='--', color='#94a3b8', linewidth=1.5, label='Class Avg', zorder=2)
             x_smooth = x
@@ -215,6 +216,8 @@ def download_broadsheet_pdf(request):
     if not school:
         return JsonResponse({'error': 'School context is required.'}, status=400)
 
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
     # ── Determine workspace section first ────────────────────────────────────
     section = get_request_school_section(request)
     is_lower_primary = section == 'LOWER_PRIMARY'
@@ -265,7 +268,7 @@ def download_broadsheet_pdf(request):
     published_subjects      = []
 
     if year and term and grade and stream and exam_type:
-        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None)
+        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None, is_admin=is_admin_view)
         published_subject_count = len(published_subject_codes)
         from ..models import Subject
         published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
@@ -725,6 +728,8 @@ def download_individual_report_pdf(request, student_id):
     if not user_can_access_class_stream(request.user, student.class_name, student.stream, require_class_teacher=True):
         return JsonResponse({'error': 'You are not allowed to print report cards for this class stream.'}, status=403)
 
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
     year       = request.GET.get('year', datetime.date.today().year)
     term       = request.GET.get('term', 'Term 1')
     assessment = request.GET.get('assessment', 'opener')
@@ -735,6 +740,7 @@ def download_individual_report_pdf(request, student_id):
     published_subject_codes = get_published_subject_codes(
         student.class_name, student.stream, year, term, db_assessment,
         sub_section=student_sub_section,
+        is_admin=is_admin_view,
     )
     from ..models import Subject
     published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
@@ -922,7 +928,7 @@ def download_individual_report_pdf(request, student_id):
         section_accent = section_colors['JSS']
 
     # ── Render template ───────────────────────────────────────────────────────
-    template_html = render_to_string('students/individual_report_card.html', {
+    template_html = render_to_string('students/report_card.html', {
         'student':             student,
         'marks':               marks_list,
         'total_marks':         total_marks,
@@ -946,6 +952,10 @@ def download_individual_report_pdf(request, student_id):
         'selected_assessment': ASSESSMENT_MAP.get(assessment, assessment),
         'today':               datetime.date.today(),
         'section_accent':      section_accent,
+        'view_mode':           'pdf',
+        'show_mobile_shell':   False,
+        'show_header':         False,
+        'show_control_panel':  False,
         'student_marks_list':  [{
             'student': student, 'marks': marks_list,
             'total_marks': total_marks, 'total_points': total_points,
@@ -1071,6 +1081,8 @@ def download_bulk_report_pdf(request):
     from .grading_engine import prefetch_school_grading, resolve_scale_fast
     prefetch_school_grading(school)
 
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
     student_ids   = [sid for sid in request.GET.get('ids', '').split(',') if sid]
     year          = request.GET.get('year', str(datetime.date.today().year))
     term          = request.GET.get('term', 'Term 1')
@@ -1096,6 +1108,7 @@ def download_bulk_report_pdf(request):
     published_subject_codes = get_published_subject_codes(
         sample.class_name, sample.stream, year, term, db_assessment,
         sub_section=sample.sub_section if is_primary else None,
+        is_admin=is_admin_view,
     )
     published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
 
@@ -1288,10 +1301,14 @@ def download_bulk_report_pdf(request):
             'closing_date':        master_comment.closing_date if master_comment else None,
             'opening_date':        master_comment.opening_date if master_comment else None,
             'section_accent':      section_accent,
+            'view_mode':           'pdf',
+            'show_mobile_shell':   False,
+            'show_header':         False,
+            'show_control_panel':  False,
         }
 
         # Render single student HTML
-        single_html = render_to_string('students/individual_report_card.html', student_context, request=request)
+        single_html = render_to_string('students/report_card.html', student_context, request=request)
         single_html = _embed_logo_base64(single_html, request)
 
         # Inject print CSS for single page

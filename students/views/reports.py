@@ -172,7 +172,7 @@ def results_list(request):
 
     if year and term and grade and stream and exam_type:
         show_table = True
-        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None)
+        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None, is_admin=is_admin_view)
         published_subject_count = len(published_subject_codes)
 
         # Get Subject objects for published subjects and keep stable display labels.
@@ -525,6 +525,8 @@ def individual_report(request, student_id):
         messages.error(request, "You are not allowed to open report cards for this class stream.")
         return redirect('report_card_select')
 
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
     year       = request.GET.get('year', datetime.date.today().year)
     term       = request.GET.get('term', 'Term 1')
     assessment = request.GET.get('assessment', 'opener')
@@ -540,6 +542,7 @@ def individual_report(request, student_id):
         term,
         db_assessment,
         sub_section=student_sub_section,
+        is_admin=is_admin_view,
     )
     from ..models import Subject
     published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
@@ -581,6 +584,7 @@ def individual_report(request, student_id):
     )
 
     # READ-ONLY FALLBACK: If ExamSummary not populated, compute from live marks
+    class_count = grade_summaries.count()
     if summary:
         total_marks  = summary.total_marks
         total_points = summary.total_points
@@ -685,20 +689,26 @@ def individual_report(request, student_id):
     max_total_points    = assessed_subjects * max_points_per_subj
 
     # ── Chart payload: student score vs class average, per subject ─────────
+    from .constants import SUBJECT_SHORT_MAP as _JSS_SHORT, PRIMARY_SUBJECT_SHORT_MAP as _PRI_SHORT
+    _short = _PRI_SHORT if is_primary else _JSS_SHORT
     chart_data_json = json.dumps({
-        'labels':    [m.subject_name for m in marks_list if not m.is_absent],
-        'student':   [m.score for m in marks_list if not m.is_absent],
-        'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
+        'labels':     [_short.get(m.subject.code, m.subject_name) for m in marks_list if not m.is_absent],
+        'student':    [m.score for m in marks_list if not m.is_absent],
+        'class_avg':  [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
+        'student_name': student.name.split()[0] if student.name else 'Student',
+        'class_name':  f"{student.class_name} {student.stream}".strip(),
     })
 
     # PLV — read from ExamSummary cache
     overall_plv = summary.overall_plv if summary else ('-' if assessed_subjects == 0 else calculate_primary_plv(total_marks, assessed_subjects, sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks, school=school, section=student.school_section))
-    master_comment = ClassTeacherMasterComment.objects.filter(
+    ct_comment_mgr = ClassTeacherMasterComment.all_objects if is_admin_view else ClassTeacherMasterComment.objects
+    master_comment = ct_comment_mgr.filter(
         school=school,
         year=year, term=term, grade=student.class_name,
         stream=student.stream, exam_type=db_assessment,
     ).first()
-    school_ht_comment = SchoolHeadteacherComment.objects.filter(
+    ht_comment_mgr = SchoolHeadteacherComment.all_objects if is_admin_view else SchoolHeadteacherComment.objects
+    school_ht_comment = ht_comment_mgr.filter(
         school=school,
         year=year, term=term, exam_type=db_assessment,
         school_section=student.school_section,
@@ -772,7 +782,7 @@ def individual_report(request, student_id):
     else:
         section_accent = section_colors['JSS']
 
-    return render(request, 'students/individual_report_card.html', {
+    return render(request, 'students/report_card.html', {
         'student':             student,
         'marks':               marks_list,
         'total_marks':         total_marks,
@@ -794,8 +804,14 @@ def individual_report(request, student_id):
         'selected_year':       year,
         'selected_term':       term,
         'selected_assessment': ASSESSMENT_MAP.get(assessment, assessment),
+        'selected_grade':      student.class_name,
+        'selected_stream':     student.stream,
         'today':               datetime.date.today(),
         'section_accent':      section_accent,
+        'view_mode':           'individual',
+        'show_mobile_shell':   True,
+        'show_header':         True,
+        'show_control_panel':  False,
         'student_marks_list':  [{
             'student': student, 'marks': marks_list,
             'total_marks': total_marks, 'total_points': total_points,
@@ -853,6 +869,7 @@ def bulk_report_cards(request):
 
     is_primary = sample.school_section == 'PRIMARY' if sample else False
     is_lower_primary = (sample.school_section == 'PRIMARY' and sample.sub_section == 'LOWER') if sample else False
+    is_admin_view = user_has_main_school_admin_override(request.user)
     from ..models import Subject
 
     published_subject_codes = set()
@@ -864,6 +881,7 @@ def bulk_report_cards(request):
             term,
             db_assessment,
             sub_section=sample.sub_section if is_primary else None,
+            is_admin=is_admin_view,
         )
     published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
     if is_lower_primary:
@@ -892,7 +910,15 @@ def bulk_report_cards(request):
     selected_students = list(selected_students_base)
 
     if not selected_students:
-        return render(request, 'students/bulk_report_cards.html', {'student_marks_list': [], 'class_count': 0})
+        return render(request, 'students/report_card.html', {
+            'student_marks_list': [],
+            'class_count': 0,
+            'view_mode': 'bulk',
+            'show_mobile_shell': False,
+            'show_header': True,
+            'show_control_panel': False,
+            'is_async': False,
+        })
 
     # ── Read from ExamSummary cache (populated by Celery task on Publish) ──
     from ..models import ExamSummary
@@ -948,13 +974,15 @@ def bulk_report_cards(request):
     if ct_q:
         class_teacher_name = ct_q.get_full_title()
 
-    master_comment = ClassTeacherMasterComment.objects.filter(
+    ct_comment_mgr = ClassTeacherMasterComment.all_objects if is_admin_view else ClassTeacherMasterComment.objects
+    master_comment = ct_comment_mgr.filter(
         school=school,
         year=year, term=term, grade=sample.class_name,
         stream=sample.stream, exam_type=db_assessment,
     ).first()
 
-    school_ht_comment = SchoolHeadteacherComment.objects.filter(
+    ht_comment_mgr = SchoolHeadteacherComment.all_objects if is_admin_view else SchoolHeadteacherComment.objects
+    school_ht_comment = ht_comment_mgr.filter(
         school=school,
         year=year, term=term, exam_type=db_assessment,
         school_section=sample.school_section,
@@ -998,10 +1026,14 @@ def bulk_report_cards(request):
         max_total_marks   = assessed_subjects * 100
         max_total_points  = assessed_subjects * max_points_per_subj
 
+        from .constants import SUBJECT_SHORT_MAP as _JSS_SHORT2, PRIMARY_SUBJECT_SHORT_MAP as _PRI_SHORT2
+        _short2 = _PRI_SHORT2 if is_primary else _JSS_SHORT2
         chart_data_json = json.dumps({
-            'labels':    [m.subject_name for m in marks if not m.is_absent],
-            'student':   [m.score for m in marks if not m.is_absent],
-            'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent],
+            'labels':     [_short2.get(m.subject.code, m.subject_name) for m in marks if not m.is_absent],
+            'student':    [m.score for m in marks if not m.is_absent],
+            'class_avg':  [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent],
+            'student_name': student.name.split()[0] if student.name else 'Student',
+            'class_name':  f"{student.class_name} {student.stream}".strip(),
         })
 
         position = stream_rank_map.get(student.id, 0)  # Stream-specific rank from ExamSummary
@@ -1087,13 +1119,43 @@ def bulk_report_cards(request):
     else:
         section_accent = section_colors['JSS']
 
-    return render(request, 'students/bulk_report_cards.html', {
+    return render(request, 'students/report_card.html', {
         'student_marks_list': student_marks_list,
         'selected_year':      year,
         'selected_term':      term,
         'selected_assessment': db_assessment,
+        'selected_grade':     sample.class_name if sample else '',
+        'selected_stream':    sample.stream if sample else '',
         'class_count':        total_class_count,
         'closing_date':       master_comment.closing_date if master_comment else None,
         'opening_date':       master_comment.opening_date if master_comment else None,
         'section_accent':     section_accent,
+        'view_mode':          'bulk',
+        'show_mobile_shell':  False,
+        'show_header':        True,
+        'show_control_panel': False,
+        'is_async':           False,
+    })
+
+
+@login_required(login_url='login')
+def report_card_poll_status(request):
+    """
+    AJAX endpoint for polling report card generation status.
+    Returns JSON with {ready: bool, loaded: int, total: int, html: str}.
+    """
+    from django.http import JsonResponse
+    from django.template.loader import render_to_string
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
+
+    # For now, report cards are generated synchronously, so always ready
+    # This endpoint can be extended later for async Celery-based generation
+    return JsonResponse({
+        'ready': True,
+        'loaded': 0,
+        'total': 0,
+        'html': '',
     })

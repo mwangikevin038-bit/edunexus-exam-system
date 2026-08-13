@@ -22,6 +22,7 @@ urlpatterns = [
     path('printouts/score-sheet/', views.score_sheet, name='score_sheet'),
     path('printouts/analysis-report/', views.analysis_report, name='analysis_report'),
     path('printouts/report-forms/', views.report_forms, name='report_forms'),
+    path('printouts/report-forms/display/', views.report_forms_display, name='report_forms_display'),
     path('printouts/api/exams/', views.api_exams_for_class, name='api_exams_for_class'),
     path('printouts/api/streams/', views.api_streams_for_grade_printout, name='api_streams_for_grade_printout'),
     path('printouts/api/subjects/', views.api_subjects_for_grade, name='api_subjects_for_grade'),
@@ -46,6 +47,7 @@ urlpatterns = [
     path('report/<int:student_id>/download-pdf/', views.download_individual_report_pdf, name='download_individual_report_pdf'),
     path('bulk-reports/', views.bulk_report_cards, name='bulk_report_cards'),
     path('bulk-reports/download-pdf/', views.download_bulk_report_pdf, name='download_bulk_report_pdf'),
+    path('bulk-reports/poll-status/', views.report_card_poll_status, name='report_card_poll_status'),
 
     # ── Comments ──────────────────────────────────────────────────────────
     path('manage-master-comments/', views.manage_master_comments, name='manage_master_comments'),

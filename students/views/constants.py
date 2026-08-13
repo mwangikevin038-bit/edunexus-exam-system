@@ -179,9 +179,9 @@ PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
 JSS_GRADE_CHOICES = ['Grade 7', 'Grade 8', 'Grade 9']
 
 ASSESSMENT_MAP = {
-    'opener': 'Opener Assessment',
-    'mid':    'Mid Term Assessment',
-    'end':    'End Term Assessment',
+    'opener': 'Opener',
+    'mid':    'Mid Term',
+    'end':    'End Term',
 }
 
 ASSESSMENT_SLUG_MAP = {name: slug for slug, name in ASSESSMENT_MAP.items()}

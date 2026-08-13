@@ -1,0 +1,115 @@
+<div class="report-card" style="--section-accent: {{ section_accent }};">
+    <div class="report-content">
+        <div class="rc-header">
+            {% if request.school.logo %}
+            <img src="{{ request.school.logo.url }}" alt="Logo" class="report-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <div class="rc-logo-placeholder" style="display:none;">{{ request.school.name|truncatechars:1 }}</div>
+            {% else %}
+            <div class="rc-logo-placeholder">{{ request.school.name|truncatechars:1 }}</div>
+            {% endif %}
+            <div class="rc-schoolinfo">
+                <h1>{{ request.school.name|upper }}</h1>
+                <p class="rc-tagline">Excellence &middot; Discipline &middot; Character</p>
+                <p class="rc-address">Address: {{ request.school.address }}</p>
+                <p class="rc-contact-line">Tel {{ request.school.phone_number }} &nbsp;|&nbsp; Email {{ request.school.email }}</p>
+            </div>
+            <div class="rc-logo-spacer"></div>
+        </div>
+
+        <div class="rc-banner">
+            ACADEMIC REPORT FORM &nbsp;–&nbsp; {{ student_data.student.class_name }} &nbsp;–&nbsp; {{ selected_assessment|upper }} &nbsp;–&nbsp; ({{ selected_year }} {{ selected_term }})
+        </div>
+
+        <div class="rc-top-grid">
+            <div class="rc-student-block">
+                <div class="rc-photo-placeholder"></div>
+                <div class="rc-student-info">
+                    <div class="rc-student-name">{{ student_data.student.name }}</div>
+                    <div class="rc-detail"><span class="rc-label admno">ADMNO:</span> {{ student_data.student.admission_no }}</div>
+                    <div class="rc-detail"><span class="rc-label grade">GRADE:</span> {{ student_data.student.class_name }} {{ student_data.student.stream }}</div>
+                    {% if student_data.student.pathway %}<div class="rc-detail"><span class="rc-label pathway">PATHWAY:</span> {{ student_data.student.pathway }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="rc-chart-block">
+                <div class="rc-chart-title">Subject Performance - Student vs Class</div>
+                {% if student_data.chart_base64_image %}
+                <img src="{{ student_data.chart_base64_image }}" class="rc-chart-img rc-chart-fallback" alt="Performance Chart" />
+                {% endif %}
+                <div class="rc-chart-canvas-wrap">
+                    <canvas id="rc-chart-canvas-{{ forloop.counter }}"></canvas>
+                </div>
+                <script type="application/json" id="rc-chart-payload-{{ forloop.counter }}">{{ student_data.chart_data_json|default:'{"labels":[],"student":[],"class_avg":[],"student_name":"Student","class_name":""}'|escapejs }}</script>
+            </div>
+        </div>
+
+        <div class="rc-stats">
+            <div class="rc-stat"><span class="rc-stat-label">Position</span><span class="rc-stat-value">{{ student_data.position|default:"-" }}{% if student_data.class_count %}<small style="font-size:8pt;color:var(--rc-muted);">/{{ student_data.class_count }}</small>{% endif %}</span></div>
+            <div class="rc-stat"><span class="rc-stat-label">Performance Level</span><span class="rc-stat-value">{{ student_data.overall_plv }}</span></div>
+            <div class="rc-stat"><span class="rc-stat-label">Total Marks</span><span class="rc-stat-value">{{ student_data.total_marks }}/{{ student_data.max_total_marks }}</span></div>
+            <div class="rc-stat"><span class="rc-stat-label">Total Points</span><span class="rc-stat-value">{{ student_data.total_points|default:"-" }}/{{ student_data.max_total_points }}</span></div>
+            <div class="rc-stat"><span class="rc-stat-label">Mean Points</span><span class="rc-stat-value">{{ student_data.mean_points }}/{{ student_data.mean_points_max }}</span></div>
+        </div>
+
+        <div class="table-scroll">
+        <table class="rc-table">
+            <thead><tr><th style="text-align:left;">Subjects</th><th>Marks</th><th>Dev.</th><th>Grade</th><th>Teacher</th></tr></thead>
+            <tbody>
+                {% for mark in student_data.marks %}
+                    {% if mark.score != None and mark.score != "-" %}
+                    <tr>
+                        <td class="rc-subj">{{ mark.subject_name }}</td>
+                        <td class="rc-center">{% if mark.is_absent %}AB{% else %}{{ mark.score }}%{% endif %}</td>
+                        <td class="rc-center {% if mark.deviation != None %}{% if mark.deviation > 0 %}rc-dev-up{% elif mark.deviation < 0 %}rc-dev-down{% endif %}{% endif %}">{% if mark.deviation != None %}{{ mark.deviation }}{% else %}-{% endif %}</td>
+                        <td class="rc-center rc-grade">{{ mark.performance_level|default:"-" }}</td>
+                        <td class="rc-teacher">{{ mark.teacher_name }}</td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+
+        <div class="rc-remarks-grid">
+            <div class="rc-remark-box">
+                <div class="rc-remark-title">Class Teacher Remarks</div>
+                {% if student_data.class_teacher_name %}<div class="rc-remark-author">{{ student_data.class_teacher_name }}</div>{% endif %}
+                <div class="rc-remark-text">{{ student_data.class_teacher_remark }}</div>
+                <div class="rc-signature">Signature: ____________________</div>
+            </div>
+            <div class="rc-remark-box">
+                <div class="rc-remark-title">Principal Remarks</div>
+                <div class="rc-remark-text">{{ student_data.headteacher_comment }}</div>
+                <div class="rc-signature">Signature &amp; Stamp: ____________________</div>
+            </div>
+        </div>
+
+        <div class="rc-descriptors">
+            <div class="rc-descriptors-title">Grade Descriptors</div>
+            <table class="rc-descriptors-table">
+                <thead>
+                    <tr>
+                        <th>Performance Level</th>
+                        {% for d in student_data.grade_descriptors %}<th>{{ d.level }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Points</td>
+                        {% for d in student_data.grade_descriptors %}<td>{{ d.points }}</td>{% endfor %}
+                    </tr>
+                    <tr>
+                        <td>Range (%)</td>
+                        {% for d in student_data.grade_descriptors %}<td>{{ d.min_score }}-{{ d.max_score }}</td>{% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer-dates">
+            <div class="date-box"><span>CLOSING DATE:</span><span>{% if student_data.closing_date %}{{ student_data.closing_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
+            <div class="date-box"><span>OPENING DATE:</span><span>{% if student_data.opening_date %}{{ student_data.opening_date|date:"d / m / Y" }}{% else %}__ / __ / ____{% endif %}</span></div>
+        </div>
+        <div class="system-footer">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
+        <div class="rc-print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026</div>
+    </div>
+</div>

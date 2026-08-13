@@ -25,43 +25,60 @@
 
 {% block content %}
 <style>
-  .rf-page{max-width:1100px;margin:0 auto;padding:24px 28px 60px}
-  .rf-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,0.05);overflow:hidden}
-  .rf-card-header{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid #f1f5f9}
-  .rf-card-header h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:18px;color:#111827;margin:0}
+  .rf-page{max-width:1200px;margin:0 auto;padding:40px 40px 60px;background:#eaecf0;min-height:100vh}
+  .main-content{background:#eaecf0!important}
+  .app-content{background:#eaecf0!important}
+  .rf-card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:0;overflow:hidden}
+  .rf-card-header{display:flex;align-items:center;justify-content:space-between;padding:24px 32px 12px}
+  .rf-card-header h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:20px;color:#111827;margin:0}
   .rf-toggle{background:none;border:none;cursor:pointer;padding:4px;color:#64748b;transition:color 0.15s}
   .rf-toggle:hover{color:#1e293b}
-  .rf-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform 0.3s}
+  .rf-toggle svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform 0.3s}
   .rf-toggle.collapsed svg{transform:rotate(180deg)}
-  .rf-card-body{padding:24px 28px;transition:max-height 0.4s ease,opacity 0.3s ease,padding 0.4s ease;overflow:hidden}
+  .rf-subtitle{font-size:14px;color:#6b7280;margin:0;padding:0 32px 20px;font-family:'Inter',sans-serif;font-weight:500}
+  .rf-card-body{padding:0 32px 28px;transition:max-height 0.4s ease,opacity 0.3s ease,padding 0.4s ease;overflow:hidden}
   .rf-card-body.collapsed{max-height:0!important;opacity:0;padding-top:0;padding-bottom:0}
-  .rf-subtitle{font-size:14px;color:#6b7280;margin:0 0 20px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
-  .rf-filters{display:grid;grid-template-columns:1fr 1fr;gap:20px 28px;margin-bottom:0}
-  .rf-field label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
+  .rf-filters{display:grid;grid-template-columns:1fr 1fr;gap:20px 32px;margin-bottom:0}
+  .rf-field label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;font-family:'Inter',sans-serif}
   .rf-field label .req{color:#ef4444;margin-left:2px}
-  .rf-field select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;color:#1e293b;font-family:'Plus Jakarta Sans','Inter',sans-serif;background:#fff;transition:all .2s;height:42px;box-sizing:border-box;appearance:auto}
+  .rf-field select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;color:#1e293b;font-family:'Inter',sans-serif;background:#f8fdf8;transition:all .2s;height:42px;box-sizing:border-box;appearance:auto}
   .rf-field select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
   .rf-field-full{grid-column:1 / -1}
   .rf-field-hidden{display:none}
-  .rf-btn-row{display:flex;justify-content:flex-end;margin-top:24px}
-  .rf-fetch-btn{display:inline-flex;align-items:center;gap:8px;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.2s ease;box-shadow:0 2px 8px rgba(22,163,74,0.3)}
-  .rf-fetch-btn:hover{background:#15803d;box-shadow:0 4px 14px rgba(22,163,74,0.4);transform:translateY(-1px)}
-  .rf-fetch-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
-  .rf-footer{text-align:center;padding:20px 28px;color:#9ca3af;font-size:12px;border-top:1px solid #f1f5f9;margin-top:20px}
+.rf-btn-row{display:flex;justify-content:flex-end;margin-top:28px}
+.rf-fetch-btn{display:inline-flex;align-items:center;gap:8px;background:#16a34a;color:#fff;border:none;border-radius:6px;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s ease;box-shadow:0 2px 8px rgba(22,163,74,0.25)}
+.rf-fetch-btn:hover{background:#15803d;box-shadow:0 4px 14px rgba(22,163,74,0.35);transform:translateY(-1px)}
+.rf-fetch-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+.rf-summary{padding:18px 32px;display:none;background:#f1f5f9}
+.rf-summary.visible{display:block}
+.rf-summary-grade{font-size:18px;font-weight:800;color:#0f172a;margin-bottom:4px;font-family:'Inter',sans-serif}
+.rf-summary-exam{font-size:14px;color:#475569;font-weight:500;font-family:'Inter',sans-serif}
+.rf-loading{display:none;text-align:center;padding:60px 20px}
+  .rf-loading.visible{display:block}
+  .rf-loading-text{font-size:16px;color:#374151;font-weight:600;margin-bottom:16px;font-family:'Inter',sans-serif}
+  .rf-spinner{display:inline-flex;align-items:flex-end;gap:4px;height:40px}
+  .rf-spinner-bar{width:8px;background:#16a34a;border-radius:2px;animation:rf-bar 1s ease-in-out infinite}
+  .rf-spinner-bar:nth-child(1){height:12px;animation-delay:0s}
+  .rf-spinner-bar:nth-child(2){height:20px;animation-delay:0.15s}
+  .rf-spinner-bar:nth-child(3){height:28px;animation-delay:0.3s}
+  .rf-spinner-bar:nth-child(4){height:36px;animation-delay:0.45s}
+  .rf-spinner-bar:nth-child(5){height:28px;animation-delay:0.6s}
+  @keyframes rf-bar{0%,100%{transform:scaleY(0.4);opacity:0.5}50%{transform:scaleY(1);opacity:1}}
+  .rf-footer{text-align:center;padding:20px 32px;color:#9ca3af;font-size:12px;margin-top:20px}
   .rf-footer a{color:#16a34a;text-decoration:none;font-weight:600}
   .rf-footer a:hover{text-decoration:underline}
 </style>
 
 <div class="rf-page">
-  <div class="rf-card">
+  <div class="rf-card" id="rfCard">
     <div class="rf-card-header">
       <h2>Report Forms</h2>
       <button type="button" class="rf-toggle" id="rfToggle" title="Toggle panel">
         <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
       </button>
     </div>
+    <p class="rf-subtitle">Select class and exam to download report forms</p>
     <div class="rf-card-body" id="rfBody">
-      <p class="rf-subtitle">Select class and exam to download report forms</p>
       <form method="GET" class="rf-filters" id="rfForm">
         <div class="rf-field">
           <label>Form / Grade <span class="req">*</span></label>
@@ -89,6 +106,21 @@
         </button>
       </div>
     </div>
+    <div class="rf-summary" id="rfSummary">
+      <div class="rf-summary-grade" id="rfSummaryGrade"></div>
+      <div class="rf-summary-exam" id="rfSummaryExam"></div>
+    </div>
+  </div>
+
+  <div class="rf-loading" id="rfLoading">
+    <div class="rf-loading-text">Generating Report Forms. Please wait...</div>
+    <div class="rf-spinner">
+      <div class="rf-spinner-bar"></div>
+      <div class="rf-spinner-bar"></div>
+      <div class="rf-spinner-bar"></div>
+      <div class="rf-spinner-bar"></div>
+      <div class="rf-spinner-bar"></div>
+    </div>
   </div>
 
   <div class="rf-footer">
@@ -104,17 +136,39 @@
       examWrap=document.getElementById('rfExamWrap'),
       fetchBtn=document.getElementById('rfFetchBtn'),
       toggle=document.getElementById('rfToggle'),
-      body=document.getElementById('rfBody');
+      body=document.getElementById('rfBody'),
+      summary=document.getElementById('rfSummary'),
+      summaryGrade=document.getElementById('rfSummaryGrade'),
+      summaryExam=document.getElementById('rfSummaryExam'),
+      loading=document.getElementById('rfLoading');
 
   toggle.addEventListener('click',function(){
     if(body.classList.contains('collapsed')){
       body.classList.remove('collapsed');
       toggle.classList.remove('collapsed');
+      summary.classList.remove('visible');
     } else {
       body.classList.add('collapsed');
       toggle.classList.add('collapsed');
+      summary.classList.add('visible');
     }
   });
+
+  function updateSummary(){
+    var gradeText=grade.options[grade.selectedIndex]&&grade.value?grade.options[grade.selectedIndex].text:'';
+    var streamText=stream.value||'';
+    var examText=exam.options[exam.selectedIndex]&&exam.value?exam.options[exam.selectedIndex].text:'';
+    if(gradeText){
+      summaryGrade.textContent=gradeText+(streamText?': '+streamText:'');
+    }else{
+      summaryGrade.textContent='No class selected';
+    }
+    if(examText){
+      summaryExam.textContent=examText;
+    }else{
+      summaryExam.textContent='Select a class and exam below';
+    }
+  }
 
   grade.addEventListener('change',function(){
     stream.innerHTML='<option value="">Select Stream</option>';
@@ -122,6 +176,7 @@
     exam.innerHTML='<option value="">Select Exam</option>';
     exam.disabled=true;
     examWrap.classList.add('rf-field-hidden');
+    updateSummary();
     if(!grade.value) return;
     fetch('{% url "api_streams_for_grade_printout" %}?grade='+encodeURIComponent(grade.value))
       .then(function(r){return r.json()})
@@ -160,8 +215,28 @@
     if(!grade.value){alert('Please select a Form / Grade.');return}
     if(!stream.value){alert('Please select a Stream.');return}
     if(!exam.value){alert('Please select an Exam.');return}
-    window.location.href='{% url "report_forms" %}?grade='+encodeURIComponent(grade.value)+'&stream='+encodeURIComponent(stream.value)+'&exam_id='+encodeURIComponent(exam.value);
+
+    updateSummary();
+    body.classList.add('collapsed');
+    toggle.classList.add('collapsed');
+    summary.classList.add('visible');
+    loading.classList.add('visible');
+
+    window.location.href='{% url "report_forms_display" %}?grade='+encodeURIComponent(grade.value)+'&stream='+encodeURIComponent(stream.value)+'&exam_id='+encodeURIComponent(exam.value);
   });
+
+  stream.addEventListener('change',function(){updateSummary()});
+  exam.addEventListener('change',function(){updateSummary()});
+
+  if(grade.value){
+    grade.dispatchEvent(new Event('change'));
+    {% if selected_stream %}
+    setTimeout(function(){stream.value='{{ selected_stream }}';updateSummary();},500);
+    {% endif %}
+    {% if selected_exam_id %}
+    setTimeout(function(){exam.value='{{ selected_exam_id }}';updateSummary();},800);
+    {% endif %}
+  }
 })();
 </script>
 {% endblock %}

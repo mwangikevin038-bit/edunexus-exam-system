@@ -75,10 +75,11 @@ def generate_default_password():
     return ''.join(secrets.choice(string.digits) for _ in range(8))
 
 
-def get_published_subject_codes(class_name, stream, year, term, exam_name, sub_section=None):
+def get_published_subject_codes(class_name, stream, year, term, exam_name, sub_section=None, is_admin=False):
     """
     Return subject codes that have been formally published by the school admin.
     Official analysis and report cards should only use these finalized sheets.
+    Admin users see all sections; teachers are scoped by their workspace section.
     """
     school = get_current_school()
     section = get_current_school_section()
@@ -92,20 +93,21 @@ def get_published_subject_codes(class_name, stream, year, term, exam_name, sub_s
     )
     if school:
         filters['school'] = school
-    if sub_section == 'LOWER':
-        filters['school_section'] = 'PRIMARY'
-        filters['sub_section'] = 'LOWER'
-    elif sub_section == 'UPPER':
-        filters['school_section'] = 'PRIMARY'
-        filters['sub_section'] = 'UPPER'
-    elif section == 'LOWER_PRIMARY':
-        filters['school_section'] = 'PRIMARY'
-        filters['sub_section'] = 'LOWER'
-    elif section == 'PRIMARY':
-        filters['school_section'] = 'PRIMARY'
-        filters['sub_section'] = 'UPPER'
-    elif section == 'JSS':
-        filters['school_section'] = 'JSS'
+    if not is_admin:
+        if sub_section == 'LOWER':
+            filters['school_section'] = 'PRIMARY'
+            filters['sub_section'] = 'LOWER'
+        elif sub_section == 'UPPER':
+            filters['school_section'] = 'PRIMARY'
+            filters['sub_section'] = 'UPPER'
+        elif section == 'LOWER_PRIMARY':
+            filters['school_section'] = 'PRIMARY'
+            filters['sub_section'] = 'LOWER'
+        elif section == 'PRIMARY':
+            filters['school_section'] = 'PRIMARY'
+            filters['sub_section'] = 'UPPER'
+        elif section == 'JSS':
+            filters['school_section'] = 'JSS'
     return set(
         MarkSubmission.all_objects.filter(**filters).values_list("subject__code", flat=True)
     )
@@ -722,8 +724,8 @@ def get_students_ordered(grade, stream):
     Return students filtered by grade and stream, ordered by admission number.
     Handles P/J suffixed admission numbers. Non-numeric parts sorted to the end.
     """
-    from django.db.models import Value, CharField, Case, When, Q, Length
-    from django.db.models.functions import Substr
+    from django.db.models import Value, CharField, Case, When, Q
+    from django.db.models.functions import Substr, Length
     students = Student.all_objects.filter(
         class_name=grade, stream=stream, is_active=True
     ).filter(
