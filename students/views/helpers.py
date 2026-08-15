@@ -1044,3 +1044,82 @@ def upsert_mark(
                 integrity_checksum=checksum,
             )
             return mark.pk
+
+
+# ── Report Forms Cache Helpers ──────────────────────────────────────────────
+
+def get_report_forms_cache_key(school_id, grade, stream, exam_id):
+    """Generate a cache key for report forms display."""
+    return f"report_forms:{school_id}:{grade}:{stream}:{exam_id}"
+
+
+def invalidate_report_forms_cache(school_id, grade=None, stream=None, exam_id=None):
+    """
+    Evict cached report forms data when marks are modified.
+    If grade/stream/exam_id are provided, evict only that specific key.
+    Otherwise, evict all report_forms cache entries for the school.
+    """
+    if grade and stream and exam_id:
+        key = get_report_forms_cache_key(school_id, grade, stream, exam_id)
+        cache.delete(key)
+    else:
+        # Evict all report_forms cache entries for this school
+        pattern = f"report_forms:{school_id}:*"
+        try:
+            from django.core.cache import cache as _cache
+            if hasattr(_cache, 'delete_pattern'):
+                _cache.delete_pattern(pattern)
+        except Exception:
+            pass
+
+
+def freeze_comments_for_student_marks(marks, class_teacher_remark, headteacher_comment,
+                                       master_comment, school_ht_comment, freeze_threshold, now):
+    """
+    Freeze comments onto Mark records when the master comment has exceeded the
+    freeze threshold. This is a WRITE operation that must be called from
+    background tasks or explicit save actions — never from display views.
+
+    Returns dict with frozen values to use for display.
+    """
+    from ..models import Mark
+    import datetime
+
+    result = {
+        'class_teacher_remark': class_teacher_remark,
+        'headteacher_comment': headteacher_comment,
+        'closing_date': master_comment.closing_date if master_comment else None,
+        'opening_date': master_comment.opening_date if master_comment else None,
+    }
+
+    if master_comment and class_teacher_remark:
+        ct_field = f"comment_{class_teacher_remark.lower()}" if class_teacher_remark else None
+        if ct_field:
+            live_ct = getattr(master_comment, ct_field, "") or ""
+            if live_ct.strip():
+                age = now - (master_comment.last_modified.replace(tzinfo=datetime.timezone.utc)
+                             if master_comment.last_modified.tzinfo is None
+                             else master_comment.last_modified)
+                if age >= freeze_threshold and marks:
+                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
+                        frozen_class_teacher_comment=live_ct,
+                        frozen_closing_date=master_comment.closing_date,
+                        frozen_opening_date=master_comment.opening_date,
+                    )
+                    result['closing_date'] = master_comment.closing_date
+                    result['opening_date'] = master_comment.opening_date
+
+    if school_ht_comment and headteacher_comment:
+        ht_field = f"ht_comment_{headteacher_comment.lower()}" if headteacher_comment else None
+        if ht_field:
+            live_ht = getattr(school_ht_comment, ht_field, "") or ""
+            if live_ht.strip():
+                age = now - (school_ht_comment.last_modified.replace(tzinfo=datetime.timezone.utc)
+                             if school_ht_comment.last_modified.tzinfo is None
+                             else school_ht_comment.last_modified)
+                if age >= freeze_threshold and marks:
+                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
+                        frozen_headteacher_comment=live_ht,
+                    )
+
+    return result

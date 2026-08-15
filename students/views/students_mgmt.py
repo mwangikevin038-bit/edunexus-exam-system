@@ -3213,7 +3213,7 @@ def report_forms_display(request):
     from .helpers import (
         calculate_primary_plv, calculate_report_plv,
         get_cached_class_averages, get_published_subject_codes,
-        user_can_access_class_stream,
+        get_report_forms_cache_key, user_can_access_class_stream,
     )
     from .grading_engine import prefetch_school_grading, resolve_scale_fast
     from ..models import (
@@ -3235,6 +3235,12 @@ def report_forms_display(request):
     if not grade_name or not stream_name or not exam_id:
         messages.error(request, "Grade, Stream, and Exam are required.")
         return redirect('report_forms')
+
+    # Smart cache: check for cached context first
+    cache_key = get_report_forms_cache_key(school.pk, grade_name, stream_name, exam_id)
+    cached_context = cache.get(cache_key)
+    if cached_context:
+        return render(request, 'students/report_card.html', cached_context)
 
     try:
         exam = Exam.all_objects.get(id=exam_id, school=school, is_deleted=False)
@@ -3300,7 +3306,7 @@ def report_forms_display(request):
         school=school, student__class_name=grade_name,
         year=year, term=term, exam_name=db_assessment,
         school_section=sample.school_section, sub_section=sample.sub_section,
-    )
+    ).select_related('student')
     all_summaries = {s.student_id: s for s in summaries_qs}
     total_class_count = len(all_summaries)
 
@@ -3344,9 +3350,6 @@ def report_forms_display(request):
         school=school, year=year, term=term, exam_type=db_assessment,
         school_section=sample.school_section,
     ).first()
-
-    freeze_threshold = datetime.timedelta(days=30)
-    now = datetime.datetime.now(datetime.timezone.utc)
 
     student_marks_list = []
     for student in selected_students:
@@ -3428,16 +3431,7 @@ def report_forms_display(request):
             ct_comment_field = f"comment_{overall_plv.lower()}"
             live_ct = getattr(master_comment, ct_comment_field, "") or ""
             if live_ct.strip():
-                age = now - (master_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if master_comment.last_modified.tzinfo is None else master_comment.last_modified)
-                if age < freeze_threshold:
-                    class_teacher_remark = live_ct
-                else:
-                    class_teacher_remark = live_ct
-                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
-                        frozen_class_teacher_comment=live_ct,
-                        frozen_closing_date=master_comment.closing_date,
-                        frozen_opening_date=master_comment.opening_date,
-                    )
+                class_teacher_remark = live_ct
             elif marks and marks[0].frozen_class_teacher_comment:
                 class_teacher_remark = marks[0].frozen_class_teacher_comment
 
@@ -3445,14 +3439,7 @@ def report_forms_display(request):
             ht_comment_field = f"ht_comment_{overall_plv.lower()}"
             live_ht = getattr(school_ht_comment, ht_comment_field, "") or ""
             if live_ht.strip():
-                age = now - (school_ht_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if school_ht_comment.last_modified.tzinfo is None else school_ht_comment.last_modified)
-                if age < freeze_threshold:
-                    headteacher_comment = live_ht
-                else:
-                    headteacher_comment = live_ht
-                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
-                        frozen_headteacher_comment=live_ht,
-                    )
+                headteacher_comment = live_ht
             elif marks and marks[0].frozen_headteacher_comment:
                 headteacher_comment = marks[0].frozen_headteacher_comment
 
@@ -3521,7 +3508,7 @@ def report_forms_display(request):
         label = f"{ex.name} ({ex.term} {ex.year})"
         available_exams.append({'id': str(ex.id), 'label': label, 'name': ex.name, 'term': ex.term, 'year': ex.year})
 
-    return render(request, 'students/report_card.html', {
+    view_context = {
         'student_marks_list': student_marks_list,
         'selected_year': year,
         'selected_term': term,
@@ -3544,5 +3531,8 @@ def report_forms_display(request):
         'available_grades': available_grades,
         'available_streams': available_streams,
         'available_exams': available_exams,
-    })
+    }
+    # Cache the context for 5 minutes (smart invalidation via invalidate_report_forms_cache)
+    cache.set(cache_key, view_context, timeout=300)
+    return render(request, 'students/report_card.html', view_context)
     return JsonResponse(data)

@@ -8,7 +8,7 @@
   .sub-nav-item{display:flex;align-items:stretch}
   .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
   .sub-nav-link:hover{color:#fff;background-color:#43A047}
-  .sub-nav-link.active{color:#fff;background-color:#388E3C;font-weight:700}
+  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
   .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 </style>
 <nav class="sub-nav-bar">
@@ -37,7 +37,6 @@
         --rc-green-dark: #0F5A35;
         --rc-blue: #2563EB;
         --rc-border: #D9DEE3;
-    }
         --rc-text: #1C1C1E;
         --rc-muted: #64748B;
         --rc-up: #16A34A;
@@ -478,7 +477,16 @@
     .rv-card-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .rv-card-scroll .report-card {
         margin: 0; border-radius: 0; min-width: 7.9in;
-        border-left: 12px solid var(--section-accent, #0096c7);
+        padding-left: 0.55in;
+    }
+    .rv-card-scroll .report-card::before {
+        content: '';
+        position: absolute;
+        left: 14px;
+        top: 0;
+        bottom: 0;
+        width: 14px;
+        background: var(--section-accent);
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -487,27 +495,36 @@
     .report-card {
         background: white;
         width: {% if view_mode == 'individual' %}7.9in{% else %}7.4in{% endif %};
-        padding: 0.16in 0.35in 0.25in;
+        padding: 0.16in 0.35in 0.25in 0.55in;
         position: relative;
         font-family: 'Times New Roman', Times, serif;
         font-size: 12pt; color: var(--rc-text);
-        display: flex; flex-direction: column; border: none; flex-shrink: 0;
+        display: flex; flex-direction: column;
+        border: none;
+        box-sizing: border-box;
+        flex-shrink: 0;
+    }
+    .report-card::before {
+        content: '';
+        position: absolute;
+        left: 14px;
+        top: 50px;
+        bottom: 0;
+        width: 19px;
+        background: var(--section-accent);
+        border-radius: 0px 24px 0px 0px;
     }
     .report-content { display: flex; flex-direction: column; flex: 1; gap: 8px; }
 
     /* Logo + School Header */
     .rc-header {
         display: flex; align-items: center; gap: 14px;
-        padding-bottom: 8px; margin-bottom: 2px; position: relative;
-        border-bottom: 3px solid var(--section-accent, var(--rc-green));
+        padding-bottom: 6px; margin-bottom: 4px; position: relative;
+        border-bottom: none;
     }
-    .rc-header::after {
-        content: ''; position: absolute; left: 0; right: 0; bottom: -3px;
-        height: 3px;
-        background: linear-gradient(90deg, var(--section-accent, var(--rc-green)) 0%, var(--rc-blue) 55%, transparent 100%);
-    }
+    .rc-header::after { display: none; }
     .report-logo, .rc-logo-placeholder {
-        width: 88px; height: 88px; object-fit: contain; flex-shrink: 0; border-radius: 10px;
+        width: 88px; height: 88px; object-fit: contain; flex-shrink: 0; border-radius: 8px;
     }
     .rc-logo-placeholder {
         display: flex; align-items: center; justify-content: center;
@@ -517,25 +534,21 @@
     }
     .rc-schoolinfo { flex: 1; text-align: center; }
     .rc-schoolinfo h1 {
-        font-size: 16pt; font-weight: 800; color: var(--section-accent, var(--rc-green-dark));
-        text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 2px;
-        text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+        font-size: 16pt; font-weight: 800; color: var(--section-accent);
+        text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 4px;
     }
-    .rc-schoolinfo .rc-tagline {
-        font-size: 8.5pt; font-weight: 700; color: var(--section-accent, var(--rc-green));
-        text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 4px;
-    }
-    .rc-schoolinfo .rc-address { font-size: 11pt; font-weight: 600; color: var(--rc-text); margin-bottom: 1px; }
-    .rc-schoolinfo .rc-contact-line { font-size: 9pt; color: #333; font-weight: 500; }
+    .rc-schoolinfo .rc-address { font-size: 11pt; font-weight: 600; color: var(--rc-text); margin-bottom: 2px; font-family: 'Times New Roman', Times, serif; }
+    .rc-schoolinfo .rc-contact-line { font-size: 11pt; color: #444; font-weight: 500; font-family: 'Times New Roman', Times, serif; margin: 0; }
     .rc-logo-spacer { width: 88px; flex-shrink: 0; }
 
-    /* Cyan Banner */
+    /* Banner */
     .rc-banner {
-        background: linear-gradient(135deg, #00b4d8, #0096c7);
+        background: var(--section-accent);
         color: #fff; text-align: center; font-size: 11pt; font-weight: 800;
         letter-spacing: 0.03em; text-transform: uppercase;
-        padding: 8px 12px; border-radius: 0;
+        padding: 4px 12px; border-radius: 0;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        margin-left: calc(-0.55in + 33px);
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -554,27 +567,19 @@
         gap: 14px;
         align-items: flex-start;
     }
-    .rc-photo-placeholder {
+    .rc-initials-avatar {
         width: 100px; height: 110px; border-radius: 6px; flex-shrink: 0;
-        background: linear-gradient(180deg, #b0bec5 0%, #90a4ae 100%);
-        border: none; display: flex; align-items: center; justify-content: center;
-        overflow: hidden; position: relative;
-    }
-    .rc-photo-placeholder::after {
-        content: ''; width: 44px; height: 44px; border-radius: 50%;
-        background: rgba(255,255,255,0.3); position: absolute; top: 18px;
-    }
-    .rc-photo-placeholder::before {
-        content: ''; width: 60px; height: 34px; border-radius: 50% 50% 0 0;
-        background: rgba(255,255,255,0.25); position: absolute; bottom: 0;
+        background: var(--section-accent);
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        font-family: 'Times New Roman', Times, serif; font-size: 32pt; font-weight: 800;
+        letter-spacing: 0.02em; text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        user-select: none;
     }
     .rc-student-info { flex: 1; }
     .rc-student-name { font-size: 14pt; font-weight: 800; margin-bottom: 8px; color: var(--rc-text); }
     .rc-detail { font-size: 11pt; margin-bottom: 4px; color: var(--rc-text); }
-    .rc-label { font-weight: 800; margin-right: 2px; text-transform: uppercase; }
-    .rc-label.admno { color: #0096c7; }
-    .rc-label.grade { color: #0096c7; }
-    .rc-label.pathway { color: #0096c7; }
+    .rc-label { font-weight: 800; margin-right: 2px; text-transform: uppercase; color: #4CAF50; }
 
     .rc-chart-block {
         flex: 2;
@@ -589,7 +594,7 @@
         text-align: left; line-height: 1;
     }
     .rc-chart-canvas-wrap {
-        height: 320px;
+        height: 200px;
         position: relative;
     }
     .rc-chart-canvas-wrap canvas {
@@ -597,7 +602,7 @@
         height: 100% !important;
         display: block;
     }
-    .rc-chart-block { position: relative; min-height: 320px; }
+    .rc-chart-block { position: relative; min-height: 200px; }
     .rc-chart-fallback {
         position: absolute;
         top: 20px;
@@ -683,7 +688,7 @@
         .rv-shell { display: none !important; }
         body { background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
         .container-fluid { max-width: 1200px !important; margin: 0 auto !important; padding: 20px !important; }
-        .report-card { margin: 20px auto; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 12px solid var(--section-accent, #0096c7); }
+        .report-card { margin: 20px auto; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: none; }
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -873,6 +878,15 @@
     </div>
 </div>
 
+<script>
+document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
+    var name = el.getAttribute('data-student-name') || '';
+    var parts = name.trim().split(/\s+/);
+    var initials = parts.length >= 2 ? (parts[0].charAt(0) + parts[1].charAt(0)) : (parts[0] || '?');
+    el.textContent = initials.toUpperCase();
+});
+</script>
+
 <script src="{% static 'js/chart.umd.min.js' %}"></script>
 <script>
 (function() {
@@ -921,8 +935,8 @@
                             backgroundColor: 'transparent',
                             fill: false,
                             tension: 0.35,
-                            pointRadius: 6,
-                            pointHoverRadius: 8,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
                             pointBackgroundColor: '#22c55e',
                             pointBorderColor: '#ffffff',
                             pointBorderWidth: 2,
@@ -931,17 +945,13 @@
                         {
                             label: className,
                             data: classScaled,
-                            borderColor: '#cbd5e1',
-                            backgroundColor: 'transparent',
-                            fill: false,
+                            borderColor: 'transparent',
+                            backgroundColor: 'rgba(200, 200, 200, 0.35)',
+                            fill: true,
                             tension: 0.35,
-                            pointRadius: 5,
-                            pointHoverRadius: 7,
-                            pointBackgroundColor: '#ffffff',
-                            pointBorderColor: '#cbd5e1',
-                            pointBorderWidth: 2,
-                            borderWidth: 2,
-                            borderDash: [5, 4]
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            borderWidth: 0
                         }
                     ]
                 },
@@ -949,19 +959,20 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     devicePixelRatio: 2,
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
                             display: true,
                             position: 'top',
                             align: 'end',
                             labels: {
-                                font: { size: 12, weight: '600' },
+                                font: { size: 11, weight: '600', family: "'Inter', sans-serif" },
                                 usePointStyle: true,
                                 pointStyle: 'circle',
                                 padding: 14,
-                                boxWidth: 10,
-                                boxHeight: 10,
-                                color: '#1e293b'
+                                boxWidth: 8,
+                                boxHeight: 8,
+                                color: '#475569'
                             }
                         },
                         tooltip: {
@@ -969,19 +980,24 @@
                             backgroundColor: '#ffffff',
                             titleColor: '#0f172a',
                             bodyColor: '#475569',
-                            titleFont: { size: 13, weight: '700' },
-                            bodyFont: { size: 12, weight: '600' },
+                            titleFont: { size: 12, weight: '700', family: "'Inter', sans-serif" },
+                            bodyFont: { size: 11, weight: '600', family: "'Inter', sans-serif" },
                             borderColor: '#e2e8f0',
                             borderWidth: 1,
-                            padding: 12,
+                            padding: 10,
                             cornerRadius: 8,
-                            displayColors: false,
+                            displayColors: true,
+                            boxWidth: 8,
+                            boxHeight: 8,
+                            boxPadding: 4,
+                            usePointStyle: true,
                             callbacks: {
-                                title: function(items) { return items[0].label; },
+                                title: function(items) { return items[0] ? items[0].label : ''; },
                                 label: function(ctx) {
+                                    var dot = '\u25CF ';
                                     var name = ctx.dataset.label;
-                                    var val = ctx.parsed.y.toFixed(1);
-                                    return name + ': ' + val;
+                                    var val = Math.round(ctx.parsed.y * 10);
+                                    return dot + name + ': ' + val;
                                 }
                             }
                         }
@@ -992,11 +1008,12 @@
                             beginAtZero: true,
                             min: 0,
                             max: 10,
-                            ticks: { stepSize: 2.5, font: { size: 11 }, color: '#64748b' },
-                            grid: { color: 'rgba(0,0,0,0.06)' }
+                            title: { display: true, text: 'Marks', font: { size: 10, weight: '700' }, color: '#1e293b' },
+                            ticks: { stepSize: 5, font: { size: 10 }, color: '#94a3b8', padding: 4 },
+                            grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }
                         },
                         x: {
-                            ticks: { font: { size: 10, weight: '600' }, color: '#1e293b' },
+                            ticks: { font: { size: 9, weight: '600' }, color: '#64748b', maxRotation: 0 },
                             grid: { display: false }
                         }
                     }

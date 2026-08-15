@@ -9,7 +9,6 @@
             {% endif %}
             <div class="rc-schoolinfo">
                 <h1>{{ request.school.name|upper }}</h1>
-                <p class="rc-tagline">Excellence &middot; Discipline &middot; Character</p>
                 <p class="rc-address">Address: {{ request.school.address }}</p>
                 <p class="rc-contact-line">Tel {{ request.school.phone_number }} &nbsp;|&nbsp; Email {{ request.school.email }}</p>
             </div>
@@ -22,11 +21,12 @@
 
         <div class="rc-top-grid">
             <div class="rc-student-block">
-                <div class="rc-photo-placeholder"></div>
+                <div class="rc-initials-avatar" data-student-name="{{ student_data.student.name }}"></div>
                 <div class="rc-student-info">
                     <div class="rc-student-name">{{ student_data.student.name }}</div>
-                    <div class="rc-detail"><span class="rc-label admno">ADMNO:</span> {{ student_data.student.admission_no }}</div>
-                    <div class="rc-detail"><span class="rc-label grade">GRADE:</span> {{ student_data.student.class_name }} {{ student_data.student.stream }}</div>
+                    <div class="rc-detail"><span class="rc-label">ADMNO:</span> {{ student_data.student.admission_no }}</div>
+                    <div class="rc-detail"><span class="rc-label">GRADE:</span> {{ student_data.student.class_name }}</div>
+                    <div class="rc-detail"><span class="rc-label">STREAM:</span> {{ student_data.student.stream }}</div>
                     {% if student_data.student.pathway %}<div class="rc-detail"><span class="rc-label pathway">PATHWAY:</span> {{ student_data.student.pathway }}</div>{% endif %}
                 </div>
             </div>

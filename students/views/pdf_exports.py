@@ -11,7 +11,10 @@ import io
 import json
 import logging
 import mimetypes
+import os
 import traceback
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 
 import matplotlib
 matplotlib.use('Agg')  # Thread-safe headless backend for local django servers
@@ -70,21 +73,19 @@ def generate_python_chart_base64(labels, student_scores, class_averages):
             student_smooth = np.clip(spline_student(x_smooth), 0, 100)
             spline_class = make_interp_spline(x, class_averages, k=spline_k)
             class_smooth = np.clip(spline_class(x_smooth), 0, 100)
-            ax.plot(x_smooth, student_smooth, color='#4f46e5', linewidth=2, label='Student', zorder=3)
-            ax.plot(x_smooth, class_smooth, color='#94a3b8', linewidth=1.5, linestyle='--', label='Class Avg', zorder=2)
+            ax.plot(x_smooth, student_smooth, color='#22c55e', linewidth=2, label='Student', zorder=3)
+            ax.fill_between(x_smooth, class_smooth, color='#c8c8c8', alpha=0.3, zorder=1)
+            ax.plot(x_smooth, class_smooth, color='#c8c8c8', linewidth=1.5, label='Class Avg', zorder=2)
         except (ImportError, ValueError, Exception):
-            ax.plot(x, student_scores, marker='o', color='#4f46e5', linewidth=2, label='Student', zorder=3)
-            ax.plot(x, class_averages, marker='s', linestyle='--', color='#94a3b8', linewidth=1.5, label='Class Avg', zorder=2)
+            ax.plot(x, student_scores, marker='o', color='#22c55e', linewidth=2, label='Student', zorder=3)
+            ax.fill_between(x, class_averages, color='#c8c8c8', alpha=0.3, zorder=1)
+            ax.plot(x, class_averages, color='#c8c8c8', linewidth=1.5, label='Class Avg', zorder=2)
             x_smooth = x
             student_smooth = student_scores
             class_smooth = class_averages
 
-        # Filled gradient under student line
-        ax.fill_between(x_smooth, student_smooth, color='#4f46e5', alpha=0.15, zorder=1)
-
-        # Marker dots on original data points
-        ax.scatter(x, student_scores, color='#4f46e5', edgecolors='white', s=30, zorder=4)
-        ax.scatter(x, class_averages, color='#94a3b8', s=20, marker='s', zorder=4)
+        # Marker dots on student data points only
+        ax.scatter(x, student_scores, color='#22c55e', edgecolors='white', s=30, zorder=4)
 
         # Premium theme
         ax.grid(True, linestyle=':', alpha=0.5, color='#cbd5e1')
@@ -106,6 +107,47 @@ def generate_python_chart_base64(labels, student_scores, class_averages):
         return f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
     except Exception:
         return ""
+
+
+def _compile_single_student_pdf(student_context, logo_base64, section_accent, base_url):
+    """
+    Compile a single student's report card HTML to PDF bytes.
+    Designed to be called in a separate process via ProcessPoolExecutor.
+    """
+    from django.template.loader import render_to_string
+    from weasyprint import HTML
+
+    single_html = render_to_string('students/report_card.html', student_context, request=None)
+
+    # Embed pre-computed logo base64
+    if logo_base64:
+        single_html = single_html.replace('src="/static/', f'src="{logo_base64}')
+
+    # Inject PDF CSS
+    single_pdf_css = f"""
+<style id="pdf-override">
+  * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
+  html, body {{ margin: 0 !important; padding: 0 !important; background: white !important; font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; }}
+  .report-card {{ display: block !important; margin: 0 !important; width: 7.4in !important; max-height: 282mm !important; overflow: hidden !important; border: none !important; border-left: 14px solid {section_accent} !important; box-sizing: border-box !important; padding: 0.12in 0.35in 0.2in !important; page-break-inside: avoid !important; break-inside: avoid !important; flex-shrink: 1 !important; }}
+  .rc-header {{ border-bottom: 3px solid {section_accent} !important; }}
+  .rc-header::after {{ left: -14px !important; background: linear-gradient(90deg, {section_accent} 0%, {section_accent} 30%, transparent 100%) !important; }}
+  .report-content {{ display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 6px !important; }}
+  .rc-chart-img {{ display: block !important; max-height: 110px !important; width: auto !important; margin: 4px auto !important; }}
+  .report-card canvas {{ display: none !important; }}
+  .rc-table td {{ padding: 2px 5px !important; font-size: 0.86em !important; line-height: 1.05 !important; }}
+  .rc-table thead th {{ padding: 2px 5px !important; font-size: 0.86em !important; }}
+  .system-footer {{ display: none !important; }}
+  .rc-print-watermark {{ display: none !important; }}
+  @page {{ size: A4 portrait; margin: 4mm 8mm 4mm 8mm !important; }}
+</style>
+"""
+    # Inject base tag and PDF CSS
+    single_html = single_html.replace('</head>', f'<base href="{base_url}">{single_pdf_css}</head>')
+
+    try:
+        return HTML(string=single_html).write_pdf(optimize_size='images')
+    except Exception:
+        return None
 
 
 def _log_pdf_error(view_name, error, context=None):
@@ -994,7 +1036,7 @@ def download_individual_report_pdf(request, student_id):
   .report-card {
     display: flex !important; page-break-inside: avoid !important; break-inside: avoid !important;
     margin: 0 auto !important; width: 7.4in !important; max-height: none !important; overflow: visible !important;
-    border: none !important; border-left: 12px solid var(--section-accent, #305CDE) !important;
+    border: none !important; border-left: 14px solid var(--section-accent, #305CDE) !important;
     position: relative !important; font-family: 'Times New Roman', Times, serif !important;
     font-size: 12pt !important; box-sizing: border-box !important;
     padding: 0.12in 0.35in 0.2in !important; line-height: 1.2 !important;
@@ -1008,7 +1050,8 @@ def download_individual_report_pdf(request, student_id):
   .rc-schoolinfo .rc-tagline { font-size: 8pt !important; margin-bottom: 3px !important; }
   .rc-schoolinfo .rc-address { font-size: 11pt !important; margin-bottom: 1px !important; }
   .rc-schoolinfo .rc-contact-line { font-size: 9pt !important; }
-  .rc-header { gap: 12px !important; padding-bottom: 7px !important; border-bottom: 3px solid var(--section-accent, var(--rc-green)) !important; }
+  .rc-header { gap: 12px !important; padding-bottom: 7px !important; border-bottom: 3px solid var(--section-accent) !important; }
+  .rc-header::after { left: -14px !important; background: linear-gradient(90deg, var(--section-accent) 0%, var(--section-accent) 30%, transparent 100%) !important; }
   .rc-banner { padding: 6px 8px !important; font-size: 11pt !important; }
   .rc-top-grid { gap: 16px !important; }
   .rc-photo-placeholder { width: 58px !important; height: 58px !important; font-size: 22px !important; border-radius: 8px !important; }
@@ -1193,9 +1236,21 @@ def download_bulk_report_pdf(request):
     else:
         section_accent = section_colors['JSS']
 
-    # ── PDF Stitching Pipeline ────────────────────────────────────────────────
-    merger = PdfWriter()
+    # Pre-compute logo base64 ONCE (not per student)
+    logo_base64_data = ""
+    try:
+        school_logo = getattr(school, "logo", None)
+        if school_logo:
+            logo_url = school_logo.url
+            logo_type = mimetypes.guess_type(logo_url)[0] or "image/png"
+            with school_logo.open("rb") as logo_file:
+                logo_data = base64.b64encode(logo_file.read()).decode("ascii")
+            logo_base64_data = f'data:{logo_type};base64,{logo_data}'
+    except Exception:
+        logger.warning("Failed to pre-compute school logo base64", exc_info=True)
 
+    # Build all student contexts first (CPU-light work)
+    student_contexts = []
     for student in selected_students:
         marks = sorted(student.cached_marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
         student_totals = totals_map.get(student.id, {})
@@ -1306,39 +1361,35 @@ def download_bulk_report_pdf(request):
             'show_header':         False,
             'show_control_panel':  False,
         }
+        student_contexts.append(student_context)
 
-        # Render single student HTML
-        single_html = render_to_string('students/report_card.html', student_context, request=request)
-        single_html = _embed_logo_base64(single_html, request)
+    # Close DB connections before spawning processes to prevent connection pool leaks
+    from django.db import connection
+    connection.close()
 
-        # Inject print CSS for single page
-        single_pdf_css = f"""
-<style id="pdf-override">
-  * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-  html, body {{ margin: 0 !important; padding: 0 !important; background: white !important; font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; }}
-  .report-card {{ display: block !important; margin: 0 !important; width: 7.4in !important; max-height: 282mm !important; overflow: hidden !important; border: none !important; border-left: 12px solid {section_accent} !important; box-sizing: border-box !important; padding: 0.12in 0.35in 0.2in !important; page-break-inside: avoid !important; break-inside: avoid !important; flex-shrink: 1 !important; }}
-  .report-content {{ display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 6px !important; }}
-  .rc-chart-img {{ display: block !important; max-height: 110px !important; width: auto !important; margin: 4px auto !important; }}
-  .report-card canvas {{ display: none !important; }}
-  .rc-table td {{ padding: 2px 5px !important; font-size: 0.86em !important; line-height: 1.05 !important; }}
-  .rc-table thead th {{ padding: 2px 5px !important; font-size: 0.86em !important; }}
-  .system-footer {{ display: none !important; }}
-  .rc-print-watermark {{ display: none !important; }}
-  @page {{ size: A4 portrait; margin: 4mm 8mm 4mm 8mm !important; }}
-</style>
-"""
-        single_html = _inject_pdf_css(single_html, single_pdf_css, f'<base href="{request.build_absolute_uri("/")}">')
+    # Parallel PDF compilation using ProcessPoolExecutor (multi-core, not GIL-bound)
+    base_url = request.build_absolute_uri("/")
+    compile_fn = partial(
+        _compile_single_student_pdf,
+        logo_base64=logo_base64_data,
+        section_accent=section_accent,
+        base_url=base_url,
+    )
 
-        # Compile to PDF bytes
-        try:
-            single_pdf_bytes = HTML(string=single_html).write_pdf(optimize_size='none')
-            if single_pdf_bytes:
-                merger.append(io.BytesIO(single_pdf_bytes))
-        except Exception as e:
-            logger.warning("[pdf] Failed to compile PDF for student %s: %s", student.name, str(e))
-            continue
+    # Use up to 4 worker processes (safe for typical Django server)
+    max_workers = min(4, os.cpu_count() or 1)
+    try:
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            pdf_results = list(executor.map(compile_fn, student_contexts))
+    except Exception as e:
+        logger.warning("[pdf] ProcessPoolExecutor failed, falling back to sequential: %s", str(e))
+        pdf_results = [compile_fn(ctx) for ctx in student_contexts]
 
     # Stitch all pages into final output
+    merger = PdfWriter()
+    for pdf_bytes in pdf_results:
+        if pdf_bytes:
+            merger.append(io.BytesIO(pdf_bytes))
     output_buffer = io.BytesIO()
     merger.write(output_buffer)
     merger.close()
