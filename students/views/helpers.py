@@ -583,28 +583,61 @@ def get_total_level_fast(total_marks, config):
     return '-', 0
 
 
-def get_performance_level(score, sub_section=None):
+def get_performance_level(score, sub_section=None, subject_id=None, is_total_calculation=False, section=None, school=None):
     """
-    Return (performance_level, points) for a converted 100% score.
-    Uses cached GradingConfig lookups + bisect for O(log n) performance.
+    Return (performance_level, points) using our optimized bisect lookups.
+    Premium, dynamic subject and total calculation scale routing.
+
+    Args:
+        score: int — either a converted subject percentage (0-100) or an
+                    aggregated total marks value (e.g. 0-800 for JSS).
+        sub_section: str|None — 'LOWER' | 'UPPER' | None
+        subject_id: int|None — pass the active Subject.pk so subject-specific
+                     overrides win before the general fallback row kicks in.
+        is_total_calculation: bool — when True, hits the broadsheet
+                     `total_scale` JSON instead of `subject_scale`.
+        section: str|None — explicit section override ('JSS', 'PRIMARY', 'LOWER_PRIMARY').
+                    IMPORTANT: pass this from broadsheet/report callers because the
+                    thread-local ContextVar is set to 'BOTH' for admin users,
+                    which never matches any cached GradingAssignment key.
+        school: School|None — explicit school override; otherwise reads thread-local.
+
+    Returns:
+        (level: str, points: int)
     """
     import logging
     from ..school_scope import get_current_school, get_current_school_section
+    from .grading_engine import resolve_scale_fast
 
-    score = max(0, min(100, round(score or 0)))
+    # Round once, but do NOT clamp to 0-100 here — `is_total_calculation=True`
+    # callers pass aggregated totals (e.g. 650 / 800) that must survive intact.
+    # The clamp moves down into the subject branch where 0-100 actually applies.
+    score_val = round(score or 0)
 
-    school = get_current_school()
-    section = get_current_school_section()
+    if school is None:
+        school = get_current_school()
+    if section is None:
+        section = get_current_school_section()
 
     if school and section:
-        from .grading_engine import resolve_scale_fast
-        scale_data = resolve_scale_fast(school.pk, section, sub_section, subject_id=None)
+        # Pass the real subject_id down to avoid skipping subject-specific overrides
+        scale_data = resolve_scale_fast(
+            school.pk,
+            section,
+            sub_section,
+            subject_id=subject_id,
+            is_total_calculation=is_total_calculation,
+        )
+
         if scale_data:
-            return get_subject_level_fast(score, scale_data)
+            if is_total_calculation:
+                return get_total_level_fast(score_val, scale_data)
+            else:
+                return get_subject_level_fast(max(0, min(100, score_val)), scale_data)
 
     logging.getLogger("students.helpers").error(
-        "GradingScale missing for school_id=%s section=%s sub_section=%s.",
-        getattr(school, 'id', None), section, sub_section,
+        "GradingScale missing for school_id=%s section=%s sub_section=%s subject=%s total=%s.",
+        getattr(school, 'id', None), section, sub_section, subject_id, is_total_calculation,
     )
     return 'NO CONFIG', 0
 

@@ -1,0 +1,259 @@
+{% if show_table %}
+<!-- Unified Broadsheet Document: header + action toolbar + table inside one white card -->
+<div class="broadsheet-document" style="--section-accent: {{ section_accent }};">
+
+    <!-- BRANDING HEADER MATRIX -->
+    <div class="bs-header-block bs-branding-only">
+        <div class="bs-header-main">
+            <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
+                <div class="bs-header-logo-wrap">
+                    <div class="bs-logo-frame">
+                        {% if request.school.logo %}
+                            <img src="{{ request.school.logo.url }}" alt="{{ request.school.name }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <div class="bs-logo-placeholder" style="display:none;">SCHOOL<br>CREST</div>
+                        {% else %}
+                            <div class="bs-logo-placeholder">SCHOOL<br>CREST</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="min-width: 0;">
+                    <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.75rem; font-weight: 800; color: var(--section-accent, #305CDE); margin: 0; text-transform: uppercase; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ request.school.name|default:"SCHOOL NAME" }}
+                    </h2>
+                    <p style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 600; color: #64748b; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.05em;">
+                        GRADE {{ selected_grade|upper }} {{ selected_stream|upper }} &middot; {{ selected_year }} &middot; {{ selected_exam|upper }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Status Badge (section-aware accent) -->
+            <span style="flex-shrink: 0; background: var(--section-accent, #305CDE); color: #ffffff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 700; padding: 10px 20px; border-radius: 50px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15);">
+                {{ selected_term|upper }} RESULTS LIST
+            </span>
+        </div>
+    </div>
+
+    <!-- PREMIUM ACTION TOOLBAR ROW — moved out of this partial into merit_list.html
+         so it can never clip into the table top border -->
+
+    <!-- TABLE AREA WINDOW CONTAINER -->
+    <div class="broadsheet-card animate-fade-in">
+        <table class="table-analysis">
+            <colgroup>
+                <col class="col-adm">
+                <col class="col-name">
+                <col class="col-strm">
+                {% for code, short in published_subjects %}
+                    <col class="col-mk">
+                    <col class="col-lv">
+                {% endfor %}
+                <col class="col-tps">
+                <col class="col-total">
+                <col class="col-plv">
+            </colgroup>
+
+            <thead>
+                <tr>
+                    <th rowspan="2" class="col-adm" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:center; font-size:9pt;">ADM</th>
+                    <th rowspan="2" class="col-name" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:left !important; padding-left:6px !important; font-size:9pt;">STUDENT NAME</th>
+                    <th rowspan="2" class="col-strm" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:center; font-size:9pt;">STRM</th>
+                    {% for code, short in published_subjects %}
+                        <th colspan="2" class="subj-header" style="background:#ffffff !important; color:#000000 !important; border:1px solid #000000 !important; font-size:9pt;">{{ short }}</th>
+                    {% endfor %}
+                    <th rowspan="2" class="tps-col col-tps" style="font-weight:700; border:1px solid #000000; background:#9AD725 !important; color:#000000 !important; font-size:9pt;">TPS</th>
+                    <th rowspan="2" class="total-col col-total" style="font-weight:800; border:1px solid #000000; background:#9AD725 !important; color:#000000 !important; font-size:9pt;">TTL<br>MRK</th>
+                    <th rowspan="2" class="plv-col col-plv" style="font-weight:800; border:1px solid #000000; background:#F4C400 !important; color:#000000 !important; font-size:9pt;">PLV</th>
+                </tr>
+                <tr>
+                    {% for code, short in published_subjects %}
+                        <th class="col-mk sub-hdr-mk" style="font-size:9pt;">MK</th>
+                        <th class="col-lv sub-hdr-lv" style="font-size:9pt;">LV</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for row in broadsheet %}
+                <tr>
+                    <td class="col-adm" style="font-weight:800; text-align:center;">{{ row.student.admission_no }}</td>
+                    <td class="col-name" style="font-size:10pt;">{{ row.student.name }}</td>
+                    <td class="col-strm" style="text-align:center;">{{ row.student.stream.0|upper }}</td>
+                    {% for score_entry in row.scores %}
+                        <td class="col-mk">{{ score_entry.score }}</td>
+                        <td class="col-lv lv-col">{{ score_entry.level }}</td>
+                    {% endfor %}
+                    <td class="tps-col">{{ row.tps }}</td>
+                    <td class="total-col">{{ row.total }}</td>
+                    <td class="plv-col">{{ row.plv }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Class Grade Summary (Subject Performance Analysis) — inside card for unified print -->
+        <div class="analysis-page-container" style="margin-top: 35px; padding-top: 20px;">
+            <div style="width: 100%; background: var(--section-accent, #2b5ce7); color: #ffffff; text-align: center; padding: 4px 12px; margin: 0 0 10px 0; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 0; box-sizing: border-box;">
+                Class Grade Summary
+            </div>
+            <table class="summary-table" style="width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Times New Roman', Times, serif; border: none;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding-left: 6px; font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">SUBJECT</th>
+                        {% for lvl in ordered_levels %}
+                            <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">{{ lvl }}</th>
+                        {% endfor %}
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">ENTRIES</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN MARKS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN POINTS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800; text-align: left; padding-left: 6px;">PERFORMANCE LEVEL</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800; text-align: left; padding-left: 6px;">TEACHERS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in analysis_rows %}
+                    {% if forloop.counter0|divisibleby:2 %}
+                    <tr style="background: #ffffff;">
+                    {% else %}
+                    <tr style="background: #e2e8f0;">
+                    {% endif %}
+                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt;">{{ item.short }}</td>
+
+                        {% for lvl in ordered_levels %}
+                            <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">
+                                {% if lvl == 'EE1' %}{{ item.distribution.EE1 }}
+                                {% elif lvl == 'EE2' %}{{ item.distribution.EE2 }}
+                                {% elif lvl == 'EE' %}{{ item.distribution.EE }}
+                                {% elif lvl == 'ME1' %}{{ item.distribution.ME1 }}
+                                {% elif lvl == 'ME2' %}{{ item.distribution.ME2 }}
+                                {% elif lvl == 'ME' %}{{ item.distribution.ME }}
+                                {% elif lvl == 'AE1' %}{{ item.distribution.AE1 }}
+                                {% elif lvl == 'AE2' %}{{ item.distribution.AE2 }}
+                                {% elif lvl == 'AE' %}{{ item.distribution.AE }}
+                                {% elif lvl == 'BE1' %}{{ item.distribution.BE1 }}
+                                {% elif lvl == 'BE2' %}{{ item.distribution.BE2 }}
+                                {% elif lvl == 'BE' %}{{ item.distribution.BE }}
+                                {% else %}0{% endif %}
+                            </td>
+                        {% endfor %}
+
+                        <td style="border: 1px solid #000000; text-align: center; font-size: 9pt;">{{ item.entries }}</td>
+                        <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">{{ item.mean_score }}</td>
+                        <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">{{ item.mean_points }}</td>
+                        <td style="border: 1px solid #000000; text-align: left; padding-left: 6px; font-size: 9pt; font-weight: 700; text-transform: uppercase;">{{ item.performance_text }}</td>
+                        <td style="border: 1px solid #000000; text-align: left; padding-left: 6px; font-size: 9pt; font-weight: 400;">{{ item.teacher_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Grade Breakdown: Performance Across Streams -->
+        <div class="analysis-page-container" style="margin-top: 25px; padding-top: 20px;">
+            <div style="width: 100%; background: var(--section-accent, #2b5ce7); color: #ffffff; text-align: center; padding: 4px 12px; margin: 0 0 10px 0; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 0; box-sizing: border-box;">
+                Grade Breakdown – {{ selected_grade }}
+            </div>
+            <table class="summary-table" style="width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Times New Roman', Times, serif; border: none;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding-left: 6px; font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">FORM</th>
+                        {% for lvl in ordered_levels %}
+                            <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">{{ lvl }}</th>
+                        {% endfor %}
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">ENTRIES</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN MARKS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN POINTS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800; text-align: left; padding-left: 6px;">PERFORMANCE LEVEL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in grade_breakdown_rows %}
+                    {% if forloop.counter0|divisibleby:2 %}
+                    <tr style="background: #ffffff;">
+                    {% else %}
+                    <tr style="background: #e2e8f0;">
+                    {% endif %}
+                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt;">{{ item.label }}</td>
+                        {% for lvl in ordered_levels %}
+                            <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">
+                                {% if lvl == 'EE1' %}{{ item.dist.EE1 }}
+                                {% elif lvl == 'EE2' %}{{ item.dist.EE2 }}
+                                {% elif lvl == 'EE' %}{{ item.dist.EE }}
+                                {% elif lvl == 'ME1' %}{{ item.dist.ME1 }}
+                                {% elif lvl == 'ME2' %}{{ item.dist.ME2 }}
+                                {% elif lvl == 'ME' %}{{ item.dist.ME }}
+                                {% elif lvl == 'AE1' %}{{ item.dist.AE1 }}
+                                {% elif lvl == 'AE2' %}{{ item.dist.AE2 }}
+                                {% elif lvl == 'AE' %}{{ item.dist.AE }}
+                                {% elif lvl == 'BE1' %}{{ item.dist.BE1 }}
+                                {% elif lvl == 'BE2' %}{{ item.dist.BE2 }}
+                                {% elif lvl == 'BE' %}{{ item.dist.BE }}
+                                {% else %}0{% endif %}
+                            </td>
+                        {% endfor %}
+                        <td style="border: 1px solid #000000; text-align: center; font-size: 9pt;">{{ item.entries }}</td>
+                        <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">{{ item.mean_score }}</td>
+                        <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">{{ item.mean_points }}</td>
+                        <td style="border: 1px solid #000000; text-align: left; padding-left: 6px; font-size: 9pt; font-weight: 700; text-transform: uppercase;">{{ item.performance_text }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Gender Summary: Boys vs Girls in Current Stream -->
+        <div class="analysis-page-container" style="margin-top: 25px; padding-top: 20px;">
+            <div style="width: 100%; background: var(--section-accent, #2b5ce7); color: #ffffff; text-align: center; padding: 4px 12px; margin: 0 0 10px 0; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 0; box-sizing: border-box;">
+                Gender Summary – {{ selected_stream }}
+            </div>
+            <table class="summary-table" style="width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Times New Roman', Times, serif; border: none;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding-left: 6px; font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">GENDER</th>
+                        {% for lvl in ordered_levels %}
+                            <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">{{ lvl }}</th>
+                        {% endfor %}
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">ENTRIES</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN MARKS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN POINTS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800; text-align: left; padding-left: 6px;">PERFORMANCE LEVEL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in gender_rows %}
+                    {% if forloop.counter0|divisibleby:2 %}
+                    <tr style="background: #ffffff;">
+                    {% else %}
+                    <tr style="background: #e2e8f0;">
+                    {% endif %}
+                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt;">{{ item.label }}</td>
+                        {% for lvl in ordered_levels %}
+                            <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">
+                                {% if lvl == 'EE1' %}{{ item.dist.EE1 }}
+                                {% elif lvl == 'EE2' %}{{ item.dist.EE2 }}
+                                {% elif lvl == 'EE' %}{{ item.dist.EE }}
+                                {% elif lvl == 'ME1' %}{{ item.dist.ME1 }}
+                                {% elif lvl == 'ME2' %}{{ item.dist.ME2 }}
+                                {% elif lvl == 'ME' %}{{ item.dist.ME }}
+                                {% elif lvl == 'AE1' %}{{ item.dist.AE1 }}
+                                {% elif lvl == 'AE2' %}{{ item.dist.AE2 }}
+                                {% elif lvl == 'AE' %}{{ item.dist.AE }}
+                                {% elif lvl == 'BE1' %}{{ item.dist.BE1 }}
+                                {% elif lvl == 'BE2' %}{{ item.dist.BE2 }}
+                                {% elif lvl == 'BE' %}{{ item.dist.BE }}
+                                {% else %}0{% endif %}
+                            </td>
+                        {% endfor %}
+                        <td style="border: 1px solid #000000; text-align: center; font-size: 9pt;">{{ item.entries }}</td>
+                        <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">{{ item.mean_score }}</td>
+                        <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">{{ item.mean_points }}</td>
+                        <td style="border: 1px solid #000000; text-align: left; padding-left: 6px; font-size: 9pt; font-weight: 700; text-transform: uppercase;">{{ item.performance_text }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+</div><!-- end .broadsheet-document -->
+{% endif %}

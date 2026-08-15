@@ -1,0 +1,329 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block sub_tabs %}
+<style>
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
+  .sub-nav-item{display:flex;align-items:stretch}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
+  .sub-nav-link:hover{color:#fff;background-color:#43A047}
+  .sub-nav-link.active{color:#fff;background-color:#388E3C;font-weight:700}
+  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'printouts_hub' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Printouts
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+  .ml-page{max-width:1200px;margin:0 auto;padding:40px 40px 60px;background:#eaecf0;min-height:100vh}
+  .main-content{background:#eaecf0!important}
+  .app-content{background:#eaecf0!important}
+  .ml-card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:0;overflow:hidden}
+  .ml-card-header{display:flex;align-items:center;justify-content:space-between;padding:24px 32px 12px}
+  .ml-card-header h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:20px;color:#111827;margin:0}
+  .ml-toggle{background:none;border:none;cursor:pointer;padding:4px;color:#64748b;transition:color 0.15s}
+  .ml-toggle:hover{color:#1e293b}
+  .ml-toggle svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform 0.3s}
+  .ml-toggle.collapsed svg{transform:rotate(180deg)}
+  .ml-subtitle{font-size:14px;color:#6b7280;margin:0;padding:0 32px 20px;font-family:'Inter',sans-serif;font-weight:500}
+  .ml-card-body{padding:0 32px 28px;transition:max-height 0.4s ease,opacity 0.3s ease,padding 0.4s ease;overflow:hidden}
+  .ml-card-body.collapsed{max-height:0!important;opacity:0;padding-top:0;padding-bottom:0}
+  .ml-filters{display:grid;grid-template-columns:1fr 1fr;gap:24px 32px;margin-bottom:0}
+  .ml-field-full{grid-column:1 / -1}
+  .ml-field label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;font-family:'Inter',sans-serif}
+  .ml-field label .req{color:#ef4444;margin-left:2px}
+  .ml-field select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;color:#1e293b;font-family:'Inter',sans-serif;background:#f8fdf8;transition:all .2s;height:42px;box-sizing:border-box;appearance:auto}
+  .ml-field select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+  .ml-btn-row{display:flex;justify-content:flex-end;margin-top:28px}
+  .ml-fetch-btn{display:inline-flex;align-items:center;gap:8px;background:#d1d5db;color:#6b7280;border:none;border-radius:6px;padding:12px 32px;font-size:14px;font-weight:700;cursor:not-allowed;font-family:'Inter',sans-serif;transition:all 0.2s ease}
+  .ml-fetch-btn.ready{background:#84cc16;color:#14532d;cursor:pointer;box-shadow:0 2px 8px rgba(132,204,22,0.3)}
+  .ml-fetch-btn.ready:hover{background:#65a30d;color:#052e16;box-shadow:0 4px 14px rgba(101,163,13,0.4);transform:translateY(-1px)}
+  .ml-loading{display:none;text-align:center;padding:80px 20px}
+  .ml-loading.visible{display:block}
+  .ml-loading-text{font-size:20px;color:#1e40af;font-weight:700;margin-bottom:24px;font-family:'Inter',sans-serif}
+  .ml-spinner{display:inline-flex;align-items:flex-end;gap:4px;height:50px}
+  .ml-spinner-bar{width:10px;background:#22c55e;border-radius:3px;animation:ml-bar 1s ease-in-out infinite}
+  .ml-spinner-bar:nth-child(1){height:16px;animation-delay:0s}
+  .ml-spinner-bar:nth-child(2){height:28px;animation-delay:0.15s}
+  .ml-spinner-bar:nth-child(3){height:40px;animation-delay:0.3s}
+  .ml-spinner-bar:nth-child(4){height:50px;animation-delay:0.45s}
+  .ml-spinner-bar:nth-child(5){height:36px;animation-delay:0.6s}
+  @keyframes ml-bar{0%,100%{transform:scaleY(0.4);opacity:0.6}50%{transform:scaleY(1);opacity:1}}
+  .ml-summary{padding:20px 32px;display:none;background:#f1f5f9;border-top:1px solid #e2e8f0}
+  .ml-summary.visible{display:block}
+  .ml-summary-grade{font-size:18px;font-weight:800;color:#1e40af;margin-bottom:4px;font-family:'Inter',sans-serif}
+  .ml-summary-exam{font-size:14px;color:#475569;font-weight:600;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.3px}
+  .ml-footer{text-align:center;padding:20px 32px;color:#9ca3af;font-size:12px;margin-top:20px}
+  .ml-footer a{color:#16a34a;text-decoration:none;font-weight:600}
+  .ml-footer a:hover{text-decoration:underline}
+</style>
+
+<div class="ml-page">
+  <div class="ml-card{% if show_table %} card-has-summary{% endif %}" id="mlCard">
+    <div class="ml-card-header">
+      <h2>Merit List</h2>
+      <button type="button" class="ml-toggle" id="mlToggle" title="Toggle panel">
+        <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+    </div>
+    <p class="ml-subtitle">Select class and exam to generate the merit list</p>
+    <div class="ml-card-body" id="mlBody">
+      <form method="GET" class="ml-filters" id="merit-query-form">
+        <div class="ml-field">
+          <label>Form <span class="req">*</span></label>
+          <select name="grade" id="mlGrade">
+            <option value="">Select Form</option>
+            {% for g in grades %}<option value="{{ g }}" {% if selected_grade == g %}selected{% endif %}>{{ g }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="ml-field">
+          <label>Stream</label>
+          <select name="stream" id="mlStream" disabled>
+            <option value="">Select Stream</option>
+          </select>
+        </div>
+        <div class="ml-field ml-field-full" id="mlExamWrap">
+          <label>Exam <span class="req">*</span></label>
+          <select name="exam_id" id="mlExam" disabled>
+            <option value="">Select Exam</option>
+          </select>
+        </div>
+      </form>
+      <div class="ml-btn-row">
+        <button type="button"
+                class="ml-fetch-btn btn-success"
+                id="mlFetchBtn"
+                hx-get="{% url 'merit_list' %}"
+                hx-include="#merit-query-form"
+                hx-target="#broadsheet-display-target"
+                hx-swap="innerHTML"
+                hx-indicator="#bs-loading-shimmer">
+          Get Merit List
+        </button>
+      </div>
+    </div>
+
+    <!-- Light gray-blue summary banner — only visible after broadsheet loads -->
+    {% if show_table %}
+    <div class="query-summary-banner">
+      <div class="query-summary-banner-grade">
+        Grade {{ selected_grade|default:grade }}: {{ selected_stream|default:stream }}
+      </div>
+      <div class="query-summary-banner-exam">
+        {{ selected_exam|default:"END TERM" }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Premium Action Toolbar — sits OUTSIDE the broadsheet card so it cannot clip into the table -->
+  <div class="broadsheet-actions-toolbar no-print"
+       id="broadsheetActionsToolbar"
+       data-pdf-base="{% url 'download_broadsheet_pdf' %}"
+       style="{% if show_table %}display: flex{% else %}display: none{% endif %}; justify-content: flex-end; align-items: center; gap: 12px; margin: 3.5rem 0 1.5rem; padding: 0; width: 100%; clear: both; box-sizing: border-box;">
+    <button type="button"
+            onclick="window.print();"
+            class="action-btn btn-print-premium"
+            style="display: inline-flex; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #cbd5e1; color: #334155; padding: 8px 16px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+      <i class="ph ph-printer" style="font-size: 1.1rem;"></i> Print Sheet
+    </button>
+
+    <a href="{% if show_table %}{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}{% else %}#{% endif %}"
+       target="_blank"
+       class="action-btn btn-pdf-premium"
+       id="broadsheetPdfLink"
+       style="display: inline-flex; align-items: center; gap: 8px; background: #0f172a; border: 1px solid #0f172a; color: #ffffff; padding: 8px 16px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+      <i class="ph ph-download-simple" style="font-size: 1.1rem;"></i> Download PDF
+    </a>
+  </div>
+
+  <div id="broadsheet-display-target" class="animate-fade-in" style="margin-top: 0;">
+    <!-- HTMX swaps the broadsheet partial into this container -->
+    {% if show_table %}
+      {% include 'students/partials/broadsheet_snippet.html' %}
+    {% endif %}
+  </div>
+
+  <div id="bs-loading-shimmer" class="htmx-indicator broadsheet-card" style="display: none; margin-top: 3.5rem; padding: 20px; opacity: 0.6; animation: pulse 1.5s infinite;">
+    <div style="height: 40px; background: #e2e8f0; margin-bottom: 20px; border-radius: 8px;"></div>
+    <div style="height: 250px; background: #f1f5f9; border-radius: 8px;"></div>
+  </div>
+
+  <div class="ml-loading" id="mlLoading">
+    <div class="ml-loading-text">Generating Merit List</div>
+    <div class="ml-spinner">
+      <div class="ml-spinner-bar"></div>
+      <div class="ml-spinner-bar"></div>
+      <div class="ml-spinner-bar"></div>
+      <div class="ml-spinner-bar"></div>
+      <div class="ml-spinner-bar"></div>
+    </div>
+  </div>
+
+  <div class="ml-footer">
+    &copy; 2026 <a href="#">EduNexus</a>. All Rights Reserved.
+  </div>
+</div>
+
+<script>
+(function(){
+  var grade=document.getElementById('mlGrade'),
+      stream=document.getElementById('mlStream'),
+      exam=document.getElementById('mlExam'),
+      fetchBtn=document.getElementById('mlFetchBtn'),
+      toggle=document.getElementById('mlToggle'),
+      body=document.getElementById('mlBody'),
+      card=document.getElementById('mlCard');
+
+  // Helper: ensure a query-summary-banner element exists, creating it if needed
+  function ensureBanner(){
+    var banner=document.querySelector('.ml-card .query-summary-banner');
+    if(banner) return banner;
+    banner=document.createElement('div');
+    banner.className='query-summary-banner';
+    banner.innerHTML='<div class="query-summary-banner-grade"></div><div class="query-summary-banner-exam"></div>';
+    card.appendChild(banner);
+    return banner;
+  }
+
+  // Helper: write the current selection into the banner
+  function paintBanner(){
+    var banner=ensureBanner();
+    var gradeText=grade.options[grade.selectedIndex]?grade.options[grade.selectedIndex].text:'';
+    var streamText=stream.value||'';
+    var examText=exam.options[exam.selectedIndex]?exam.options[exam.selectedIndex].text:'';
+    banner.querySelector('.query-summary-banner-grade').textContent='Grade '+gradeText+(streamText?': '+streamText:'');
+    banner.querySelector('.query-summary-banner-exam').textContent=examText.split(' (')[0];
+    card.classList.add('card-has-summary');
+  }
+
+  toggle.addEventListener('click',function(){
+    body.classList.toggle('collapsed');
+    toggle.classList.toggle('collapsed');
+  });
+
+  grade.addEventListener('change',function(){
+    stream.innerHTML='<option value="">Select Stream</option>';
+    stream.disabled=true;
+    exam.innerHTML='<option value="">Select Exam</option>';
+    exam.disabled=true;
+    if(!grade.value) return;
+    fetch('{% url "api_streams_for_grade_printout" %}?grade='+encodeURIComponent(grade.value))
+      .then(function(r){return r.json()})
+      .then(function(data){
+        if(data.streams && data.streams.length){
+          for(var i=0;i<data.streams.length;i++){
+            var opt=document.createElement('option');
+            opt.value=data.streams[i];
+            opt.textContent=data.streams[i];
+            stream.appendChild(opt);
+          }
+          stream.disabled=false;
+        }
+      })
+      .catch(function(err){console.error('Streams fetch error:',err)});
+    fetch('{% url "api_exams_for_class" %}?grade='+encodeURIComponent(grade.value))
+      .then(function(r){return r.json()})
+      .then(function(data){
+        if(data.exams && data.exams.length){
+          exam.innerHTML='<option value="">Select Exam</option>';
+          for(var i=0;i<data.exams.length;i++){
+            var e=data.exams[i];
+            var opt=document.createElement('option');
+            opt.value=e.id;
+            opt.textContent=e.name+' ('+e.term+' '+e.year+')';
+            // Stash term/year/name as data attrs so we can build the PDF context key on the client
+            opt.dataset.year=e.year;
+            opt.dataset.term=e.term;
+            opt.dataset.name=e.name;
+            exam.appendChild(opt);
+          }
+          exam.disabled=false;
+        }
+      })
+      .catch(function(err){console.error('Exams fetch error:',err)});
+  });
+
+  // Build the PDF context key from the current form selection + update the toolbar link
+  function refreshPdfLink(){
+    var toolbar=document.getElementById('broadsheetActionsToolbar');
+    var pdfLink=document.getElementById('broadsheetPdfLink');
+    if(!toolbar || !pdfLink) return;
+    var gradeVal=grade.value;
+    var streamVal=stream.value;
+    var examOpt=exam.options[exam.selectedIndex];
+    if(!gradeVal || !streamVal || !examOpt || !examOpt.dataset.year){
+      pdfLink.href='#';
+      return;
+    }
+    var ctxKey=examOpt.dataset.year+'|'+examOpt.dataset.term+'|'+examOpt.dataset.name+'|'+gradeVal+'|'+streamVal;
+    var base=toolbar.getAttribute('data-pdf-base') || '';
+    pdfLink.href=base+'?context='+encodeURIComponent(ctxKey);
+  }
+
+  // Reveal the toolbar (called after HTMX success or when show_table is already true)
+  function revealToolbar(){
+    var toolbar=document.getElementById('broadsheetActionsToolbar');
+    if(!toolbar) return;
+    refreshPdfLink();
+    toolbar.style.display='flex';
+  }
+
+  fetchBtn.addEventListener('click',function(){
+    if(!grade.value){alert('Please select a Form.');return}
+    if(!exam.value){alert('Please select an Exam.');return}
+    paintBanner();
+    body.classList.add('collapsed');
+    toggle.classList.add('collapsed');
+  });
+
+  // After HTMX swap completes, refresh banner, collapse the form, and reveal the toolbar
+  document.body.addEventListener('htmx:afterSwap',function(evt){
+    if(evt.target && evt.target.id==='broadsheet-display-target'){
+      paintBanner();
+      body.classList.add('collapsed');
+      toggle.classList.add('collapsed');
+      revealToolbar();
+    }
+  });
+
+  function updateBtn(){
+    if(grade.value && exam.value){
+      fetchBtn.classList.add('ready');
+    } else {
+      fetchBtn.classList.remove('ready');
+    }
+  }
+  grade.addEventListener('change',updateBtn);
+  exam.addEventListener('change',updateBtn);
+  updateBtn();
+
+  if(grade.value){
+    grade.dispatchEvent(new Event('change'));
+    {% if selected_stream %}
+    setTimeout(function(){stream.value='{{ selected_stream }}';},500);
+    {% endif %}
+    {% if selected_exam_id %}
+    setTimeout(function(){exam.value='{{ selected_exam_id }}';},800);
+    {% endif %}
+    {% if show_table %}
+    setTimeout(function(){
+      paintBanner();
+      body.classList.add('collapsed');
+      toggle.classList.add('collapsed');
+    },1000);
+    {% endif %}
+  }
+})();
+</script>
+{% endblock %}

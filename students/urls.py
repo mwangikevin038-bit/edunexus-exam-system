@@ -23,6 +23,7 @@ urlpatterns = [
     path('printouts/analysis-report/', views.analysis_report, name='analysis_report'),
     path('printouts/report-forms/', views.report_forms, name='report_forms'),
     path('printouts/report-forms/display/', views.report_forms_display, name='report_forms_display'),
+    path('printouts/merit-list/', views.merit_list, name='merit_list'),
     path('printouts/api/exams/', views.api_exams_for_class, name='api_exams_for_class'),
     path('printouts/api/streams/', views.api_streams_for_grade_printout, name='api_streams_for_grade_printout'),
     path('printouts/api/subjects/', views.api_subjects_for_grade, name='api_subjects_for_grade'),

@@ -2198,6 +2198,89 @@ def report_forms(request):
 
 @login_required(login_url='login')
 @school_admin_required
+def merit_list(request):
+    """Merit List page — Form + Exam selection, then display results broadsheet inline.
+
+    HTMX behavior:
+      - GET (no params)             → render form only
+      - GET with params (non-HTMX)  → render full results_list.html
+      - GET with params (HX-Request) → render only the broadsheet partial
+    """
+    from ..models import Exam, Grade
+    from .grading_engine import prefetch_school_grading
+    from .reports import build_broadsheet_for_merit_list
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    # Populate the module-level grading cache so get_performance_level /
+    # _get_primary_performance return real levels (EE1, ME1, ...) instead of "NO CONFIG"
+    prefetch_school_grading(school)
+
+    grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+
+    grade = request.GET.get('grade', '').strip()
+    stream = request.GET.get('stream', '').strip()
+    exam_id = request.GET.get('exam_id', '').strip()
+
+    # Show form if params missing
+    if not (grade and exam_id):
+        return render(request, 'students/merit_list.html', {
+            'grades': grades,
+            'selected_grade': grade,
+            'selected_stream': stream,
+            'selected_exam_id': exam_id,
+            'show_table': False,
+            'selected_exam': '',
+        })
+
+    # Look up the Exam object (build_broadsheet_for_merit_list expects an Exam, not an id)
+    try:
+        exam_object = Exam.all_objects.get(id=exam_id, school=school, is_deleted=False)
+    except Exam.DoesNotExist:
+        messages.error(request, "Selected exam not found.")
+        return redirect('merit_list')
+
+    # Build the broadsheet context via the existing internal builder
+    context = build_broadsheet_for_merit_list(request, school, grade, stream, exam_object)
+    context['show_table'] = True
+    context['grades'] = grades
+    context['selected_grade'] = grade
+    context['selected_stream'] = stream
+    context['selected_exam_id'] = exam_id
+    context['selected_exam'] = exam_object.name
+    # Context key matches the format used by results_list (year|term|exam_name|class_name|stream)
+    context['selected_context_key'] = (
+        f"{exam_object.year}|{exam_object.term}|{exam_object.name}|{grade}|{stream}"
+    )
+
+    # Section accent color for branding header
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    section = exam_object.school_section or 'JSS'
+    if section == 'PRIMARY' and exam_object.sub_section == 'LOWER':
+        context['section_accent'] = section_colors['LOWER_PRIMARY']
+    elif section == 'PRIMARY':
+        context['section_accent'] = section_colors['PRIMARY']
+    else:
+        context['section_accent'] = section_colors.get(section, '#305CDE')
+
+    # HTMX ASYNCHRONOUS PIPELINE INTERCEPTOR:
+    if request.headers.get('HX-Request') == 'true':
+        return render(request, 'students/partials/broadsheet_snippet.html', context)
+
+    # Standard fallback render execution route for native template delivery
+    # (Renders merit_list.html with the form card + summary banner + broadsheet all in one page)
+    return render(request, 'students/merit_list.html', context)
+
+
+@login_required(login_url='login')
+@school_admin_required
 def analysis_report_pdf(request):
     """Generate PDF of the analysis report using WeasyPrint."""
     import json, base64, mimetypes

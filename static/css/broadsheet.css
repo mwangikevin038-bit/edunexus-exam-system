@@ -1,0 +1,420 @@
+/* ═══════════════════════════════════════════════════════════════
+   EDUNEXUS - Broadsheet Component
+   Loaded globally so HTMX-injected partials inherit styles.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Unified Document Container ──────────────────────────── */
+/* Wraps header + table into a single cohesive white card */
+.broadsheet-document {
+    width: 100%;
+    background: #ffffff;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    margin-bottom: 24px;
+    box-shadow: none;
+}
+
+/* ── Broadsheet Card Container (inner table wrapper) ────── */
+.broadsheet-card {
+    position: relative;
+    background: #ffffff;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    -webkit-overflow-scrolling: touch;
+    border: none;
+    padding: 0;
+    margin-top: 0;
+}
+
+/* ── Main Analysis Table ────────────────────────────────── */
+.table-analysis {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    table-layout: fixed;
+    position: relative;
+    z-index: 1;
+    background: #ffffff;
+    border: none;
+    font-family: 'Times New Roman', Times, serif;
+    color: #1e293b;
+}
+
+.table-analysis th,
+.table-analysis td {
+    border: 1px solid #000000;
+    padding: 4px 4px;
+    text-align: center;
+    vertical-align: middle;
+    overflow: hidden;
+    white-space: nowrap;
+    color: #1e293b;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 9pt;
+    line-height: 1.2;
+}
+
+.table-analysis tbody tr:hover td { background: #f0f4f8; }
+
+.table-analysis tbody tr td {
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+}
+
+.table-analysis tbody tr td.tps-col   { background: #9AD725 !important; }
+.table-analysis tbody tr td.total-col { background: #9AD725 !important; }
+.table-analysis tbody tr td.plv-col   { background: #F4C400 !important; }
+.table-analysis tbody tr td.lv-col    { background: #EDF4FC !important; }
+
+/* ── Column Widths ───────────────────────────────────────── */
+.col-adm   { width: 40px; }
+.col-name  { text-align: left !important; padding-left: 6px !important; white-space: normal !important; }
+.col-strm  { width: 28px; }
+.col-tps   { width: 30px; }
+.col-total { width: 36px; }
+.col-plv   { width: 30px; }
+.col-mk    { width: 26px; }
+.col-lv    { width: 28px; }
+
+.table-analysis th.col-adm  { font-weight: 800 !important; }
+.table-analysis th.col-name { font-weight: 800 !important; }
+.table-analysis td.col-name { font-weight: 400 !important; font-size: 10pt !important; }
+
+/* ── Subject Headers ─────────────────────────────────────── */
+.subj-header { background: #ffffff !important; color: #000000 !important; font-weight: 700 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
+.sub-hdr-mk  { background: #ffffff !important; color: #000000 !important; font-weight: 600 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
+.sub-hdr-lv  { background: #ffffff !important; color: #000000 !important; font-weight: 600 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
+
+/* ── Aggregate Columns ───────────────────────────────────── */
+.tps-col   { background-color: #9AD725 !important; font-weight: 700; color: #1e293b !important; border: 1px solid #000000 !important; font-size: 9pt !important; }
+.total-col { background-color: #9AD725 !important; font-weight: 800; white-space: normal !important; line-height: 1.1; color: #1e293b !important; border: 1px solid #000000 !important; font-size: 9pt !important; }
+.plv-col   { background-color: #F4C400 !important; font-weight: 800; color: #1e293b !important; white-space: normal !important; line-height: 1.1; font-size: 9pt !important; }
+.table-analysis td.lv-col { color: #305CDE !important; background-color: #EDF4FC !important; font-weight: 700 !important; }
+
+/* ── Branding Header Block ───────────────────────────────── */
+.bs-header-block {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: none;
+    border-radius: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 14px 20px;
+    box-shadow: none;
+    border-bottom: 2px solid var(--section-accent, #305CDE);
+}
+
+.bs-header-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 0;
+    background: transparent;
+}
+
+.bs-header-logo-wrap {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.bs-logo-frame {
+    width: 1in;
+    height: 1in;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+}
+
+.bs-header-logo-wrap img {
+    width: 100%;
+    height: 100%;
+    max-width: 1in;
+    max-height: 1in;
+    object-fit: contain;
+    display: block;
+}
+
+.bs-logo-placeholder {
+    width: 1in;
+    height: 1in;
+    background: #f1f5f9;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #475569;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-weight: 800;
+    font-size: 9px;
+    text-align: center;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+}
+
+.bs-header-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.bs-header-copy { min-width: 0; }
+
+.bs-school-name {
+    font-family: 'Georgia', 'Times New Roman', Times, serif;
+    font-size: 22pt;
+    font-weight: 700;
+    color: var(--section-accent, #305CDE);
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+    margin: 0 0 3px;
+    text-transform: uppercase;
+}
+
+.bs-results-badge {
+    flex-shrink: 0;
+    align-self: center;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-size: 10pt;
+    font-weight: 700;
+    color: #ffffff !important;
+    background: var(--section-accent, #305CDE) !important;
+    border: none !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    border-radius: 16px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.bs-meta-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-size: 10pt;
+    font-weight: 700;
+    color: #374151;
+    text-transform: uppercase;
+}
+
+.bs-meta-chip { white-space: nowrap; }
+
+.bs-meta-dot {
+    color: #94a3b8;
+    font-weight: 900;
+}
+
+/* ── HTMX Animation Utility ─────────────────────────────── */
+.animate-fade-in {
+    animation: bs-fade-in 0.35s ease-out;
+}
+
+@keyframes bs-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Premium Action Toolbar ─────────────────────────────── */
+/* Layout properties (display, justify, margin, padding, clear, z-index) live as
+   inline styles on the element so they survive any cascade quirks from the
+   surrounding .broadsheet-document card. This class only carries defaults
+   that match the inline values, so the toolbar always renders consistently. */
+.broadsheet-actions-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    margin: 15px 0;
+    padding: 5px 0;
+    width: 100%;
+    clear: both;
+    position: relative;
+    z-index: 10;
+    box-sizing: border-box;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    line-height: 1.2;
+}
+
+.action-btn i { font-size: 1.1rem; }
+
+.btn-print-premium {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+}
+
+.btn-pdf-premium {
+    background: #0f172a;
+    border: 1px solid #0f172a;
+    color: #ffffff;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.btn-print-premium:hover {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+}
+
+.btn-pdf-premium:hover {
+    background: #1e293b !important;
+}
+
+/* ── Print Media Overrides ──────────────────────────────── */
+@media print {
+    /* Hide all non-document chrome */
+    .no-print,
+    .broadsheet-actions-toolbar,
+    .global-header,
+    .sidebar,
+    .bottom-nav,
+    .sub-nav-bar {
+        display: none !important;
+    }
+
+    /* Let the broadsheet fill the page */
+    .broadsheet-document {
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .broadsheet-card {
+        overflow: visible !important;
+    }
+
+    /* Tighten the table for physical print */
+    .table-analysis {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 9pt !important;
+    }
+
+    .table-analysis tr {
+        page-break-inside: avoid !important;
+        page-break-after: auto !important;
+    }
+
+    .table-analysis thead {
+        display: table-header-group !important;
+    }
+}
+
+/* ── Query Summary Banner (collapsed-view) ──────────────── */
+.query-summary-banner {
+    background-color: #ebf1f6;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin: 15px 32px 24px;
+    text-align: left;
+    transition: all 0.25s ease-in-out;
+    border: 1px solid rgba(15, 23, 42, 0.03);
+    animation: bs-fade-in 0.3s ease-out;
+}
+
+.query-summary-banner-grade {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.query-summary-banner-exam {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.card-has-summary {
+    padding-bottom: 20px !important;
+}
+
+/* ── Class Grade Summary Table Layout Tokens ────────────── */
+.analysis-page-container {
+    margin-top: 30px !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
+}
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    font-family: 'Times New Roman', Times, serif;
+    border: none;
+}
+.summary-table th {
+    background-color: #e5e7eb;
+    color: #000000;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 9pt;
+    border: 1px solid #000000;
+    padding: 5px 4px;
+}
+.summary-table td {
+    border: 1px solid #000000;
+    text-align: center;
+    padding: 6px 6px;
+    font-weight: 600;
+    font-size: 9pt;
+}
+.summary-table td.sub-lbl { text-align: left; font-weight: 800; padding-left: 10px; color: #000000; }
+.mean-score-col { font-weight: 700 !important; color: #000000 !important; }
+.badge-ee,
+.badge-me,
+.badge-ae,
+.badge-be { background-color: transparent !important; }
+
+/* Forces both elements to remain on a single print layout view whenever possible */
+@media print {
+    .analysis-page-container {
+        margin-top: 25px !important;
+        page-break-inside: avoid !important;
+        page-break-before: auto !important;
+    }
+    .summary-table {
+        page-break-inside: avoid !important;
+        width: 100% !important;
+    }
+}
+

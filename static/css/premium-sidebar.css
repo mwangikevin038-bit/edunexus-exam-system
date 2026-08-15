@@ -1,0 +1,275 @@
+/* ═══════════════════════════════════════════════════════════════
+   PREMIUM SIDEBAR — Clean Green Design
+   Solid Green Background · White Text · Material Style
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+    --sidebar-green: #4CAF50;
+    --sidebar-green-dark: #43A047;
+    --sidebar-green-deeper: #388E3C;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SIDEBAR — Solid Green Background
+   ═══════════════════════════════════════════════════════════════ */
+.premium-sidebar {
+    position: fixed;
+    top: var(--global-header-height, 60px);
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width, 260px);
+    background: var(--sidebar-green);
+    border-right: none;
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+    overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BRAND HEADER
+   ═══════════════════════════════════════════════════════════════ */
+.ps-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 20px 24px;
+    flex-shrink: 0;
+}
+
+.ps-brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ps-brand-icon img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+
+.ps-brand-text {
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+}
+
+.ps-brand-text span {
+    color: #ffffff;
+    opacity: 0.9;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NAVIGATION CONTAINER
+   ═══════════════════════════════════════════════════════════════ */
+.ps-nav {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 0;
+}
+
+.ps-nav::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ps-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ps-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NAV LINK — Clean Material Style
+   ═══════════════════════════════════════════════════════════════ */
+.ps-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+    transition: background 0.15s ease;
+    user-select: none;
+}
+
+.ps-nav-link i,
+.ps-nav-link [class*="ph-"] {
+    font-size: 20px;
+    width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+    color: #ffffff;
+}
+
+.ps-nav-link .nav-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Hover State ──────────────────────────────────────────── */
+.ps-nav-link:hover {
+    background: var(--sidebar-green-dark);
+}
+
+/* ── Active State ─────────────────────────────────────────── */
+.ps-nav-link.active {
+    background: var(--sidebar-green-deeper);
+    font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NOTIFICATION DOT
+   ═══════════════════════════════════════════════════════════════ */
+.ps-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffffff;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROFILE FOOTER
+   ═══════════════════════════════════════════════════════════════ */
+.ps-profile {
+    flex-shrink: 0;
+    padding: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.ps-profile-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.ps-profile-card:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.ps-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: var(--sidebar-green-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.8125rem;
+    flex-shrink: 0;
+}
+
+.ps-profile-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ps-profile-name {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+.ps-profile-role {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+}
+
+.ps-profile-chevron {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+.ps-profile-card:hover .ps-profile-chevron {
+    color: #ffffff;
+    transform: translateX(2px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — Mobile
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .premium-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+    }
+
+    .premium-sidebar.open {
+        transform: translateX(0);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COLLAPSED STATE
+   ═══════════════════════════════════════════════════════════════ */
+body.ps-collapsed .premium-sidebar {
+    width: 72px;
+}
+
+body.ps-collapsed .ps-brand-text,
+body.ps-collapsed .ps-nav-link .nav-label,
+body.ps-collapsed .ps-profile-info,
+body.ps-collapsed .ps-profile-chevron,
+body.ps-collapsed .ps-dot {
+    display: none;
+}
+
+body.ps-collapsed .ps-nav-link {
+    justify-content: center;
+    padding: 12px;
+}
+
+body.ps-collapsed .ps-profile-card {
+    justify-content: center;
+    padding: 12px;
+}
+
+body.ps-collapsed .main-content {
+    margin-left: 72px;
+}

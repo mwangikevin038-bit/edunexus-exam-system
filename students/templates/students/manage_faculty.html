@@ -1,4 +1,4 @@
-﻿{% extends 'students/base.html' %}
+{% extends 'students/base.html' %}
 {% load static %}
 
 {% block sub_tabs %}
@@ -11,7 +11,7 @@
     z-index: 40;
     display: flex;
     align-items: stretch;
-    background-color: #84cc16;
+    background-color: #4CAF50;
     height: 35px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     flex-shrink: 0;
@@ -40,10 +40,10 @@
     transition: background-color 0.15s ease, color 0.15s ease;
     white-space: nowrap;
   }
-  .sub-nav-link:hover { color: #ffffff; background-color: #65a30d; }
+  .sub-nav-link:hover { color: #ffffff; background-color: #43A047; }
   .sub-nav-link.active {
     color: #ffffff;
-    background-color: #166534;
+    background-color: #388E3C;
     font-weight: 700;
   }
   .sub-nav-link svg {
@@ -489,7 +489,7 @@
     flex-shrink: 0;
   }
 
-  /* ── Grouped assignment (per subject) ───────────────────────────── */
+  /* -- Grouped assignment (per subject) ----------------------------- */
   .assignment-group {
     display: block;
     background: #f8fafc;
@@ -939,7 +939,7 @@
     gap: 8px;
   }
 
-  /* ── Section picker (3 tabs) ───────────────────────────────────── */
+  /* -- Section picker (3 tabs) ------------------------------------- */
   .section-picker {
     display: flex;
     gap: 8px;
@@ -987,7 +987,7 @@
     line-height: 1.5;
   }
 
-  /* ── Sub-section tabs (Primary workspace) ─────────────────────── */
+  /* -- Sub-section tabs (Primary workspace) ----------------------- */
   .sub-section-tabs {
     display: flex;
     gap: 10px;
@@ -1057,7 +1057,7 @@
   .sub-section-tab.active-lower .sub-tab-count { border-color: #B45309; color: #92400e; }
   .sub-section-tab.active-upper .sub-tab-count { border-color: #00674F; color: #065f46; }
 
-  /* ── Locked section chip (Edit mode) ────────────────────────────── */
+  /* -- Locked section chip (Edit mode) ------------------------------ */
   .section-locked {
     display: flex;
     align-items: center;
@@ -1085,7 +1085,7 @@
     color: #92400e;
   }
 
-  /* ── Section summary strip (page header) ───────────────────────── */
+  /* -- Section summary strip (page header) ------------------------- */
   .section-summary-strip {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -1117,7 +1117,7 @@
   .summary-count { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1; }
   .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; font-weight: 600; }
 
-  /* ── Section badge on teacher card ─────────────────────────────── */
+  /* -- Section badge on teacher card ------------------------------- */
   .section-badge {
     display: inline-flex;
     align-items: center;
@@ -1154,7 +1154,7 @@
   .meta-chip-muted { background: #f8fafc; color: #64748b; }
   .meta-chip i { font-size: 10px; }
 
-  /* ── Allocation section pill ───────────────────────────────────── */
+  /* -- Allocation section pill ------------------------------------- */
   .allocation-section-pill {
     display: inline-flex;
     align-items: center;
@@ -1969,7 +1969,7 @@
         </div>
       {% empty %}
         <div class="empty-state" style="grid-column: 1 / -1;">
-          <div class="empty-state-icon">👨‍🏫</div>
+          <div class="empty-state-icon">?????</div>
           <div class="empty-state-title">No Faculty Found</div>
           <div class="empty-state-text">No active faculty definitions found within this school account.</div>
         </div>
@@ -2065,7 +2065,7 @@
 
   {% if active_tab == 'add' %}
   <style>
-    /* ── Section-aware color tokens ─────────────────────────────────── */
+    /* -- Section-aware color tokens ----------------------------------- */
     :root {
       --s-accent: #16a34a;
       --s-accent-50: #f0fdf4;
@@ -2087,10 +2087,10 @@
       --s-accent-rgb: 37,99,235;
     }
 
-    /* ── Page layout ────────────────────────────────────────────────── */
+    /* -- Page layout -------------------------------------------------- */
     .atp { max-width: 920px; margin: 0 auto; padding: 0 0 48px; }
 
-    /* ── Step 1: Section Picker ─────────────────────────────────────── */
+    /* -- Step 1: Section Picker --------------------------------------- */
     .step-label {
       display: flex; align-items: center; gap: 10px;
       margin-bottom: 14px; padding-left: 2px;
@@ -2177,7 +2177,7 @@
     }
     .picker-card.is-selected .picker-check svg { opacity: 1; }
 
-    /* ── Connector line ─────────────────────────────────────────────── */
+    /* -- Connector line ----------------------------------------------- */
     .connector {
       display: flex; align-items: center; justify-content: center;
       padding: 10px 0;
@@ -2189,7 +2189,7 @@
     }
     body[data-section-theme="JSS"] .connector-line { background: #bfdbfe; }
 
-    /* ── Sub-section tabs ───────────────────────────────────────────── */
+    /* -- Sub-section tabs --------------------------------------------- */
     .sub-bar {
       display: flex; gap: 0;
       background: #fff;
@@ -2218,7 +2218,7 @@
     .sub-btn .sub-label { display: block; }
     .sub-btn .sub-range { display: block; font-size: 11px; font-weight: 500; color: #94a3b8; margin-top: 2px; }
 
-    /* ── Form card ──────────────────────────────────────────────────── */
+    /* -- Form card ---------------------------------------------------- */
     .form-card {
       background: #fff;
       border: 1px solid #e5e7eb;
@@ -2256,7 +2256,7 @@
     }
     .section-badge svg { width: 14px; height: 14px; }
 
-    /* ── Form body ──────────────────────────────────────────────────── */
+    /* -- Form body ---------------------------------------------------- */
     .form-body { padding: 28px 32px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 28px; }
     .form-col { display: flex; flex-direction: column; gap: 18px; }
@@ -2295,7 +2295,7 @@
     }
     textarea.form-input { resize: vertical; min-height: 80px; }
 
-    /* ── Section divider inside form ────────────────────────────────── */
+    /* -- Section divider inside form ---------------------------------- */
     .section-divider {
       display: flex; align-items: center; gap: 12px;
       padding: 4px 0 8px; margin: 8px 0;
@@ -2306,7 +2306,7 @@
       text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
     }
 
-    /* ── Form footer ────────────────────────────────────────────────── */
+    /* -- Form footer -------------------------------------------------- */
     .form-footer {
       display: flex; justify-content: flex-end; align-items: center; gap: 12px;
       padding: 18px 32px;
@@ -2333,14 +2333,14 @@
       transform: translateY(-1px);
     }
 
-    /* ── Errors ─────────────────────────────────────────────────────── */
+    /* -- Errors ------------------------------------------------------- */
     .form-errors {
       background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px;
       padding: 14px 18px; margin-bottom: 20px; color: #991b1b; font-size: 13px;
     }
     .form-errors ul { margin: 4px 0 0 16px; }
 
-    /* ── Responsive ─────────────────────────────────────────────────── */
+    /* -- Responsive --------------------------------------------------- */
     @media (max-width: 700px) {
       .picker-row { grid-template-columns: 1fr; }
       .form-row { grid-template-columns: 1fr; }
@@ -2351,7 +2351,7 @@
   </style>
 
   <div class="atp">
-    <!-- ═══ STEP 1: SECTION PICKER ═══ -->
+    <!-- --- STEP 1: SECTION PICKER --- -->
     <div class="step-label">
       <div class="step-num">1</div>
       <div class="step-text">Section <span>&mdash; Where will this teacher be posted?</span></div>
@@ -2402,7 +2402,7 @@
     <!-- Connector -->
     <div class="connector"><div class="connector-line"></div></div>
 
-    <!-- ═══ STEP 2: TEACHER DETAILS FORM ═══ -->
+    <!-- --- STEP 2: TEACHER DETAILS FORM --- -->
     <div class="step-label">
       <div class="step-num">2</div>
       <div class="step-text">Teacher Details <span>&mdash; Fill in the teacher's information</span></div>

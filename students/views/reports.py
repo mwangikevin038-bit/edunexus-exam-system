@@ -282,13 +282,9 @@ def results_list(request):
 
             # Pure read-only fallback: compute from marks if ExamSummary is empty/zero
             if not t or (total_marks == 0 and total_points == 0):
-                from django.db.models import Sum
-                live_totals = student_marks.aggregate(
-                    total_score=Sum('score'),
-                    total_pts=Sum('points'),
-                )
-                total_marks = live_totals['total_score'] or 0
-                total_points = live_totals['total_pts'] or 0
+                # student_marks is a list, not a queryset — aggregate manually
+                total_marks = sum(m.score for m in student_marks if m.score is not None)
+                total_points = sum(m.points for m in student_marks if m.points is not None)
                 assessed_subjects = sum(1 for m in student_marks if m.score is not None and not m.is_absent)
 
             row_scores = []
@@ -1159,3 +1155,435 @@ def report_card_poll_status(request):
         'total': 0,
         'html': '',
     })
+
+
+def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
+    """
+    Build the broadsheet data for the inline merit list display.
+    Returns dict with broadsheet, published_subjects, ordered_levels, etc.
+    """
+    from .constants import (
+        ORDERED_LEVELS,
+        PRIMARY_PERF_LEVELS,
+        PRIMARY_SUBJECT_SHORT_MAP,
+        SUBJECT_SHORT_MAP,
+        LOWER_PRIMARY_SUBJECT_SHORT_MAP,
+        sort_subjects,
+    )
+    from .exams import _get_primary_performance
+    from .helpers import (
+        calculate_broadsheet_plv,
+        calculate_primary_plv,
+        get_performance_level,
+        get_published_subject_codes,
+        user_has_main_school_admin_override,
+    )
+    from ..models import ExamSummary, Subject
+
+    is_admin_view = user_has_main_school_admin_override(request.user)
+    section = exam.school_section or 'JSS'
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
+    is_combined = stream == 'Combined'
+
+    # Resolve actual streams for Combined mode
+    actual_streams = []
+    if is_combined:
+        from ..models import Stream
+        actual_streams = list(
+            Stream.all_objects.filter(school=school, grade__name=grade)
+            .values_list('name', flat=True).order_by('name')
+        )
+
+    # Map workspace section to active_sub for Primary
+    if is_lower_primary:
+        active_sub = 'LOWER'
+    elif is_primary:
+        active_sub = exam.sub_section or 'UPPER'
+        if active_sub not in ('LOWER', 'UPPER'):
+            active_sub = 'UPPER'
+    else:
+        active_sub = None
+
+    if is_lower_primary or (is_primary and active_sub == 'LOWER'):
+        subject_map = LOWER_PRIMARY_SUBJECT_SHORT_MAP
+    elif is_primary:
+        subject_map = PRIMARY_SUBJECT_SHORT_MAP
+    else:
+        subject_map = SUBJECT_SHORT_MAP
+
+    active_levels = PRIMARY_PERF_LEVELS if is_primary else ORDERED_LEVELS
+    if is_combined:
+        # Union published subjects across all streams
+        published_subject_codes = set()
+        for s_name in actual_streams:
+            published_subject_codes |= get_published_subject_codes(
+                grade, s_name, exam.year, exam.term, exam.name,
+                sub_section=active_sub if is_primary else None,
+                is_admin=is_admin_view,
+            )
+    else:
+        published_subject_codes = get_published_subject_codes(
+            grade, stream, exam.year, exam.term, exam.name,
+            sub_section=active_sub if is_primary else None,
+            is_admin=is_admin_view,
+        )
+    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+    subject_label_map = {
+        s.code: (subject_map.get(s.code) or s.name or s.code)
+        for s in published_subjects_qs
+    }
+    published_subjects = sort_subjects([
+        (code, subject_label_map.get(code, subject_map.get(code, code)))
+        for code in published_subject_codes
+    ])
+
+    # Read ExamSummary cache
+    if is_lower_primary:
+        db_section = 'PRIMARY'
+        db_sub = 'LOWER'
+    elif is_primary:
+        db_section = 'PRIMARY'
+        db_sub = active_sub
+    else:
+        db_section = 'JSS'
+        db_sub = None
+    summaries_qs = ExamSummary.all_objects.filter(
+        school=school,
+        student__class_name=grade,
+        year=exam.year,
+        term=exam.term,
+        exam_name=exam.name,
+        school_section=db_section,
+        sub_section=db_sub,
+    )
+    totals_map = {s.student_id: s for s in summaries_qs}
+
+    all_marks = Mark.all_objects.filter(
+        school=school,
+        student__class_name=grade,
+        student__stream__in=actual_streams if is_combined else stream,
+        year=exam.year, term=exam.term, exam_type=exam.name,
+        subject__in=published_subjects_qs,
+    ).select_related('subject').order_by('subject', '-date_recorded', '-id')
+
+    marks_by_student = {}
+    for mark in all_marks:
+        marks_by_student.setdefault(mark.student_id, []).append(mark)
+
+    students = Student.all_objects.filter(
+        school=school, class_name=grade, stream__in=actual_streams if is_combined else stream, is_active=True,
+    ).order_by('admission_no')
+
+    broadsheet = []
+    for student in students:
+        student_marks = marks_by_student.get(student.id, [])
+        marks_dict = {}
+        for mark in student_marks:
+            marks_dict.setdefault(mark.subject.code, mark)
+
+        t = totals_map.get(student.id)
+        total_marks = t.total_marks if t else 0
+        total_points = t.total_points if t else 0
+        assessed_subjects = t.subject_count if t else 0
+
+        if not t or (total_marks == 0 and total_points == 0):
+            # student_marks is a list, not a queryset — aggregate manually
+            total_marks = sum(m.score for m in student_marks if m.score is not None)
+            total_points = sum(m.points for m in student_marks if m.points is not None)
+            assessed_subjects = sum(1 for m in student_marks if m.score is not None and not m.is_absent)
+
+        row_scores = []
+        for code, short in published_subjects:
+            m = marks_dict.get(code)
+            if m and m.score is not None:
+                if m.is_absent:
+                    row_scores.append({'score': 'AB', 'level': 'AB', 'subject_id': m.subject_id})
+                else:
+                    if is_primary:
+                        level, _ = _get_primary_performance(
+                            m.score,
+                            school=school,
+                            section=section,
+                            sub_section=active_sub if is_primary else None,
+                            subject_id=m.subject_id,
+                        )
+                    else:
+                        # Subject-specific scale is honored by passing the live subject_id;
+                        # resolve_scale_fast falls back to the general row automatically.
+                        # Pass school=school, section=section explicitly — thread-local
+                        # ContextVar is 'BOTH' for admin users and never matches a cached key.
+                        level, _ = get_performance_level(
+                            m.score,
+                            sub_section=active_sub,
+                            subject_id=m.subject_id,
+                            school=school,
+                            section=section,
+                        )
+                    row_scores.append({'score': m.score, 'level': level, 'subject_id': m.subject_id})
+            else:
+                row_scores.append({'score': '-', 'level': '-', 'subject_id': None})
+
+        # PLV column uses the broadsheet's `total_scale` (aggregated marks → level)
+        total_level, total_pts = get_performance_level(
+            total_marks,
+            sub_section=active_sub,
+            is_total_calculation=True,
+            school=school,
+            section=section,
+        )
+
+        broadsheet.append({
+            'student': student,
+            'scores':  row_scores,
+            'tps':     total_points,
+            'total':   total_marks,
+            'plv':     total_level,
+        })
+
+    broadsheet.sort(key=lambda x: (-x['total'], -x['tps']))
+
+    # Assign positions
+    for i, row in enumerate(broadsheet, start=1):
+        row['position'] = i
+
+    # ── Subject Performance Analysis Data Builder ───────
+    analysis_data = {
+        short: {
+            'entries': 0, 'total_score': 0, 'mean_score': 0.0, 'mean_points': 0.0,
+            'performance_text': '—',
+            'distribution': {lvl: 0 for lvl in active_levels},
+            'teacher_name': '—',
+        }
+        for _code, short in published_subjects
+    }
+
+    # Map assigned teachers for this grade/stream
+    from ..models import SubjectAssignment
+    teacher_map = {}
+    sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream__in=actual_streams if is_combined else stream).select_related('teacher_profile__user', 'subject')
+    if section == 'LOWER_PRIMARY':
+        sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif section == 'PRIMARY':
+        sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section=active_sub)
+    elif section == 'JSS':
+        sa_qs = sa_qs.filter(school_section='JSS')
+    for a in sa_qs:
+        code = a.subject.code if a.subject else None
+        if code:
+            teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title()
+    for short in analysis_data:
+        analysis_data[short]['teacher_name'] = teacher_map.get(short, '—')
+
+    # ── FIXED SINGLE-PASS EXAM MARK AGGREGATOR ──
+    for mark in all_marks:
+        # Guarantee we only look at valid, recorded scores for the active exam sheet
+        if mark.is_absent or mark.score is None:
+            continue
+
+        subj_code = mark.subject.code if mark.subject else None
+        if not subj_code:
+            continue
+
+        # Convert database code to short template label name
+        short = subject_label_map.get(subj_code, subject_map.get(subj_code, subj_code))
+        if short not in analysis_data:
+            continue
+
+        # Add to tracking metrics row matrix safely
+        analysis_data[short]['entries'] += 1
+        analysis_data[short]['total_score'] += mark.score
+
+        # Calculate level codes using our explicit section override context rules
+        if is_primary:
+            lv, pts = _get_primary_performance(
+                mark.score, school=school, section=section,
+                sub_section=active_sub if is_primary else None, subject_id=mark.subject_id,
+            )
+        else:
+            lv, pts = get_performance_level(
+                mark.score, sub_section=active_sub,
+                subject_id=mark.subject_id, school=school, section=section,
+            )
+
+        if lv in analysis_data[short]['distribution']:
+            analysis_data[short]['distribution'][lv] += 1
+
+    # Finalize means, points lookups, and textual level descriptors per row
+    for short, data in analysis_data.items():
+        if data['entries'] > 0:
+            data['mean_score'] = round(data['total_score'] / data['entries'], 2)
+
+            # Resolve the mean text descriptor and points based on the calculated mean score
+            if is_primary:
+                txt, pts_val = _get_primary_performance(data['mean_score'], school=school, section=section, sub_section=active_sub if is_primary else None)
+            else:
+                txt, pts_val = get_performance_level(data['mean_score'], sub_section=active_sub, school=school, section=section)
+
+            data['mean_points'] = round(pts_val, 4)
+            data['performance_text'] = txt
+
+    analysis_rows = [
+        {'short': short, **analysis_data[short]} for _code, short in published_subjects
+    ]
+
+    # ── Grade Breakdown: per-stream performance from ExamSummary ───────────
+    # totals_map already has ALL students in the grade (no stream filter)
+    all_summaries = list(totals_map.values())
+
+    grade_breakdown_rows = []
+    ov_entries = 0
+    ov_total_marks = 0
+    ov_total_subj_count = 0
+    ov_dist = {lvl: 0 for lvl in active_levels}
+
+    # Collect unique stream names from the summaries
+    seen_streams = set()
+    for s in all_summaries:
+        seen_streams.add(s.student.stream)
+    all_streams = sorted(seen_streams)
+
+    for s_name in all_streams:
+        entries = 0
+        total_marks = 0
+        total_subj_count = 0
+        dist = {lvl: 0 for lvl in active_levels}
+
+        for summ in all_summaries:
+            if summ.student.stream != s_name:
+                continue
+            if summ.total_marks == 0 and summ.total_points == 0:
+                continue
+            entries += 1
+            total_marks += summ.total_marks
+            total_subj_count += summ.subject_count or 0
+            plv = (summ.overall_plv or '-').strip().upper()
+            if plv in dist:
+                dist[plv] += 1
+
+        # Mean marks = total marks across all students / total subject entries
+        mean_m = round(total_marks / total_subj_count, 1) if total_subj_count else 0
+        # Mean points from ExamSummary.mean_points (already per-student mean)
+        s_summ_list = [summ for summ in all_summaries if summ.student.stream == s_name
+                       and (summ.total_marks != 0 or summ.total_points != 0)]
+        mean_p = round(sum(summ.mean_points for summ in s_summ_list) / entries, 4) if entries else 0
+        if entries:
+            if is_primary:
+                plv_txt, _ = _get_primary_performance(mean_m, school=school, section=section, sub_section=active_sub)
+            else:
+                plv_txt, _ = get_performance_level(mean_m, sub_section=active_sub, school=school, section=section)
+        else:
+            plv_txt = '—'
+
+        grade_breakdown_rows.append({
+            'label': f'{grade} {s_name}',
+            'dist': dist,
+            'entries': entries,
+            'mean_score': mean_m,
+            'mean_points': mean_p,
+            'performance_text': plv_txt,
+        })
+        ov_entries += entries
+        ov_total_marks += total_marks
+        ov_total_subj_count += total_subj_count
+        for lvl in active_levels:
+            ov_dist[lvl] += dist[lvl]
+
+    # Overall row
+    ov_mean = round(ov_total_marks / ov_total_subj_count, 1) if ov_total_subj_count else 0
+    ov_pts = round(sum(summ.mean_points for summ in all_summaries
+                       if (summ.total_marks != 0 or summ.total_points != 0)) / ov_entries, 4) if ov_entries else 0
+    if ov_entries:
+        if is_primary:
+            ov_plv, _ = _get_primary_performance(ov_mean, school=school, section=section, sub_section=active_sub)
+        else:
+            ov_plv, _ = get_performance_level(ov_mean, sub_section=active_sub, school=school, section=section)
+    else:
+        ov_plv = '—'
+
+    grade_breakdown_rows.append({
+        'label': grade,
+        'dist': ov_dist,
+        'entries': ov_entries,
+        'mean_score': ov_mean,
+        'mean_points': ov_pts,
+        'performance_text': ov_plv,
+        'is_overall': True,
+    })
+
+    # ── Gender Summary: boys vs girls in the current stream ────────────
+    gender_rows = []
+    for gender_label, gender_val in [('Girls', 'Female'), ('Boys', 'Male')]:
+        g_entries = 0
+        g_total_marks = 0
+        g_total_subj_count = 0
+        g_dist = {lvl: 0 for lvl in active_levels}
+
+        for summ in all_summaries:
+            if is_combined:
+                if summ.student.stream not in actual_streams:
+                    continue
+            else:
+                if summ.student.stream != stream:
+                    continue
+            if summ.student.gender != gender_val:
+                continue
+            if summ.total_marks == 0 and summ.total_points == 0:
+                continue
+            g_entries += 1
+            g_total_marks += summ.total_marks
+            g_total_subj_count += summ.subject_count or 0
+            plv = (summ.overall_plv or '-').strip().upper()
+            if plv in g_dist:
+                g_dist[plv] += 1
+
+        g_mean = round(g_total_marks / g_total_subj_count, 1) if g_total_subj_count else 0
+        g_summ_list = [summ for summ in all_summaries if (summ.student.stream in actual_streams if is_combined else summ.student.stream == stream)
+                       and summ.student.gender == gender_val
+                       and (summ.total_marks != 0 or summ.total_points != 0)]
+        g_pts = round(sum(summ.mean_points for summ in g_summ_list) / g_entries, 4) if g_entries else 0
+        if g_entries:
+            if is_primary:
+                g_plv, _ = _get_primary_performance(g_mean, school=school, section=section, sub_section=active_sub)
+            else:
+                g_plv, _ = get_performance_level(g_mean, sub_section=active_sub, school=school, section=section)
+        else:
+            g_plv = '—'
+
+        gender_rows.append({
+            'label': gender_label,
+            'dist': g_dist,
+            'entries': g_entries,
+            'mean_score': g_mean,
+            'mean_points': g_pts,
+            'performance_text': g_plv,
+        })
+
+    # Section accent color based on exam section
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    sec = exam.school_section or 'JSS'
+    if sec == 'PRIMARY' and exam.sub_section == 'LOWER':
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif sec == 'PRIMARY':
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors.get(sec, '#305CDE')
+
+    return {
+        'broadsheet': broadsheet,
+        'published_subjects': published_subjects,
+        'ordered_levels': active_levels,
+        'student_count': len(broadsheet),
+        'selected_year': exam.year,
+        'selected_term': exam.term,
+        'selected_exam': exam.name,
+        'is_primary': is_primary,
+        'analysis_rows': analysis_rows,
+        'grade_breakdown_rows': grade_breakdown_rows,
+        'gender_rows': gender_rows,
+        'section_accent': section_accent,
+    }

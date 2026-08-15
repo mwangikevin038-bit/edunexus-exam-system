@@ -2658,9 +2658,14 @@ PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
 LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
 
 
-def _get_primary_performance(percentage, school=None, section=None, sub_section=None):
+def _get_primary_performance(percentage, school=None, section=None, sub_section=None, subject_id=None):
     """Return (descriptor, points) for a primary percentage score.
-    Uses the unified grading engine for instant cached lookups."""
+    Uses the unified grading engine for instant cached lookups.
+
+    Pass `school` and `section` explicitly from broadsheet/report callers —
+    the thread-local ContextVar is set to 'BOTH' for admin users and never
+    matches any cached GradingAssignment key.
+    """
     import logging
     from ..school_scope import get_current_school, get_current_school_section
 
@@ -2671,7 +2676,7 @@ def _get_primary_performance(percentage, school=None, section=None, sub_section=
 
     if school and section:
         from .grading_engine import resolve_scale_fast
-        scale_data = resolve_scale_fast(school.pk, section, sub_section, subject_id=None)
+        scale_data = resolve_scale_fast(school.pk, section, sub_section, subject_id=subject_id)
         if scale_data:
             return get_subject_level_fast(percentage, scale_data)
 

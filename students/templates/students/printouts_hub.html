@@ -3,12 +3,12 @@
 
 {% block sub_tabs %}
 <style>
-  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#84cc16;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
   .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
   .sub-nav-item{display:flex;align-items:stretch}
   .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
-  .sub-nav-link:hover{color:#fff;background-color:#65a30d}
-  .sub-nav-link.active{color:#fff;background-color:#166534;font-weight:700}
+  .sub-nav-link:hover{color:#fff;background-color:#43A047}
+  .sub-nav-link.active{color:#fff;background-color:#388E3C;font-weight:700}
   .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 </style>
 <nav class="sub-nav-bar">
@@ -106,14 +106,14 @@
       <span class="po-card-badge po-badge-pdf">PDF</span>
     </a>
 
-    <div class="po-card disabled" title="Coming soon">
+    <a href="{% url 'merit_list' %}" class="po-card">
       <div class="po-card-icon">
         <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       </div>
       <div class="po-card-title">Merit List</div>
       <div class="po-card-desc">Print exam merit lists</div>
-      <span class="po-card-badge po-badge-soon">Soon</span>
-    </div>
+      <span class="po-card-badge po-badge-pdf">PDF</span>
+    </a>
 
     <div class="po-card disabled" title="Coming soon">
       <div class="po-card-icon">

@@ -21,10 +21,18 @@
 
     .analysis-container {
         position: relative;
-        padding: 40px;
+        padding: 24px 16px;
         background-color: #f8f9fa;
         min-height: 100vh;
         font-family: 'Inter', 'Montserrat', sans-serif;
+        max-width: none;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .main-content {
+        max-width: none !important;
+        padding: 0 !important;
     }
 
     .official-results-hero {
@@ -421,32 +429,28 @@
     .table-analysis {
         width: 100%;
         border-collapse: collapse;
-        font-size: 12pt;
+        font-size: 9pt;
         table-layout: fixed;
         position: relative;
         z-index: 1;
         background: #ffffff;
-        border: 1px solid #000000;
+        border: none;
         font-family: 'Times New Roman', Times, serif;
-        color: var(--bs-charcoal);
+        color: #1e293b;
     }
 
     .table-analysis th, .table-analysis td {
         border: 1px solid #000000;
-        padding: 3px 3px;
+        padding: 4px 4px;
         text-align: center;
         vertical-align: middle;
         overflow: hidden;
         white-space: nowrap;
-        color: var(--bs-charcoal);
+        color: #1e293b;
         font-family: 'Times New Roman', Times, serif;
-        font-size: 12pt;
-        line-height: 1.15;
+        font-size: 9pt;
+        line-height: 1.2;
     }
-    table.table-analysis td.col-lv,
-    table.table-analysis td.lv-col,
-    table.table-analysis th.col-lv,
-    table.table-analysis th.sub-hdr-lv { font-size: 10pt !important; font-family: 'Times New Roman', Times, serif !important; }
 
     .table-analysis tbody tr:hover td { background: #f0f4f8; }
     .table-analysis tbody tr td { background: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -454,36 +458,27 @@
     .table-analysis tbody tr td.total-col { background: #9AD725 !important; }
     .table-analysis tbody tr td.plv-col  { background: #F4C400 !important; }
     .table-analysis tbody tr td.lv-col  { background: #EDF4FC !important; }
-    .col-adm   { width: 40px; font-size: 13pt !important; }
-    .col-name  { width: 130px; text-align: left !important; padding-left: 5px !important; white-space: normal !important; font-size: 13pt !important; }
+    .col-adm   { width: 40px; }
+    .col-name  { text-align: left !important; padding-left: 6px !important; white-space: normal !important; }
+    .col-strm  { width: 28px; }
     .table-analysis th.col-adm { font-weight: 800 !important; }
     .table-analysis th.col-name { font-weight: 800 !important; }
-    .col-tps   { width: 34px; }
-    .col-total { width: 48px; }
-    .col-plv   { width: 36px; }
-    .col-mk    { width: 30px !important; font-size: 12pt !important; }
-    .col-lv    { width: 30px !important; }
-
-    .table-analysis .col-lv,
-    .table-analysis th.lv-col,
-    .table-analysis td.lv-col {
-        overflow: hidden !important;
-        text-overflow: clip !important;
-        padding-left: 3px !important;
-        padding-right: 3px !important;
-        font-size: 11pt !important;
-        font-family: 'Times New Roman', Times, serif !important;
-    }
+    .table-analysis td.col-name { font-weight: 400 !important; }
+    .col-tps   { width: 30px; }
+    .col-total { width: 36px; }
+    .col-plv   { width: 30px; }
+    .col-mk    { width: 26px; }
+    .col-lv    { width: 28px; }
 
     .header-label  { background: #fff; font-weight: 900; text-align: left; padding-left: 15px !important; }
     .header-value  { font-weight: 800; text-transform: uppercase; text-align: center; }
 
-    .subj-header { background: #ffffff !important; color: #000000 !important; font-weight: 700 !important; font-size: 12pt !important; border: 1px solid #000000 !important; }
-    .sub-hdr-mk  { background: #ffffff !important; color: #000000 !important; font-weight: 600 !important; font-size: 12pt !important; border: 1px solid #000000 !important; }
-    .sub-hdr-lv  { background: #ffffff !important; color: #000000 !important; font-weight: 600 !important; font-size: 11pt !important; border: 1px solid #000000 !important; }
-    .tps-col   { background-color: #9AD725 !important; font-weight: 700; color: var(--bs-charcoal) !important; border: 1px solid #000000 !important; font-size: 12pt !important; }
-    .total-col { background-color: #9AD725 !important; font-weight: 800; white-space: normal !important; line-height: 1.1; color: var(--bs-charcoal) !important; border: 1px solid #000000 !important; font-size: 12pt !important; }
-    .plv-col   { background-color: #F4C400 !important; font-weight: 800; color: var(--bs-charcoal) !important; white-space: normal !important; line-height: 1.1; border: 1px solid #000000 !important; font-size: 12pt !important; }
+    .subj-header { background: #ffffff !important; color: #000000 !important; font-weight: 700 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
+    .sub-hdr-mk  { background: #ffffff !important; color: #000000 !important; font-weight: 600 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
+    .sub-hdr-lv  { background: #ffffff !important; color: #000000 !important; font-weight: 600 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
+    .tps-col   { background-color: #9AD725 !important; font-weight: 700; color: #1e293b !important; border: 1px solid #000000 !important; font-size: 9pt !important; }
+    .total-col { background-color: #9AD725 !important; font-weight: 800; white-space: normal !important; line-height: 1.1; color: #1e293b !important; border: 1px solid #000000 !important; font-size: 9pt !important; }
+    .plv-col   { background-color: #F4C400 !important; font-weight: 800; color: #1e293b !important; white-space: normal !important; line-height: 1.1; border: 1px solid #000000 !important; font-size: 9pt !important; }
     .table-analysis td.lv-col { color: #305CDE !important; background-color: #EDF4FC !important; font-weight: 700 !important; }
 
     /* ===================== PREMIUM BROADSHEET HEADER ===================== */
@@ -692,7 +687,7 @@
     /* ═══ SHARED TABLE FORMATTING — BROWSER + PRINT + PDF ═══ */
     html, body {
         font-family: 'Times New Roman', Times, serif !important;
-        font-size: 12pt !important;
+        font-size: 9pt !important;
         color: #000 !important;
     }
     .table-analysis {
@@ -700,9 +695,9 @@
         width: 100% !important;
         table-layout: fixed !important;
         border-collapse: collapse !important;
-        border: 1px solid #000000 !important;
+        border: none !important;
         background: #ffffff !important;
-        font-size: 12pt !important;
+        font-size: 9pt !important;
         font-family: 'Times New Roman', Times, serif !important;
         color: #000000 !important;
     }
@@ -719,12 +714,12 @@
         display: table-cell !important;
         border: 1px solid #000000 !important;
         background: transparent !important;
-        padding: 3px 3px !important;
+        padding: 4px 4px !important;
         white-space: nowrap !important;
         vertical-align: middle !important;
         text-align: center !important;
-        font-size: 12pt !important;
-        line-height: 1.15 !important;
+        font-size: 9pt !important;
+        line-height: 1.2 !important;
         overflow: hidden !important;
         color: #000000 !important;
         font-family: 'Times New Roman', Times, serif !important;
@@ -732,30 +727,31 @@
     .table-analysis td.col-lv,
     .table-analysis th.col-lv,
     .table-analysis th.sub-hdr-lv {
-        font-size: 11pt !important;
+        font-size: 9pt !important;
         font-family: 'Times New Roman', Times, serif !important;
     }
     .table-analysis td:nth-child(2) {
         text-align: left !important;
-        padding-left: 5px !important;
+        padding-left: 6px !important;
     }
-    .table-analysis .col-adm { width: 40px !important; font-size: 13pt !important; text-align: center !important; }
-    .table-analysis .col-name { width: 130px !important; font-size: 13pt !important; text-align: left !important; padding-left: 5px !important; }
+    .table-analysis .col-adm { width: 40px !important; text-align: center !important; }
+    .table-analysis .col-name { text-align: left !important; padding-left: 6px !important; }
+    .table-analysis .col-strm { width: 28px !important; }
     .table-analysis th.col-adm { font-weight: 800 !important; text-align: center !important; }
-    .table-analysis th.col-name { font-weight: 800 !important; text-align: left !important; padding-left: 5px !important; }
-    .table-analysis td.col-adm { font-weight: 800 !important; text-align: center !important; }
-    .table-analysis td.col-name { font-weight: 400 !important; text-align: left !important; padding-left: 5px !important; }
-    .table-analysis .col-mk { width: 30px !important; font-size: 12pt !important; }
-    .table-analysis .col-lv { width: 30px !important; }
-    .table-analysis .col-tps { width: 34px !important; }
-    .table-analysis .col-total { width: 48px !important; }
-    .table-analysis .col-plv { width: 36px !important; }
-    .subj-header { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000 !important; font-size: 12pt !important; font-weight: 700 !important; }
-    .sub-hdr-mk  { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000 !important; font-size: 12pt !important; font-weight: 600 !important; }
-    .sub-hdr-lv  { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000 !important; font-size: 11pt !important; font-weight: 600 !important; font-family: 'Times New Roman', Times, serif !important; }
-    .tps-col   { background-color: #9AD725 !important; color: var(--bs-charcoal) !important; font-size: 12pt !important; font-weight: 700 !important; border: 1px solid #000000 !important; }
-    .total-col { background-color: #9AD725 !important; color: var(--bs-charcoal) !important; font-size: 12pt !important; font-weight: 800 !important; border: 1px solid #000000 !important; }
-    .plv-col   { background-color: #F4C400 !important; color: var(--bs-charcoal) !important; font-size: 12pt !important; font-weight: 800 !important; border: 1px solid #000000 !important; }
+    .table-analysis th.col-name { font-weight: 800 !important; text-align: left !important; padding-left: 6px !important; }
+    .table-analysis td.col-adm { font-weight: 400 !important; text-align: center !important; }
+    .table-analysis td.col-name { font-weight: 400 !important; text-align: left !important; padding-left: 6px !important; }
+    .table-analysis .col-mk { width: 26px !important; }
+    .table-analysis .col-lv { width: 28px !important; }
+    .table-analysis .col-tps { width: 30px !important; }
+    .table-analysis .col-total { width: 36px !important; }
+    .table-analysis .col-plv { width: 30px !important; }
+    .subj-header { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000 !important; font-size: 9pt !important; font-weight: 700 !important; }
+    .sub-hdr-mk  { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000 !important; font-size: 9pt !important; font-weight: 600 !important; }
+    .sub-hdr-lv  { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000 !important; font-size: 9pt !important; font-weight: 600 !important; font-family: 'Times New Roman', Times, serif !important; }
+    .tps-col   { background-color: #9AD725 !important; color: #000000 !important; font-size: 9pt !important; font-weight: 700 !important; border: 1px solid #000000 !important; }
+    .total-col { background-color: #9AD725 !important; color: #000000 !important; font-size: 9pt !important; font-weight: 800 !important; border: 1px solid #000000 !important; }
+    .plv-col   { background-color: #F4C400 !important; color: #000000 !important; font-size: 9pt !important; font-weight: 800 !important; border: 1px solid #000000 !important; }
     .table-analysis td.lv-col { color: #305CDE !important; background-color: #EDF4FC !important; font-weight: 700 !important; }
     .mobile-summary-row, .mobile-subject-grid, .mobile-subject-chip, .expand-hint {
         display: none !important;
@@ -2074,6 +2070,30 @@
         </a>
     </div>
 
+    <!-- ===================== MERIT LIST FORM CARD (only when accessed via merit-list) ===================== -->
+    {% if request.resolver_match.url_name == 'merit_list' %}
+    <div class="ml-page" style="max-width:1200px;margin:0 auto;padding:24px 40px;background:#eaecf0;min-height:auto">
+      <div class="ml-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 32px 12px">
+          <h2 style="font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:20px;color:#111827;margin:0">Merit List</h2>
+          <span style="font-size:13px;color:#64748b">Grade {{ selected_grade }}{% if selected_stream %} • {{ selected_stream }}{% endif %} • {{ selected_exam }}</span>
+        </div>
+        <div style="padding:0 32px 20px;font-size:14px;color:#6b7280;font-family:'Inter',sans-serif">
+          Select class and exam to view the merit list
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 32px;background:#f1f5f9;border-top:1px solid #e2e8f0">
+          <div>
+            <div style="font-size:16px;font-weight:800;color:#1e40af">{{ selected_grade }}{% if selected_stream %}: {{ selected_stream }}{% endif %}</div>
+            <div style="font-size:13px;color:#475569;font-weight:600;text-transform:uppercase">{{ selected_exam }}</div>
+          </div>
+          <a href="{% url 'merit_list' %}" style="display:inline-flex;align-items:center;padding:10px 20px;background:#86efac;color:#14532d;border-radius:6px;font-size:13px;font-weight:700;text-decoration:none;font-family:'Inter',sans-serif">
+            ← Change Selection
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- ===================== HERO HEADER ===================== -->
     <div class="official-results-hero d-print-none">
         <div class="official-results-top">
@@ -2173,6 +2193,7 @@
             <colgroup>
                 <col class="col-adm">
                 <col class="col-name">
+                <col class="col-strm">
                 {% for code, short in published_subjects %}
                     <col class="col-mk">
                     <col class="col-lv">
@@ -2185,19 +2206,20 @@
             <thead>
                 <!-- ===== COLUMN LABELS ===== -->
                 <tr>
-                    <th rowspan="2" class="col-adm" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:center;">ADM</th>
-                    <th rowspan="2" class="col-name" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:left !important; padding-left:5px !important;">STUDENT NAME</th>
+                    <th rowspan="2" class="col-adm" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:center; font-size:9pt;">ADM</th>
+                    <th rowspan="2" class="col-name" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:left !important; padding-left:6px !important; font-size:9pt;">STUDENT NAME</th>
+                    <th rowspan="2" class="col-strm" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:center; font-size:9pt;">STRM</th>
                     {% for code, short in published_subjects %}
-                        <th colspan="2" class="subj-header" style="background:#ffffff !important; color:#000000 !important; border:1px solid #000000 !important;">{{ short }}</th>
+                        <th colspan="2" class="subj-header" style="background:#ffffff !important; color:#000000 !important; border:1px solid #000000 !important; font-size:9pt;">{{ short }}</th>
                     {% endfor %}
-                    <th rowspan="2" class="tps-col col-tps" style="font-weight:700; border:1px solid #000000; background:#9AD725 !important; color:#000000 !important;">TPS</th>
-                    <th rowspan="2" class="total-col col-total" style="font-weight:800; border:1px solid #000000; background:#9AD725 !important; color:#000000 !important;">TTL<br>MRK</th>
-                    <th rowspan="2" class="plv-col col-plv" style="font-weight:800; border:1px solid #000000; background:#F4C400 !important; color:#000000 !important;">PLV</th>
+                    <th rowspan="2" class="tps-col col-tps" style="font-weight:700; border:1px solid #000000; background:#9AD725 !important; color:#000000 !important; font-size:9pt;">TPS</th>
+                    <th rowspan="2" class="total-col col-total" style="font-weight:800; border:1px solid #000000; background:#9AD725 !important; color:#000000 !important; font-size:9pt;">TTL<br>MRK</th>
+                    <th rowspan="2" class="plv-col col-plv" style="font-weight:800; border:1px solid #000000; background:#F4C400 !important; color:#000000 !important; font-size:9pt;">PLV</th>
                 </tr>
                 <tr>
                     {% for code, short in published_subjects %}
-                        <th class="col-mk sub-hdr-mk">MK</th>
-                        <th class="col-lv sub-hdr-lv" style="font-size:11pt !important; font-family: 'Times New Roman', Times, serif !important;">LV</th>
+                        <th class="col-mk sub-hdr-mk" style="font-size:9pt;">MK</th>
+                        <th class="col-lv sub-hdr-lv" style="font-size:9pt;">LV</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -2205,11 +2227,12 @@
             <tbody>
                 {% for row in broadsheet %}
                 <tr>
-                    <td class="col-adm" style="font-weight:800; text-align:center;">{{ row.student.admission_no }}</td>
+                    <td class="col-adm" style="text-align:center;">{{ row.student.admission_no }}</td>
                     <td class="col-name">{{ row.student.name }}</td>
+                    <td class="col-strm" style="text-align:center;">{{ row.student.stream.0|upper }}</td>
                     {% for score_entry in row.scores %}
                         <td class="col-mk">{{ score_entry.score }}</td>
-                        <td class="col-lv lv-col" style="font-size:11pt !important; font-family: 'Times New Roman', Times, serif !important;">{{ score_entry.level }}</td>
+                        <td class="col-lv lv-col">{{ score_entry.level }}</td>
                     {% endfor %}
                     <td class="tps-col">{{ row.tps }}</td>
                     <td class="total-col">{{ row.total }}</td>
