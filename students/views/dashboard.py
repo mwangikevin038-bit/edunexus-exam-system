@@ -84,7 +84,7 @@ def dashboard(request):
         'class_name', 'stream', 'subject__code'
     ) if teacher and school else SubjectAssignment.objects.none()
     active_exams = Exam.objects.filter(school=school, status='active', is_deleted=False).order_by('-year', 'term', 'name') if school else Exam.objects.none()
-    submissions = MarkSubmission.objects.filter(school=school, teacher=teacher) if teacher and school else MarkSubmission.objects.none()
+    submissions = MarkSubmission.objects.filter(school=school, teacher=teacher).select_related('subject') if teacher and school else MarkSubmission.objects.none()
     section = get_request_school_section(request)
     if section == 'LOWER_PRIMARY':
         submissions = submissions.filter(school_section='PRIMARY', sub_section='LOWER')
