@@ -509,10 +509,10 @@
         position: absolute;
         left: 14px;
         top: 50px;
-        bottom: 0;
+        bottom: 20px;
         width: 19px;
         background: var(--section-accent);
-        border-radius: 0px 24px 0px 0px;
+        border-radius: 0px 24px 24px 0px;
     }
     .report-content { display: flex; flex-direction: column; flex: 1; gap: 8px; }
 
@@ -589,12 +589,12 @@
         flex-direction: column;
     }
     .rc-chart-title {
-        font-size: 10pt; font-weight: 700; color: var(--rc-text);
-        margin-bottom: 0px; padding-bottom: 0px;
-        text-align: left; line-height: 1;
+        font-size: 9pt; font-weight: 700; color: var(--rc-muted);
+        text-transform: uppercase; letter-spacing: 0.04em;
+        margin-bottom: 4px; padding-bottom: 0; text-align: left; line-height: 1;
     }
     .rc-chart-canvas-wrap {
-        height: 200px;
+        height: 220px;
         position: relative;
     }
     .rc-chart-canvas-wrap canvas {
@@ -617,23 +617,38 @@
     }
     .rc-chart-canvas-wrap { position: relative; z-index: 2; }
 
-    /* Stat boxes */
-    .rc-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-    .rc-stat {
-        border: 1px solid var(--rc-border); border-top: 3px solid var(--section-accent, var(--rc-blue));
-        border-radius: 8px; padding: 10px 8px; text-align: center;
-        background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, #FAFBFC 100%);
+    .rc-chart-svg {
+        width: 100%;
+        margin: 8px 0;
     }
-    .rc-stat-label { display: block; font-size: 9pt; font-weight: 700; color: var(--rc-muted); text-transform: uppercase; margin-bottom: 4px; }
-    .rc-stat-value { display: block; font-size: 14pt; font-weight: 800; color: var(--rc-text); }
+    .rc-chart-svg svg {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 250px;
+        display: block;
+    }
+
+    /* Stat boxes */
+    .rc-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .rc-stat {
+        border: 1px solid #E2E8F0; border-top: 3px solid var(--section-accent, var(--rc-blue));
+        border-radius: 10px; padding: 14px 10px; text-align: center;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .rc-stat:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .rc-stat-label { display: block; font-size: 8pt; font-weight: 800; color: var(--section-accent, var(--rc-blue)); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .rc-stat-value { display: block; font-size: 16pt; font-weight: 800; color: #1E293B; line-height: 1.2; }
+    .rc-stat-value small { font-size: 10pt; font-weight: 600; color: #94A3B8; }
 
     /* Subjects table */
     .table-scroll { width: 100%; overflow-x: auto; }
     .rc-table { width: 100%; border-collapse: collapse; min-width: 480px; }
     .rc-table thead th {
-        background: var(--section-accent, var(--rc-green)); color: #fff;
-        font-size: 10pt; text-transform: uppercase; letter-spacing: 0.03em;
-        padding: 7px 6px; border: 1px solid var(--section-accent, var(--rc-green)); white-space: nowrap;
+        background: #E9ECF0; color: #1E293B;
+        font-size: 10pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+        padding: 10px 8px; border: 1px solid #D5D9E0; white-space: nowrap;
     }
     .rc-table td { padding: 6px; border: 1px solid var(--rc-border); font-size: 11pt; }
     .rc-table tbody tr:nth-child(even) { background: #FAFBFC; }
@@ -641,33 +656,79 @@
     .rc-center { text-align: center; }
     .rc-grade { font-weight: 800; color: var(--rc-blue); }
     .rc-teacher { font-style: italic; font-weight: 600; padding-left: 10px !important; }
-    .rc-dev-up { color: var(--rc-up); font-weight: 700; }
-    .rc-dev-down { color: var(--rc-down); font-weight: 700; }
+    .rc-dev-up { color: #16A34A; font-weight: 700; }
+    .rc-dev-down { color: #DC2626; font-weight: 700; }
+    .rc-dev-arrow { font-size: 10pt; margin-right: 1px; }
 
     /* Remarks */
-    .rc-remarks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .rc-remark-box { border: 1px solid var(--rc-border); border-left: 3px solid var(--section-accent, var(--rc-green)); border-radius: 8px; padding: 10px 12px; }
-    .rc-remark-title { font-size: 10pt; font-weight: 700; color: var(--section-accent, var(--rc-green)); margin-bottom: 4px; text-transform: uppercase; }
-    .rc-remark-text { font-size: 12pt; font-style: italic; color: #333; min-height: 72px; margin-bottom: 8px; }
-    .rc-remark-author { font-size: 10pt; font-weight: 700; color: #000000; margin-bottom: 6px; }
-    .rc-signature { font-size: 10pt; font-weight: 700; border-top: 1px solid var(--rc-border); padding-top: 4px; }
+    .rc-comments-header {
+        background: var(--section-accent, #16A34A);
+        color: #fff; font-size: 10.5pt; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.08em; text-align: center;
+        padding: 4px 12px; border-radius: 8px 20px 0 0;
+        margin-left: -39px; margin-right: 20px;
+    }
+    .rc-remarks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; background: #F8FAFC; border-radius: 0 0 8px 8px; margin-left: -39px; margin-right: 20px; }
+    .rc-remark-box {
+        border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px 20px;
+        background: #FFFFFF;
+        display: flex; flex-direction: column;
+    }
+    .rc-remark-title {
+        font-size: 10pt; font-weight: 800; color: #1E293B;
+        margin-bottom: 14px; padding-bottom: 0;
+        border-bottom: none;
+    }
+    .rc-remark-text {
+        font-size: 10.5pt; font-weight: 400; color: #334155;
+        line-height: 1.6; margin-bottom: 16px; flex-grow: 1;
+    }
+    .rc-remark-author {
+        font-size: 10pt; font-weight: 700; color: #1E293B;
+        margin-bottom: 8px;
+    }
+    .rc-signature {
+        font-size: 9pt; font-weight: 600; color: #64748B;
+        border-top: 1px dashed #CBD5E1; padding-top: 8px;
+        margin-top: auto;
+    }
 
     /* Grade descriptors */
-    .rc-descriptors-title { font-size: 9pt; font-weight: 800; color: #1C1C1E; text-transform: uppercase; margin-bottom: 3px; letter-spacing: 0.04em; }
-    .rc-descriptors-table { width: 100%; border-collapse: collapse; }
+    .rc-descriptors { margin-top: 14px; }
+    .rc-descriptors-title {
+        font-size: 9pt; font-weight: 800; color: #1E293B;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        margin-bottom: 8px; padding-bottom: 6px;
+        border-bottom: 2px solid var(--section-accent, #16A34A);
+    }
+    .rc-descriptors-table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
     .rc-descriptors-table th, .rc-descriptors-table td {
-        border: 1px solid var(--rc-border); padding: 3px 4px; font-size: 9pt; text-align: center;
+        border: 1px solid #E2E8F0; padding: 8px 10px; font-size: 9pt; text-align: center;
     }
-    .rc-descriptors-table th { background: #F1F5F9; color: #1C1C1E; font-weight: 800; }
+    .rc-descriptors-table th {
+        background: #E9ECF0; color: #1E293B; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.03em;
+    }
     .rc-descriptors-table td:first-child, .rc-descriptors-table th:first-child {
-        text-align: left; font-weight: 700; background: #F8FAFC; color: #1C1C1E;
+        text-align: left; font-weight: 700; background: #F8FAFC; color: #1E293B;
     }
-    .footer-dates { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-top: 8px; }
-    .date-box { display: flex; justify-content: flex-start; gap: 16px; font-size: 10pt; font-weight: 700; border-bottom: 2px solid var(--section-accent, var(--rc-green)); padding-bottom: 3px; }
+    .footer-dates {
+        margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    }
+    .date-box {
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 10pt; font-weight: 700; color: #1E293B;
+        padding: 10px 14px; border-radius: 8px;
+        border: 1px solid #E2E8F0;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+    }
+    .date-box span:first-child {
+        color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; font-size: 9pt;
+    }
     .system-footer {
-        display: block; text-align: center; margin-top: 16px; padding: 12px;
-        font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700; color: #94a3b8;
-        letter-spacing: 0.5px; text-transform: uppercase; page-break-inside: avoid; break-inside: avoid;
+        display: block; text-align: center; margin-top: 16px; padding: 10px;
+        font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700; color: #94A3B8;
+        letter-spacing: 0.8px; text-transform: uppercase; page-break-inside: avoid; break-inside: avoid;
     }
     .rc-print-watermark { display: none; }
 
@@ -695,7 +756,8 @@
        PRINT
        ═══════════════════════════════════════════════════════════ */
     @media print {
-        @page { size: A4 portrait; margin: 0; }
+        @page { size: A4 portrait; margin: 8mm; }
+        *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
         .rv-shell, .rc-topbar, .rc-context-card, .rc-action-buttons, .rc-info-bar, .sidebar, .sidebar-overlay, .sidebar-header, .sidebar-footer, .sidebar-nav, .sidebar-user, .navbar, .left-menu, .control-panel, .green-header-box, nav, .bottom-nav, .mobile-topbar, .hamburger-btn, .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header, .mobile-menu-backdrop, .system-footer { display: none !important; }
         html, body { font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; background: white !important; margin: 0 !important; padding: 0 !important; max-height: 285mm !important; overflow: hidden !important; }
         .container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }
@@ -703,7 +765,7 @@
         .report-card {
             display: block !important; page-break-inside: avoid !important; break-inside: avoid !important;
             margin: 0 !important; width: 7.9in !important; max-height: 285mm !important; overflow: hidden !important;
-            border: none !important; border-left: 12px solid var(--section-accent, #0096c7) !important;
+            border: none !important;
             position: relative !important; font-family: 'Times New Roman', Times, serif !important;
             font-size: 12pt !important; box-sizing: border-box !important;
             padding: 0.12in 0.4in 0.15in !important; line-height: 1.15 !important; flex-shrink: 1 !important;
@@ -718,32 +780,32 @@
         .rc-schoolinfo .rc-address { font-size: 10pt !important; margin-bottom: 1px !important; }
         .rc-schoolinfo .rc-contact-line { font-size: 9pt !important; }
         .rc-header { gap: 10px !important; padding-bottom: 5px !important; border-bottom: 3px solid var(--section-accent, var(--rc-green)) !important; }
-        .rc-banner { padding: 6px 10px !important; font-size: 10pt !important; }
+        .rc-banner { padding: 4px 12px !important; font-size: 10pt !important; }
         .rc-top-grid { gap: 16px !important; }
         .rc-photo-placeholder { width: 85px !important; height: 95px !important; border-radius: 6px !important; }
         .rc-student-name { font-size: 13pt !important; margin-bottom: 4px !important; }
         .rc-detail { font-size: 10pt !important; margin-bottom: 2px !important; }
-        .rc-chart-img { display: block !important; max-height: 110px !important; width: auto !important; margin: 0 auto !important; }
-        .rc-chart-canvas-wrap { display: none !important; }
+        .rc-chart-canvas-wrap { display: block !important; height: 220px !important; }
         .rc-chart-title { font-size: 9pt !important; margin: 0 !important; padding: 0 !important; }
         .rc-chart-block { padding: 0 !important; margin: 0 !important; }
         .rc-stats { gap: 6px !important; }
-        .rc-stat { padding: 6px 6px !important; border-top: 2px solid var(--section-accent, var(--rc-blue)) !important; }
-        .rc-stat-label { font-size: 8pt !important; margin-bottom: 2px !important; }
-        .rc-stat-value { font-size: 13pt !important; }
+        .rc-stat { padding: 6px 6px !important; border-top: 3px solid var(--section-accent, #16A34A) !important; border-radius: 10px !important; }
+        .rc-stat-label { font-size: 7pt !important; margin-bottom: 2px !important; font-weight: 800 !important; color: var(--section-accent, #16A34A) !important; letter-spacing: 0.06em !important; }
+        .rc-stat-value { font-size: 13pt !important; font-weight: 800 !important; color: #1E293B !important; }
         .table-scroll { overflow: visible !important; }
-        .rc-table td { padding: 2px 5px !important; font-size: 0.86em !important; line-height: 1.05 !important; }
-        .rc-table thead th { padding: 2px 5px !important; font-size: 0.86em !important; }
-        .rc-remarks-grid { gap: 10px !important; }
-        .rc-remark-box { padding: 6px 10px !important; }
-        .rc-remark-title { font-size: 9pt !important; margin-bottom: 3px !important; color: var(--section-accent, var(--rc-green)) !important; }
-        .rc-remark-author { font-size: 10pt !important; font-weight: 700 !important; color: #000000 !important; margin-bottom: 5px !important; }
-        .rc-remark-text { font-size: 12pt !important; min-height: 30px !important; margin-bottom: 6px !important; line-height: 1.2 !important; }
-        .rc-signature { font-size: 10pt !important; padding-top: 4px !important; }
-        .rc-descriptors-title { font-size: 9pt !important; margin-bottom: 3px !important; }
-        .rc-descriptors-table th, .rc-descriptors-table td { padding: 3px 4px !important; font-size: 9pt !important; }
-        .footer-dates { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 30px !important; padding-top: 8px !important; margin-top: auto !important; }
-        .date-box { font-size: 10pt !important; padding-bottom: 3px !important; border-bottom: 2px solid var(--section-accent, var(--rc-green)) !important; }
+        .rc-table td { padding: 4px 6px !important; font-size: 9pt !important; line-height: 1.2 !important; }
+        .rc-table thead th { padding: 6px 8px !important; font-size: 9pt !important; background: #E9ECF0 !important; color: #1E293B !important; font-weight: 800 !important; }
+        .rc-comments-header { margin-left: -39px !important; margin-right: 20px !important; padding: 4px 10px !important; border-radius: 8px 20px 0 0 !important; }
+        .rc-remarks-grid { gap: 12px !important; padding: 12px !important; margin-left: -39px !important; margin-right: 20px !important; border-radius: 0 0 8px 8px !important; }
+        .rc-remark-box { padding: 12px 14px !important; border-radius: 10px !important; border: 1px solid #E2E8F0 !important; }
+        .rc-remark-title { font-size: 9pt !important; margin-bottom: 8px !important; font-weight: 800 !important; }
+        .rc-remark-text { font-size: 9.5pt !important; margin-bottom: 10px !important; line-height: 1.4 !important; }
+        .rc-signature { font-size: 8pt !important; padding-top: 6px !important; border-top: 1px dashed #CBD5E1 !important; }
+        .rc-descriptors-title { font-size: 9pt !important; margin-bottom: 4px !important; padding-bottom: 3px !important; border-bottom: 2px solid var(--section-accent, #16A34A) !important; }
+        .rc-descriptors-table th { background: #E9ECF0 !important; font-weight: 800 !important; }
+        .rc-descriptors-table th, .rc-descriptors-table td { padding: 4px 6px !important; font-size: 8.5pt !important; }
+        .footer-dates { gap: 14px !important; margin-top: 10px !important; }
+        .date-box { font-size: 9pt !important; padding: 6px 10px !important; border-radius: 8px !important; border: 1px solid #E2E8F0 !important; }
         .system-footer { display: none !important; }
         .rc-print-watermark { display: block !important; position: fixed !important; bottom: 0.25in !important; left: 0 !important; right: 0 !important; text-align: center !important; font-family: 'Times New Roman', Times, serif !important; font-size: 9pt !important; font-weight: 700 !important; color: #475569 !important; text-transform: uppercase !important; letter-spacing: 0.5pt !important; }
         .rc-table, .rc-table th, .rc-table td, .rc-stat, .rc-descriptors-table, .rc-descriptors-table th, .rc-descriptors-table td { border-color: #000 !important; }
@@ -804,7 +866,7 @@
         </div>
         <div class="rc-context-body collapsed" id="rcContextBody">
             <div class="rc-context-form" id="rcContextForm">
-                <form method="get" action="{% url 'report_forms_display' %}" id="rcSwitchForm">
+                <form method="get" action="{% if is_admin_view %}{% url 'report_forms_display' %}{% else %}{% url 'teacher_report_forms_display' %}{% endif %}" id="rcSwitchForm">
                     <div class="rc-form-row">
                         <div class="rc-form-group">
                             <label class="rc-form-label">Form / Grade <span class="req">*</span></label>
@@ -887,148 +949,9 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
 });
 </script>
 
-<script src="{% static 'js/chart.umd.min.js' %}"></script>
 <script>
 (function() {
-    /* ═══════════════════════════════════════════════════════════
-       CHART RENDERING
-       ═══════════════════════════════════════════════════════════ */
-    async function renderAllChartsSequentially() {
-        var canvases = Array.from(document.querySelectorAll('canvas[id^="rc-chart-canvas-"]'));
-        if (typeof Chart === 'undefined') {
-            console.error('Chart.js not loaded');
-            return;
-        }
-        for (var i = 0; i < canvases.length; i++) {
-            var canvas = canvases[i];
-            var canvasId = canvas.id;
-            var payloadId = canvasId.replace('rc-chart-canvas-', 'rc-chart-payload-');
-            var dataEl = document.getElementById(payloadId);
-            if (!dataEl) {
-                console.warn('No payload element for canvas:', canvasId);
-                continue;
-            }
-            var payload;
-            try { payload = JSON.parse(dataEl.textContent); }
-            catch (e) {
-                console.error('Chart parse error for', canvasId, ':', e, dataEl.textContent.substring(0, 200));
-                continue;
-            }
-            if (!payload.student || !payload.class_avg || payload.student.length === 0) {
-                console.warn('Empty chart data for', canvasId);
-                continue;
-            }
-            var studentName = payload.student_name || 'Student';
-            var className = payload.class_name || 'Class Avg';
-            var studentScaled = payload.student.map(function(v) { return v / 10; });
-            var classScaled = payload.class_avg.map(function(v) { return v / 10; });
-            var labels = payload.short_labels || payload.labels;
-            new Chart(canvas, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: studentName,
-                            data: studentScaled,
-                            borderColor: '#22c55e',
-                            backgroundColor: 'transparent',
-                            fill: false,
-                            tension: 0.35,
-                            pointRadius: 5,
-                            pointHoverRadius: 7,
-                            pointBackgroundColor: '#22c55e',
-                            pointBorderColor: '#ffffff',
-                            pointBorderWidth: 2,
-                            borderWidth: 2.5
-                        },
-                        {
-                            label: className,
-                            data: classScaled,
-                            borderColor: 'transparent',
-                            backgroundColor: 'rgba(200, 200, 200, 0.35)',
-                            fill: true,
-                            tension: 0.35,
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            borderWidth: 0
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    devicePixelRatio: 2,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            align: 'end',
-                            labels: {
-                                font: { size: 11, weight: '600', family: "'Inter', sans-serif" },
-                                usePointStyle: true,
-                                pointStyle: 'circle',
-                                padding: 14,
-                                boxWidth: 8,
-                                boxHeight: 8,
-                                color: '#475569'
-                            }
-                        },
-                        tooltip: {
-                            enabled: true,
-                            backgroundColor: '#ffffff',
-                            titleColor: '#0f172a',
-                            bodyColor: '#475569',
-                            titleFont: { size: 12, weight: '700', family: "'Inter', sans-serif" },
-                            bodyFont: { size: 11, weight: '600', family: "'Inter', sans-serif" },
-                            borderColor: '#e2e8f0',
-                            borderWidth: 1,
-                            padding: 10,
-                            cornerRadius: 8,
-                            displayColors: true,
-                            boxWidth: 8,
-                            boxHeight: 8,
-                            boxPadding: 4,
-                            usePointStyle: true,
-                            callbacks: {
-                                title: function(items) { return items[0] ? items[0].label : ''; },
-                                label: function(ctx) {
-                                    var dot = '\u25CF ';
-                                    var name = ctx.dataset.label;
-                                    var val = Math.round(ctx.parsed.y * 10);
-                                    return dot + name + ': ' + val;
-                                }
-                            }
-                        }
-                    },
-                    layout: { padding: { top: 8, right: 12, bottom: 0, left: 4 } },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            min: 0,
-                            max: 10,
-                            title: { display: true, text: 'Marks', font: { size: 10, weight: '700' }, color: '#1e293b' },
-                            ticks: { stepSize: 5, font: { size: 10 }, color: '#94a3b8', padding: 4 },
-                            grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }
-                        },
-                        x: {
-                            ticks: { font: { size: 9, weight: '600' }, color: '#64748b', maxRotation: 0 },
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-            /* Convert to image for print */
-            var img = document.createElement('img');
-            img.src = canvas.toDataURL('image/png');
-            img.className = 'rc-chart-img';
-            img.style.cssText = 'width:100%;height:auto;display:none;';
-            canvas.parentNode.appendChild(img);
-            await new Promise(function(r) { setTimeout(r, 10); });
-        }
-        window._allChartsConverted = true;
-    }
+    window._allChartsConverted = true;
 
     /* ═══════════════════════════════════════════════════════════
        PRINT
@@ -1084,8 +1007,13 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
                     hideLoading();
                     if (data.html) {
                         containerEl.innerHTML = data.html;
+                        var scripts = containerEl.querySelectorAll('script');
+                        scripts.forEach(function(old) {
+                            var s = document.createElement('script');
+                            s.textContent = old.textContent;
+                            old.parentNode.replaceChild(s, old);
+                        });
                     }
-                    renderAllChartsSequentially();
                 } else {
                     updateProgress(data.loaded || 0, data.total || 0);
                     setTimeout(pollStatus, pollInterval);
@@ -1096,8 +1024,6 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
 
     showLoading();
     pollStatus();
-    {% else %}
-    renderAllChartsSequentially();
     {% endif %})();
 
     /* ═══════════════════════════════════════════════════════════

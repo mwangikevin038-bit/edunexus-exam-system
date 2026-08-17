@@ -204,7 +204,7 @@ def sort_subjects(subject_list):
     return sorted(subject_list, key=lambda x: SUBJECT_DISPLAY_ORDER.get(x[0], 99))
 
 
-RELIGION_SUBJECTS = ['908', '909', 'CRE', 'IRE']  # CRE, IRE (JSS + Primary)
+RELIGION_SUBJECTS = ['908', '909', '910', 'CRE', 'IRE', 'HRE']  # CRE, IRE, HRE (JSS + Primary)
 OPPOSITE_RELIGION_SUBJECT = {
     '908': '909', '909': '908',
     'CRE': 'IRE', 'IRE': 'CRE',
@@ -212,6 +212,6 @@ OPPOSITE_RELIGION_SUBJECT = {
 
 # Maps subject code → religion tag for Student.religion field
 RELIGION_TAG = {
-    '908': 'CRE', '909': 'IRE',
-    'CRE': 'CRE', 'IRE': 'IRE',
+    '908': 'CRE', '909': 'IRE', '910': 'HRE',
+    'CRE': 'CRE', 'IRE': 'IRE', 'HRE': 'HRE',
 }

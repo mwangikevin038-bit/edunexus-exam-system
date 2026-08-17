@@ -301,6 +301,7 @@ class Student(SchoolScopedModel):
     RELIGION_CHOICES = [
         ('CRE', 'CRE'),
         ('IRE', 'IRE'),
+        ('HRE', 'HRE'),
         ('None', 'None'),
     ]
     religion = models.CharField(

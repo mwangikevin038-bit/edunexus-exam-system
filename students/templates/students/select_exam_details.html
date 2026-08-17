@@ -4,37 +4,91 @@
 <link rel="stylesheet" href="{% static 'css/capture-mobile.css' %}">
 <link rel="stylesheet" href="{% static 'css/entry-mobile.css' %}">
 {% endblock %}
+{% block sub_tabs %}
+<style>
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
+  .sub-nav-item{display:flex;align-items:stretch}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
+  .sub-nav-link:hover{color:#fff;background-color:#43A047}
+  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
+  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      {% if section == 'JSS' %}
+      <a href="{% url 'select_exam' %}" class="sub-nav-link active">
+      {% else %}
+      <a href="{% url 'select_exam_primary' %}" class="sub-nav-link active">
+      {% endif %}
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Score Capture
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
 {% block content %}
 <style>
-    /* Outer page wrapper */
-    .cap{max-width:100%;margin:0 auto;padding-bottom:90px;animation:capIn 350ms cubic-bezier(.16,1,.3,1) both}
     @keyframes capIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-    /* Message banners (assessment list) */
-    .cap-alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;margin-bottom:16px;font-size:.8125rem;font-weight:600;line-height:1.4}
-    .cap-alert i{font-size:16px;margin-top:1px;flex-shrink:0}
-    .cap-alert-success{background:#f0fdf4;color:#15803d}
-    .cap-alert-info{background:#eff6ff;color:#1d4ed8}
-    .cap-alert-danger{background:#fef2f2;color:#dc2626}
-    .cap-alert-warning{background:#fffbeb;color:#92400e}
+    /* ── Desktop Premium Overrides ──────────────────────── */
+    .cp-desktop{padding:28px 0 56px;max-width:880px;margin:0 auto;animation:capIn .4s cubic-bezier(.16,1,.3,1) both}
+    .cp-dt-header{margin-bottom:28px}
+    .cp-dt-header h1{font-size:1.65rem;font-weight:800;color:#1a1a1a;letter-spacing:-.03em;margin:0 0 4px}
+    .cp-dt-header p{font-size:.8125rem;color:#86868b;margin:0;font-weight:500}
+    .cp-dt-alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;margin-bottom:16px;font-size:.8125rem;font-weight:600;line-height:1.4}
+    .cp-dt-alert i{font-size:16px;margin-top:1px;flex-shrink:0}
+    .cp-dt-alert-success{background:#f0fdf4;color:#15803d}
+    .cp-dt-alert-info{background:#eff6ff;color:#1d4ed8}
+    .cp-dt-alert-danger{background:#fef2f2;color:#dc2626}
+    .cp-dt-group{margin-bottom:20px;animation:capIn .4s cubic-bezier(.16,1,.3,1) both}
+    .cp-dt-group:nth-child(2){animation-delay:60ms}
+    .cp-dt-group:nth-child(3){animation-delay:120ms}
+    .cp-dt-group-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:linear-gradient(135deg,#4CAF50 0%,#43A047 100%);border-radius:14px 14px 0 0;margin:0}
+    .cp-dt-group-left{display:flex;align-items:center;gap:12px}
+    .cp-dt-group-icon{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.2);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center}
+    .cp-dt-group-icon i{font-size:18px;color:#fff}
+    .cp-dt-group-name{font-size:.9375rem;font-weight:700;color:#fff;letter-spacing:-.01em}
+    .cp-dt-group-count{width:30px;height:30px;border-radius:10px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff}
+    .cp-dt-items{background:#fff;border:1px solid #e8e8ec;border-top:none;border-radius:0 0 14px 14px;overflow:hidden}
+    .cp-dt-assess{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;text-decoration:none;border-bottom:1px solid #f0f0f2;transition:all .15s}
+    .cp-dt-assess:last-child{border-bottom:none}
+    .cp-dt-assess:hover{background:#fafafa}
+    .cp-dt-assess-left{display:flex;align-items:center;gap:14px;min-width:0}
+    .cp-dt-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .cp-dt-dot.not_started{background:#E5E7EB}
+    .cp-dt-dot.in_progress{background:#F59E0B;box-shadow:0 0 6px rgba(245,158,11,.3)}
+    .cp-dt-dot.submitted{background:#3B82F6;box-shadow:0 0 6px rgba(59,130,246,.3)}
+    .cp-dt-dot.returned{background:#EF4444;box-shadow:0 0 6px rgba(239,68,68,.3)}
+    .cp-dt-dot.approved,.cp-dt-dot.published,.cp-dt-dot.ready{background:#4CAF50;box-shadow:0 0 6px rgba(76,175,80,.3)}
+    .cp-dt-assess-name{font-size:.8125rem;font-weight:700;color:#1a1a1a;letter-spacing:-.01em}
+    .cp-dt-assess-detail{font-size:.6875rem;color:#86868b;font-weight:500;margin-top:3px}
+    .cp-dt-assess-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .cp-dt-status{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-radius:20px}
+    .cp-dt-status.not_started{background:#F3F4F6;color:#6B7280}
+    .cp-dt-status.in_progress{background:#FEF3C7;color:#92400E}
+    .cp-dt-status.submitted{background:#DBEAFE;color:#1D4ED8}
+    .cp-dt-status.returned{background:#FEE2E2;color:#991B1B}
+    .cp-dt-status.approved,.cp-dt-status.published{background:rgba(76,175,80,.08);color:#2d9d3a}
+    .cp-dt-chevron{color:#c7c7cc;font-size:16px}
+    .cp-dt-empty{display:flex;flex-direction:column;align-items:center;padding:48px 20px;text-align:center}
+    .cp-dt-empty-icon{width:60px;height:60px;border-radius:16px;background:#f5f5f7;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+    .cp-dt-empty-icon i{font-size:26px;color:#c7c7cc}
+    .cp-dt-empty-title{font-size:.875rem;font-weight:700;color:#1a1a1a;margin-bottom:4px}
+    .cp-dt-empty-desc{font-size:.75rem;color:#86868b;max-width:280px}
 
-    /* Entry-view extras not in the static CSS */
-    .en-body{padding-bottom:96px}
-    .en-meta-pills--inline{margin-top:12px;margin-bottom:14px}
-    .en-score.is-invalid{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.08);background:#fef2f2}
-    .en-submit-btn[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none}
+    /* ── Entry view desktop overrides ───────────────────── */
+    .en-shell{max-width:880px;margin:0 auto}
 
-    /* HTMX loading indicators */
-    .htmx-indicator{display:none}
-    .htmx-request .htmx-indicator{display:inline-block}
-    .htmx-request .htmx-indicator-none{display:none}
+    @media(max-width:768px){
+        .cp-desktop{padding:0}
+    }
 </style>
 
-<div class="cap" id="examContent">
-
+<div class="cp-desktop" id="examContent">
     {% if selected_assignment and selected_exam %}
-
-        {# ═══ iOS 17 MARK ENTRY SHELL ════════════════════════════ #}
         <div class="en-shell">
             <header class="en-header">
                 <a href="{% url back_url %}" class="en-back"
@@ -49,7 +103,6 @@
             </header>
 
             <main class="en-body">
-
                 {% if messages %}
                     {% for message in messages %}
                         <div class="en-banner {% if message.tags == 'success' %}en-banner-success{% elif message.tags == 'error' %}en-banner-danger{% else %}en-banner-info{% endif %}">
@@ -91,12 +144,9 @@
                     </div>
                 {% endif %}
 
-                {# ── Green Hero Card ──────────────────────────────── #}
                 <div class="en-hero">
                     <div class="en-hero-top">
-                        <div class="en-hero-icon">
-                            <i class="ph ph-book-open"></i>
-                        </div>
+                        <div class="en-hero-icon"><i class="ph ph-book-open"></i></div>
                         <div class="en-hero-info">
                             <div class="en-hero-class">{{ selected_assignment.class_name }} {{ selected_assignment.stream }}</div>
                             <div class="en-hero-subject">{{ selected_assignment.subject.name }}</div>
@@ -109,7 +159,6 @@
                     </div>
                 </div>
 
-                {# ── Segmented Control ────────────────────────────── #}
                 <div class="en-segment">
                     <button type="button" class="en-segment-btn" onclick="alert('CSV import coming soon')">
                         <i class="ph ph-upload-simple"></i> Import
@@ -119,16 +168,9 @@
                     </button>
                 </div>
 
-                {# ── Metadata Pills ───────────────────────────────── #}
                 <div class="en-meta-pills">
-                    <span class="en-meta-pill">
-                        <i class="ph ph-clipboard-text"></i>
-                        <strong>{{ selected_exam.name }}</strong>
-                    </span>
-                    <span class="en-meta-pill">
-                        <i class="ph ph-calendar"></i>
-                        {{ selected_exam.term }} {{ selected_exam.year }}
-                    </span>
+                    <span class="en-meta-pill"><i class="ph ph-clipboard-text"></i><strong>{{ selected_exam.name }}</strong></span>
+                    <span class="en-meta-pill"><i class="ph ph-calendar"></i>{{ selected_exam.term }} {{ selected_exam.year }}</span>
                 </div>
 
                 <form method="POST" id="marksForm" data-submitting="false"
@@ -155,7 +197,6 @@
                         </span>
                     </div>
 
-                    {# ── Learner Scores Section ──────────────────────── #}
                     <div class="en-section">
                         <span class="en-section-title">LEARNER SCORES ({{ students|length }})</span>
                     </div>
@@ -177,103 +218,82 @@
                                            placeholder="—"
                                            aria-label="Score for {{ student.name }}"
                                            data-had-value="{% if student.current_score != '' and student.current_score is not None %}1{% else %}0{% endif %}"
-                                           {% if is_locked or is_submitted %}readonly{% endif %}>
-                                    <button type="button" class="en-absent js-absent"
-                                            aria-label="Toggle absent for {{ student.name }}"
-                                            {% if is_locked or is_submitted %}disabled{% endif %}>AB</button>
-                                    <div class="en-student-status">
-                                        <span class="en-level js-level">—</span>
-                                        <span class="en-pts js-pts"></span>
-                                        <span class="en-pct js-pct"></span>
-                                    </div>
+                                           {% if is_locked or is_submitted %}readonly{% endif %}
+                                           oninput="handleScoreInput(this)"
+                                           onfocus="this.select()">
+                                    <span class="en-grade js-grade">{{ student.performance_level|default:"—" }}</span>
                                 </div>
-                            </div>
-                        {% empty %}
-                            <div class="en-empty">
-                                <div class="en-empty-icon"><i class="ph ph-users"></i></div>
-                                <div class="en-empty-title">No learners found</div>
-                                <div class="en-empty-desc">No learners registered in this class stream.</div>
                             </div>
                         {% endfor %}
                     </div>
 
-                    {# Submit row — JS moves this outside .en-body for fixed positioning #}
-                    <div class="en-inline-submit" id="enInlineSubmit" data-submitted="{% if is_submitted %}1{% else %}0{% endif %}" data-locked="{% if is_locked %}1{% else %}0{% endif %}">
-                        <span class="en-inline-submit-progress">
-                            <span id="scoredCountInline">0</span> / {{ students|length }} scored
-                        </span>
-                        <button type="button" class="en-submit-btn en-submit-btn--inline" id="enSubmitBtn">
-                            <span class="htmx-indicator-none"><i class="ph ph-cloud-arrow-up"></i> Submit</span>
-                            <span class="htmx-indicator"><i class="ph ph-spinner-gap spinning"></i> Processing...</span>
+                    <div class="en-actions">
+                        <button type="submit" id="enSubmitBtn" class="en-submit-btn"
+                                {% if is_locked %}disabled{% endif %}>
+                            <i class="ph ph-paper-plane-tilt"></i>
+                            {% if is_submitted %}Resubmit Sheet{% else %}Submit Sheet{% endif %}
                         </button>
                     </div>
                 </form>
-
             </main>
         </div>
 
     {% else %}
 
-        {# ═══ iOS 17 MOBILE ASSESSMENT LIST ════════════════════ #}
-        <div class="cp-shell">
-            <header class="cp-header">
-                <h1 class="cp-title">Assessment Workspace</h1>
-                <div class="cp-subtitle">Tap an assessment to begin entering learner scores.</div>
-            </header>
-
-            <main class="cp-body">
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="cap-alert {% if message.tags == 'success' %}cap-alert-success{% elif message.tags == 'error' %}cap-alert-danger{% else %}cap-alert-info{% endif %}" style="margin: 0 0 12px;">
-                            <i class="ph {% if message.tags == 'success' %}ph-check-circle{% elif message.tags == 'error' %}ph-warning-circle{% else %}ph-info{% endif %}"></i>
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                {% endif %}
-
-                {% regroup exam_rows by assignment.class_name as class_groups %}
-
-                {% for group in class_groups %}
-                    <div class="cp-group">
-                        <div class="cp-group-head">
-                            <div class="cp-group-left">
-                                <div class="cp-group-icon"><i class="ph ph-chalkboard-teacher"></i></div>
-                                <div class="cp-group-name">{{ group.grouper }}</div>
-                            </div>
-                            <span class="cp-group-count">{{ group.list|length }}</span>
-                        </div>
-                        <div class="cp-items">
-                            {% for row in group.list %}
-                                <a class="cp-assess" href="?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}"
-                                   hx-get="{% url back_url %}?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}"
-                                   hx-target="#examContent"
-                                   hx-swap="innerHTML"
-                                   hx-push-url="true">
-                                    <div class="cp-assess-left">
-                                        <div class="cp-assess-dot {{ row.status_key }}"></div>
-                                        <div class="cp-assess-info">
-                                            <div class="cp-assess-name">{{ row.assignment.subject.name }}</div>
-                                            <div class="cp-assess-detail">{{ row.assignment.stream }} · {{ row.exam.name }} · {{ row.exam.term }} {{ row.exam.year }}</div>
-                                        </div>
-                                    </div>
-                                    <div class="cp-assess-right">
-                                        <span class="cp-assess-status {{ row.status_key }}">{{ row.status_label }}</span>
-                                        <i class="ph ph-caret-right cp-assess-chevron"></i>
-                                    </div>
-                                </a>
-                            {% endfor %}
-                        </div>
-                    </div>
-                {% empty %}
-                    <div class="cp-empty">
-                        <div class="cp-empty-icon"><i class="ph ph-inbox"></i></div>
-                        <div class="cp-empty-title">No assessments available</div>
-                        <div class="cp-empty-desc">Assessment sheets will appear here once published for your classes.</div>
-                    </div>
-                {% endfor %}
-            </main>
+        <div class="cp-dt-header">
+            <h1>Assessment Workspace</h1>
+            <p>Tap an assessment to begin entering learner scores.</p>
         </div>
-        {# ═══ END iOS 17 MOBILE ════════════════════════════════ #}
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="cp-dt-alert cp-dt-alert-{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}danger{% else %}info{% endif %}">
+                    <i class="ph {% if message.tags == 'success' %}ph-check-circle{% elif message.tags == 'error' %}ph-warning-circle{% else %}ph-info{% endif %}"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% regroup exam_rows by assignment.class_name as class_groups %}
+
+        {% for group in class_groups %}
+            <div class="cp-dt-group">
+                <div class="cp-dt-group-head">
+                    <div class="cp-dt-group-left">
+                        <div class="cp-dt-group-icon"><i class="ph ph-chalkboard-teacher"></i></div>
+                        <div class="cp-dt-group-name">{{ group.grouper }}</div>
+                    </div>
+                    <span class="cp-dt-group-count">{{ group.list|length }}</span>
+                </div>
+                <div class="cp-dt-items">
+                    {% for row in group.list %}
+                        <a class="cp-dt-assess" href="?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}"
+                           hx-get="{% url back_url %}?assignment_id={{ row.assignment.id }}&exam_id={{ row.exam.id }}"
+                           hx-target="#examContent"
+                           hx-swap="innerHTML"
+                           hx-push-url="true">
+                            <div class="cp-dt-assess-left">
+                                <div class="cp-dt-dot {{ row.status_key }}"></div>
+                                <div>
+                                    <div class="cp-dt-assess-name">{{ row.assignment.subject.name }}</div>
+                                    <div class="cp-dt-assess-detail">{{ row.assignment.stream }} · {{ row.exam.name }} · {{ row.exam.term }} {{ row.exam.year }}</div>
+                                </div>
+                            </div>
+                            <div class="cp-dt-assess-right">
+                                <span class="cp-dt-status {{ row.status_key }}">{{ row.status_label }}</span>
+                                <i class="ph ph-caret-right cp-dt-chevron"></i>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% empty %}
+            <div class="cp-dt-empty">
+                <div class="cp-dt-empty-icon"><i class="ph ph-inbox"></i></div>
+                <div class="cp-dt-empty-title">No assessments available</div>
+                <div class="cp-dt-empty-desc">Assessment sheets will appear here once published for your classes.</div>
+            </div>
+        {% endfor %}
 
     {% endif %}
 </div>
@@ -282,8 +302,6 @@
 (function() {
     var MODE = '{{ grading_mode|default:"jss" }}';
 
-    // Server-rendered grading scale so what the teacher sees matches what
-    // the server stores. Sorted high-to-low so the first matching range wins.
     var GRADING_SCALE = ({{ grading_scale_json|default:"[]"|safe }}).slice().sort(function(a, b) {
         return (b.min_score || 0) - (a.min_score || 0);
     });
@@ -313,7 +331,6 @@
         return null;
     }
 
-    // Lazy CSRF — read once per request, reuse.
     var _csrf = null;
     function getCsrfToken() {
         if (_csrf) return _csrf;
@@ -324,8 +341,6 @@
         return _csrf;
     }
 
-    // Single in-flight fetch per student — coalesce rapid keystrokes.
-    // 1500ms debounce is the sweet spot for typing speed vs. server load.
     var DEBOUNCE_MS = 1500;
     var saveTimers = {};
     var inflightByStudent = {};
@@ -550,14 +565,11 @@
         }, DEBOUNCE_MS);
     }
 
-    // ─── Single delegated event handler (no per-input bindings) ────────────
-    // Use document.body so handlers survive HTMX innerHTML swaps.
     if (!window._markEntryHandlersAttached) {
         document.body.addEventListener('input', function(e) {
             var t = e.target;
             if (!(t.classList && t.classList.contains('js-score'))) return;
 
-            // Offline draft: persist raw value before debounce/fetch
             var raw = (t.value || '').trim();
             if (raw !== '' && raw.toUpperCase() !== 'AB' && isNaN(parseFloat(raw))) return;
             var row = t.closest('.en-student');
@@ -615,9 +627,6 @@
         window._markEntryHandlersAttached = true;
     }
 
-    // Maximum marks: only update displayed percentages, do NOT auto-save on
-    // every keystroke. Teachers adjust the total infrequently and we don't
-    // want to thrash the server while they type "100".
     var maxInput = document.getElementById('maximumMarks');
     if (maxInput) {
         var maxTimer = null;
@@ -631,25 +640,19 @@
     }
 
     function initMarkEntry() {
-        // First paint: pull existing scores from the rendered input.value
-        // and compute their badges. No DOM writes beyond the same elements
-        // we already have.
         var inputs = document.querySelectorAll('.js-score');
         for (var i = 0; i < inputs.length; i++) calcScore(inputs[i], true);
 
-        // Move submit bar to <body> so position:fixed escapes .en-shell
         var submitBar = document.getElementById('enInlineSubmit');
         var isSubmitted = submitBar && submitBar.getAttribute('data-submitted') === '1';
         var isLocked = submitBar && submitBar.getAttribute('data-locked') === '1';
         if (submitBar) {
             document.body.appendChild(submitBar);
-            // Already submitted or locked — never show the floating bar
             if (isSubmitted || isLocked) {
                 submitBar.remove();
             }
         }
 
-        // Wire up the submit button (it's outside the form now)
         var form = document.getElementById('marksForm');
         var submitBtn = document.getElementById('enSubmitBtn');
         if (submitBtn && form) {
@@ -663,8 +666,6 @@
 
                 form.setAttribute('data-submitting', 'true');
 
-                // Flush any pending debounced auto-saves, then let HTMX submit the form.
-                // HTMX handles disabled state (hx-disabled-elt) and indicator swap automatically.
                 if (Object.keys(saveTimers).length) {
                     flushPendingSaves().finally(function() {
                         htmx.trigger(form, 'submit');
@@ -675,17 +676,12 @@
             });
         }
 
-        // Restore submit state if browser restores page from bfcache (back/forward)
         window.addEventListener('pageshow', function(e) {
             if (e.persisted && form) {
                 form.setAttribute('data-submitting', 'false');
-                // HTMX re-enables hx-disabled-elt automatically on page restore
             }
         });
 
-        // ─── Offline draft re-sync ──────────────────────────────────
-        // When connectivity returns, iterate all localStorage keys
-        // matching offline_mark_* and replay them sequentially.
         function reflushOfflineDrafts() {
             var keys = [];
             for (var i = 0; i < localStorage.length; i++) {
@@ -710,7 +706,6 @@
                         flushOne();
                         return;
                     }
-                    // Parse key: offline_mark_{studentId}_{examId}
                     var parts = k.split('_');
                     var studentId = parts[2];
                     var examId = parts.slice(3).join('_');
@@ -726,7 +721,6 @@
                     postJSON('{% url "save_mark" %}', fd).then(function(data) {
                         if (data.ok) {
                             localStorage.removeItem(k);
-                            // Update DOM row visual if visible
                             var row = document.querySelector('.en-student[data-student-id="' + studentId + '"]');
                             if (row) {
                                 row.classList.add('saved-flash');
@@ -735,7 +729,6 @@
                         }
                         flushOne();
                     }).catch(function() {
-                        // Network still flaky — leave draft in localStorage, stop retrying
                         showToast('Sync interrupted — drafts preserved for next retry.', 'error');
                     });
                 } catch(ignored) {
@@ -746,10 +739,7 @@
             flushOne();
         }
 
-        // Run once on page load in case drafts were left from a prior offline session
         reflushOfflineDrafts();
-
-        // Listen for connectivity restoration
         window.addEventListener('online', reflushOfflineDrafts);
     }
 

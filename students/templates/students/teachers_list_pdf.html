@@ -8,22 +8,22 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; font-size: 11px; }
 
-    .header { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 12px; border-bottom: 3px solid #0f172a; margin-bottom: 10px; }
+    .header { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 12px; border-bottom: 3px solid #1e293b; margin-bottom: 10px; }
     .header-left { display: flex; align-items: center; gap: 14px; }
     .logo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 1px solid #e5e7eb; }
     .logo-placeholder { width: 64px; height: 64px; border-radius: 50%; background: #22c55e; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #fff; }
-    .school-name { font-size: 16px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
+    .school-name { font-size: 16px; font-weight: 800; text-transform: uppercase; color: #1e293b; letter-spacing: 0.5px; }
     .header-right { text-align: right; font-size: 10px; color: #475569; line-height: 1.7; }
-    .title { text-align: center; font-size: 14px; font-weight: 700; color: #334155; padding: 8px 0; border-bottom: 1px solid #e5e7eb; margin-bottom: 0; }
+    .title { text-align: center; font-size: 14px; font-weight: 700; color: #1e293b; padding: 8px 0; border-bottom: 1px solid #e2e8f0; margin-bottom: 0; text-transform: uppercase; letter-spacing: 0.3px; }
 
     table { width: 100%; border-collapse: collapse; }
-    thead th { background: #f1f5f9; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: #334155; padding: 7px 8px; border-bottom: 2px solid #cbd5e1; text-align: left; }
+    thead th { background: #E9ECF0; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; color: #1E293B; padding: 7px 8px; border-bottom: 2px solid #cbd5e1; text-align: left; }
     tbody tr { border-bottom: 1px solid #e5e7eb; }
     tbody tr:nth-child(even) { background: #f8fafc; }
     tbody td { padding: 6px 8px; font-size: 10.5px; vertical-align: middle; }
     .col-num { width: 28px; text-align: center; font-weight: 600; color: #64748b; }
 
-    .footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #94a3b8; text-align: center; }
+    .footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #94a3b8; text-align: center; letter-spacing: 0.5px; }
   </style>
 </head>
 <body>
@@ -64,10 +64,10 @@
       <tr>
         <td class="col-num">{{ forloop.counter }}</td>
         <td>{{ teacher.title }}</td>
-        <td>{{ teacher.user.first_name|default:teacher.user.username }}</td>
+        <td>{{ teacher.user.get_full_name|default:teacher.user.username }}</td>
         <td>{{ teacher.user.username }}</td>
         <td>{{ teacher.phone_number|default:"-" }}</td>
-        <td>{{ teacher.user.profile.gender|default:"-" }}</td>
+        <td>{{ teacher.gender|default:"-" }}</td>
         <td>{{ teacher.tsc_number|default:"-" }}</td>
         <td>{{ teacher.section_label }}</td>
         <td>{{ teacher.assigned_task|default:"Teacher" }}</td>

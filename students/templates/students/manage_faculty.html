@@ -3,6 +3,7 @@
 
 {% block sub_tabs %}
 <style>
+  .main-content{background:#eaecf0!important}
   .sub-nav-bar {
     position: fixed;
     top: var(--global-header-height, 64px);
@@ -43,7 +44,7 @@
   .sub-nav-link:hover { color: #ffffff; background-color: #43A047; }
   .sub-nav-link.active {
     color: #ffffff;
-    background-color: #388E3C;
+    background-color: #2e6b31;
     font-weight: 700;
   }
   .sub-nav-link svg {
@@ -1738,37 +1739,41 @@
   }
   .btn-close-list:hover { background: #4b5563; }
   .btn-print-list {
-    padding: 9px 18px;
-    background: #0f172a;
-    color: #fff;
-    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 20px;
+    background: #fff;
+    color: #4CAF50;
+    border: 1.5px solid #4CAF50;
     border-radius: 8px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: background 0.15s;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    transition: all 0.2s ease;
   }
-  .btn-print-list:hover { background: #1e293b; }
+  .btn-print-list:hover { background: #4CAF50; color: #fff; box-shadow: 0 4px 12px rgba(76,175,80,0.3); transform: translateY(-1px); }
+  .btn-print-list svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; }
   .btn-download-list {
-    padding: 9px 18px;
-    background: #2563eb;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 20px;
+    background: #4CAF50;
     color: #fff;
-    border: none;
+    border: 1.5px solid #4CAF50;
     border-radius: 8px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: background 0.15s;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    text-decoration: none;
+    transition: all 0.2s ease;
   }
-  .btn-download-list:hover { background: #1d4ed8; }
+  .btn-download-list:hover { background: #3d8b40; border-color: #3d8b40; box-shadow: 0 4px 12px rgba(76,175,80,0.35); transform: translateY(-1px); }
+  .btn-download-list svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .print-watermark{display:none}
 
   /* A4 Portrait Paper */
   .a4-paper {
@@ -1878,21 +1883,28 @@
   }
 
   @media print {
-    body * { visibility: hidden !important; }
-    .a4-paper, .a4-paper * { visibility: visible !important; }
-    .a4-paper {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 210mm;
-      margin: 0;
-      border: none;
-      box-shadow: none;
-      border-radius: 0;
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+    html{overflow:visible!important}
+    body{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important}
+    .sub-nav-bar,.sidebar,.global-header,.bottom-nav,.teachers-header-bar,.list-view-controls,.btn-print-list,.btn-download-list,.btn-close-list{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+    .a4-paper{
+      position:static!important;
+      width:100%!important;
+      max-width:none!important;
+      margin:0!important;
+      padding:0!important;
+      border:none!important;
+      box-shadow:none!important;
+      border-radius:0!important;
+      background:#fff!important;
     }
-    .list-view-controls { display: none !important; }
-    .teachers-header-bar { display: none !important; }
-    .sub-nav-bar { display: none !important; }
+    .a4-paper *{visibility:visible!important}
+    .print-watermark{display:block!important;position:fixed!important;bottom:0.25in!important;left:0!important;right:0!important;text-align:center!important;font-family:'Times New Roman',Times,serif!important;font-size:9pt!important;font-weight:700!important;color:#475569!important;text-transform:uppercase!important;letter-spacing:0.5pt!important}
+    .a4-header{padding:8mm 0 4mm!important;text-align:center!important}
+    .a4-header h2{font-family:"Times New Roman",Times,serif!important;font-size:18pt!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:0.08em!important;margin:0 0 2mm!important}
+    .a4-header p{font-size:10pt!important;color:#64748b!important;margin:0!important}
+    .a4-body{padding:0 4mm!important}
+    @page{size:A4 portrait;margin:0.5in}
   }
 
   @media (max-width: 900px) {
@@ -2059,6 +2071,7 @@
           {% endfor %}
         </tbody>
       </table>
+      <div class="print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM &copy;2026</div>
     </div>
   </div>
   {% endif %}

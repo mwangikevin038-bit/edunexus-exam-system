@@ -12,16 +12,16 @@
     font-size:9px;color:#64748b;font-family:'Helvetica','Arial',sans-serif;
   }
   @bottom-left{
-    content:"{{ watermark_text|default:'EduNexus Exam System' }}";
+    content:"{{ watermark_text|default:'GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026' }}";
     font-size:8px;color:#94a3b8;font-family:'Helvetica','Arial',sans-serif;
   }
   @bottom-right{
-    content:"{{ watermark_text|default:'EduNexus Exam System' }}";
+    content:"{{ watermark_text|default:'GENERATED FROM EDUNEXUS EXAM SYSTEM ©2026' }}";
     font-size:8px;color:#94a3b8;font-family:'Helvetica','Arial',sans-serif;
   }
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Helvetica','Arial',sans-serif;font-size:11px;color:#1e293b;line-height:1.4;position:relative}
+body{font-family:'Inter','Helvetica','Arial',sans-serif;font-size:11px;color:#1e293b;line-height:1.4;position:relative;background:#fff}
 body::before{
   content:"";
   position:fixed;
@@ -34,39 +34,40 @@ body::before{
   white-space:nowrap;
   pointer-events:none;
   z-index:0;
-  font-family:'Helvetica','Arial',sans-serif;
+  font-family:'Inter','Helvetica','Arial',sans-serif;
   letter-spacing:8px;
   text-transform:uppercase;
 }
-.hdr-accent{height:6px;background:#1e3a5f}
-.school-hdr{display:flex;align-items:center;padding:6mm 0 3mm;border-bottom:2px solid #1e3a5f;position:relative;z-index:1}
-.school-logo{width:60px;height:60px;object-fit:contain;margin-right:12px}
+.hdr-accent{height:6px;background:linear-gradient(90deg,#1e40af 0%,#2563EB 40%,#3b82f6 100%)}
+.school-hdr{display:flex;align-items:center;gap:16px;padding:8mm 0 4mm;border-bottom:3px solid #1e3a5f;position:relative;z-index:1}
+.school-logo{width:72px;height:72px;object-fit:contain;flex-shrink:0}
 .school-info{text-align:center;flex:1}
-.school-name{font-size:20px;font-weight:800;color:#1e3a5f;letter-spacing:2px;text-transform:uppercase}
-.school-motto{font-size:10px;color:#475569;letter-spacing:1.5px;margin-top:2px}
-.school-addr{font-size:10px;color:#475569;margin-top:2px}
-.school-contact{font-size:10px;color:#475569;margin-top:1px}
-.exam-banner{background:#1e293b;color:#fff;padding:6px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:4mm}
-.summary-row{display:flex;gap:16px;padding:4mm 0;border-bottom:1px solid #e5e7eb}
+.school-name{font-size:22px;font-weight:900;color:#1e40af;letter-spacing:1.5px;text-transform:uppercase;font-family:'Times New Roman',Times,serif}
+.school-motto{font-size:10px;color:#2563EB;font-weight:700;letter-spacing:2px;margin-top:2px;font-family:'Times New Roman',Times,serif;text-transform:uppercase}
+.school-addr{font-size:10px;color:#1e293b;font-weight:700;margin-top:2px;font-family:'Times New Roman',Times,serif}
+.school-contact{font-size:10px;color:#374151;margin-top:1px;font-family:'Times New Roman',Times,serif}
+.exam-banner{background:#374151;margin:0;padding:8px 16px;font-size:12px;font-weight:700;color:#fff;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px}
+.summary-row{display:flex;gap:20px;padding:6mm 0;border-bottom:1px solid #e5e7eb;align-items:start}
 .summary-left{flex:1}
-.summary-means{display:flex;gap:20px;margin-bottom:4px}
-.mean-box .lbl{font-size:9px;color:#64748b;text-transform:uppercase;font-weight:600}
-.mean-box .val{font-size:22px;font-weight:800;color:#0f172a}
-.mean-box .chg{font-size:10px;font-weight:700}
+.summary-means{display:flex;gap:28px;margin-bottom:8px}
+.mean-box .lbl{font-size:9px;color:#64748b;text-transform:uppercase;font-weight:600;letter-spacing:0.05em}
+.mean-box .val{font-size:28px;font-weight:800;color:#0f172a;line-height:1.1}
+.mean-box .chg{font-size:10px;font-weight:700;margin-top:2px}
 .mean-box .chg.up{color:#16a34a}.mean-box .chg.down{color:#ea580c}.mean-box .chg.neutral{color:#94a3b8}
-.summary-right{text-align:center;flex:0 0 120px}
+.summary-right{text-align:center;flex:0 0 140px}
 .summary-right .lbl{font-size:9px;color:#64748b;text-transform:uppercase;font-weight:600}
-.summary-right .val{font-size:28px;font-weight:800;color:#0f172a}
-.summary-right .sub{font-size:9px;color:#64748b}
-.section-title{background:#1e293b;color:#fff;padding:5px 12px;font-size:11px;font-weight:700;text-transform:uppercase;margin:4mm 0 2mm}
+.summary-right .val{font-size:36px;font-weight:800;color:#0f172a;line-height:1}
+.summary-right .sub{font-size:9px;color:#94a3b8}
+.section-title{background:#1e293b;color:#fff;padding:6px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;margin:4mm 0 2mm}
 table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:3mm}
-th{background:#f1f5f9;color:#334155;font-weight:700;padding:4px 6px;border:1px solid #cbd5e1;text-align:left;font-size:9px}
-td{padding:3px 6px;border:1px solid #e2e8f0;text-align:center}
+th{background:#f8fafc;color:#475569;font-weight:700;padding:5px 8px;border:1px solid #cbd5e1;text-align:left;font-size:9px}
+td{padding:4px 8px;border:1px solid #e2e8f0;text-align:center}
 td:first-child{text-align:left;font-weight:600}
 tr:nth-child(even){background:#f8fafc}
-tr.total-row{background:#e2e8f0;font-weight:700}
+tr.total-row{background:#f1f5f9;font-weight:700}
+tr.total-row td{border-top:2px solid #e2e8f0}
 tr.best-row{background:#dcfce7;font-weight:700}
-.subject-banner{background:#94a3b8;color:#fff;padding:4px 10px;font-size:10px;font-weight:700;text-transform:uppercase;margin:3mm 0 1mm}
+.subject-banner{background:#e5e7eb;padding:8px 14px;font-size:12px;font-weight:800;color:#111827;letter-spacing:0.3px;margin:3mm 0 1mm}
 .page-break{page-break-before:always}
 </style>
 </head>

@@ -30,6 +30,7 @@ from ..security import get_request_school, get_request_school_section, school_ad
 
 PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']
 LOWER_PRIMARY_GRADE_CHOICES = ['Grade 1', 'Grade 2', 'Grade 3']
+JSS_GRADE_CHOICES = ['Grade 7', 'Grade 8', 'Grade 9']
 
 
 def _derive_sub_section(class_name):
@@ -654,7 +655,7 @@ def admin_student_search_submit(request):
             )
         html = (
             '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #22c55e;">'
-            '  <h3 style="margin:0 0 20px;color:#0f172a;font-size:18px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
+            '  <h3 style="margin:0 0 20px;color:#475569;font-size:18px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
 
             '  <div style="overflow-x:auto;width:100%;margin-bottom:20px;">'
             '    <table style="width:100%;border-collapse:collapse;text-align:left;">'
@@ -683,7 +684,7 @@ def admin_student_search_submit(request):
     else:
         html = (
             '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #22c55e;">'
-            '  <h3 style="margin:0 0 20px;color:#0f172a;font-size:18px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
+            '  <h3 style="margin:0 0 20px;color:#475569;font-size:18px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
             '  <div style="text-align:center;padding:48px 24px;color:#94a3b8;">'
             '    <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>'
             '    <p style="margin:0 0 6px;font-size:15px;font-weight:500;color:#475569;">No records found</p>'
@@ -1768,85 +1769,1520 @@ def admin_student_analytics(request, student_id):
 @login_required(login_url='login')
 def class_lists(request):
     """
-    Role-aware learner directory. Admins see every stream, class teachers see
-    their class stream, and subject teachers see streams they are assigned to.
+    Teacher learner directory — Grade + Stream selection, then fetches students.
+    Mirrors the admin class_list_printout but section-scoped for teachers.
+    """
+    from ..models import Grade, Stream
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "School context is required.")
+        return redirect('welcome_page')
+
+    is_admin_view = user_has_main_school_admin_override(request.user)
+    section = get_request_school_section(request)
+
+    # Section-scoped grade list
+    if is_admin_view:
+        grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+    else:
+        if section == 'LOWER_PRIMARY':
+            allowed_grades = LOWER_PRIMARY_GRADE_CHOICES
+        elif section == 'PRIMARY':
+            allowed_grades = PRIMARY_GRADE_CHOICES
+        else:
+            allowed_grades = JSS_GRADE_CHOICES
+        grades = Grade.all_objects.filter(
+            school=school, name__in=allowed_grades
+        ).order_by('order').values_list('name', flat=True).distinct()
+
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+
+    # Section-aware accent color
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if grade_name in LOWER_PRIMARY_GRADE_CHOICES:
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif grade_name in PRIMARY_GRADE_CHOICES:
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors.get(section, '#305CDE')
+
+    students = []
+    streams = []
+    selected_grade = grade_name
+    selected_stream = stream_name
+
+    if grade_name:
+        streams = list(
+            Stream.all_objects.filter(school=school, grade__name=grade_name)
+            .values_list('name', flat=True).order_by('name')
+        )
+        if len(streams) > 1:
+            streams.append('Combined')
+
+    if grade_name and stream_name:
+        from django.db.models.functions import Substr, Length
+        from django.db.models import IntegerField
+        from django.db.models.functions import Cast
+
+        if stream_name == 'Combined':
+            qs = Student.all_objects.filter(
+                school=school, class_name=grade_name, is_active=True
+            )
+        else:
+            qs = Student.all_objects.filter(
+                school=school, class_name=grade_name, stream=stream_name, is_active=True
+            )
+        qs = (
+            qs.annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
+            .order_by('adm_int')
+        )
+        for s in qs:
+            students.append({
+                'id': s.id,
+                'admission_no': s.admission_no or '',
+                'name': s.name or '',
+                'gender': s.gender or '',
+                'stream': s.stream or '',
+                'assessment_no': s.assessment_no or '',
+                'guardian_name': s.guardian.name if s.guardian else '',
+                'guardian_phone': s.guardian.phone if s.guardian else '',
+                'religion': s.religion or '',
+            })
+
+    return render(request, 'students/class_lists.html', {
+        'grades': grades,
+        'streams': streams,
+        'students': students,
+        'selected_grade': selected_grade,
+        'selected_stream': selected_stream,
+        'is_admin_view': is_admin_view,
+        'total_count': len(students),
+        'boys_count': sum(1 for s in students if s['gender'] == 'Male'),
+        'girls_count': sum(1 for s in students if s['gender'] == 'Female'),
+        'section_accent': section_accent,
+    })
+
+
+@login_required(login_url='login')
+def teacher_search_student(request):
+    """
+    Teacher search student — search by admission number, name, phone, or assessment number.
+    Section-scoped: teachers only see students in their section.
     """
     school = get_request_school(request)
     if not school:
         messages.error(request, "School context is required.")
         return redirect('welcome_page')
 
-    view_mode       = request.GET.get('view_mode', 'teacher')
-    if view_mode not in ('teacher', 'admin'):
-        view_mode = 'teacher'
-
-    teacher = get_teacher_for_user(request.user)
-    class_teacher_scope = get_class_teacher_scope(teacher)
+    section = get_request_school_section(request)
     is_admin_view = user_has_main_school_admin_override(request.user)
-    contexts = get_learner_contexts_for_user(request.user)
-    selected_key = request.GET.get('context')
-    selected_context = None
-    if selected_key:
-        selected_context = next((item for item in contexts if item['context_key'] == selected_key), None)
-    if not selected_context and contexts:
-        selected_context = contexts[0]
 
-    selected_grade = selected_context['class_name'] if selected_context else None
-    selected_stream = selected_context['stream'] if selected_context else None
-    can_access_admin_register = (
-        is_admin_view or
-        (class_teacher_scope == (selected_grade, selected_stream))
-    )
-    if view_mode == "admin" and not can_access_admin_register:
-        view_mode = "teacher"
+    search_type = request.GET.get('search_type', 'adm_no')
+    query = request.GET.get('query', '').strip()
 
     students = Student.objects.none()
-    if selected_context:
-        # Admin view uses all_objects to see students across all sub-sections
-        # (e.g. Grade 3 LOWER alongside Grade 4-6 UPPER in PRIMARY workspace).
-        student_manager = Student.all_objects if is_admin_view else Student.objects
-        students = (
-            student_manager
-            .filter(school=school, class_name=selected_grade, stream=selected_stream, is_active=True)
-            .filter(admission_no__regex=r'^[0-9]+[PJ]$')
-            .select_related('guardian')
-            .annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
-            .order_by('adm_int')
-        )
+    if query:
+        import re
+        search_qs = Student.all_objects.filter(school=school, is_active=True).select_related('guardian')
 
-    section = get_request_school_section(request)
-    if section == 'LOWER_PRIMARY':
-        grades_for_section = LOWER_PRIMARY_GRADE_CHOICES
-    elif section == 'PRIMARY':
-        grades_for_section = LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES
-    else:
-        grades_for_section = GRADE_CHOICES
+        # Section enforcement for teachers
+        if not is_admin_view:
+            if section in ('LOWER_PRIMARY', 'PRIMARY'):
+                search_qs = search_qs.filter(school_section='PRIMARY')
+                if section == 'LOWER_PRIMARY':
+                    search_qs = search_qs.filter(class_name__in=LOWER_PRIMARY_GRADE_CHOICES)
+                else:
+                    search_qs = search_qs.filter(class_name__in=PRIMARY_GRADE_CHOICES)
+            elif section == 'JSS':
+                search_qs = search_qs.filter(school_section='JSS', class_name__in=JSS_GRADE_CHOICES)
+
+        format_ok = True
+        if search_type == 'name':
+            if not re.match(r'^[A-Za-z\s.\'-]+$', query):
+                format_ok = False
+        elif search_type in ('adm_no', 'assessment_no'):
+            if not re.match(r'^[A-Za-z0-9]+$', query):
+                format_ok = False
+        elif search_type == 'phone':
+            if not re.match(r'^[+]?[0-9\s\-()]+$', query):
+                format_ok = False
+
+        if not format_ok:
+            messages.warning(request, f"Invalid format. Please enter a valid value.")
+            students = search_qs.none()
+        elif search_type == 'adm_no':
+            students = search_qs.filter(admission_no__icontains=query).order_by('name')
+        elif search_type == 'name':
+            students = search_qs.filter(name__icontains=query).order_by('name')
+        elif search_type == 'phone':
+            students = search_qs.filter(guardian__phone__icontains=query).order_by('name')
+        elif search_type == 'assessment_no':
+            students = search_qs.filter(assessment_no__icontains=query).order_by('name')
 
     section_colors = {
         'JSS':           '#305CDE',
         'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
-    # Use LOWER_PRIMARY color when a Grade 1-3 stream is selected
-    if selected_grade in LOWER_PRIMARY_GRADE_CHOICES:
-        section_accent = section_colors['LOWER_PRIMARY']
-    else:
-        section_accent = section_colors.get(section, '#305CDE')
+    section_accent = section_colors.get(section, '#305CDE')
 
-    return render(request, 'students/class_lists.html', {
-        'students':         students,
-        'selected_grade':   selected_grade,
-        'selected_stream':  selected_stream,
-        'selected_context_key': selected_context['context_key'] if selected_context else '',
-        'learner_contexts': contexts,
-        'current_view_mode': view_mode,
-        'can_access_admin_register': can_access_admin_register,
+    return render(request, 'students/teacher_search_student.html', {
+        'students': students,
+        'query': query,
+        'search_type': search_type,
+        'section_accent': section_accent,
         'is_admin_view': is_admin_view,
-        'section_accent':   section_accent,
-        'access_label': "School-wide learner directory" if is_admin_view else "Assigned learner directory",
-        'grades':           grades_for_section,
-        'streams':          get_streams_for_school(school, section),
     })
+
+
+# ── HTMX API: teacher search fields / submit / reset ────────────────────
+from django.http import HttpResponse
+from django.views.decorators.cache import never_cache
+
+def _teacher_section_query(school, section, is_admin_view):
+    """Return a base queryset scoped to teacher's section."""
+    qs = Student.all_objects.filter(school=school, is_active=True).select_related('guardian')
+    if not is_admin_view:
+        if section in ('LOWER_PRIMARY', 'PRIMARY'):
+            qs = qs.filter(school_section='PRIMARY')
+            if section == 'LOWER_PRIMARY':
+                qs = qs.filter(class_name__in=LOWER_PRIMARY_GRADE_CHOICES)
+            else:
+                qs = qs.filter(class_name__in=PRIMARY_GRADE_CHOICES)
+        elif section == 'JSS':
+            qs = qs.filter(school_section='JSS', class_name__in=JSS_GRADE_CHOICES)
+    return qs
+
+
+@login_required(login_url='login')
+@never_cache
+def teacher_search_fields(request):
+    """HTMX partial: returns the search input field matching the selected radio type."""
+    search_type = request.GET.get('type', 'adm_no')
+    school = get_request_school(request)
+    section = get_request_school_section(request)
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
+    INPUT_STYLE = 'width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; background-color: #f0fdf4; font-size: 14px;'
+    LABEL_STYLE = 'color: #ea580c; font-size: 14px; font-weight: 500;'
+    WRAP_STYLE = 'display: flex; flex-direction: column; gap: 6px;'
+
+    if search_type == 'name':
+        if section == 'LOWER_PRIMARY':
+            grades = list(LOWER_PRIMARY_GRADE_CHOICES)
+        elif section == 'PRIMARY':
+            grades = list(PRIMARY_GRADE_CHOICES)
+        elif section == 'JSS':
+            grades = list(JSS_GRADE_CHOICES)
+        else:
+            grades = list(GRADE_CHOICES)
+        grade_options = '<option value="">Form / Grade</option>'
+        for g in grades:
+            grade_options += f'<option value="{g}">{g}</option>'
+        html = (
+            f'<div style="grid-column: span 1; {WRAP_STYLE}">'
+            f'  <label style="{LABEL_STYLE}">Name<span style="color: #ef4444;">*</span></label>'
+            f'  <input type="text" name="name" placeholder="Enter Student Name..." required'
+            f"         pattern=\"^[A-Za-z\\s.'-]+\" title=\"Please enter text letters only for names\""
+            f'         style="{INPUT_STYLE}">'
+            f'</div>'
+            f'<div style="grid-column: span 1; {WRAP_STYLE}">'
+            f'  <label style="color: #374151; font-size: 14px; font-weight: 500;">Form / Grade</label>'
+            f'  <select name="grade"'
+            f'          style="{INPUT_STYLE} color: #9ca3af;">'
+            f'    {grade_options}'
+            f'  </select>'
+            f'</div>'
+        )
+    else:
+        field_map = {
+            'adm_no':         {'label': 'Admission Number',  'placeholder': 'Enter Admission Number...',  'name': 'admission_number', 'type': 'text',  'pattern': '^[A-Za-z0-9]+$',            'title': 'Admission number must be alphanumeric (e.g. ADM001)'},
+            'phone':          {'label': 'Phone Number',      'placeholder': 'Enter Phone Number...',      'name': 'phone_number',     'type': 'tel',  'pattern': '^[+]?[0-9\\s\\-()]+$',       'title': 'Please enter a valid phone number (digits, +, -, spaces, parentheses)'},
+            'assessment_no':  {'label': 'Assessment Number', 'placeholder': 'Enter Assessment Number...', 'name': 'assessment_number','type': 'text', 'pattern': '^[A-Za-z0-9]+$',             'title': 'Assessment number must be alphanumeric (e.g. ASS001)'},
+        }
+        f = field_map.get(search_type, field_map['adm_no'])
+        html = (
+            f'<div style="grid-column: span 2; {WRAP_STYLE}">'
+            f'  <label style="{LABEL_STYLE}">{f["label"]}<span style="color: #ef4444;">*</span></label>'
+            f'  <input type="{f["type"]}" name="{f["name"]}" placeholder="{f["placeholder"]}" required'
+            f'         pattern="{f["pattern"]}" title="{f["title"]}"'
+            f'         style="{INPUT_STYLE}">'
+            f'</div>'
+        )
+    return HttpResponse(html)
+
+
+@login_required(login_url='login')
+@never_cache
+def teacher_search_submit(request):
+    """HTMX endpoint: run the directory search and return results HTML fragment (section-scoped)."""
+    import re
+    school = get_request_school(request)
+    section = get_request_school_section(request)
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
+    search_type = request.GET.get('search_type', 'adm_no')
+
+    query = ''
+    if search_type == 'adm_no':
+        query = request.GET.get('admission_number', '').strip()
+    elif search_type == 'name':
+        query = request.GET.get('name', '').strip()
+    elif search_type == 'phone':
+        query = request.GET.get('phone_number', '').strip()
+    elif search_type == 'assessment_no':
+        query = request.GET.get('assessment_number', '').strip()
+
+    grade_query = request.GET.get('grade', '').strip() if search_type == 'name' else ''
+
+    students = Student.objects.none()
+    if query:
+        format_ok = True
+        if search_type == 'name':
+            if not re.match(r"^[A-Za-z\s.'-]+$", query):
+                format_ok = False
+        elif search_type in ('adm_no', 'assessment_no'):
+            if not re.match(r'^[A-Za-z0-9]+$', query):
+                format_ok = False
+        elif search_type == 'phone':
+            if not re.match(r'^[+]?[0-9\s\-()]+$', query):
+                format_ok = False
+
+        if format_ok:
+            search_qs = _teacher_section_query(school, section, is_admin_view)
+            if search_type == 'adm_no':
+                students = search_qs.filter(admission_no__icontains=query).order_by('name')
+            elif search_type == 'name':
+                students = search_qs.filter(name__icontains=query).order_by('name')
+                if grade_query:
+                    students = students.filter(class_name__iexact=grade_query)
+            elif search_type == 'phone':
+                students = search_qs.filter(guardian__phone__icontains=query).order_by('name')
+            elif search_type == 'assessment_no':
+                students = search_qs.filter(assessment_no__icontains=query).order_by('name')
+
+    TYPE_LABELS = {'adm_no': 'Admission Number', 'name': 'Name', 'phone': 'Phone Number', 'assessment_no': 'Assessment Number'}
+    label = TYPE_LABELS.get(search_type, 'Admission Number')
+
+    if students.exists():
+        rows = ''
+        for idx, s in enumerate(students, 1):
+            rows += (
+                '<tr style="background:#ffffff;">'
+                f'  <td style="padding:14px 16px;font-size:14px;font-weight:600;color:#0f172a;border:1px solid #e2e8f0;">{idx}</td>'
+                f'  <td style="padding:14px 16px;font-size:14px;font-weight:500;color:#334155;border:1px solid #e2e8f0;">{s.admission_no}</td>'
+                f'  <td style="padding:14px 16px;font-size:14px;font-weight:500;color:#334155;border:1px solid #e2e8f0;">{s.name}</td>'
+                f'  <td style="padding:14px 16px;font-size:14px;font-weight:500;color:#334155;border:1px solid #e2e8f0;">{s.class_name} {s.stream}</td>'
+                '  <td style="padding:12px 16px;text-align:center;border:1px solid #e2e8f0;">'
+                '    <div style="display:flex;gap:12px;justify-content:center;align-items:center;">'
+                f'      <a hx-get="/class-lists/search/profile/{s.id}/" hx-target="#search-card-container" hx-swap="innerHTML"'
+                '         style="display:inline-block;background:#0f172a;color:#ffffff;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;font-family:\'Inter\',sans-serif;transition:all 0.2s;">Profile</a>'
+                f'      <a hx-get="/class-lists/search/analytics/{s.id}/" hx-target="#search-card-container" hx-swap="innerHTML"'
+                '         style="display:inline-block;background:#22c55e;color:#ffffff;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;font-family:\'Inter\',sans-serif;transition:all 0.2s;">Analytics</a>'
+                '    </div>'
+                '  </td>'
+                '</tr>'
+            )
+        html = (
+            '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #22c55e;">'
+            '  <h3 style="margin:0 0 20px;color:#475569;font-size:18px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
+            '  <div style="overflow-x:auto;width:100%;margin-bottom:20px;">'
+            '    <table style="width:100%;border-collapse:collapse;text-align:left;">'
+            '      <thead>'
+            '        <tr style="background:#f8fafc;">'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;width:50px;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">#</th>'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;width:120px;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">ADM NO</th>'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">NAME</th>'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;width:180px;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">CLASS</th>'
+            '          <th style="padding:12px 16px;font-size:12px;font-weight:700;color:#0f172a;width:220px;text-align:center;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;">ACTIONS</th>'
+            '        </tr>'
+            '      </thead>'
+            f'      <tbody>{rows}</tbody>'
+            '    </table>'
+            '  </div>'
+            '  <div style="display:flex;justify-content:flex-start;">'
+            '    <button hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML"'
+            '            style="display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;border:1px solid #cbd5e1;color:#334155;padding:10px 22px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:\'Inter\',sans-serif;transition:all 0.2s ease;">'
+            '      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
+            '      Back'
+            '    </button>'
+            '  </div>'
+            '</div>'
+        )
+    else:
+        html = (
+            '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #22c55e;">'
+            '  <h3 style="margin:0 0 20px;color:#475569;font-size:18px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Search Results</h3>'
+            '  <div style="text-align:center;padding:48px 24px;color:#94a3b8;">'
+            '    <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>'
+            '    <p style="margin:0 0 6px;font-size:15px;font-weight:500;color:#475569;">No records found</p>'
+            f'    <p style="margin:0;font-size:13px;color:#94a3b8;">No students match &ldquo;{query}&rdquo; in {label} search.</p>'
+            '  </div>'
+            '  <div style="display:flex;justify-content:flex-start;">'
+            '    <button hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML"'
+            '            style="display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;border:1px solid #cbd5e1;color:#334155;padding:10px 22px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:\'Inter\',sans-serif;transition:all 0.2s ease;">'
+            '      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
+            '      Back'
+            '    </button>'
+            '  </div>'
+            '</div>'
+        )
+    return HttpResponse(html)
+
+
+@login_required(login_url='login')
+@never_cache
+def teacher_search_reset(request):
+    """HTMX endpoint: return the empty search form shell to replace results."""
+    section = get_request_school_section(request)
+    if section == 'LOWER_PRIMARY':
+        grades = list(LOWER_PRIMARY_GRADE_CHOICES)
+    elif section == 'PRIMARY':
+        grades = list(PRIMARY_GRADE_CHOICES)
+    elif section == 'JSS':
+        grades = list(JSS_GRADE_CHOICES)
+    else:
+        grades = list(GRADE_CHOICES)
+
+    grade_options = '<option value="">Form / Grade</option>'
+    for g in grades:
+        grade_options += f'<option value="{g}">{g}</option>'
+
+    html = (
+        '<div style="background:white;padding:24px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">'
+        '  <h3 style="margin-top:0;color:#333;font-size:16px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Search By &mdash; <span id="search-type-label">Admission Number</span></h3>'
+        '  <form id="search-form" hx-get="/class-lists/search/submit/" hx-target="#search-card-container" hx-swap="innerHTML">'
+        '    <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid #e5e7eb;" id="search-type-radios">'
+        '      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;font-weight:500;flex:1;padding:10px 0;justify-content:center;">'
+        '        <input type="radio" name="search_type" value="adm_no" data-type="adm_no" checked>Admission Number</label>'
+        '      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;font-weight:500;flex:1;padding:10px 0;justify-content:center;">'
+        '        <input type="radio" name="search_type" value="name" data-type="name">Name</label>'
+        '      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;font-weight:500;flex:1;padding:10px 0;justify-content:center;">'
+        '        <input type="radio" name="search_type" value="phone" data-type="phone">Phone Number</label>'
+        '      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;font-weight:500;flex:1;padding:10px 0;justify-content:center;">'
+        '        <input type="radio" name="search_type" value="assessment_no" data-type="assessment_no">Assessment Number</label>'
+        '    </div>'
+        '    <div id="dynamic-fields" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px;">'
+        '      <div style="grid-column:span 2;display:flex;flex-direction:column;gap:6px;">'
+        '        <label style="color:#ea580c;font-size:14px;font-weight:500;">Admission Number<span style="color:#ef4444;">*</span></label>'
+        '        <input type="text" name="admission_number" placeholder="Enter Admission Number..." required'
+        '               pattern="^[A-Za-z0-9]+$" title="Admission number must be alphanumeric (e.g. ADM001)"'
+        '               style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;background-color:#f0fdf4;font-size:14px;">'
+        '      </div>'
+        '    </div>'
+        '    <div style="display:flex;justify-content:flex-end;width:100%;">'
+        '      <button type="submit" style="background-color:#0ea5e9;color:white;padding:10px 24px;border:none;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:\'Inter\',sans-serif;">'
+        '        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>'
+        '        Search'
+        '      </button>'
+        '    </div>'
+        '  </form>'
+        '</div>'
+        '<script>'
+        '(function(){'
+        '  var TYPE_LABELS={adm_no:\'Admission Number\',name:\'Name\',phone:\'Phone Number\',assessment_no:\'Assessment Number\'};'
+        '  var radios=document.querySelectorAll("#search-type-radios input[type=radio]");'
+        '  var target=document.getElementById("dynamic-fields");'
+        '  var label=document.getElementById("search-type-label");'
+        '  radios.forEach(function(radio){'
+        '    radio.addEventListener("click",function(){'
+        '      var t=this.getAttribute("data-type");'
+        '      if(label) label.textContent=TYPE_LABELS[t]||t;'
+        '      fetch("/class-lists/search/fields/?type="+encodeURIComponent(t))'
+        '        .then(function(r){return r.text();})'
+        '        .then(function(html){if(target) target.innerHTML=html;});'
+        '    });'
+        '  });'
+        '})();'
+        '</script>'
+    )
+    return HttpResponse(html)
+
+
+@login_required(login_url='login')
+@never_cache
+def teacher_student_profile_card(request, student_id):
+    """HTMX endpoint: read-only student profile card (teacher version — no edit/delete)."""
+    school = get_request_school(request)
+    section = get_request_school_section(request)
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
+    try:
+        student = Student.all_objects.select_related('guardian').get(pk=student_id, school=school)
+    except Student.DoesNotExist:
+        return HttpResponse(
+            '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">'
+            '  <h3 style="margin:0 0 24px;color:#1e3a8a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Student Profile</h3>'
+            '  <div style="text-align:center;padding:48px 24px;color:#94a3b8;">'
+            '    <p style="margin:0;font-size:15px;font-weight:500;color:#475569;">Student not found</p>'
+            '  </div>'
+            '  <div style="margin-top:32px;">'
+            '    <button class="profile-back-btn" hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML">'
+            '      &larr; Back to Search'
+            '    </button>'
+            '  </div>'
+            '</div>'
+        )
+
+    # Section access check — teachers can only view students in their section
+    if not is_admin_view:
+        student_section = getattr(student, 'school_section', None)
+        student_sub = getattr(student, 'sub_section', None)
+        allowed = False
+        if section == 'JSS' and student_section == 'JSS':
+            allowed = True
+        elif section == 'PRIMARY' and student_section == 'PRIMARY' and student_sub != 'LOWER':
+            allowed = True
+        elif section == 'LOWER_PRIMARY' and student_section == 'PRIMARY' and student_sub == 'LOWER':
+            allowed = True
+        if not allowed:
+            return HttpResponse(
+                '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">'
+                '  <div style="text-align:center;padding:48px 24px;color:#94a3b8;">'
+                '    <p style="margin:0;font-size:15px;font-weight:500;color:#475569;">You do not have access to this student.</p>'
+                '  </div>'
+                '  <div style="margin-top:24px;text-align:center;">'
+                '    <button class="profile-back-btn" hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML">'
+                '      &larr; Back to Search'
+                '    </button>'
+                '  </div>'
+                '</div>'
+            )
+
+    guardian_name = student.guardian.name if student.guardian else '—'
+    guardian_phone = student.guardian.phone if student.guardian else '—'
+    gender_display = student.gender or 'Not Specified'
+    religion_display = student.religion if hasattr(student, 'religion') and student.religion else '—'
+
+    html = (
+        '<style>'
+        '  .profile-back-btn { background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%); border:none; color:#ffffff; padding:12px 28px; border-radius:10px; font-weight:600; font-size:13px; cursor:pointer; font-family:"Inter",sans-serif; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 8px rgba(30,58,138,0.25); }'
+        '  .profile-back-btn:hover { background:linear-gradient(135deg,#1e40af 0%,#1d4ed8 100%); box-shadow:0 4px 12px rgba(30,58,138,0.35); transform:translateY(-1px); }'
+        '</style>'
+
+        '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">'
+
+        # ── Premium Header Banner ──
+        '  <div style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #bfdbfe;border-radius:14px;padding:32px 36px;margin-bottom:28px;display:flex;align-items:center;gap:28px;">'
+        '    <div style="position:relative;width:88px;height:88px;flex-shrink:0;">'
+        '      <div style="width:88px;height:88px;border-radius:50%;background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.8);box-shadow:0 8px 24px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;">'
+        '        <svg width="44" height="44" fill="none" stroke="#64748b" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+        '      </div>'
+        '    </div>'
+        '    <div>'
+        f'      <h2 style="margin:0 0 8px;color:#1e3a8a;font-size:24px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;letter-spacing:-0.01em;">{student.name}</h2>'
+        f'      <p style="margin:0 0 4px;color:#475569;font-size:14px;font-weight:400;">Admission Number: {student.admission_no}</p>'
+        f'      <p style="margin:0;color:#64748b;font-size:13px;font-weight:400;">{student.class_name} {student.stream}</p>'
+        '    </div>'
+        '  </div>'
+
+        # ── Personal Information Card ──
+        '  <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:28px 32px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05),0 8px 10px -6px rgba(0,0,0,0.05);">'
+        '    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">'
+        '      <h3 style="margin:0;color:#059669;font-size:16px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Personal Information</h3>'
+        '    </div>'
+        '    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">'
+
+        # Name tile
+        '      <div style="background:#f8fafc;border-radius:8px;padding:14px 16px;">'
+        '        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Name</p>'
+        f'        <p style="margin:0;font-size:14px;font-weight:500;color:#0f172a;">{student.name.upper()}</p>'
+        '      </div>'
+
+        # Admission Number tile
+        '      <div style="background:#f8fafc;border-radius:8px;padding:14px 16px;">'
+        '        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Admission Number</p>'
+        f'        <p style="margin:0;font-size:14px;font-weight:500;color:#0f172a;">{student.admission_no}</p>'
+        '      </div>'
+
+        # Gender tile
+        '      <div style="background:#f8fafc;border-radius:8px;padding:14px 16px;">'
+        '        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Gender</p>'
+        f'        <p style="margin:0;font-size:14px;font-weight:500;color:#0f172a;">{gender_display}</p>'
+        '      </div>'
+
+        # Assessment Number tile
+        '      <div style="background:#f8fafc;border-radius:8px;padding:14px 16px;">'
+        '        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Assessment Number</p>'
+        f'        <p style="margin:0;font-size:14px;font-weight:500;color:#0f172a;">{student.assessment_no or "—"}</p>'
+        '      </div>'
+
+        # Class tile
+        '      <div style="background:#f8fafc;border-radius:8px;padding:14px 16px;">'
+        '        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Class</p>'
+        f'        <p style="margin:0;font-size:14px;font-weight:500;color:#0f172a;">{student.class_name} {student.stream}</p>'
+        '      </div>'
+
+        # Religion tile
+        '      <div style="background:#f8fafc;border-radius:8px;padding:14px 16px;">'
+        '        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Religion</p>'
+        f'        <p style="margin:0;font-size:14px;font-weight:500;color:#0f172a;">{religion_display}</p>'
+        '      </div>'
+
+        # Primary Contact tile
+        '      <div style="background:#f8fafc;border-radius:8px;padding:14px 16px;">'
+        '        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Primary Contact</p>'
+        f'        <p style="margin:0;font-size:14px;font-weight:500;color:#0f172a;">{guardian_phone}</p>'
+        '      </div>'
+
+        # Guardian Name tile
+        '      <div style="background:#f8fafc;border-radius:8px;padding:14px 16px;">'
+        '        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Guardian Name</p>'
+        f'        <p style="margin:0;font-size:14px;font-weight:500;color:#0f172a;">{guardian_name}</p>'
+        '      </div>'
+
+        '    </div>'
+        '  </div>'
+
+        # ── Actions Row ──
+        '  <div style="margin-top:32px;">'
+        '    <button class="profile-back-btn" hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML">'
+        '      &larr; Back to Search'
+        '    </button>'
+        '  </div>'
+
+        '</div>'
+    )
+    return HttpResponse(html)
+
+
+@login_required(login_url='login')
+@never_cache
+def teacher_student_analytics(request, student_id):
+    """HTMX endpoint: student analytics dashboard (teacher version — read-only)."""
+    from django.db.models import Avg, Sum, Count, F, Q
+    from ..models import ExamSummary, Mark, Subject
+    from .helpers import get_performance_level
+
+    school = get_request_school(request)
+    section = get_request_school_section(request)
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
+    try:
+        student = Student.all_objects.select_related('guardian').get(pk=student_id, school=school)
+    except Student.DoesNotExist:
+        return HttpResponse(
+            '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;text-align:center;">'
+            '  <p style="color:#94a3b8;font-size:15px;margin:0;">Student not found.</p>'
+            '  <div style="margin-top:24px;">'
+            '    <button class="an-back-btn" hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML">&larr; Back to Search</button>'
+            '  </div>'
+            '</div>'
+        )
+
+    # Section access check — teachers can only view students in their section
+    if not is_admin_view:
+        student_section = getattr(student, 'school_section', None)
+        student_sub = getattr(student, 'sub_section', None)
+        allowed = False
+        if section == 'JSS' and student_section == 'JSS':
+            allowed = True
+        elif section == 'PRIMARY' and student_section == 'PRIMARY' and student_sub != 'LOWER':
+            allowed = True
+        elif section == 'LOWER_PRIMARY' and student_section == 'PRIMARY' and student_sub == 'LOWER':
+            allowed = True
+        if not allowed:
+            return HttpResponse(
+                '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;text-align:center;">'
+                '  <p style="color:#94a3b8;font-size:15px;margin:0;">You do not have access to this student.</p>'
+                '  <div style="margin-top:24px;">'
+                '    <button class="an-back-btn" hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML">&larr; Back to Search</button>'
+                '  </div>'
+                '</div>'
+            )
+
+    initials = ''.join([w[0] for w in student.name.split()[:2]]).upper()
+
+    from django.db.models import Case, When, Value, IntegerField
+    exam_order = Case(
+        When(exam_name__icontains='Opener', then=1),
+        When(exam_name__icontains='Mid', then=2),
+        When(exam_name__icontains='End', then=3),
+        default=0,
+        output_field=IntegerField(),
+    )
+    latest = (
+        ExamSummary.all_objects.filter(student=student, school=school)
+        .annotate(exam_sort=exam_order)
+        .order_by('-year', '-term', '-exam_sort')
+        .first()
+    )
+    all_exams = list(
+        ExamSummary.all_objects.filter(student=student, school=school)
+        .annotate(exam_sort=exam_order)
+        .order_by('-year', '-term', '-exam_sort')[:10]
+    )
+    total_students_in_class = (
+        Student.all_objects.filter(school=school, class_name=student.class_name, stream=student.stream, is_active=True)
+        .count()
+    )
+    total_students_in_grade = (
+        Student.all_objects.filter(school=school, class_name=student.class_name, is_active=True)
+        .count()
+    )
+
+    if latest:
+        mean_marks = round(latest.total_marks / latest.subject_count, 1) if latest.subject_count else 0
+        total_points = latest.total_points
+        overall_pos = f"{latest.grade_rank}/{total_students_in_grade}" if latest.grade_rank else "—"
+        stream_pos = f"{latest.stream_rank}/{total_students_in_class}" if latest.stream_rank else "—"
+        mean_grade = latest.overall_plv or "—"
+        exam_label = f"{latest.exam_name} — {latest.term} {latest.year}"
+    else:
+        mean_marks = 0
+        total_points = 0
+        overall_pos = "—"
+        stream_pos = "—"
+        mean_grade = "—"
+        exam_label = "No exam data"
+
+    prev_exam = all_exams[1] if len(all_exams) > 1 else None
+    if latest and prev_exam and prev_exam.subject_count:
+        prev_mean = round(prev_exam.total_marks / prev_exam.subject_count, 1)
+        marks_trend = round(mean_marks - prev_mean, 1)
+    else:
+        marks_trend = 0
+
+    trend_icon = '▲' if marks_trend > 0 else ('▼' if marks_trend < 0 else '—')
+    trend_color = '#16a34a' if marks_trend > 0 else ('#ef4444' if marks_trend < 0 else '#94a3b8')
+
+    term_choices = [('Term 1', 'Term 1'), ('Term 2', 'Term 2'), ('Term 3', 'Term 3')]
+    current_term = latest.term if latest else student.term
+    term_options = ''
+    for t_val, t_label in term_choices:
+        sel = ' selected' if t_val == current_term else ''
+        term_options += f'<option value="{t_val}"{sel}>{t_label}</option>'
+
+    exam_rows = ''
+    for idx, ex in enumerate(all_exams):
+        ex_mean = round(ex.total_marks / ex.subject_count, 1) if ex.subject_count else 0
+        exam_rows += (
+            '<tr style="border-bottom:1px solid #f1f5f9;">'
+            f'  <td style="padding:12px 16px;font-size:13px;color:#475569;font-weight:500;">{ex.exam_name}</td>'
+            f'  <td style="padding:12px 16px;font-size:13px;color:#475569;">{ex.term}</td>'
+            f'  <td style="padding:12px 16px;font-size:13px;color:#475569;">{ex.year}</td>'
+            f'  <td style="padding:12px 16px;font-size:13px;color:#0f172a;font-weight:600;">{ex.total_marks}</td>'
+            f'  <td style="padding:12px 16px;font-size:13px;color:#0f172a;font-weight:600;">{ex_mean}%</td>'
+            f'  <td style="padding:12px 16px;font-size:13px;color:#0f172a;font-weight:600;">{ex.total_points}</td>'
+            f'  <td style="padding:12px 16px;font-size:13px;color:#475569;">{ex.grade_rank or "—"}</td>'
+            f'  <td style="padding:12px 16px;font-size:13px;color:#475569;">{ex.stream_rank or "—"}</td>'
+            f'  <td style="padding:12px 16px;font-size:13px;">'
+            f'    <span style="background:{"#dcfce7" if ex.overall_plv in ["EXCELLENT","GOOD","SATISFACTORY"] else "#fef9c3" if ex.overall_plv == "AVERAGE" else "#fee2e2"};'
+            f'    color:{"#166534" if ex.overall_plv in ["EXCELLENT","GOOD","SATISFACTORY"] else "#854d0e" if ex.overall_plv == "AVERAGE" else "#991b1b"};'
+            f'    padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;">{ex.overall_plv or "—"}</span>'
+            '  </td>'
+            '</tr>'
+        )
+    if not exam_rows:
+        exam_rows = (
+            '<tr><td colspan="9" style="padding:40px;text-align:center;color:#94a3b8;font-size:14px;">No exam data available yet.</td></tr>'
+        )
+
+    # ── Subject performance + chart data (single pass) ──
+    import json as _json
+    chart_labels = []
+    chart_student_data = []
+    chart_form_data = []
+    chart_target_data = []
+    subject_perf_rows = ''
+    if latest:
+        latest_marks = list(
+            Mark.all_objects.filter(
+                student=student, school=school,
+                year=latest.year, term=latest.term, exam_type=latest.exam_name,
+            ).select_related('subject')
+        )
+        latest_subj_ids = {mk.subject_id for mk in latest_marks if mk.subject_id}
+        earlier_marks = Mark.all_objects.filter(
+            student=student, school=school,
+            year=latest.year, term=latest.term,
+        ).exclude(exam_type=latest.exam_name).select_related('subject')
+        for mk in earlier_marks:
+            if mk.subject_id and mk.subject_id not in latest_subj_ids:
+                latest_subj_ids.add(mk.subject_id)
+                latest_marks.append(mk)
+        subject_names_map = {
+            s.code: s.name for s in Subject.all_objects.filter(school=school)
+        }
+        class_avgs = {}
+        class_stream_avg = Mark.all_objects.filter(
+            school=school, student__class_name=student.class_name, student__stream=student.stream,
+            year=latest.year, term=latest.term, exam_type=latest.exam_name,
+            is_absent=False, score__gt=0,
+        ).values('subject__code').annotate(avg=Avg('score'))
+        for row in class_stream_avg:
+            class_avgs[row['subject__code']] = round(row['avg'], 1)
+
+        grade_avgs = {}
+        all_grade_avg = Mark.all_objects.filter(
+            school=school, student__class_name=student.class_name,
+            year=latest.year, term=latest.term, exam_type=latest.exam_name,
+            is_absent=False, score__gt=0,
+        ).values('subject__code').annotate(avg=Avg('score'))
+        for row in all_grade_avg:
+            grade_avgs[row['subject__code']] = round(row['avg'], 1)
+
+        target_marks = {}
+        if prev_exam:
+            prev_marks = Mark.all_objects.filter(
+                student=student, school=school,
+                year=prev_exam.year, term=prev_exam.term, exam_type=prev_exam.exam_name,
+                is_absent=False, score__gt=0,
+            ).values('subject__code').annotate(prev_avg=Avg('score'))
+            for row in prev_marks:
+                target_marks[row['subject__code']] = round(row['prev_avg'], 1)
+
+        subject_class_ranks = {}
+        if latest:
+            all_students_marks = Mark.all_objects.filter(
+                school=school, student__class_name=student.class_name, student__stream=student.stream,
+                year=latest.year, term=latest.term,
+                is_absent=False, score__gt=0,
+            ).select_related('subject').order_by('-exam_type')
+            from collections import defaultdict
+            subj_scores = defaultdict(list)
+            seen_per_student = {}
+            for m in all_students_marks:
+                key = (m.student_id, m.subject_id)
+                if key not in seen_per_student:
+                    seen_per_student[key] = m
+                    code = m.subject.code if m.subject else ''
+                    if code:
+                        subj_scores[code].append((m.student_id, m.score))
+            for s_code, s_list in subj_scores.items():
+                s_list.sort(key=lambda x: -x[1])
+                rank_map = {}
+                for idx, (sid, _) in enumerate(s_list, 1):
+                    rank_map[sid] = idx
+                total_in_subj = len(s_list)
+                subject_class_ranks[s_code] = (rank_map, total_in_subj)
+
+        SUBJ_SHORT = {
+            '901': 'Eng', '902': 'Kisw', '903': 'Maths', '904': 'KSL',
+            '905': 'IS', '906': 'Agr', '907': 'Soc', '908': 'CRE',
+            '909': 'IRE', '910': 'HRE', '911': 'CAS', '912': 'PRE',
+        }
+        for mk in sorted(latest_marks, key=lambda x: (x.subject.code if x.subject else '')):
+            if mk.is_absent or mk.score is None:
+                continue
+            code = mk.subject.code if mk.subject else ''
+            sc = mk.score
+            c_avg = class_avgs.get(code, 0)
+            tgt = 0
+
+            chart_labels.append(SUBJ_SHORT.get(code, code))
+            chart_student_data.append(sc)
+            chart_form_data.append(c_avg)
+
+            subj_name = subject_names_map.get(code, code)
+            dev_exam = round(sc - c_avg, 1) if c_avg else 0
+            dev_target = round(sc - tgt, 1) if tgt else 0
+            dev_exam_clr = '#16a34a' if dev_exam > 0 else ('#ef4444' if dev_exam < 0 else '#94a3b8')
+            dev_tgt_clr = '#16a34a' if dev_target > 0 else ('#ef4444' if dev_target < 0 else '#94a3b8')
+            dev_exam_svg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + dev_exam_clr + '" stroke-width="2.5"><path d="M7 7l5 5 5-5"/></svg>' if dev_exam > 0 else '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + dev_exam_clr + '" stroke-width="2.5"><path d="M7 17l5-5 5 5"/></svg>' if dev_exam < 0 else ''
+            dev_tgt_svg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + dev_tgt_clr + '" stroke-width="2.5"><path d="M7 7l5 5 5-5"/></svg>' if dev_target > 0 else '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + dev_tgt_clr + '" stroke-width="2.5"><path d="M7 17l5-5 5 5"/></svg>' if dev_target < 0 else ''
+            rank_data = subject_class_ranks.get(code, (None, 0))
+            stream_rank = f"{rank_data[0].get(student.id, '—')} / {rank_data[1]}" if rank_data[0] else "—"
+            subject_perf_rows += (
+                '<tr style="border-bottom:1px solid #f1f5f9;">'
+                f'  <td style="padding:14px 20px;font-size:13px;color:#0f172a;font-weight:600;">{subj_name}</td>'
+                f'  <td style="padding:14px 20px;font-size:13px;color:#0f172a;font-weight:500;">{sc}%</td>'
+                f'  <td style="padding:14px 20px;font-size:13px;">'
+                f'    <span style="display:inline-flex;align-items:center;gap:3px;color:{dev_exam_clr};font-weight:600;">'
+                f'      {dev_exam_svg} {dev_exam:+.0f}'
+                '    </span>'
+                '  </td>'
+                f'  <td style="padding:14px 20px;font-size:13px;">'
+                f'    <span style="display:inline-flex;align-items:center;gap:3px;color:{dev_tgt_clr};font-weight:600;">'
+                f'      {dev_tgt_svg} {dev_target:+.0f}'
+                '    </span>'
+                '  </td>'
+                f'  <td style="padding:14px 20px;font-size:13px;color:#0f172a;font-weight:500;">{mk.performance_level or "—"}</td>'
+                f'  <td style="padding:14px 20px;font-size:13px;color:#475569;font-weight:500;">{stream_rank}</td>'
+                '</tr>'
+            )
+    if not chart_labels:
+        chart_labels = ['No Data']
+        chart_student_data = [0]
+        chart_form_data = [0]
+        chart_target_data = [0]
+    if not subject_perf_rows:
+        subject_perf_rows = (
+            '<tr><td colspan="6" style="padding:40px;text-align:center;color:#94a3b8;font-size:14px;">No subject marks available for this exam.</td></tr>'
+        )
+
+    has_chart_data = bool(chart_labels) and chart_labels != ['No Data']
+    chart_labels_json = _json.dumps(chart_labels)
+    chart_student_data_json = _json.dumps(chart_student_data)
+    chart_form_data_json = _json.dumps(chart_form_data)
+    chart_target_data_json = _json.dumps(chart_target_data)
+    chart_student_name = student.name.split()[0].upper() if student.name else 'STUDENT'
+    chart_class_label = f"{student.class_name} {student.stream}" if student.class_name else 'Class'
+
+    grade_abbr = student.class_name.replace('Grade', 'G').strip() if student.class_name else 'G'
+    TERM_SHORT = {'Term 1': 'T1', 'Term 2': 'T2', 'Term 3': 'T3'}
+    EXAM_SHORT = {
+        'Opener Assessment': 'OPENER',
+        'Mid Term Assessment': 'MID-TERM',
+        'End of Term Assessment': 'END TERM',
+    }
+
+    from django.db.models import Case as C2, When as W2, Value as V2, IntegerField as IntF
+    exam_sort_expr = C2(
+        W2(exam_type__icontains='Opener', then=1),
+        W2(exam_type__icontains='Mid', then=2),
+        W2(exam_type__icontains='End', then=3),
+        default=0,
+        output_field=IntF(),
+    )
+    mark_exams = (
+        Mark.all_objects.filter(student=student, school=school, is_absent=False, score__gt=0)
+        .values('exam_type', 'term', 'year')
+        .annotate(exam_sort=exam_sort_expr)
+        .order_by('-year', '-term', 'exam_sort')
+        .distinct()
+    )
+
+    timeline_labels = []
+    timeline_student_scores = []
+    for me in mark_exams:
+        ex_marks = list(
+            Mark.all_objects.filter(
+                student=student, school=school,
+                year=me['year'], term=me['term'], exam_type=me['exam_type'],
+                is_absent=False, score__gt=0,
+            )
+        )
+        if ex_marks:
+            mean_score = round(sum(m.score for m in ex_marks) / len(ex_marks), 1)
+        else:
+            mean_score = 0
+        term_short = TERM_SHORT.get(me['term'], me['term'])
+        exam_short = EXAM_SHORT.get(me['exam_type'], me['exam_type'][:8].upper() if me['exam_type'] else 'EXAM')
+        timeline_labels.append(f"{grade_abbr} {term_short}, {exam_short}, {me['year']}")
+        timeline_student_scores.append(mean_score)
+
+    timeline_labels_json = _json.dumps(timeline_labels)
+    timeline_student_json = _json.dumps(timeline_student_scores)
+    has_timeline_data = bool(timeline_labels)
+
+    html = (
+        '<style>'
+        '  .an-back-btn { background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:10px 22px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; font-family:"Inter","Plus Jakarta Sans",sans-serif; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:6px; }'
+        '  .an-back-btn:hover { background:#e2e8f0; border-color:#94a3b8; }'
+        '  .an-pill { display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:#475569; font-weight:500; padding:12px 16px; border:1px solid #d1d5db; border-radius:8px; background:#ffffff; transition:all 0.2s; font-family:"Inter",sans-serif; }'
+        '  .an-pill:hover { border-color:#94a3b8; background:#f9fafb; }'
+        '  .an-pill.active { border-color:#22c55e; background:#f0fdf4; color:#166534; font-weight:600; }'
+        '  .an-pill input[type=radio] { display:none; }'
+        '  .an-curriculum-link { font-size:14px; color:#475569; font-weight:500; cursor:pointer; border-bottom:2px solid #22c55e; padding-bottom:2px; display:inline-block; text-decoration:none; }'
+        '  .an-curriculum-link:hover { color:#16a34a; }'
+        '  .an-dropdown-btn-green { background:#22c55e; border:none; color:#ffffff; padding:10px 20px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:"Inter",sans-serif; transition:all 0.15s; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 6px rgba(34,197,94,0.3); }'
+        '  .an-dropdown-btn-green:hover { background:#16a34a; box-shadow:0 4px 10px rgba(34,197,94,0.4); transform:translateY(-1px); }'
+        '  .an-dropdown-select { background:#ffffff; border:1px solid #e2e8f0; color:#334155; padding:10px 32px 10px 14px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; font-family:"Inter",sans-serif; transition:all 0.15s; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }'
+        '  .an-dropdown-select:hover { border-color:#94a3b8; }'
+        '</style>'
+
+        '<script>'
+        f'window.__chartData = {{'
+        f'"labels": {chart_labels_json},'
+        f'"studentData": {chart_student_data_json},'
+        f'"formData": {chart_form_data_json},'
+        f'"targetData": {chart_target_data_json},'
+        f'"studentName": "{chart_student_name}",'
+        f'"classLabel": "{chart_class_label}"'
+        f'}};'
+        f'window.__timelineData = {{'
+        f'"labels": {timeline_labels_json},'
+        f'"student": {timeline_student_json}'
+        f'}};'
+        '</script>'
+
+        '<div style="background:#ffffff;padding:0;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">'
+
+        # ── Profile Header ──
+        '  <div style="padding:32px 40px;border-bottom:1px solid #e2e8f0;">'
+        '    <div style="display:flex;align-items:center;justify-content:space-between;">'
+        '      <div style="display:flex;align-items:center;gap:24px;">'
+        f'        <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#f97316 0%,#ef4444 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(249,115,22,0.3);flex-shrink:0;">'
+        f'          <span style="color:#ffffff;font-size:26px;font-weight:700;font-family:"Plus Jakarta Sans",sans-serif;letter-spacing:0.02em;">{initials}</span>'
+        '        </div>'
+        '        <div>'
+        f'          <h2 style="margin:0;color:#0f172a;font-size:22px;font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;letter-spacing:-0.01em;">{student.name.upper()} — {student.class_name} {student.stream}</h2>'
+        f'          <p style="margin:4px 0 0;color:#64748b;font-size:14px;">Admission Number: {student.admission_no}</p>'
+        '        </div>'
+        '      </div>'
+        '    </div>'
+        '  </div>'
+
+        # ── Analysis Heading + Download/Term Controls ──
+        '  <div style="padding:28px 40px 24px 40px;display:flex;align-items:flex-start;justify-content:space-between;">'
+        '    <div>'
+        '      <h3 style="margin:0;color:#0f172a;font-size:20px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Analysis</h3>'
+        '      <p style="margin:4px 0 0;color:#64748b;font-size:14px;">Student\'s exam performance analysis</p>'
+        '    </div>'
+        '    <div style="display:flex;align-items:center;gap:12px;">'
+        '      <button class="an-dropdown-btn-green">'
+        '        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+        '        Download'
+        '      </button>'
+        f'      <select class="an-dropdown-select">{term_options}</select>'
+        '    </div>'
+        '  </div>'
+
+        # ── Curriculum Subjects Link ──
+        '  <div style="padding:0 40px;">'
+        '    <span class="an-curriculum-link">Curriculum Subjects</span>'
+        '  </div>'
+
+        # ── Two-Column Split Workspace ──
+        '  <div style="padding:20px 40px 32px 40px;">'
+        '    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:24px;margin-top:16px;align-items:stretch;">'
+
+        # ═══ LEFT COLUMN ═══
+        '      <div style="display:flex;flex-direction:column;gap:16px;">'
+
+        # ── Mean Grade Card ──
+        '        <div style="background:#22c55e;border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">'
+        '          <div>'
+        '            <p style="margin:0;color:rgba(255,255,255,0.8);font-size:12px;font-weight:500;">Mean Grade</p>'
+        f'            <p style="margin:0;color:#ffffff;font-size:20px;font-weight:700;font-family:"Plus Jakarta Sans",sans-serif;line-height:1.2;">{mean_grade}</p>'
+        '          </div>'
+        f'          <p style="margin:0;color:rgba(255,255,255,0.85);font-size:12px;font-weight:500;text-align:right;">{student.class_name} - End term - ({student.year} {current_term})</p>'
+        '        </div>'
+
+        # ── Pill Toggle: Compare Analysis ──
+        '        <div>'
+        '          <p style="margin:0 0 8px;font-size:13px;color:#0f172a;font-weight:600;">Compare analysis using:</p>'
+        '          <div style="display:flex;gap:10px;">'
+        '            <label class="an-pill active" onclick="this.parentElement.querySelectorAll(\'.an-pill\').forEach(function(p){p.classList.remove(\'active\')});this.classList.add(\'active\');">'
+        '              <input type="radio" name="compare_mode" value="previous" checked>'
+        '              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#22c55e" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="#22c55e"/></svg>'
+        '              Previous exam results'
+        '            </label>'
+        '            <label class="an-pill" onclick="this.parentElement.querySelectorAll(\'.an-pill\').forEach(function(p){p.classList.remove(\'active\')});this.classList.add(\'active\');">'
+        '              <input type="radio" name="compare_mode" value="targets">'
+        '              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="2"/></svg>'
+        '              Student targets'
+        '            </label>'
+        '          </div>'
+        '        </div>'
+
+        # ── Metric Cards (2x2 grid) ──
+        '        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;">'
+
+        # Card 1: Mean Marks
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
+        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Mean Marks</p>'
+        '            <div style="display:flex;align-items:baseline;gap:6px;">'
+        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{mean_marks}%</p>'
+        f'              <span style="font-size:10px;font-weight:600;color:{trend_color};">{trend_icon} {abs(marks_trend)}%</span>'
+        '            </div>'
+        '          </div>'
+
+        # Card 2: Total Points
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
+        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Total Points</p>'
+        '            <div style="display:flex;align-items:baseline;gap:6px;">'
+        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{total_points}</p>'
+        f'              <span style="font-size:9px;color:#94a3b8;font-weight:500;">/ {latest.subject_count * 12 if latest else 0}</span>'
+        '            </div>'
+        '          </div>'
+
+        # Card 3: Overall Position
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
+        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Overall Position</p>'
+        '            <div style="display:flex;align-items:baseline;gap:6px;">'
+        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{overall_pos}</p>'
+        '            </div>'
+        '          </div>'
+
+        # Card 4: Stream Position
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
+        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Stream Position</p>'
+        '            <div style="display:flex;align-items:baseline;gap:6px;">'
+        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{stream_pos}</p>'
+        '            </div>'
+        '          </div>'
+
+        '        </div>'
+        '      </div>'
+
+        # ═══ RIGHT COLUMN ═══
+        '      <div style="position:relative;min-height:0;">'
+
+        # ── Chart Canvas with inline data ──
+        '        <div style="position:absolute;inset:0;">'
+        + (f'          <canvas id="performanceLineChart" '
+           f'data-labels=\'{chart_labels_json}\' '
+           f'data-student-data=\'{chart_student_data_json}\' '
+           f'data-form-data=\'{chart_form_data_json}\' '
+           f'data-target-data=\'{chart_target_data_json}\' '
+           f'data-student-name="{chart_student_name}" '
+           f'data-class-label="{chart_class_label}"></canvas>'
+           if has_chart_data else
+           '          <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;">'
+           '            <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/></svg>'
+           '            <p style="margin:0;color:#94a3b8;font-size:14px;font-weight:500;font-family:Inter,sans-serif;">No performance data records available for this exam term session.</p>'
+           '          </div>'
+          )
+        + '        </div>'
+
+        '      </div>'
+
+        '    </div>'
+        '  </div>'
+
+        # ── Subject Performance Table ──
+        '  <div style="padding:0 40px 32px 40px;">'
+        '    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">'
+        '      <div style="padding:20px 24px 0 24px;">'
+        '        <h3 style="margin:0;color:#0f172a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Subject Performance</h3>'
+        '      </div>'
+        '      <table style="width:100%;border-collapse:collapse;margin-top:12px;">'
+        '        <thead>'
+        '          <tr style="border-bottom:1px solid #e2e8f0;">'
+        '            <th style="padding:10px 20px;text-align:left;font-size:12px;font-weight:600;color:#94a3b8;">Name</th>'
+        '            <th style="padding:10px 20px;text-align:left;font-size:12px;font-weight:600;color:#94a3b8;">Marks</th>'
+        '            <th style="padding:10px 20px;text-align:left;font-size:12px;font-weight:600;color:#94a3b8;">Dev Exam</th>'
+        '            <th style="padding:10px 20px;text-align:left;font-size:12px;font-weight:600;color:#94a3b8;">Dev Target</th>'
+        '            <th style="padding:10px 20px;text-align:left;font-size:12px;font-weight:600;color:#94a3b8;">Grade</th>'
+        '            <th style="padding:10px 20px;text-align:left;font-size:12px;font-weight:600;color:#94a3b8;">Class rank</th>'
+        '          </tr>'
+        '        </thead>'
+        f'        <tbody>{subject_perf_rows}</tbody>'
+        '      </table>'
+        '    </div>'
+        '  </div>'
+
+        # ── Performance Over Time Chart ──
+        '  <div style="padding:0 40px 32px 40px;">'
+        '    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;">'
+        '      <h3 style="margin:0 0 16px;color:#0f172a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Performance Over Time</h3>'
+        '      <div style="position:relative;height:280px;">'
+        + (f'        <canvas id="performanceTimelineChart" data-tl-labels=\'{timeline_labels_json}\' data-tl-student=\'{timeline_student_json}\'></canvas>'
+           if has_timeline_data else
+           '          <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;">'
+           '            <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/></svg>'
+           '            <p style="margin:0;color:#94a3b8;font-size:14px;font-weight:500;font-family:Inter,sans-serif;">No performance data records available for this exam term session.</p>'
+           '          </div>')
+        + '      </div>'
+        '    </div>'
+        '  </div>'
+
+        # ── Back Button ──
+        '  <div style="padding:0 40px 40px 40px;display:flex;justify-content:flex-start;">'
+        '    <button class="an-back-btn" hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML">'
+        '      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
+        '      Back'
+        '    </button>'
+        '  </div>'
+
+        '</div>'
+    )
+    return HttpResponse(html)
+
+
+
+# ── Teacher Report Forms (class teachers only) ─────────────────────────
+@login_required(login_url='login')
+@never_cache
+def teacher_report_forms(request):
+    """Report Forms selection page — class teachers only. Pre-populated with their class."""
+    from ..models import Grade, Stream, Exam
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('dashboard_alt')
+
+    teacher = get_teacher_for_user(request.user)
+    class_teacher_scope = get_class_teacher_scope(teacher)
+    if not class_teacher_scope:
+        messages.error(request, "Report cards are available to class teachers only.")
+        return redirect('merit_list')
+
+    ct_grade, ct_stream = class_teacher_scope
+
+    grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+    exam_id = request.GET.get('exam_id', '').strip()
+
+    streams = list(
+        Stream.all_objects.filter(school=school, grade__name=grade_name)
+        .values_list('name', flat=True).order_by('name')
+    ) if grade_name else []
+
+    selected_exam_name = ''
+    selected_exam_term = ''
+    selected_exam_year = ''
+    if exam_id:
+        try:
+            ex = Exam.all_objects.get(id=exam_id, school=school, is_deleted=False)
+            selected_exam_name = ex.name
+            selected_exam_term = ex.term
+            selected_exam_year = ex.year
+        except Exam.DoesNotExist:
+            pass
+
+    return render(request, 'students/teacher_report_forms.html', {
+        'grades': grades,
+        'streams': streams,
+        'selected_grade': grade_name,
+        'selected_stream': stream_name,
+        'selected_exam_id': exam_id,
+        'selected_exam_name': selected_exam_name,
+        'selected_exam_term': selected_exam_term,
+        'selected_exam_year': selected_exam_year,
+    })
+
+
+@login_required(login_url='login')
+@never_cache
+def teacher_report_forms_display(request):
+    """Display report cards for a specific Grade + Stream + Exam — class teachers only."""
+    import json as _json
+    from django.core.cache import cache
+    from django.db.models import Q
+    from .constants import (
+        ASSESSMENT_MAP, LOWER_PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_NAMES,
+        SUBJECT_DISPLAY_ORDER,
+    )
+    from .helpers import (
+        calculate_primary_plv, calculate_report_plv,
+        get_cached_class_averages, get_published_subject_codes,
+        get_report_forms_cache_key, user_can_access_class_stream,
+    )
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    from ..models import (
+        ClassTeacherMasterComment, Exam, ExamSummary, Mark,
+        SchoolHeadteacherComment, Student, Subject, SubjectAssignment, Teacher,
+    )
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('dashboard_alt')
+
+    teacher = get_teacher_for_user(request.user)
+    class_teacher_scope = get_class_teacher_scope(teacher)
+    if not class_teacher_scope:
+        messages.error(request, "Report cards are available to class teachers only.")
+        return redirect('merit_list')
+
+    is_admin_view = False
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+    exam_id = request.GET.get('exam_id', '').strip()
+
+    if not grade_name or not stream_name or not exam_id:
+        messages.error(request, "Grade, Stream, and Exam are required.")
+        return redirect('teacher_report_forms')
+
+    ct_grade, ct_stream = class_teacher_scope
+    if grade_name != ct_grade or stream_name != ct_stream:
+        messages.error(request, "You can only view report cards for your assigned class.")
+        return redirect('teacher_report_forms')
+
+    cache_key = get_report_forms_cache_key(school.pk, grade_name, stream_name, exam_id)
+    cached_context = cache.get(cache_key)
+    if cached_context:
+        return render(request, 'students/report_card.html', cached_context)
+
+    try:
+        exam = Exam.all_objects.get(id=exam_id, school=school, is_deleted=False)
+    except Exam.DoesNotExist:
+        messages.error(request, "Exam not found.")
+        return redirect('teacher_report_forms')
+
+    year = exam.year
+    term = exam.term
+    db_assessment = exam.name
+    _assess_lower = db_assessment.lower()
+    if 'end' in _assess_lower:
+        display_assessment = 'End Term'
+    elif 'mid' in _assess_lower:
+        display_assessment = 'Mid Term'
+    elif 'open' in _assess_lower:
+        display_assessment = 'Opener'
+    else:
+        display_assessment = db_assessment
+
+    prefetch_school_grading(school)
+
+    selected_students = list(
+        Student.all_objects.filter(
+            school=school, class_name=grade_name, stream=stream_name
+        ).order_by('name')
+    )
+
+    if not selected_students:
+        messages.warning(request, "No students found for the selected class and stream.")
+        return redirect('teacher_report_forms')
+
+    sample = selected_students[0]
+    is_primary = sample.school_section == 'PRIMARY'
+    is_lower_primary = (sample.school_section == 'PRIMARY' and sample.sub_section == 'LOWER')
+
+    published_subject_codes = get_published_subject_codes(
+        grade_name, stream_name, year, term, db_assessment,
+        sub_section=sample.sub_section if is_primary else None,
+        is_admin=is_admin_view,
+    )
+    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+
+    if is_lower_primary:
+        subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
+    elif is_primary:
+        subject_mapping = PRIMARY_SUBJECT_NAMES
+    else:
+        subject_mapping = {s.code: s.name for s in published_subjects_qs}
+
+    all_marks_bulk = Mark.all_objects.filter(
+        school=school, year=year, term=term, exam_type=db_assessment,
+        subject__in=published_subjects_qs, school_section=sample.school_section,
+        student__class_name=grade_name, student__stream=stream_name,
+    ).select_related('subject').order_by('subject', '-date_recorded', '-id')
+
+    marks_by_student_bulk = {}
+    for mark in all_marks_bulk:
+        marks_by_student_bulk.setdefault(mark.student_id, []).append(mark)
+
+    summaries_qs = ExamSummary.all_objects.filter(
+        school=school, student__class_name=grade_name,
+        year=year, term=term, exam_name=db_assessment,
+        school_section=sample.school_section, sub_section=sample.sub_section,
+    ).select_related('student')
+    all_summaries = {s.student_id: s for s in summaries_qs}
+    total_class_count = len(all_summaries)
+
+    grade_sorted = sorted(summaries_qs, key=lambda s: (-s.total_marks, -s.total_points))
+    grade_rank_map = {s.student_id: rank for rank, s in enumerate(grade_sorted, start=1)}
+
+    class_avg_map = get_cached_class_averages(
+        school, grade_name, stream_name, year, term, db_assessment, published_subjects_qs,
+    )
+
+    grade_descriptors = resolve_scale_fast(school.pk, sample.school_section, sample.sub_section)
+    max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
+
+    teacher_map = {
+        a.subject.code: a.teacher_profile.get_full_title()
+        for a in SubjectAssignment.all_objects.filter(
+            school=school, class_name=grade_name, stream=stream_name
+        ).select_related('teacher_profile__user', 'subject')
+    }
+
+    class_teacher_name = ""
+    ct_q = Teacher.all_objects.filter(
+        school=school, assigned_task__icontains=grade_name,
+    ).filter(
+        Q(assigned_task__icontains=stream_name),
+    ).select_related('user').first()
+    if ct_q:
+        class_teacher_name = ct_q.get_full_title()
+
+    master_comment = ClassTeacherMasterComment.objects.filter(
+        school=school, year=year, term=term, grade=grade_name,
+        stream=stream_name, exam_type=db_assessment,
+    ).first()
+
+    school_ht_comment = SchoolHeadteacherComment.objects.filter(
+        school=school, year=year, term=term, exam_type=db_assessment,
+        school_section=sample.school_section,
+    ).first()
+
+    student_marks_list = []
+    for student in selected_students:
+        marks = sorted(marks_by_student_bulk.get(student.id, []), key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
+
+        summary = all_summaries.get(student.id)
+        if summary:
+            total_marks = summary.total_marks
+            total_points = summary.total_points
+            assessed_subjects = summary.subject_count
+        else:
+            valid_scores = [m.score for m in marks if m.score is not None]
+            valid_points = [m.points for m in marks if m.points is not None]
+            total_marks = sum(valid_scores)
+            total_points = sum(valid_points)
+            assessed_subjects = len(valid_scores) if valid_scores else 1
+
+        for mark in marks:
+            mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
+            mark.teacher_name = teacher_map.get(mark.subject.code, '—')
+            if is_primary and not mark.is_absent:
+                pct = mark.score or 0
+                from .exams import _get_primary_performance
+                mark.performance_level, mark.points = _get_primary_performance(
+                    pct, school=school, section=student.school_section, sub_section=student.sub_section
+                )
+            class_avg = class_avg_map.get(mark.subject.code)
+            mark.class_average = class_avg
+            if class_avg is not None and mark.score is not None and not mark.is_absent:
+                mark.deviation = round(mark.score - class_avg, 1)
+            else:
+                mark.deviation = None
+
+        mean_points = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
+        max_total_marks = assessed_subjects * 100
+        max_total_points = assessed_subjects * max_points_per_subj
+
+        from .constants import SUBJECT_SHORT_MAP, PRIMARY_SUBJECT_SHORT_MAP
+        chart_data_json = _json.dumps({
+            'labels': [m.subject_name for m in marks if not m.is_absent],
+            'short_labels': [SUBJECT_SHORT_MAP.get(m.subject.code, m.subject.code) if not is_primary else PRIMARY_SUBJECT_SHORT_MAP.get(m.subject.code, m.subject.code) for m in marks if not m.is_absent],
+            'student': [m.score for m in marks if not m.is_absent],
+            'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent],
+            'student_name': student.name.split()[0] if student.name else 'Student',
+            'class_name': f"{student.class_name}".strip(),
+        })
+        import base64 as _b64
+        chart_data_json_b64 = _b64.b64encode(chart_data_json.encode('utf-8')).decode('ascii')
+
+        chart_labels = [m.subject_name for m in marks if not m.is_absent]
+        chart_student_scores = [m.score for m in marks if not m.is_absent]
+        chart_class_avg_scores = [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent]
+        chart_cache_key = f"student_chart_{student.id}_{year}_{term}"
+        chart_svg = cache.get(chart_cache_key)
+        if not chart_svg and chart_labels:
+            try:
+                from .pdf_exports import generate_premium_vector_chart_svg
+                chart_svg = generate_premium_vector_chart_svg(chart_labels, chart_student_scores, chart_class_avg_scores)
+                if chart_svg:
+                    cache.set(chart_cache_key, chart_svg, timeout=86400)
+            except Exception:
+                chart_svg = ''
+
+        position = grade_rank_map.get(student.id, 0)
+
+        overall_plv = summary.overall_plv if summary else (
+            '-' if assessed_subjects == 0 else
+            calculate_primary_plv(total_marks, assessed_subjects, sub_section=sample.sub_section, school=school, section=sample.school_section)
+            if sample.school_section == 'PRIMARY' else
+            calculate_report_plv(total_points, total_marks, school=school, section=sample.school_section)
+        )
+
+        class_teacher_remark = ""
+        headteacher_comment = ""
+        closing_date = None
+        opening_date = None
+
+        if master_comment and overall_plv != '-':
+            ct_comment_field = f"comment_{overall_plv.lower()}"
+            live_ct = getattr(master_comment, ct_comment_field, "") or ""
+            if live_ct.strip():
+                class_teacher_remark = live_ct
+            elif marks and marks[0].frozen_class_teacher_comment:
+                class_teacher_remark = marks[0].frozen_class_teacher_comment
+
+        if school_ht_comment and overall_plv != '-':
+            ht_comment_field = f"ht_comment_{overall_plv.lower()}"
+            live_ht = getattr(school_ht_comment, ht_comment_field, "") or ""
+            if live_ht.strip():
+                headteacher_comment = live_ht
+            elif marks and marks[0].frozen_headteacher_comment:
+                headteacher_comment = marks[0].frozen_headteacher_comment
+
+        if master_comment:
+            closing_date = master_comment.closing_date
+            opening_date = master_comment.opening_date
+        if not closing_date and marks and marks[0].frozen_closing_date:
+            closing_date = marks[0].frozen_closing_date
+        if not opening_date and marks and marks[0].frozen_opening_date:
+            opening_date = marks[0].frozen_opening_date
+
+        student_marks_list.append({
+            'student': student,
+            'marks': marks,
+            'total_marks': total_marks,
+            'total_points': total_points,
+            'overall_plv': overall_plv,
+            'mean_points': mean_points,
+            'mean_points_max': max_points_per_subj,
+            'max_total_marks': max_total_marks,
+            'max_total_points': max_total_points,
+            'grade_descriptors': grade_descriptors,
+            'chart_data_json': chart_data_json,
+            'chart_data_json_b64': chart_data_json_b64,
+            'chart_svg': chart_svg or '',
+            'class_teacher_remark': class_teacher_remark,
+            'class_teacher_name': class_teacher_name,
+            'headteacher_comment': headteacher_comment,
+            'closing_date': closing_date,
+            'opening_date': opening_date,
+            'position': position,
+            'class_count': total_class_count,
+        })
+
+    student_marks_list.sort(key=lambda x: (x['position'] == 0, x['position']))
+
+    section_colors = {
+        'JSS': '#305CDE',
+        'PRIMARY': '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if is_lower_primary:
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif is_primary:
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors['JSS']
+
+    exam_label = f"{exam.name} - {term} {year}"
+
+    from ..models import Grade, Stream
+    available_grades = list(Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct())
+    available_streams = list(
+        Stream.all_objects.filter(school=school, grade__name=grade_name)
+        .values_list('name', flat=True).order_by('name')
+    )
+    exams_qs = Exam.all_objects.filter(school=school, is_deleted=False)
+    if grade_name.startswith('Grade 1') or grade_name.startswith('Grade 2') or grade_name.startswith('Grade 3'):
+        exams_qs = exams_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif grade_name.startswith('Grade 4') or grade_name.startswith('Grade 5') or grade_name.startswith('Grade 6'):
+        exams_qs = exams_qs.filter(school_section='PRIMARY', sub_section='UPPER')
+    else:
+        exams_qs = exams_qs.filter(school_section='JSS')
+    available_exams = []
+    for ex in exams_qs.order_by('-year', 'term', 'name'):
+        label = f"{ex.name} ({ex.term} {ex.year})"
+        available_exams.append({'id': str(ex.id), 'label': label, 'name': ex.name, 'term': ex.term, 'year': ex.year})
+
+    view_context = {
+        'student_marks_list': student_marks_list,
+        'selected_year': year,
+        'selected_term': term,
+        'selected_assessment': display_assessment,
+        'selected_assessment_raw': db_assessment,
+        'selected_grade': grade_name,
+        'selected_stream': stream_name,
+        'class_count': total_class_count,
+        'closing_date': master_comment.closing_date if master_comment else None,
+        'opening_date': master_comment.opening_date if master_comment else None,
+        'section_accent': section_accent,
+        'grade_name': grade_name,
+        'stream_name': stream_name,
+        'exam_label': exam_label,
+        'view_mode': 'bulk',
+        'show_mobile_shell': False,
+        'show_header': True,
+        'show_control_panel': False,
+        'is_async': False,
+        'available_grades': available_grades,
+        'available_streams': available_streams,
+        'available_exams': available_exams,
+        'is_admin_view': is_admin_view,
+    }
+    cache.set(cache_key, view_context, timeout=300)
+    return render(request, 'students/report_card.html', view_context)
 
 
 # ── HTMX API: section toggle for Add Student form ──────────────────────
@@ -1986,11 +3422,14 @@ def class_list_printout(request):
 
 
 @login_required(login_url='login')
-@school_admin_required
 def api_streams_for_grade_printout(request):
-    """AJAX endpoint: returns streams for a given grade. Adds 'Combined' if 2+ streams."""
+    """AJAX endpoint: returns streams for a given grade. Adds 'Combined' if 2+ streams.
+
+    Teachers are scoped to their section — cannot fetch streams for other sections.
+    """
     from django.http import JsonResponse
     from ..models import Stream
+    from .constants import LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES
 
     school = get_request_school(request)
     if not school:
@@ -1999,6 +3438,18 @@ def api_streams_for_grade_printout(request):
     grade_name = request.GET.get('grade', '').strip()
     if not grade_name:
         return JsonResponse({'streams': []})
+
+    is_admin = user_has_main_school_admin_override(request.user)
+    section = get_request_school_section(request)
+
+    # Section enforcement for teachers
+    if not is_admin:
+        if section == 'LOWER_PRIMARY' and grade_name not in LOWER_PRIMARY_GRADE_CHOICES:
+            return JsonResponse({'streams': []})
+        elif section == 'PRIMARY' and grade_name not in PRIMARY_GRADE_CHOICES:
+            return JsonResponse({'streams': []})
+        elif section == 'JSS' and grade_name in LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES:
+            return JsonResponse({'streams': []})
 
     streams = list(
         Stream.all_objects.filter(school=school, grade__name=grade_name)
@@ -2024,6 +3475,14 @@ def score_sheet(request):
 
     grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
 
+    import json
+
+    section_colors = {
+        'JSS': '#305CDE',
+        'PRIMARY': '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+
     ctx = {
         'grades': grades,
         'school_name': school.name,
@@ -2032,6 +3491,8 @@ def score_sheet(request):
         'school_phone': school.phone_number or '',
         'school_email': school.email or '',
         'school_motto': school.motto or '',
+        'section_accent': section_colors['JSS'],
+        'section_colors_json': json.dumps(section_colors),
     }
     return render(request, 'students/score_sheet.html', ctx)
 
@@ -2055,11 +3516,17 @@ def analysis_report(request):
 
 
 @login_required(login_url='login')
-@school_admin_required
+@never_cache
 def api_exams_for_class(request):
-    """AJAX endpoint: returns exams for a given grade."""
+    """AJAX endpoint: returns exams for a given grade.
+
+    Only returns exams where ALL subjects have published mark submissions.
+    Teachers are scoped to their section.
+    """
     from django.http import JsonResponse
-    from ..models import Exam
+    from django.db.models import Count, Q
+    from ..models import Exam, MarkSubmission, SubjectAssignment
+    from .constants import LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES
 
     school = get_request_school(request)
     if not school:
@@ -2070,18 +3537,65 @@ def api_exams_for_class(request):
     if not grade_name:
         return JsonResponse({'exams': []})
 
+    is_admin = user_has_main_school_admin_override(request.user)
+    section = get_request_school_section(request)
+
     qs = Exam.all_objects.filter(school=school, is_deleted=False)
 
-    if grade_name.startswith('Grade 1') or grade_name.startswith('Grade 2') or grade_name.startswith('Grade 3'):
+    if grade_name in LOWER_PRIMARY_GRADE_CHOICES:
         qs = qs.filter(school_section='PRIMARY', sub_section='LOWER')
-    elif grade_name.startswith('Grade 4') or grade_name.startswith('Grade 5') or grade_name.startswith('Grade 6'):
+    elif grade_name in PRIMARY_GRADE_CHOICES:
         qs = qs.filter(school_section='PRIMARY', sub_section='UPPER')
     else:
         qs = qs.filter(school_section='JSS')
 
-    exams = list(qs.order_by('-year', 'term', 'name').values('id', 'name', 'term', 'year'))
+    # Section enforcement for teachers
+    if not is_admin:
+        if section == 'LOWER_PRIMARY' and grade_name not in LOWER_PRIMARY_GRADE_CHOICES:
+            return JsonResponse({'exams': []})
+        elif section == 'PRIMARY' and grade_name not in PRIMARY_GRADE_CHOICES:
+            return JsonResponse({'exams': []})
+        elif section == 'JSS' and grade_name in LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES:
+            return JsonResponse({'exams': []})
 
-    return JsonResponse({'exams': exams})
+    # Count total distinct subjects assigned to this grade across all streams
+    sa_filters = Q(school=school, class_name=grade_name)
+    if grade_name in LOWER_PRIMARY_GRADE_CHOICES:
+        sa_filters &= Q(school_section='PRIMARY', sub_section='LOWER')
+    elif grade_name in PRIMARY_GRADE_CHOICES:
+        sa_filters &= Q(school_section='PRIMARY', sub_section='UPPER')
+    else:
+        sa_filters &= Q(school_section='JSS')
+    total_subjects = SubjectAssignment.all_objects.filter(sa_filters).values('subject').distinct().count()
+
+    all_exams = list(qs.order_by('-year', 'term', 'name'))
+
+    complete_exams = []
+    for exam in all_exams:
+        sub_filters = Q(
+            school=school,
+            class_name=grade_name,
+            exam_name=exam.name,
+            term=exam.term,
+            year=exam.year,
+            status='published',
+        )
+        published_count = MarkSubmission.all_objects.filter(sub_filters).values('subject').distinct().count()
+        if published_count >= total_subjects and total_subjects > 0:
+            complete_exams.append({
+                'id': exam.id,
+                'name': exam.name,
+                'term': exam.term,
+                'year': exam.year,
+            })
+
+    import logging
+    logging.getLogger('students').info(
+        'api_exams_for_class: school=%s grade=%s section=%s is_admin=%s total_subjects=%d complete_exams=%d',
+        getattr(school, 'pk', None), grade_name, section, is_admin, total_subjects, len(complete_exams),
+    )
+
+    return JsonResponse({'exams': complete_exams})
 
 
 @login_required(login_url='login')
@@ -2197,9 +3711,14 @@ def report_forms(request):
 
 
 @login_required(login_url='login')
-@school_admin_required
 def merit_list(request):
     """Merit List page — Form + Exam selection, then display results broadsheet inline.
+
+    Section restrictions (teachers only):
+      - LOWER_PRIMARY teachers  → Grade 1-3 only
+      - PRIMARY (upper) teachers → Grade 4-6 only
+      - JSS teachers             → Grade 7-9 only
+      - BOTH / Admins            → All grades
 
     HTMX behavior:
       - GET (no params)             → render form only
@@ -2207,26 +3726,52 @@ def merit_list(request):
       - GET with params (HX-Request) → render only the broadsheet partial
     """
     from ..models import Exam, Grade
+    from .constants import (
+        GRADE_CHOICES, JSS_GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES,
+    )
     from .grading_engine import prefetch_school_grading
     from .reports import build_broadsheet_for_merit_list
 
     school = get_request_school(request)
     if not school:
         messages.error(request, "No school context found.")
-        return redirect('school_admin_dashboard')
+        if user_has_main_school_admin_override(request.user):
+            return redirect('school_admin_dashboard')
+        return redirect('dashboard_alt')
 
-    # Populate the module-level grading cache so get_performance_level /
-    # _get_primary_performance return real levels (EE1, ME1, ...) instead of "NO CONFIG"
+    is_admin = user_has_main_school_admin_override(request.user)
+    section = get_request_school_section(request)
+
+    # Populate the module-level grading cache
     prefetch_school_grading(school)
 
-    grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+    # ── Section-scoped grade list for teachers ─────────────────────
+    if is_admin:
+        grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+    else:
+        if section == 'LOWER_PRIMARY':
+            allowed_grades = LOWER_PRIMARY_GRADE_CHOICES
+        elif section == 'PRIMARY':
+            allowed_grades = PRIMARY_GRADE_CHOICES
+        else:
+            allowed_grades = JSS_GRADE_CHOICES
+        grades = Grade.all_objects.filter(
+            school=school, name__in=allowed_grades
+        ).order_by('order').values_list('name', flat=True).distinct()
 
     grade = request.GET.get('grade', '').strip()
     stream = request.GET.get('stream', '').strip()
     exam_id = request.GET.get('exam_id', '').strip()
 
+    # ── Enforce section access for teachers ────────────────────────
+    if not is_admin and grade and grade not in allowed_grades:
+        messages.error(request, "You do not have access to that grade section.")
+        return redirect('merit_list')
+
     # Show form if params missing
     if not (grade and exam_id):
+        teacher = get_teacher_for_user(request.user)
+        class_teacher_scope = get_class_teacher_scope(teacher)
         return render(request, 'students/merit_list.html', {
             'grades': grades,
             'selected_grade': grade,
@@ -2234,6 +3779,8 @@ def merit_list(request):
             'selected_exam_id': exam_id,
             'show_table': False,
             'selected_exam': '',
+            'is_teacher_view': not is_admin,
+            'is_class_teacher': bool(class_teacher_scope),
         })
 
     # Look up the Exam object (build_broadsheet_for_merit_list expects an Exam, not an id)
@@ -2242,6 +3789,20 @@ def merit_list(request):
     except Exam.DoesNotExist:
         messages.error(request, "Selected exam not found.")
         return redirect('merit_list')
+
+    # ── Validate exam belongs to teacher's allowed section ─────────
+    if not is_admin:
+        exam_section = exam_object.school_section or 'JSS'
+        exam_sub = exam_object.sub_section
+        if section == 'LOWER_PRIMARY' and not (exam_section == 'PRIMARY' and exam_sub == 'LOWER'):
+            messages.error(request, "You do not have access to results for this exam section.")
+            return redirect('merit_list')
+        elif section == 'PRIMARY' and not (exam_section == 'PRIMARY' and exam_sub == 'UPPER'):
+            messages.error(request, "You do not have access to results for this exam section.")
+            return redirect('merit_list')
+        elif section == 'JSS' and exam_section != 'JSS':
+            messages.error(request, "You do not have access to results for this exam section.")
+            return redirect('merit_list')
 
     # Build the broadsheet context via the existing internal builder
     context = build_broadsheet_for_merit_list(request, school, grade, stream, exam_object)
@@ -2262,20 +3823,24 @@ def merit_list(request):
         'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
-    section = exam_object.school_section or 'JSS'
-    if section == 'PRIMARY' and exam_object.sub_section == 'LOWER':
+    sec = exam_object.school_section or 'JSS'
+    if sec == 'PRIMARY' and exam_object.sub_section == 'LOWER':
         context['section_accent'] = section_colors['LOWER_PRIMARY']
-    elif section == 'PRIMARY':
+    elif sec == 'PRIMARY':
         context['section_accent'] = section_colors['PRIMARY']
     else:
-        context['section_accent'] = section_colors.get(section, '#305CDE')
+        context['section_accent'] = section_colors.get(sec, '#305CDE')
 
     # HTMX ASYNCHRONOUS PIPELINE INTERCEPTOR:
+    context['is_teacher_view'] = not is_admin
     if request.headers.get('HX-Request') == 'true':
         return render(request, 'students/partials/broadsheet_snippet.html', context)
 
     # Standard fallback render execution route for native template delivery
     # (Renders merit_list.html with the form card + summary banner + broadsheet all in one page)
+    teacher = get_teacher_for_user(request.user)
+    class_teacher_scope = get_class_teacher_scope(teacher)
+    context['is_class_teacher'] = bool(class_teacher_scope)
     return render(request, 'students/merit_list.html', context)
 
 
@@ -3310,13 +4875,8 @@ def report_forms_display(request):
     all_summaries = {s.student_id: s for s in summaries_qs}
     total_class_count = len(all_summaries)
 
-    stream_summaries = sorted(
-        [s for s in summaries_qs if s.student.stream == stream_name],
-        key=lambda s: (-s.total_marks, -s.total_points),
-    )
-    for rank, s in enumerate(stream_summaries, start=1):
-        s._stream_rank = rank
-    stream_rank_map = {s.student_id: s._stream_rank for s in stream_summaries}
+    grade_sorted = sorted(summaries_qs, key=lambda s: (-s.total_marks, -s.total_points))
+    grade_rank_map = {s.student_id: rank for rank, s in enumerate(grade_sorted, start=1)}
 
     class_avg_map = get_cached_class_averages(
         school, grade_name, stream_name, year, term, db_assessment, published_subjects_qs,
@@ -3403,17 +4963,17 @@ def report_forms_display(request):
         chart_student_scores = [m.score for m in marks if not m.is_absent]
         chart_class_avg_scores = [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent]
         chart_cache_key = f"student_chart_{student.id}_{year}_{term}"
-        chart_base64_image = cache.get(chart_cache_key)
-        if not chart_base64_image and chart_labels:
+        chart_svg = cache.get(chart_cache_key)
+        if not chart_svg and chart_labels:
             try:
-                from .pdf_exports import generate_python_chart_base64
-                chart_base64_image = generate_python_chart_base64(chart_labels, chart_student_scores, chart_class_avg_scores)
-                if chart_base64_image:
-                    cache.set(chart_cache_key, chart_base64_image, timeout=86400)
+                from .pdf_exports import generate_premium_vector_chart_svg
+                chart_svg = generate_premium_vector_chart_svg(chart_labels, chart_student_scores, chart_class_avg_scores)
+                if chart_svg:
+                    cache.set(chart_cache_key, chart_svg, timeout=86400)
             except Exception:
-                chart_base64_image = ''
+                chart_svg = ''
 
-        position = stream_rank_map.get(student.id, 0)
+        position = grade_rank_map.get(student.id, 0)
 
         overall_plv = summary.overall_plv if summary else (
             '-' if assessed_subjects == 0 else
@@ -3464,7 +5024,7 @@ def report_forms_display(request):
             'grade_descriptors': grade_descriptors,
             'chart_data_json': chart_data_json,
             'chart_data_json_b64': chart_data_json_b64,
-            'chart_base64_image': chart_base64_image or '',
+            'chart_svg': chart_svg or '',
             'class_teacher_remark': class_teacher_remark,
             'class_teacher_name': class_teacher_name,
             'headteacher_comment': headteacher_comment,
@@ -3531,6 +5091,7 @@ def report_forms_display(request):
         'available_grades': available_grades,
         'available_streams': available_streams,
         'available_exams': available_exams,
+        'is_admin_view': is_admin_view,
     }
     # Cache the context for 5 minutes (smart invalidation via invalidate_report_forms_cache)
     cache.set(cache_key, view_context, timeout=300)

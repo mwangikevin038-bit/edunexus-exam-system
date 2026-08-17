@@ -5,6 +5,28 @@
 <link rel="stylesheet" href="{% static 'css/profile-mobile.css' %}">
 {% endblock %}
 
+{% block sub_tabs %}
+<style>
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
+  .sub-nav-item{display:flex;align-items:stretch}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
+  .sub-nav-link:hover{color:#fff;background-color:#43A047}
+  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
+  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'home_alt' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Teacher Profile
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
 {% block content %}
 <!-- ═══════════════════════════════════════════════════════════
      iOS 17 MOBILE PROFILE (hidden on desktop)
@@ -101,354 +123,165 @@
 
         <!-- ACTIONS -->
         <div class="pf-actions">
-            <a href="/password-change/" class="pf-btn pf-btn-primary">
+            <a href="{% url 'password_change' %}" class="pf-btn pf-btn-primary">
                 <i class="ph ph-shield-check"></i> Change Account Password
             </a>
         </div>
     </main>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     DESKTOP PROFILE (hidden on mobile)
-     ═══════════════════════════════════════════════════════════ -->
+<!-- ═══ DESKTOP PROFILE (hidden on mobile) ═══ -->
 <style>
-    .pf-desktop {
-        min-height: 100vh;
-        background: #f6f8fb;
-        padding: 38px 42px;
-        font-family: 'Inter', sans-serif;
+    @keyframes pfFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    .pf-dt{padding:28px 0 56px;max-width:100%;animation:pfFadeUp .5s cubic-bezier(.16,1,.3,1) both}
+
+    .pf-dt-hero{background:linear-gradient(135deg,#4CAF50 0%,#43A047 40%,#388E3C 100%);border-radius:20px;padding:32px 34px;margin-bottom:24px;display:flex;align-items:center;gap:24px;box-shadow:0 8px 32px -8px rgba(76,175,80,.45);position:relative;overflow:hidden}
+    .pf-dt-hero::before{content:'';position:absolute;top:-40%;right:-10%;width:300px;height:300px;background:radial-gradient(circle,rgba(255,255,255,.1) 0%,transparent 70%);pointer-events:none}
+    .pf-dt-hero::after{content:'';position:absolute;bottom:-30%;left:20%;width:200px;height:200px;background:radial-gradient(circle,rgba(255,255,255,.06) 0%,transparent 70%);pointer-events:none}
+    .pf-dt-avatar{width:80px;height:80px;border-radius:20px;background:rgba(255,255,255,.2);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1;border:2px solid rgba(255,255,255,.15)}
+    .pf-dt-avatar i{font-size:38px;color:#fff}
+    .pf-dt-hero-text{flex:1;min-width:0;position:relative;z-index:1}
+    .pf-dt-hero-text h1{font-size:1.65rem;font-weight:800;color:#fff;letter-spacing:-.03em;margin:0 0 6px}
+    .pf-dt-hero-text p{font-size:.8125rem;color:rgba(255,255,255,.78);margin:0;font-weight:500;letter-spacing:-.01em}
+    .pf-dt-badge{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:20px;background:rgba(255,255,255,.2);backdrop-filter:blur(10px);color:#fff;font-size:.6875rem;font-weight:700;letter-spacing:.02em;flex-shrink:0;align-self:flex-start;margin-top:2px;position:relative;z-index:1;border:1px solid rgba(255,255,255,.15)}
+    .pf-dt-badge i{font-size:13px}
+
+    .pf-dt-section-label{font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#86868b;margin-bottom:14px}
+
+    .pf-dt-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px}
+    .pf-dt-stat{background:#fff;border:1px solid #e8e8ec;border-radius:16px;padding:22px 18px;text-align:center;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s;position:relative;overflow:hidden}
+    .pf-dt-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#4CAF50,#66BB6A);opacity:0;transition:opacity .2s}
+    .pf-dt-stat:hover{transform:translateY(-3px);box-shadow:0 8px 24px -6px rgba(0,0,0,.06)}
+    .pf-dt-stat:hover::before{opacity:1}
+    .pf-dt-stat-val{font-size:1.75rem;font-weight:800;color:#1a1a1a;letter-spacing:-.03em;line-height:1;margin-bottom:6px}
+    .pf-dt-stat-label{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#86868b}
+
+    .pf-dt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:32px}
+    .pf-dt-card{background:#fff;border:1px solid #e8e8ec;border-radius:14px;padding:20px 18px;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s}
+    .pf-dt-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px -4px rgba(0,0,0,.05)}
+    .pf-dt-card-label{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#86868b;margin-bottom:10px}
+    .pf-dt-card-icon{display:flex;align-items:center;gap:12px}
+    .pf-dt-card-icon i{width:36px;height:36px;border-radius:10px;background:rgba(76,175,80,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;color:#4CAF50}
+    .pf-dt-card-icon span{font-size:.8125rem;font-weight:600;color:#1a1a1a;line-height:1.3}
+
+    .pf-dt-alloc{background:#fff;border:1px solid #e8e8ec;border-radius:16px;overflow:hidden;margin-bottom:32px;transition:box-shadow .2s}
+    .pf-dt-alloc:hover{box-shadow:0 4px 16px -4px rgba(0,0,0,.04)}
+    .pf-dt-alloc-head{padding:20px 24px;border-bottom:1px solid #f0f0f2;display:flex;align-items:center;justify-content:space-between}
+    .pf-dt-alloc-head h2{font-size:1rem;font-weight:700;color:#1a1a1a;margin:0;letter-spacing:-.01em}
+    .pf-dt-alloc-head p{font-size:.75rem;color:#86868b;margin:0;font-weight:500}
+    .pf-dt-alloc-body{padding:20px 24px 24px}
+    .pf-dt-alloc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    .pf-dt-alloc-item{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#fafafa;border:1px solid #e8e8ec;border-radius:12px;transition:all .2s cubic-bezier(.16,1,.3,1)}
+    .pf-dt-alloc-item:hover{background:#fff;border-color:#d4d4d8;transform:translateY(-1px);box-shadow:0 2px 8px -2px rgba(0,0,0,.04)}
+    .pf-dt-alloc-icon{width:42px;height:42px;border-radius:12px;background:rgba(76,175,80,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .pf-dt-alloc-icon i{font-size:19px;color:#4CAF50}
+    .pf-dt-alloc-name{font-size:.8125rem;font-weight:700;color:#1a1a1a;letter-spacing:-.01em}
+    .pf-dt-alloc-meta{font-size:.6875rem;color:#86868b;font-weight:500;margin-top:3px}
+    .pf-dt-alloc-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;padding:40px 20px;text-align:center}
+    .pf-dt-alloc-empty-icon{width:56px;height:56px;border-radius:14px;background:#f5f5f7;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+    .pf-dt-alloc-empty-icon i{font-size:26px;color:#c7c7cc}
+    .pf-dt-alloc-empty-title{font-size:.875rem;font-weight:700;color:#1a1a1a;margin-bottom:4px}
+    .pf-dt-alloc-empty-desc{font-size:.75rem;color:#86868b;max-width:260px}
+
+    .pf-dt-pass{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:14px;background:linear-gradient(135deg,#4CAF50,#43A047);color:#fff;font-size:.8125rem;font-weight:700;text-decoration:none;transition:all .2s cubic-bezier(.16,1,.3,1);box-shadow:0 4px 14px -4px rgba(76,175,80,.4)}
+    .pf-dt-pass:hover{transform:translateY(-2px);box-shadow:0 8px 24px -6px rgba(76,175,80,.5)}
+    .pf-dt-pass i{font-size:17px}
+
+    @media(max-width:980px){
+        .pf-dt-grid{grid-template-columns:repeat(2,1fr)}
+        .pf-dt-alloc-grid{grid-template-columns:1fr}
     }
-
-    .pf-desktop .profile-hero,
-    .pf-desktop .profile-panel,
-    .pf-desktop .identity-card {
-        background: #ffffff;
-        border: 1px solid #dbe3ee;
-        border-radius: 16px;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
-    }
-
-    .pf-desktop .profile-hero {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        gap: 22px;
-        align-items: center;
-        padding: 28px 32px;
-        border-left: 8px solid var(--oraimo-green, #9be816);
-        margin-bottom: 24px;
-    }
-
-    .pf-desktop .avatar {
-        width: 82px;
-        height: 82px;
-        border-radius: 18px;
-        background: linear-gradient(135deg, var(--oraimo-green, #9be816), #7dd3fc);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #0f172a;
-        font-family: 'Montserrat', sans-serif;
-        font-weight: 900;
-        font-size: 28px;
-    }
-
-    .pf-desktop .profile-title h1 {
-        margin: 0 0 7px;
-        font-family: 'Montserrat', sans-serif;
-        font-size: 32px;
-        font-weight: 900;
-        color: #0f172a;
-        letter-spacing: -0.4px;
-    }
-
-    .pf-desktop .profile-title p {
-        margin: 0;
-        color: #64748b;
-        font-size: 15px;
-        font-weight: 750;
-    }
-
-    .pf-desktop .profile-badge {
-        background: #ecfccb;
-        color: #365314;
-        border: 1px solid #bef264;
-        border-radius: 999px;
-        padding: 10px 16px;
-        font-weight: 900;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.7px;
-        white-space: nowrap;
-    }
-
-    .pf-desktop .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-
-    .pf-desktop .identity-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-
-    .pf-desktop .identity-card,
-    .pf-desktop .stat-card {
-        padding: 18px 20px;
-    }
-
-    .pf-desktop .stat-card {
-        background: #ffffff;
-        border: 1px solid #dbe3ee;
-        border-radius: 14px;
-    }
-
-    .pf-desktop .label {
-        display: block;
-        color: #64748b;
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin-bottom: 7px;
-    }
-
-    .pf-desktop .value {
-        display: block;
-        color: #0f172a;
-        font-size: 18px;
-        font-weight: 900;
-        word-break: break-word;
-    }
-
-    .pf-desktop .stat-card .value {
-        font-size: 30px;
-        line-height: 1;
-    }
-
-    .pf-desktop .profile-panel {
-        overflow: hidden;
-        margin-bottom: 22px;
-    }
-
-    .pf-desktop .panel-head {
-        background: #0f172a;
-        color: #ffffff;
-        padding: 22px 26px;
-        border-left: 8px solid var(--oraimo-green, #9be816);
-    }
-
-    .pf-desktop .panel-head h2 {
-        margin: 0 0 5px;
-        font-family: 'Montserrat', sans-serif;
-        font-size: 22px;
-        font-weight: 900;
-    }
-
-    .pf-desktop .panel-head p {
-        margin: 0;
-        color: #dbeafe;
-        font-weight: 700;
-        font-size: 14px;
-    }
-
-    .pf-desktop .panel-body {
-        padding: 24px 26px;
-    }
-
-    .pf-desktop .allocation-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-    }
-
-    .pf-desktop .allocation-card {
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
-        border-radius: 14px;
-        padding: 16px;
-    }
-
-    .pf-desktop .allocation-card strong {
-        display: block;
-        color: #0f172a;
-        font-size: 16px;
-        font-weight: 900;
-        margin-bottom: 5px;
-    }
-
-    .pf-desktop .allocation-card span {
-        color: #64748b;
-        font-size: 13px;
-        font-weight: 800;
-    }
-
-    .pf-desktop .password-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 46px;
-        border-radius: 10px;
-        padding: 0 20px;
-        background: #0f172a;
-        color: #ffffff;
-        text-decoration: none;
-        font-weight: 900;
-    }
-
-    .pf-desktop .password-link:hover {
-        background: var(--oraimo-green, #9be816);
-        color: #0f172a;
-    }
-
-    @media (max-width: 980px) {
-        .pf-desktop .profile-hero { grid-template-columns: 1fr; }
-        .pf-desktop .stats-grid,
-        .pf-desktop .identity-grid,
-        .pf-desktop .allocation-grid { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 640px) {
-        .pf-desktop { padding: 16px 12px; }
-
-        .pf-desktop .profile-hero {
-            padding: 20px 16px;
-            grid-template-columns: 1fr;
-            text-align: center;
-            gap: 14px;
-        }
-
-        .pf-desktop .avatar {
-            width: 64px;
-            height: 64px;
-            font-size: 22px;
-            margin: 0 auto;
-            border-radius: 14px;
-        }
-
-        .pf-desktop .profile-title h1 { font-size: 22px; font-weight: 800; }
-        .pf-desktop .profile-title p { font-size: 13px; }
-
-        .pf-desktop .profile-badge {
-            font-size: 11px;
-            padding: 8px 14px;
-            justify-self: center;
-        }
-
-        .pf-desktop .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-        .pf-desktop .stat-card { padding: 14px 12px; border-radius: 10px; }
-        .pf-desktop .stat-card .value { font-size: 22px; }
-        .pf-desktop .label { font-size: 10px; letter-spacing: 0.5px; }
-
-        .pf-desktop .identity-grid { grid-template-columns: 1fr; gap: 10px; }
-        .pf-desktop .identity-card { padding: 14px; border-radius: 10px; }
-        .pf-desktop .identity-card .value { font-size: 15px; }
-
-        .pf-desktop .panel-head { padding: 16px 14px; }
-        .pf-desktop .panel-head h2 { font-size: 17px; }
-        .pf-desktop .panel-head p { font-size: 12px; }
-        .pf-desktop .panel-body { padding: 16px 14px; }
-
-        .pf-desktop .allocation-grid { grid-template-columns: 1fr; gap: 10px; }
-        .pf-desktop .allocation-card { padding: 14px; border-radius: 10px; }
-        .pf-desktop .allocation-card strong { font-size: 14px; }
-        .pf-desktop .allocation-card span { font-size: 12px; }
-
-        .pf-desktop .password-link {
-            width: 100%;
-            justify-content: center;
-            min-height: 42px;
-            font-size: 14px;
-        }
+    @media(max-width:640px){
+        .pf-dt-stats{grid-template-columns:repeat(2,1fr)}
+        .pf-dt-grid{grid-template-columns:1fr}
     }
 </style>
 
-<div class="pf-desktop">
-    <section class="profile-hero">
-        <div class="avatar"><i class="bi bi-person-badge"></i></div>
-        <div class="profile-title">
+<div class="pf-dt">
+    <div class="pf-dt-hero">
+        <div class="pf-dt-avatar"><i class="ph ph-user-circle"></i></div>
+        <div class="pf-dt-hero-text">
             <h1>{% if teacher %}{{ teacher.get_full_title }}{% else %}{{ user.username }}{% endif %}</h1>
             <p>Personal faculty profile, subject allocations, and school account details.</p>
         </div>
-        <span class="profile-badge">
-            {% if class_teacher_scope %}Class Teacher{% else %}Subject Teacher{% endif %}
-        </span>
-    </section>
+        <div class="pf-dt-badge"><i class="ph ph-shield-check"></i> {% if class_teacher_scope %}Class Teacher{% else %}Subject Teacher{% endif %}</div>
+    </div>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <span class="label">Allocations</span>
-            <span class="value">{{ assignment_count }}</span>
+    <div class="pf-dt-section-label">Overview</div>
+    <div class="pf-dt-stats">
+        <div class="pf-dt-stat">
+            <div class="pf-dt-stat-val">{{ assignment_count }}</div>
+            <div class="pf-dt-stat-label">Allocations</div>
         </div>
-        <div class="stat-card">
-            <span class="label">Submitted</span>
-            <span class="value">{{ submitted_count }}</span>
+        <div class="pf-dt-stat">
+            <div class="pf-dt-stat-val">{{ submitted_count }}</div>
+            <div class="pf-dt-stat-label">Submitted</div>
         </div>
-        <div class="stat-card">
-            <span class="label">Returned</span>
-            <span class="value">{{ returned_count }}</span>
+        <div class="pf-dt-stat">
+            <div class="pf-dt-stat-val">{{ returned_count }}</div>
+            <div class="pf-dt-stat-label">Returned</div>
         </div>
-        <div class="stat-card">
-            <span class="label">Published</span>
-            <span class="value">{{ published_count }}</span>
+        <div class="pf-dt-stat">
+            <div class="pf-dt-stat-val">{{ published_count }}</div>
+            <div class="pf-dt-stat-label">Published</div>
         </div>
     </div>
 
-    <div class="identity-grid">
-        <div class="identity-card">
-            <span class="label">TSC Number</span>
-            <span class="value">{{ teacher.tsc_number|default:"Not assigned" }}</span>
+    <div class="pf-dt-section-label">Account Details</div>
+    <div class="pf-dt-grid">
+        <div class="pf-dt-card">
+            <div class="pf-dt-card-label">TSC Number</div>
+            <div class="pf-dt-card-icon"><i class="ph ph-hash"></i><span>{{ teacher.tsc_number|default:"Not assigned" }}</span></div>
         </div>
-        <div class="identity-card">
-            <span class="label">System Username</span>
-            <span class="value">{{ user.username }}</span>
+        <div class="pf-dt-card">
+            <div class="pf-dt-card-label">System Username</div>
+            <div class="pf-dt-card-icon"><i class="ph ph-user"></i><span>{{ user.username }}</span></div>
         </div>
-        <div class="identity-card">
-            <span class="label">Phone Number</span>
-            <span class="value">{{ teacher.phone_number|default:"Not provided" }}</span>
+        <div class="pf-dt-card">
+            <div class="pf-dt-card-label">Phone Number</div>
+            <div class="pf-dt-card-icon"><i class="ph ph-phone"></i><span>{{ teacher.phone_number|default:"Not provided" }}</span></div>
         </div>
-        <div class="identity-card">
-            <span class="label">Email Address</span>
-            <span class="value">{{ teacher.email|default:"Not provided" }}</span>
+        <div class="pf-dt-card">
+            <div class="pf-dt-card-label">Email Address</div>
+            <div class="pf-dt-card-icon"><i class="ph ph-envelope"></i><span>{{ teacher.email|default:"Not provided" }}</span></div>
         </div>
-        <div class="identity-card">
-            <span class="label">Assigned Task</span>
-            <span class="value">{{ teacher.assigned_task|default:"Instructor" }}</span>
+        <div class="pf-dt-card">
+            <div class="pf-dt-card-label">Assigned Task</div>
+            <div class="pf-dt-card-icon"><i class="ph ph-briefcase"></i><span>{{ teacher.assigned_task|default:"Instructor" }}</span></div>
         </div>
-        <div class="identity-card">
-            <span class="label">Class Teacher Scope</span>
-            <span class="value">{% if class_teacher_scope %}{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}{% else %}Not assigned{% endif %}</span>
+        <div class="pf-dt-card">
+            <div class="pf-dt-card-label">Class Teacher Scope</div>
+            <div class="pf-dt-card-icon"><i class="ph ph-chalkboard-teacher"></i><span>{% if class_teacher_scope %}{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}{% else %}Not assigned{% endif %}</span></div>
         </div>
     </div>
 
-    <section class="profile-panel">
-        <div class="panel-head">
-            <h2>Subject Allocation Matrix</h2>
-            <p>These are the class streams and subjects currently attached to this faculty account.</p>
+    <div class="pf-dt-alloc">
+        <div class="pf-dt-alloc-head">
+            <h2>Subject Allocations</h2>
+            <p>{{ assignment_count }} {% if assignment_count == 1 %}subject{% else %}subjects{% endif %} currently assigned</p>
         </div>
-        <div class="panel-body">
-            <div class="allocation-grid">
+        <div class="pf-dt-alloc-body">
+            <div class="pf-dt-alloc-grid">
                 {% for assignment in assignments %}
-                    <div class="allocation-card">
-                        <strong>{{ assignment.subject.name }}</strong>
-                        <span>{{ assignment.class_name }} {{ assignment.stream }}</span>
+                    <div class="pf-dt-alloc-item">
+                        <div class="pf-dt-alloc-icon"><i class="ph ph-book-open"></i></div>
+                        <div>
+                            <div class="pf-dt-alloc-name">{{ assignment.subject.name }}</div>
+                            <div class="pf-dt-alloc-meta">{{ assignment.class_name }} {{ assignment.stream }}</div>
+                        </div>
                     </div>
                 {% empty %}
-                    <div class="allocation-card">
-                        <strong>No active allocations</strong>
-                        <span>The school admin has not linked subjects to this profile yet.</span>
+                    <div class="pf-dt-alloc-empty">
+                        <div class="pf-dt-alloc-empty-icon"><i class="ph ph-inbox"></i></div>
+                        <div class="pf-dt-alloc-empty-title">No active allocations</div>
+                        <div class="pf-dt-alloc-empty-desc">The school admin has not linked subjects to this profile yet.</div>
                     </div>
                 {% endfor %}
             </div>
         </div>
-    </section>
+    </div>
 
-    <a href="/password-change/" class="password-link">
-        <i class="bi bi-shield-lock me-2"></i>Change Account Password
-    </a>
+    <a href="{% url 'password_change' %}" class="pf-dt-pass"><i class="ph ph-shield-check"></i> Change Account Password</a>
 </div>
 {% endblock %}
 

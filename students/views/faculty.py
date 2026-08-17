@@ -17,6 +17,8 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.core.mail import EmailMessage
+from django.http import HttpResponse
+from django.views.decorators.cache import never_cache
 
 from .constants import (
     ASSESSMENT_MAP,
@@ -104,7 +106,8 @@ def manage_master_comments(request):
         class_scope = get_class_teacher_scope(teacher)
         if not class_scope or class_scope != (grade, stream):
             messages.error(request, "You are not the class teacher for this class stream.")
-            return redirect('report_card_select')
+            redirect_target = 'teacher_report_forms' if teacher else 'report_card_select'
+            return redirect(redirect_target)
 
     comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
         school=school, year=year, term=term, grade=grade, stream=stream, exam_type=db_assessment,
@@ -122,6 +125,9 @@ def manage_master_comments(request):
         comment_obj.opening_date = request.POST.get('opening_date') or None
         comment_obj.save()
         messages.success(request, "Report card configuration has been saved.")
+        next_url = request.GET.get('next')
+        if next_url:
+            return redirect(next_url)
         context_key = f"{year}|{term}|{db_assessment}|{grade}|{stream}"
         redirect_url = f'{reverse("report_card_select")}?context={context_key}'
         return redirect(redirect_url)
@@ -141,6 +147,73 @@ def manage_master_comments(request):
         return render(request, 'students/comments_modal.html', context)
 
     return render(request, 'students/comments_modal.html', context)
+
+
+@login_required(login_url='login')
+@never_cache
+def teacher_load_comments(request):
+    """
+    HTMX endpoint: returns an inline comment form card for the teacher's Report Cards page.
+    Pre-populated with the class teacher's grade/stream. Posts to manage_master_comments.
+    """
+    from ..models import ClassTeacherMasterComment
+    from .constants import ASSESSMENT_MAP
+
+    school = get_request_school(request)
+    if not school:
+        return HttpResponse('<div style="padding:20px;color:#94a3b8;">School context required.</div>')
+
+    teacher = get_teacher_for_user(request.user)
+    class_scope = get_class_teacher_scope(teacher)
+    if not class_scope:
+        return HttpResponse('<div style="padding:20px;color:#94a3b8;">Only class teachers can add comments.</div>')
+
+    ct_grade, ct_stream = class_scope
+
+    exam_id = request.GET.get('exam_id', '').strip()
+    year = request.GET.get('year', '').strip()
+    term = request.GET.get('term', '').strip()
+    assessment = request.GET.get('assessment', '').strip()
+
+    # If exam_id is provided, look up year/term/assessment from the Exam model
+    if exam_id:
+        try:
+            from ..models import Exam
+            from .constants import ASSESSMENT_SLUG_MAP
+            exam_obj = Exam.all_objects.get(id=exam_id)
+            year = str(exam_obj.year)
+            term = exam_obj.term
+            # Convert display name to slug (e.g. "Mid Term" -> "mid")
+            assessment = ASSESSMENT_SLUG_MAP.get(exam_obj.assessment, exam_obj.assessment)
+        except Exam.DoesNotExist:
+            return HttpResponse('<div style="padding:20px;color:#94a3b8;">Exam not found.</div>')
+
+    if not (year and term and assessment):
+        return HttpResponse('<div style="padding:20px;color:#94a3b8;">Please select an exam first to load the comment form.</div>')
+
+    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
+
+    section = get_request_school_section(request) or 'JSS'
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
+
+    comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
+        school=school, year=year, term=term, grade=ct_grade, stream=ct_stream, exam_type=db_assessment,
+        defaults={'school_section': 'PRIMARY' if is_primary else 'JSS'},
+    )
+
+    context = {
+        'comment_obj': comment_obj,
+        'selected_grade': ct_grade,
+        'selected_stream': ct_stream,
+        'selected_year': year,
+        'selected_term': term,
+        'selected_assessment': assessment,
+        'selected_assessment_display': db_assessment,
+        'is_primary': is_primary,
+        'exam_id': exam_id,
+    }
+    return render(request, 'students/teacher_comment_form.html', context)
 
 
 @login_required(login_url='login')
@@ -991,6 +1064,35 @@ def learner_profile(request, student_id):
         "form": form,
         "can_edit_student": can_edit_student,
         "is_school_admin": is_school_admin,
+    })
+
+
+@login_required(login_url='login')
+def teachers_list_printout(request):
+    """Display the teachers list in the browser for printing."""
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "School context is required.")
+        return redirect('printouts_hub')
+
+    teachers = Teacher.all_objects.filter(school=school, is_active=True).select_related('user').order_by('user__first_name')
+
+    def _section_label(t):
+        if t.school_section == 'BOTH':
+            return 'Cross-Section'
+        if t.school_section == 'PRIMARY':
+            return 'Lower Primary' if t.sub_section == 'LOWER' else 'Upper Primary'
+        if t.school_section == 'JSS':
+            return 'JSS'
+        return '—'
+
+    for t in teachers:
+        t.section_label = _section_label(t)
+
+    return render(request, 'students/teachers_list_printout.html', {
+        'school': school,
+        'teachers': teachers,
+        'total_count': teachers.count(),
     })
 
 

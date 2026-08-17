@@ -8,7 +8,7 @@
   .sub-nav-item{display:flex;align-items:stretch}
   .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
   .sub-nav-link:hover{color:#fff;background-color:#43A047}
-  .sub-nav-link.active{color:#fff;background-color:#388E3C;font-weight:700}
+  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
   .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 </style>
 <nav class="sub-nav-bar">
@@ -127,7 +127,7 @@
 
   <div class="po-section-label">Administration</div>
   <div class="po-grid">
-    <a href="{% url 'download_teachers_list_pdf' %}" class="po-card">
+    <a href="{% url 'teachers_list_printout' %}" class="po-card">
       <div class="po-card-icon">
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>

@@ -32,22 +32,143 @@
             </div>
             <div class="rc-chart-block">
                 <div class="rc-chart-title">Subject Performance - Student vs Class</div>
-                {% if student_data.chart_base64_image %}
+                {% if view_mode == 'pdf' %}
+                {% if student_data.chart_svg %}
+                <div class="rc-chart-svg">{{ student_data.chart_svg|safe }}</div>
+                {% elif student_data.chart_base64_image %}
                 <img src="{{ student_data.chart_base64_image }}" class="rc-chart-img rc-chart-fallback" alt="Performance Chart" />
                 {% endif %}
+                {% else %}
                 <div class="rc-chart-canvas-wrap">
-                    <canvas id="rc-chart-canvas-{{ forloop.counter }}"></canvas>
+                    <canvas id="rc-chart-canvas-{{ student_data.student.pk|default:forloop.counter }}"></canvas>
                 </div>
-                <script type="application/json" id="rc-chart-payload-{{ forloop.counter }}">{{ student_data.chart_data_json|default:'{"labels":[],"student":[],"class_avg":[],"student_name":"Student","class_name":""}'|escapejs }}</script>
+                <script type="application/json" id="rc-chart-payload-{{ student_data.student.pk|default:forloop.counter }}">{% if student_data.chart_data_json %}{{ student_data.chart_data_json|safe }}{% else %}{"labels":[],"student":[],"class_avg":[]}{% endif %}</script>
+                {% endif %}
             </div>
+            {% if view_mode != 'pdf' %}
+            <script>
+            (function() {
+                var uid = "{{ student_data.student.pk|default:forloop.counter }}";
+                var payloadEl = document.getElementById("rc-chart-payload-" + uid);
+                var canvasEl = document.getElementById("rc-chart-canvas-" + uid);
+                if (!payloadEl || !canvasEl) return;
+                if (typeof Chart === 'undefined') return;
+                var payload;
+                try { payload = JSON.parse(payloadEl.textContent); } catch (e) { return; }
+                var studentArr = payload.student || [];
+                var classArr = payload.class_avg || [];
+                var fullLabels = payload.labels || [];
+                var shortLabels = payload.short_labels || fullLabels;
+                if (!studentArr.length) return;
+                var studentName = payload.student_name || 'Student';
+                var className = payload.class_name || 'Class Average';
+                var STUDENT_COLOR = '#00C853';
+                new Chart(canvasEl, {
+                    type: 'line',
+                    data: {
+                        labels: shortLabels,
+                        datasets: [
+                            {
+                                label: studentName,
+                                data: studentArr,
+                                borderColor: STUDENT_COLOR,
+                                backgroundColor: 'transparent',
+                                borderWidth: 3,
+                                tension: 0.3,
+                                pointRadius: 5,
+                                pointBackgroundColor: STUDENT_COLOR,
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointHoverRadius: 7,
+                                pointHoverBackgroundColor: STUDENT_COLOR,
+                                pointHoverBorderColor: '#ffffff',
+                                pointHoverBorderWidth: 3,
+                                fill: false
+                            },
+                            {
+                                label: className,
+                                data: classArr,
+                                borderColor: '#A1A7B3',
+                                backgroundColor: 'rgba(209,213,219,0.2)',
+                                borderWidth: 2.5,
+                                tension: 0.3,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#A1A7B3',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 1.5,
+                                pointHoverRadius: 6,
+                                pointHoverBackgroundColor: '#A1A7B3',
+                                pointHoverBorderColor: '#ffffff',
+                                pointHoverBorderWidth: 2,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                align: 'end',
+                                labels: { font: { size: 11, weight: '700', family: "'Plus Jakarta Sans', sans-serif" }, usePointStyle: true, pointStyle: 'circle', padding: 14, boxWidth: 10, boxHeight: 10, color: '#374151' }
+                            },
+                            tooltip: {
+                                backgroundColor: '#ffffff',
+                                titleColor: '#0F172A',
+                                bodyColor: '#374151',
+                                titleFont: { size: 13, weight: '700', family: "'Plus Jakarta Sans', sans-serif" },
+                                bodyFont: { size: 12, weight: '600', family: "'Plus Jakarta Sans', sans-serif" },
+                                borderColor: '#E5E7EB',
+                                borderWidth: 1,
+                                padding: 14,
+                                cornerRadius: 10,
+                                displayColors: true,
+                                boxWidth: 10,
+                                boxHeight: 10,
+                                boxPadding: 4,
+                                usePointStyle: true,
+                                callbacks: {
+                                    title: function(ctx) {
+                                        if (!ctx[0]) return '';
+                                        return fullLabels[ctx[0].dataIndex] || shortLabels[ctx[0].dataIndex] || '';
+                                    },
+                                    label: function(ctx) {
+                                        return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y;
+                                    }
+                                }
+                            }
+                        },
+                        layout: { padding: { top: 8, right: 16, bottom: 4, left: 6 } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: false },
+                                ticks: { stepSize: 20, font: { size: 11, weight: '600', family: "'Plus Jakarta Sans', sans-serif" }, color: '#374151', padding: 10, callback: function(v) { return v; } },
+                                grid: { color: '#E5E7EB', drawBorder: false, lineWidth: 0.5 },
+                                border: { display: false }
+                            },
+                            x: {
+                                ticks: { font: { size: 11, weight: '700', family: "'Plus Jakarta Sans', sans-serif" }, color: '#374151', maxRotation: 0 },
+                                grid: { color: '#E5E7EB', drawOnChartArea: true, drawBorder: false },
+                                border: { display: false }
+                            }
+                        }
+                    }
+                });
+            })();
+            </script>
+            {% endif %}
         </div>
 
         <div class="rc-stats">
-            <div class="rc-stat"><span class="rc-stat-label">Position</span><span class="rc-stat-value">{{ student_data.position|default:"-" }}{% if student_data.class_count %}<small style="font-size:8pt;color:var(--rc-muted);">/{{ student_data.class_count }}</small>{% endif %}</span></div>
+            <div class="rc-stat"><span class="rc-stat-label">Position</span><span class="rc-stat-value">{{ student_data.position|default:"-" }}{% if student_data.class_count %}<small>/{{ student_data.class_count }}</small>{% endif %}</span></div>
             <div class="rc-stat"><span class="rc-stat-label">Performance Level</span><span class="rc-stat-value">{{ student_data.overall_plv }}</span></div>
-            <div class="rc-stat"><span class="rc-stat-label">Total Marks</span><span class="rc-stat-value">{{ student_data.total_marks }}/{{ student_data.max_total_marks }}</span></div>
-            <div class="rc-stat"><span class="rc-stat-label">Total Points</span><span class="rc-stat-value">{{ student_data.total_points|default:"-" }}/{{ student_data.max_total_points }}</span></div>
-            <div class="rc-stat"><span class="rc-stat-label">Mean Points</span><span class="rc-stat-value">{{ student_data.mean_points }}/{{ student_data.mean_points_max }}</span></div>
+            <div class="rc-stat"><span class="rc-stat-label">Total Marks</span><span class="rc-stat-value">{{ student_data.total_marks }}<small>/{{ student_data.max_total_marks }}</small></span></div>
+            <div class="rc-stat"><span class="rc-stat-label">Total Points</span><span class="rc-stat-value">{{ student_data.total_points|default:"-" }}<small>/{{ student_data.max_total_points }}</small></span></div>
+            <div class="rc-stat"><span class="rc-stat-label">Mean Points</span><span class="rc-stat-value">{{ student_data.mean_points }}<small>/{{ student_data.mean_points_max }}</small></span></div>
         </div>
 
         <div class="table-scroll">
@@ -59,7 +180,29 @@
                     <tr>
                         <td class="rc-subj">{{ mark.subject_name }}</td>
                         <td class="rc-center">{% if mark.is_absent %}AB{% else %}{{ mark.score }}%{% endif %}</td>
-                        <td class="rc-center {% if mark.deviation != None %}{% if mark.deviation > 0 %}rc-dev-up{% elif mark.deviation < 0 %}rc-dev-down{% endif %}{% endif %}">{% if mark.deviation != None %}{{ mark.deviation }}{% else %}-{% endif %}</td>
+                        <td class="rc-table-cell-dev" style="padding: 10px 12px; border-bottom: 1px solid #E5E7EB; text-align: center; vertical-align: middle;">
+                            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; width: 100%; box-sizing: border-box;">
+                                {% if mark.deviation != None %}
+                                    {% if mark.deviation > 0 %}
+                                        <span style="color: #16A34A; font-weight: 700; font-family: inherit;">+{{ mark.deviation }}</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="display: inline-block; flex-shrink: 0;">
+                                            <path d="M 3 21 L 14 21 L 14 8" stroke="#16A34A" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter" />
+                                            <polygon points="7,9 14,2 21,9" fill="#16A34A" />
+                                        </svg>
+                                    {% elif mark.deviation < 0 %}
+                                        <span style="color: #DC2626; font-weight: 700; font-family: inherit;">{{ mark.deviation }}</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="display: inline-block; flex-shrink: 0;">
+                                            <path d="M 3 3 L 14 3 L 14 16" stroke="#DC2626" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter" />
+                                            <polygon points="7,15 14,22 21,15" fill="#DC2626" />
+                                        </svg>
+                                    {% else %}
+                                        <span style="color: #9CA3AF; font-weight: 500; font-family: inherit;">0.0</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color: #9CA3AF; font-weight: 500; font-family: inherit;">-</span>
+                                {% endif %}
+                            </div>
+                        </td>
                         <td class="rc-center rc-grade">{{ mark.performance_level|default:"-" }}</td>
                         <td class="rc-teacher">{{ mark.teacher_name }}</td>
                     </tr>
@@ -69,17 +212,17 @@
         </table>
         </div>
 
+        <div class="rc-comments-header">Comments</div>
         <div class="rc-remarks-grid">
             <div class="rc-remark-box">
-                <div class="rc-remark-title">Class Teacher Remarks</div>
-                {% if student_data.class_teacher_name %}<div class="rc-remark-author">{{ student_data.class_teacher_name }}</div>{% endif %}
+                <div class="rc-remark-title">Class Teacher Remarks{% if student_data.class_teacher_name %}: {{ student_data.class_teacher_name }}{% endif %}</div>
                 <div class="rc-remark-text">{{ student_data.class_teacher_remark }}</div>
                 <div class="rc-signature">Signature: ____________________</div>
             </div>
             <div class="rc-remark-box">
                 <div class="rc-remark-title">Principal Remarks</div>
                 <div class="rc-remark-text">{{ student_data.headteacher_comment }}</div>
-                <div class="rc-signature">Signature &amp; Stamp: ____________________</div>
+                <div class="rc-signature">Signature: ____________________</div>
             </div>
         </div>
 

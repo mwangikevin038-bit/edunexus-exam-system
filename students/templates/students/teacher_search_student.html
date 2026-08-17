@@ -1,0 +1,166 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block sub_tabs %}
+<style>
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
+  .sub-nav-item{display:flex;align-items:stretch;flex:1}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap;width:100%}
+  .sub-nav-link:hover{color:#fff;background-color:#43A047}
+  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
+  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .form-card{background:#fff;border:1px solid var(--en-border,#e2e8f0);border-radius:10px;box-shadow:0 1px 4px rgba(15,23,42,0.04);width:100%;box-sizing:border-box}
+  .form-card-header{padding:20px 28px;border-bottom:1px solid var(--en-border,#e2e8f0)}
+  .form-card-header h3{font-size:20px;font-weight:700;color:var(--en-navy,#0f172a);margin:0;font-family:'Plus Jakarta Sans',sans-serif}
+  .form-card-body{padding:24px 28px}
+</style>
+
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'class_lists' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Class Lists
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'teacher_search_student' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Search Student
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.body.addEventListener('htmx:configRequest', function(evt) {
+    evt.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+  });
+</script>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:16px;width:100%;">
+
+  <!-- Search Card Container — HTMX swaps this entire block -->
+  <div id="search-card-container">
+    <div style="background:white;padding:24px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+      <h3 style="margin-top:0;color:#333;font-size:16px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;">Search By &mdash; <span id="search-type-label">{% if search_type == 'name' %}Name{% elif search_type == 'phone' %}Phone Number{% elif search_type == 'assessment_no' %}Assessment Number{% else %}Admission Number{% endif %}</span></h3>
+
+      <form id="search-form" hx-get="{% url 'teacher_search_submit' %}" hx-target="#search-card-container" hx-swap="innerHTML">
+
+        <!-- Radio Toggle Group -->
+        <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid #e5e7eb;" id="search-type-radios">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;font-weight:500;flex:1;padding:10px 0;justify-content:center;">
+            <input type="radio" name="search_type" value="adm_no" data-type="adm_no"
+                   hx-get="{% url 'teacher_search_fields' %}?type=adm_no"
+                   hx-target="#dynamic-fields"
+                   hx-swap="innerHTML"
+                   hx-trigger="click"
+                   {% if search_type == 'adm_no' %}checked{% endif %}>
+            Admission Number
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;font-weight:500;flex:1;padding:10px 0;justify-content:center;">
+            <input type="radio" name="search_type" value="name" data-type="name"
+                   hx-get="{% url 'teacher_search_fields' %}?type=name"
+                   hx-target="#dynamic-fields"
+                   hx-swap="innerHTML"
+                   hx-trigger="click"
+                   {% if search_type == 'name' %}checked{% endif %}>
+            Name
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;font-weight:500;flex:1;padding:10px 0;justify-content:center;">
+            <input type="radio" name="search_type" value="phone" data-type="phone"
+                   hx-get="{% url 'teacher_search_fields' %}?type=phone"
+                   hx-target="#dynamic-fields"
+                   hx-swap="innerHTML"
+                   hx-trigger="click"
+                   {% if search_type == 'phone' %}checked{% endif %}>
+            Phone Number
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;font-weight:500;flex:1;padding:10px 0;justify-content:center;">
+            <input type="radio" name="search_type" value="assessment_no" data-type="assessment_no"
+                   hx-get="{% url 'teacher_search_fields' %}?type=assessment_no"
+                   hx-target="#dynamic-fields"
+                   hx-swap="innerHTML"
+                   hx-trigger="click"
+                   {% if search_type == 'assessment_no' %}checked{% endif %}>
+            Assessment Number
+          </label>
+        </div>
+
+        <!-- Dynamic Input Fields (server-rendered initial state) -->
+        <div id="dynamic-fields" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px;">
+          {% if search_type == 'name' %}
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="color:#ea580c;font-size:14px;font-weight:500;">Name<span style="color:#ef4444;">*</span></label>
+              <input type="text" name="name" value="{{ query|default:'' }}" placeholder="Enter Student Name..." required
+                     pattern="^[A-Za-z\s.'\-]+" title="Please enter text letters only for names"
+                     style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;background-color:#f0fdf4;font-size:14px;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="color:#374151;font-size:14px;font-weight:500;">Form / Grade</label>
+              <select name="grade" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;background-color:#f0fdf4;font-size:14px;color:#9ca3af;">
+                <option value="">Form / Grade</option>
+              </select>
+            </div>
+          {% elif search_type == 'phone' %}
+            <div style="grid-column:span 2;display:flex;flex-direction:column;gap:6px;">
+              <label style="color:#ea580c;font-size:14px;font-weight:500;">Phone Number<span style="color:#ef4444;">*</span></label>
+              <input type="tel" name="phone_number" value="{{ query|default:'' }}" placeholder="Enter Phone Number..." required
+                     pattern="^[+]?[0-9\s\-\(\)]+" title="Please enter a valid phone number (digits, +, -, spaces, parentheses)"
+                     style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;background-color:#f0fdf4;font-size:14px;">
+            </div>
+          {% elif search_type == 'assessment_no' %}
+            <div style="grid-column:span 2;display:flex;flex-direction:column;gap:6px;">
+              <label style="color:#ea580c;font-size:14px;font-weight:500;">Assessment Number<span style="color:#ef4444;">*</span></label>
+              <input type="text" name="assessment_number" value="{{ query|default:'' }}" placeholder="Enter Assessment Number..." required
+                     pattern="^[A-Za-z0-9]+$" title="Assessment number must be alphanumeric (e.g. ASS001)"
+                     style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;background-color:#f0fdf4;font-size:14px;">
+            </div>
+          {% else %}
+            <div style="grid-column:span 2;display:flex;flex-direction:column;gap:6px;">
+              <label style="color:#ea580c;font-size:14px;font-weight:500;">Admission Number<span style="color:#ef4444;">*</span></label>
+              <input type="text" name="admission_number" value="{{ query|default:'' }}" placeholder="Enter Admission Number..." required
+                     pattern="^[A-Za-z0-9]+$" title="Admission number must be alphanumeric (e.g. ADM001)"
+                     style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;background-color:#f0fdf4;font-size:14px;">
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Search Button -->
+        <div style="display:flex;justify-content:flex-end;width:100%;">
+          <button type="submit"
+                  style="background-color:#0ea5e9;color:white;padding:10px 24px;border:none;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            Search
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var TYPE_LABELS={adm_no:'Admission Number',name:'Name',phone:'Phone Number',assessment_no:'Assessment Number'};
+  var radios=document.querySelectorAll('#search-type-radios input[type="radio"]');
+  var target=document.getElementById('dynamic-fields');
+  var label=document.getElementById('search-type-label');
+  radios.forEach(function(radio){
+    radio.addEventListener('click',function(){
+      var t=this.getAttribute('data-type');
+      if(label) label.textContent=TYPE_LABELS[t]||t;
+      fetch("{% url 'teacher_search_fields' %}?type="+encodeURIComponent(t))
+        .then(function(r){return r.text();})
+        .then(function(html){if(target) target.innerHTML=html;});
+    });
+  });
+})();
+</script>
+{% endblock %}

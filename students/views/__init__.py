@@ -58,6 +58,14 @@ from .students_mgmt import (  # noqa: F401
     admin_student_search_submit,
     api_streams_for_grade,
     class_lists,
+    teacher_search_student,
+    teacher_search_fields,
+    teacher_search_submit,
+    teacher_search_reset,
+    teacher_student_profile_card,
+    teacher_student_analytics,
+    teacher_report_forms,
+    teacher_report_forms_display,
     get_section_info,
     printouts_hub,
     class_list_printout,
@@ -106,8 +114,10 @@ from .faculty import (  # noqa: F401
     manage_faculty_matrix,
     faculty_grade_streams,
     learner_profile,
+    teachers_list_printout,
     download_teachers_list_pdf,
     teacher_classes,
+    teacher_load_comments,
 )
 
 # ── PDF export views ─────────────────────────────────────────────────────────

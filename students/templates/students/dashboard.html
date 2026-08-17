@@ -18,21 +18,9 @@
 <nav class="sub-nav-bar">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
-      <a href="#" class="sub-nav-link active" onclick="showTab('overview',this);return false;">
+      <a href="{% url 'dashboard_alt' %}" class="sub-nav-link active">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Overview
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="#" class="sub-nav-link" onclick="showTab('classes',this);return false;">
-        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        My Classes
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="#" class="sub-nav-link" onclick="showTab('submissions',this);return false;">
-        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Submissions
       </a>
     </li>
   </ul>
@@ -42,175 +30,244 @@
 {% block content %}
 <style>
     /* ═══════════════════════════════════════════════════════════
-       MODERN SAAS DASHBOARD — Desktop Only
+       iOS 17 PREMIUM DASHBOARD — Desktop
        ═══════════════════════════════════════════════════════════ */
-    .dash {
-        max-width: 100%;
-        margin: 0 auto;
-        padding-bottom: var(--space-4);
-        animation: dashFadeInOld 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    @keyframes tdFadeUp {
+        from { opacity:0; transform:translateY(16px); }
+        to   { opacity:1; transform:translateY(0); }
     }
-    @keyframes dashFadeInOld {
-        from { opacity: 0; transform: translateY(12px); }
-        to   { opacity: 1; transform: translateY(0); }
+    .td{padding:28px 0 56px;max-width:100%;animation:tdFadeUp .5s cubic-bezier(.16,1,.3,1) both}
+    .td-greet{margin-bottom:28px;display:flex;align-items:flex-start;justify-content:space-between}
+    .td-greet-text h1{font-size:1.65rem;font-weight:800;color:#1a1a1a;letter-spacing:-.035em;margin:0;line-height:1.25}
+    .td-greet-text h1 em{font-style:normal;background:linear-gradient(135deg,#2d9d3a 0%,#4CAF50 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .td-greet-text p{font-size:.8125rem;color:#86868b;margin:5px 0 0;font-weight:500;letter-spacing:-.01em}
+    .td-greet-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:rgba(76,175,80,.08);color:#2d9d3a;font-size:.6875rem;font-weight:700;letter-spacing:.02em;flex-shrink:0;margin-top:2px}
+    .td-greet-badge i{font-size:13px}
+    .td-hero{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#4CAF50 0%,#43A047 50%,#388E3C 100%);border-radius:16px;padding:20px 22px;margin-bottom:16px;text-decoration:none;color:#fff;box-shadow:0 4px 20px -4px rgba(76,175,80,.35);transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s}
+    .td-hero:hover{transform:translateY(-2px);box-shadow:0 8px 30px -6px rgba(76,175,80,.45)}
+    .td-hero-left{display:flex;align-items:center;gap:14px}
+    .td-hero-icon{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.2);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .td-hero-icon i{font-size:22px;color:#fff}
+    .td-hero-text h3{font-size:.9375rem;font-weight:700;color:#fff;margin:0 0 2px;letter-spacing:-.01em}
+    .td-hero-text p{font-size:.75rem;color:rgba(255,255,255,.8);margin:0;font-weight:500}
+    .td-hero-arrow{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;transition:background .15s}
+    .td-hero:hover .td-hero-arrow{background:rgba(255,255,255,.28)}
+    .td-hero-arrow i{font-size:16px;color:#fff}
+    .td-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px}
+    .td-q{display:flex;flex-direction:column;text-decoration:none;background:#fff;border:1px solid #e8e8ec;border-radius:14px;padding:18px 14px;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s}
+    .td-q:hover{transform:translateY(-2px);box-shadow:0 4px 16px -4px rgba(0,0,0,.06)}
+    .td-q-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+    .td-q-icon.green{background:rgba(76,175,80,.08);color:#4CAF50}
+    .td-q-icon.blue{background:rgba(59,130,246,.08);color:#3b82f6}
+    .td-q-icon.purple{background:rgba(139,92,246,.08);color:#8b5cf6}
+    .td-q-icon i{font-size:19px}
+    .td-q-label{font-size:.8125rem;font-weight:700;color:#1a1a1a;letter-spacing:-.01em}
+    .td-section-label{font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#86868b;margin-bottom:14px}
+    .td-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px}
+    .td-metric{display:flex;flex-direction:column;align-items:center;gap:10px;background:#fff;border:1px solid #e8e8ec;border-radius:14px;padding:20px 8px;transition:transform .2s cubic-bezier(.16,1,.3,1)}
+    .td-metric:hover{transform:translateY(-1px)}
+    .td-ring{position:relative;width:54px;height:54px}
+    .td-ring svg{width:54px;height:54px;transform:rotate(-90deg)}
+    .td-ring-track{fill:none;stroke:#f0f0f2;stroke-width:4.5}
+    .td-ring-fill{fill:none;stroke-width:4.5;stroke-linecap:round;transition:stroke-dashoffset .8s cubic-bezier(.16,1,.3,1)}
+    .td-ring-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.05rem;font-weight:800;color:#1a1a1a;letter-spacing:-.02em}
+    .td-metric-label{font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#86868b;text-align:center;line-height:1.35}
+    .td-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .td-head-title{font-size:.875rem;font-weight:700;color:#1a1a1a;letter-spacing:-.01em}
+    .td-head-link{font-size:.75rem;font-weight:600;color:#86868b;text-decoration:none;display:flex;align-items:center;gap:3px;transition:color .15s}
+    .td-head-link:hover{color:#1a1a1a}
+    .td-head-link i{font-size:14px}
+    .td-classes{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:32px}
+    .td-cls{background:#fff;border:1px solid #e8e8ec;border-radius:14px;overflow:hidden;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s}
+    .td-cls:hover{transform:translateY(-2px);box-shadow:0 4px 16px -4px rgba(0,0,0,.05)}
+    .td-cls-top{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0}
+    .td-cls-left{display:flex;align-items:center;gap:12px;min-width:0}
+    .td-cls-icon{width:38px;height:38px;border-radius:11px;background:rgba(76,175,80,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .td-cls-icon i{font-size:17px;color:#4CAF50}
+    .td-cls-name{font-size:.8125rem;font-weight:700;color:#1a1a1a;letter-spacing:-.01em}
+    .td-cls-meta{font-size:.6875rem;color:#86868b;font-weight:500;margin-top:2px}
+    .td-cls-badge{font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-radius:20px;background:rgba(76,175,80,.08);color:#2d9d3a;flex-shrink:0}
+    .td-cls-body{padding:14px 16px 16px}
+    .td-bar{width:100%;height:4px;background:#f0f0f2;border-radius:4px;overflow:hidden}
+    .td-bar-fill{height:100%;background:linear-gradient(90deg,#4CAF50,#66BB6A);border-radius:4px;transition:width .6s cubic-bezier(.16,1,.3,1)}
+    .td-cls-footer{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+    .td-cls-stat{font-size:.6875rem;color:#86868b;font-weight:600}
+    .td-cls-stat strong{color:#1a1a1a;font-weight:700}
+    .td-cls-btn{font-size:.6875rem;font-weight:700;color:#4CAF50;text-decoration:none;display:flex;align-items:center;gap:3px;transition:opacity .15s}
+    .td-cls-btn:hover{opacity:.7}
+    .td-cls-btn i{font-size:12px}
+    .td-results{display:flex;flex-direction:column;gap:10px;margin-bottom:32px}
+    .td-res{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border:1px solid #e8e8ec;border-radius:14px;text-decoration:none;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s}
+    .td-res:hover{transform:translateY(-1px);box-shadow:0 2px 10px -3px rgba(0,0,0,.05)}
+    .td-res-left{display:flex;align-items:center;gap:12px}
+    .td-res-icon{width:34px;height:34px;border-radius:10px;background:rgba(76,175,80,.08);display:flex;align-items:center;justify-content:center}
+    .td-res-icon i{font-size:15px;color:#4CAF50}
+    .td-res-name{font-size:.8125rem;font-weight:700;color:#1a1a1a}
+    .td-res-meta{font-size:.6875rem;color:#86868b;font-weight:500}
+    .td-res-chevron{color:#c7c7cc;font-size:16px}
+    .td-ct{background:#fff;border:1px solid #e8e8ec;border-radius:14px;padding:16px 18px;margin-bottom:32px;display:flex;align-items:center;gap:14px}
+    .td-ct-icon{width:38px;height:38px;border-radius:11px;background:rgba(76,175,80,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .td-ct-icon i{font-size:18px;color:#4CAF50}
+    .td-ct-info{flex:1;min-width:0}
+    .td-ct-label{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#86868b}
+    .td-ct-value{font-size:.875rem;font-weight:700;color:#1a1a1a;margin-top:2px}
+    .td-empty{display:flex;flex-direction:column;align-items:center;padding:48px 20px;text-align:center}
+    .td-empty-icon{width:60px;height:60px;border-radius:16px;background:#f5f5f7;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+    .td-empty-icon i{font-size:26px;color:#c7c7cc}
+    .td-empty-title{font-size:.875rem;font-weight:700;color:#1a1a1a;margin-bottom:4px}
+    .td-empty-desc{font-size:.75rem;color:#86868b;max-width:260px}
+    @media (max-width:420px){
+        .td-quick{grid-template-columns:repeat(3,1fr);gap:8px}
+        .td-metrics{grid-template-columns:repeat(2,1fr)}
     }
-
-    .dash-greeting-dt {
-        margin-bottom: 24px;
-    }
-    .dash-greeting-dt h1 {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: #171717;
-        letter-spacing: -0.03em;
-        line-height: 1.25;
-        margin: 0;
-    }
-    .dash-greeting-dt h1 em {
-        font-style: normal;
-        color: #171717;
-    }
-    .dash-greeting-dt p {
-        font-size: 0.8125rem;
-        color: #737373;
-        margin: 6px 0 0;
-        font-weight: 500;
-    }
-
-    .dash-hero-dt {
-        display: block;
-        text-decoration: none;
-        background: #ffffff;
-        border: 1px solid #e5e5e5;
-        border-radius: 16px;
-        padding: 18px 18px;
-        margin-bottom: 10px;
-        transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
-        -webkit-tap-highlight-color: transparent;
-    }
-    .dash-hero-dt:active { transform: scale(0.985); }
-    .dash-hero-inner-dt {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-    }
-    .dash-hero-left-dt {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        min-width: 0;
-    }
-    .dash-hero-icon-dt {
-        width: 46px; height: 46px; border-radius: 13px;
-        background: #171717; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .dash-hero-icon-dt i { font-size: 21px; color: #ffffff; }
-    .dash-hero-text-dt h3 { font-size: 0.9375rem; font-weight: 700; color: #171717; margin: 0 0 1px; letter-spacing: -0.01em; }
-    .dash-hero-text-dt p { font-size: 0.75rem; color: #737373; margin: 0; font-weight: 500; }
-    .dash-hero-arrow-dt { width: 34px; height: 34px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .dash-hero-arrow-dt i { font-size: 16px; color: #525252; }
-
-    .dash-actions-dt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 28px; }
-    .dash-action-dt { display: flex; flex-direction: column; text-decoration: none; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px 12px; transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1); -webkit-tap-highlight-color: transparent; }
-    .dash-action-dt:active { transform: scale(0.97); }
-    .dash-action-icon-dt { width: 36px; height: 36px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
-    .dash-action-icon-dt i { font-size: 18px; color: #171717; }
-    .dash-action-title-dt { font-size: 0.8125rem; font-weight: 700; color: #171717; letter-spacing: -0.01em; }
-
-    .dash-metrics-label-dt { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #737373; margin-bottom: 12px; }
-    .dash-metrics-dt { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
-    .dash-metric-dt { display: flex; flex-direction: column; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px 8px; }
-    .dash-ring-dt { position: relative; width: 50px; height: 50px; }
-    .dash-ring-dt svg { width: 50px; height: 50px; transform: rotate(-90deg); }
-    .dash-ring-track-dt { fill: none; stroke: #f0f0f0; stroke-width: 4; }
-    .dash-ring-fill-dt { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 700ms cubic-bezier(0.16, 1, 0.3, 1); }
-    .dash-ring-value-dt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 800; color: #171717; letter-spacing: -0.02em; }
-    .dash-metric-label-dt { font-size: 0.5625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #525252; text-align: center; line-height: 1.3; }
-
-    .dash-section-head-dt { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .dash-section-title-dt { font-size: 0.875rem; font-weight: 700; color: #171717; letter-spacing: -0.01em; }
-    .dash-section-link-dt { font-size: 0.75rem; font-weight: 600; color: #171717; text-decoration: none; display: flex; align-items: center; gap: 2px; opacity: 0.6; transition: opacity 200ms; }
-    .dash-section-link-dt:active { opacity: 1; }
-    .dash-section-link-dt i { font-size: 14px; }
-
-    .dash-classes-dt { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
-    .dash-class-dt { background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; overflow: hidden; }
-    .dash-class-top-dt { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
-    .dash-class-left-dt { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .dash-class-icon-dt { width: 36px; height: 36px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .dash-class-icon-dt i { font-size: 16px; color: #171717; }
-    .dash-class-name-dt { font-size: 0.8125rem; font-weight: 700; color: #171717; letter-spacing: -0.01em; }
-    .dash-class-meta-dt { font-size: 0.6875rem; color: #737373; font-weight: 500; margin-top: 1px; }
-    .dash-class-badge-dt { font-size: 0.5625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 4px 10px; border-radius: 20px; background: #f0fdf4; color: #15803d; flex-shrink: 0; }
-    .dash-class-progress-dt { padding: 0 16px 14px; }
-    .dash-progress-bar-dt { width: 100%; height: 3px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
-    .dash-progress-fill-dt { height: 100%; background: #171717; border-radius: 3px; transition: width 500ms cubic-bezier(0.16, 1, 0.3, 1); }
-    .dash-class-stats-dt { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-    .dash-class-stat-dt { font-size: 0.6875rem; color: #737373; font-weight: 600; }
-    .dash-class-stat-dt strong { color: #171717; font-weight: 700; }
-    .dash-class-capture-dt { font-size: 0.6875rem; font-weight: 700; color: #171717; text-decoration: none; display: flex; align-items: center; gap: 3px; }
-    .dash-class-capture-dt i { font-size: 12px; }
-    .dash-class-capture-dt:active { opacity: 0.6; }
-
-    .dash-empty-dt { display: flex; flex-direction: column; align-items: center; padding: 40px 20px; text-align: center; }
-    .dash-empty-icon-dt { width: 56px; height: 56px; border-radius: 14px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
-    .dash-empty-icon-dt i { font-size: 24px; color: #a3a3a3; }
-    .dash-empty-title-dt { font-size: 0.875rem; font-weight: 700; color: #171717; margin-bottom: 4px; }
-    .dash-empty-desc-dt { font-size: 0.75rem; color: #737373; max-width: 240px; }
-
-    .dash-results-dt { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
-    .dash-result-dt { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; text-decoration: none; transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1); -webkit-tap-highlight-color: transparent; }
-    .dash-result-dt:active { transform: scale(0.985); }
-    .dash-result-left-dt { display: flex; align-items: center; gap: 12px; }
-    .dash-result-icon-dt { width: 32px; height: 32px; border-radius: 8px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; }
-    .dash-result-icon-dt i { font-size: 15px; color: #171717; }
-    .dash-result-name-dt { font-size: 0.8125rem; font-weight: 700; color: #171717; }
-    .dash-result-meta-dt { font-size: 0.6875rem; color: #737373; font-weight: 500; }
-    .dash-result-chevron-dt { color: #a3a3a3; font-size: 16px; }
-
-    .dash-ct-dt { background: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px; margin-bottom: 28px; }
-    .dash-ct-label-dt { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #737373; margin-bottom: 6px; }
-    .dash-ct-value-dt { font-size: 0.9375rem; font-weight: 700; color: #171717; }
-
-    @media (max-width: 420px) {
-        .dash { padding-bottom: 12px; }
-        .dash-greeting-dt h1 { font-size: 1.375rem; }
-        .dash-hero-icon-dt { width: 42px; height: 42px; }
-        .dash-hero-icon-dt i { font-size: 19px; }
-        .dash-metrics-dt { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    @media (min-width: 768px) {
-        .dash { padding: 24px 0 48px; }
-        .dash-greeting-dt { margin-bottom: 28px; }
-        .dash-greeting-dt h1 { font-size: 1.75rem; }
-        .dash-greeting-dt p { font-size: 0.875rem; margin-top: 4px; }
-        .dash-hero-dt { padding: 20px 22px; border-radius: 14px; }
-        .dash-hero-icon-dt { width: 48px; height: 48px; border-radius: 13px; }
-        .dash-hero-icon-dt i { font-size: 22px; }
-        .dash-hero-text-dt h3 { font-size: 1rem; }
-        .dash-hero-text-dt p { font-size: 0.8125rem; }
-        .dash-actions-dt { grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 36px; }
-        .dash-action-dt { padding: 20px 16px; border-radius: 14px; }
-        .dash-action-icon-dt { width: 40px; height: 40px; margin-bottom: 14px; }
-        .dash-action-title-dt { font-size: 0.875rem; }
-        .dash-metrics-dt { grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 40px; }
-        .dash-metric-dt { padding: 20px 8px; border-radius: 14px; }
-        .dash-ring-dt { width: 52px; height: 52px; }
-        .dash-ring-dt svg { width: 52px; height: 52px; }
-        .dash-ring-value-dt { font-size: 1.0625rem; }
-        .dash-metric-label-dt { font-size: 0.5625rem; }
-        .dash-classes-dt { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 40px; }
-        .dash-class-dt { border-radius: 14px; }
-        .dash-results-dt { gap: 10px; }
-        .dash-result-dt { padding: 14px 18px; border-radius: 14px; }
+    @media (min-width:768px){
+        .td{padding:32px 0 56px}
+        .td-greet-text h1{font-size:1.75rem}
+        .td-quick{gap:14px}
+        .td-classes{gap:14px}
     }
 </style>
 
-<!-- ═══════════════════════════════════════════════════════════
-     iOS 17 MOBILE DASHBOARD (hidden on desktop)
-     ═══════════════════════════════════════════════════════════ -->
+<!-- ═══ DESKTOP DASHBOARD ═══ -->
+<div class="td">
+    <div class="td-greet">
+        <div class="td-greet-text">
+            <h1>Welcome back, <em>{{ request.user.first_name|default:"Teacher" }}</em></h1>
+            <p>{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</p>
+        </div>
+        {% if class_teacher_scope %}
+        <div class="td-greet-badge"><i class="ph ph-star"></i> Class Teacher</div>
+        {% endif %}
+    </div>
+
+    {% if section == 'JSS' %}
+        <a class="td-hero" href="{% url 'select_exam' %}">
+    {% else %}
+        <a class="td-hero" href="{% url 'select_exam_primary' %}">
+    {% endif %}
+        <div class="td-hero-left">
+            <div class="td-hero-icon"><i class="ph ph-pencil-simple"></i></div>
+            <div class="td-hero-text">
+                <h3>Score Capture</h3>
+                <p>Enter marks for your classes</p>
+            </div>
+        </div>
+        <div class="td-hero-arrow"><i class="ph ph-arrow-right"></i></div>
+    </a>
+
+    <div class="td-quick">
+        <a class="td-q" href="{% url 'results_list' %}">
+            <div class="td-q-icon green"><i class="ph ph-chart-line-up"></i></div>
+            <div class="td-q-label">Results</div>
+        </a>
+        <a class="td-q" href="{% url 'class_lists' %}">
+            <div class="td-q-icon blue"><i class="ph ph-users"></i></div>
+            <div class="td-q-label">Class Lists</div>
+        </a>
+        <a class="td-q" href="{% url 'home_alt' %}">
+            <div class="td-q-icon purple"><i class="ph ph-user-circle"></i></div>
+            <div class="td-q-label">Profile</div>
+        </a>
+    </div>
+
+    <div class="td-section-label">Overview</div>
+    <div class="td-metrics">
+        <div class="td-metric">
+            <div class="td-ring">
+                <svg viewBox="0 0 54 54"><circle class="td-ring-track" cx="27" cy="27" r="23"></circle><circle class="td-ring-fill" cx="27" cy="27" r="23" stroke="#4CAF50" stroke-dasharray="144.51" data-value="{{ assignment_count }}" data-max="10"></circle></svg>
+                <div class="td-ring-val">{{ assignment_count }}</div>
+            </div>
+            <div class="td-metric-label">Allocations</div>
+        </div>
+        <div class="td-metric">
+            <div class="td-ring">
+                <svg viewBox="0 0 54 54"><circle class="td-ring-track" cx="27" cy="27" r="23"></circle><circle class="td-ring-fill" cx="27" cy="27" r="23" stroke="#3b82f6" stroke-dasharray="144.51" data-value="{{ active_exam_count }}" data-max="10"></circle></svg>
+                <div class="td-ring-val">{{ active_exam_count }}</div>
+            </div>
+            <div class="td-metric-label">Active Exams</div>
+        </div>
+        <div class="td-metric">
+            <div class="td-ring">
+                <svg viewBox="0 0 54 54"><circle class="td-ring-track" cx="27" cy="27" r="23"></circle><circle class="td-ring-fill" cx="27" cy="27" r="23" stroke="#22c55e" stroke-dasharray="144.51" data-value="{{ submitted_count }}" data-max="10"></circle></svg>
+                <div class="td-ring-val">{{ submitted_count }}</div>
+            </div>
+            <div class="td-metric-label">Submitted</div>
+        </div>
+        <div class="td-metric">
+            <div class="td-ring">
+                <svg viewBox="0 0 54 54"><circle class="td-ring-track" cx="27" cy="27" r="23"></circle><circle class="td-ring-fill" cx="27" cy="27" r="23" stroke="#f59e0b" stroke-dasharray="144.51" data-value="{{ returned_count }}" data-max="10"></circle></svg>
+                <div class="td-ring-val">{{ returned_count }}</div>
+            </div>
+            <div class="td-metric-label">Returned</div>
+        </div>
+    </div>
+
+    <div class="td-head">
+        <h2 class="td-head-title">My Classes</h2>
+    </div>
+    <div class="td-classes">
+        {% for assignment in assignments %}
+            <div class="td-cls">
+                <div class="td-cls-top">
+                    <div class="td-cls-left">
+                        <div class="td-cls-icon"><i class="ph ph-book-open"></i></div>
+                        <div>
+                            <div class="td-cls-name">{{ assignment.subject.name }}</div>
+                            <div class="td-cls-meta">{{ assignment.class_name }} {{ assignment.stream }}</div>
+                        </div>
+                    </div>
+                    <span class="td-cls-badge">Active</span>
+                </div>
+                <div class="td-cls-body">
+                    <div class="td-bar"><div class="td-bar-fill" style="width:{{ assignment.progress_pct }}%"></div></div>
+                    <div class="td-cls-footer">
+                        <span class="td-cls-stat"><strong>{{ assignment.marks_entered }}</strong> / {{ assignment.total_students }} entered</span>
+                        <a class="td-cls-btn" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">Capture <i class="ph ph-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="td-empty" style="grid-column:1/-1">
+                <div class="td-empty-icon"><i class="ph ph-inbox"></i></div>
+                <div class="td-empty-title">No assignments yet</div>
+                <div class="td-empty-desc">Subject allocations will appear here once assigned by your admin.</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if published_contexts %}
+    <div class="td-head">
+        <h2 class="td-head-title">Published Results</h2>
+        <a class="td-head-link" href="{% url 'results_list' %}">View all <i class="ph ph-arrow-right"></i></a>
+    </div>
+    <div class="td-results">
+        {% for item in published_contexts %}
+            <a class="td-res" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}">
+                <div class="td-res-left">
+                    <div class="td-res-icon"><i class="ph ph-chart-line-up"></i></div>
+                    <div>
+                        <div class="td-res-name">{{ item.class_name }} {{ item.stream }}</div>
+                        <div class="td-res-meta">{{ item.term }} {{ item.year }}</div>
+                    </div>
+                </div>
+                <i class="ph ph-chevron-right td-res-chevron"></i>
+            </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if class_teacher_scope %}
+    <div class="td-ct">
+        <div class="td-ct-icon"><i class="ph ph-star"></i></div>
+        <div class="td-ct-info">
+            <div class="td-ct-label">Class Teacher Scope</div>
+            <div class="td-ct-value">{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ═══ iOS 17 MOBILE DASHBOARD ═══ -->
 <div class="dash-ios" id="dashIos">
     <!-- HEADER -->
     <header class="dash-header">
@@ -402,332 +459,24 @@
         {% endif %}
     </main>
 </div>
-
-<!-- ═══════════════════════════════════════════════════════════
-     DESKTOP DASHBOARD (hidden on mobile)
-     ═══════════════════════════════════════════════════════════ -->
-<style>
-    .td{padding:24px 0 48px;max-width:100%}
-    .td-greet{margin-bottom:24px}
-    .td-greet h1{font-size:1.6rem;font-weight:800;color:#171717;letter-spacing:-0.03em;margin:0;line-height:1.3}
-    .td-greet h1 em{font-style:normal;color:#4CAF50}
-    .td-greet p{font-size:0.8125rem;color:#737373;margin:4px 0 0;font-weight:500}
-    .td-tab{display:none}.td-tab.active{display:block}
-    .td-hero{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:18px 20px;margin-bottom:20px;text-decoration:none;transition:transform 150ms ease}
-    .td-hero:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.06)}
-    .td-hero-left{display:flex;align-items:center;gap:14px}
-    .td-hero-icon{width:46px;height:46px;border-radius:13px;background:#4CAF50;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .td-hero-icon i{font-size:21px;color:#fff}
-    .td-hero-text h3{font-size:0.9375rem;font-weight:700;color:#171717;margin:0 0 1px}
-    .td-hero-text p{font-size:0.75rem;color:#737373;margin:0;font-weight:500}
-    .td-hero-arrow{width:34px;height:34px;border-radius:10px;background:#f5f5f5;display:flex;align-items:center;justify-content:center}
-    .td-hero-arrow i{font-size:16px;color:#525252}
-    .td-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px}
-    .td-action{display:flex;flex-direction:column;text-decoration:none;background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:16px 12px;transition:transform 150ms ease}
-    .td-action:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-    .td-action-icon{width:36px;height:36px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
-    .td-action-icon i{font-size:18px;color:#4CAF50}
-    .td-action-title{font-size:0.8125rem;font-weight:700;color:#171717}
-    .td-label{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#737373;margin-bottom:12px}
-    .td-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:28px}
-    .td-metric{display:flex;flex-direction:column;align-items:center;gap:8px;background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:16px 8px}
-    .td-ring{position:relative;width:50px;height:50px}
-    .td-ring svg{width:50px;height:50px;transform:rotate(-90deg)}
-    .td-ring-track{fill:none;stroke:#f0f0f0;stroke-width:4}
-    .td-ring-fill{fill:none;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 700ms cubic-bezier(0.16,1,0.3,1)}
-    .td-ring-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;color:#171717}
-    .td-metric-label{font-size:0.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#525252;text-align:center;line-height:1.3}
-    .td-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-    .td-section-title{font-size:0.875rem;font-weight:700;color:#171717}
-    .td-section-link{font-size:0.75rem;font-weight:600;color:#171717;text-decoration:none;opacity:0.5;display:flex;align-items:center;gap:2px}
-    .td-section-link:hover{opacity:1}
-    .td-section-link i{font-size:14px}
-    .td-classes{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:28px}
-    .td-class{background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden}
-    .td-class-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .td-class-left{display:flex;align-items:center;gap:12px;min-width:0}
-    .td-class-icon{width:36px;height:36px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .td-class-icon i{font-size:16px;color:#4CAF50}
-    .td-class-name{font-size:0.8125rem;font-weight:700;color:#171717}
-    .td-class-meta{font-size:0.6875rem;color:#737373;font-weight:500;margin-top:1px}
-    .td-class-badge{font-size:0.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:4px 10px;border-radius:20px;background:#f0fdf4;color:#15803d;flex-shrink:0}
-    .td-class-progress{padding:0 16px 14px}
-    .td-progress-bar{width:100%;height:3px;background:#f0f0f0;border-radius:3px;overflow:hidden}
-    .td-progress-fill{height:100%;background:#4CAF50;border-radius:3px;transition:width 500ms ease}
-    .td-class-stats{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
-    .td-class-stat{font-size:0.6875rem;color:#737373;font-weight:600}
-    .td-class-stat strong{color:#171717;font-weight:700}
-    .td-class-capture{font-size:0.6875rem;font-weight:700;color:#4CAF50;text-decoration:none;display:flex;align-items:center;gap:3px}
-    .td-class-capture i{font-size:12px}
-    .td-results{display:flex;flex-direction:column;gap:8px;margin-bottom:28px}
-    .td-result{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;border:1px solid #e5e5e5;border-radius:12px;text-decoration:none;transition:transform 150ms ease}
-    .td-result:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-    .td-result-left{display:flex;align-items:center;gap:12px}
-    .td-result-icon{width:32px;height:32px;border-radius:8px;background:#f0fdf4;display:flex;align-items:center;justify-content:center}
-    .td-result-icon i{font-size:15px;color:#4CAF50}
-    .td-result-name{font-size:0.8125rem;font-weight:700;color:#171717}
-    .td-result-meta{font-size:0.6875rem;color:#737373;font-weight:500}
-    .td-result-chevron{color:#a3a3a3;font-size:16px}
-    .td-ct{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:16px;margin-bottom:28px}
-    .td-ct-label{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#737373;margin-bottom:6px}
-    .td-ct-value{font-size:0.9375rem;font-weight:700;color:#171717}
-    .td-empty{display:flex;flex-direction:column;align-items:center;padding:40px 20px;text-align:center}
-    .td-empty-icon{width:56px;height:56px;border-radius:14px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
-    .td-empty-icon i{font-size:24px;color:#a3a3a3}
-    .td-empty-title{font-size:0.875rem;font-weight:700;color:#171717;margin-bottom:4px}
-    .td-empty-desc{font-size:0.75rem;color:#737373;max-width:240px}
-    .td-all-classes{display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
-    .td-all-class{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;transition:transform 150ms ease}
-    .td-all-class:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-    .td-all-left{display:flex;align-items:center;gap:14px}
-    .td-all-icon{width:40px;height:40px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .td-all-icon i{font-size:18px;color:#4CAF50}
-    .td-all-name{font-size:0.875rem;font-weight:700;color:#171717}
-    .td-all-meta{font-size:0.75rem;color:#737373;margin-top:2px}
-    .td-all-right{display:flex;align-items:center;gap:16px}
-    .td-all-stat{text-align:right}
-    .td-all-stat-val{font-size:1rem;font-weight:800;color:#171717}
-    .td-all-stat-label{font-size:0.625rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#737373}
-    .td-all-capture{padding:8px 16px;border-radius:8px;background:#4CAF50;color:#fff;font-size:0.75rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:4px;transition:background 150ms}
-    .td-all-capture:hover{background:#43A047}
-    .td-all-capture i{font-size:13px}
-    .td-sub-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;margin-bottom:28px}
-    .td-sub-table th{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#737373;padding:12px 16px;text-align:left;background:#fafafa;border-bottom:1px solid #e5e5e5}
-    .td-sub-table td{font-size:0.8125rem;padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#171717;font-weight:500}
-    .td-sub-table tr:last-child td{border-bottom:none}
-    .td-sub-table tr:hover td{background:#fafafa}
-    .td-status{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:0.03em}
-    .td-status.submitted{background:#f0fdf4;color:#15803d}
-    .td-status.draft{background:#fff7ed;color:#c2410c}
-    .td-status.returned{background:#fef2f2;color:#dc2626}
-    .td-status.published{background:#eff6ff;color:#2563eb}
-    .td-status.approved{background:#f0fdf4;color:#16a34a}
-</style>
-
-<div class="td">
-    <div class="td-greet">
-        <h1>Welcome back, <em>{{ request.user.first_name|default:"Teacher" }}</em></h1>
-        <p>{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</p>
-    </div>
-
-    <!-- ═══ OVERVIEW TAB ═══ -->
-    <div class="td-tab active" id="tab-overview">
-        {% if section == 'JSS' %}
-            <a class="td-hero" href="{% url 'select_exam' %}">
-        {% else %}
-            <a class="td-hero" href="{% url 'select_exam_primary' %}">
-        {% endif %}
-            <div class="td-hero-left">
-                <div class="td-hero-icon"><i class="ph ph-pencil-simple"></i></div>
-                <div class="td-hero-text">
-                    <h3>Score Capture</h3>
-                    <p>Enter marks for your classes</p>
-                </div>
-            </div>
-            <div class="td-hero-arrow"><i class="ph ph-arrow-right"></i></div>
-        </a>
-
-        <div class="td-actions">
-            <a class="td-action" href="{% url 'results_list' %}">
-                <div class="td-action-icon"><i class="ph ph-chart-line-up"></i></div>
-                <div class="td-action-title">Results</div>
-            </a>
-            <a class="td-action" href="{% url 'class_lists' %}">
-                <div class="td-action-icon"><i class="ph ph-users"></i></div>
-                <div class="td-action-title">Class Lists</div>
-            </a>
-            <a class="td-action" href="{% url 'home_alt' %}">
-                <div class="td-action-icon"><i class="ph ph-user-circle"></i></div>
-                <div class="td-action-title">Profile</div>
-            </a>
-        </div>
-
-        <div class="td-label">Overview</div>
-        <div class="td-metrics">
-            <div class="td-metric">
-                <div class="td-ring">
-                    <svg viewBox="0 0 50 50"><circle class="td-ring-track" cx="25" cy="25" r="21"></circle><circle class="td-ring-fill" cx="25" cy="25" r="21" stroke="#4CAF50" stroke-dasharray="131.95" data-value="{{ assignment_count }}" data-max="10"></circle></svg>
-                    <div class="td-ring-val">{{ assignment_count }}</div>
-                </div>
-                <div class="td-metric-label">Allocations</div>
-            </div>
-            <div class="td-metric">
-                <div class="td-ring">
-                    <svg viewBox="0 0 50 50"><circle class="td-ring-track" cx="25" cy="25" r="21"></circle><circle class="td-ring-fill" cx="25" cy="25" r="21" stroke="#3b82f6" stroke-dasharray="131.95" data-value="{{ active_exam_count }}" data-max="10"></circle></svg>
-                    <div class="td-ring-val">{{ active_exam_count }}</div>
-                </div>
-                <div class="td-metric-label">Active Exams</div>
-            </div>
-            <div class="td-metric">
-                <div class="td-ring">
-                    <svg viewBox="0 0 50 50"><circle class="td-ring-track" cx="25" cy="25" r="21"></circle><circle class="td-ring-fill" cx="25" cy="25" r="21" stroke="#22c55e" stroke-dasharray="131.95" data-value="{{ submitted_count }}" data-max="10"></circle></svg>
-                    <div class="td-ring-val">{{ submitted_count }}</div>
-                </div>
-                <div class="td-metric-label">Submitted</div>
-            </div>
-            <div class="td-metric">
-                <div class="td-ring">
-                    <svg viewBox="0 0 50 50"><circle class="td-ring-track" cx="25" cy="25" r="21"></circle><circle class="td-ring-fill" cx="25" cy="25" r="21" stroke="#f59e0b" stroke-dasharray="131.95" data-value="{{ returned_count }}" data-max="10"></circle></svg>
-                    <div class="td-ring-val">{{ returned_count }}</div>
-                </div>
-                <div class="td-metric-label">Returned</div>
-            </div>
-        </div>
-
-        <div class="td-section-head"><h2 class="td-section-title">My Classes</h2></div>
-        <div class="td-classes">
-            {% for assignment in assignments %}
-                <div class="td-class">
-                    <div class="td-class-top">
-                        <div class="td-class-left">
-                            <div class="td-class-icon"><i class="ph ph-book-open"></i></div>
-                            <div>
-                                <div class="td-class-name">{{ assignment.subject.name }}</div>
-                                <div class="td-class-meta">{{ assignment.class_name }} {{ assignment.stream }}</div>
-                            </div>
-                        </div>
-                        <span class="td-class-badge">Active</span>
-                    </div>
-                    <div class="td-class-progress">
-                        <div class="td-progress-bar"><div class="td-progress-fill" style="width:{{ assignment.progress_pct }}%"></div></div>
-                        <div class="td-class-stats">
-                            <span class="td-class-stat"><strong>{{ assignment.marks_entered }}</strong> / {{ assignment.total_students }} entered</span>
-                            <a class="td-class-capture" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">Capture <i class="ph ph-arrow-right"></i></a>
-                        </div>
-                    </div>
-                </div>
-            {% empty %}
-                <div class="td-empty">
-                    <div class="td-empty-icon"><i class="ph ph-inbox"></i></div>
-                    <div class="td-empty-title">No assignments yet</div>
-                    <div class="td-empty-desc">Subject allocations will appear here once assigned by your admin.</div>
-                </div>
-            {% endfor %}
-        </div>
-
-        {% if published_contexts %}
-        <div class="td-section-head">
-            <h2 class="td-section-title">Published Results</h2>
-            <a class="td-section-link" href="{% url 'results_list' %}">View all <i class="ph ph-arrow-right"></i></a>
-        </div>
-        <div class="td-results">
-            {% for item in published_contexts %}
-                <a class="td-result" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}">
-                    <div class="td-result-left">
-                        <div class="td-result-icon"><i class="ph ph-chart-line-up"></i></div>
-                        <div>
-                            <div class="td-result-name">{{ item.class_name }} {{ item.stream }}</div>
-                            <div class="td-result-meta">{{ item.term }} {{ item.year }}</div>
-                        </div>
-                    </div>
-                    <i class="ph ph-chevron-right td-result-chevron"></i>
-                </a>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if class_teacher_scope %}
-        <div class="td-ct">
-            <div class="td-ct-label">Class Teacher</div>
-            <div class="td-ct-value">{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</div>
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- ═══ MY CLASSES TAB ═══ -->
-    <div class="td-tab" id="tab-classes">
-        <div class="td-section-head"><h2 class="td-section-title">All Subject Assignments</h2></div>
-        <div class="td-all-classes">
-            {% for assignment in assignments %}
-                <div class="td-all-class">
-                    <div class="td-all-left">
-                        <div class="td-all-icon"><i class="ph ph-book-open"></i></div>
-                        <div>
-                            <div class="td-all-name">{{ assignment.subject.name }}</div>
-                            <div class="td-all-meta">{{ assignment.class_name }} {{ assignment.stream }}</div>
-                        </div>
-                    </div>
-                    <div class="td-all-right">
-                        <div class="td-all-stat">
-                            <div class="td-all-stat-val">{{ assignment.marks_entered }}/{{ assignment.total_students }}</div>
-                            <div class="td-all-stat-label">Marks Entered</div>
-                        </div>
-                        <div class="td-all-stat">
-                            <div class="td-all-stat-val">{{ assignment.progress_pct }}%</div>
-                            <div class="td-all-stat-label">Progress</div>
-                        </div>
-                        <a class="td-all-capture" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}"><i class="ph ph-pencil-simple"></i> Capture</a>
-                    </div>
-                </div>
-            {% empty %}
-                <div class="td-empty">
-                    <div class="td-empty-icon"><i class="ph ph-inbox"></i></div>
-                    <div class="td-empty-title">No assignments yet</div>
-                    <div class="td-empty-desc">Subject allocations will appear here once assigned by your admin.</div>
-                </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- ═══ SUBMISSIONS TAB ═══ -->
-    <div class="td-tab" id="tab-submissions">
-        <div class="td-section-head"><h2 class="td-section-title">Recent Submissions</h2></div>
-        {% if recent_submissions %}
-        <table class="td-sub-table">
-            <thead>
-                <tr>
-                    <th>Subject</th>
-                    <th>Class</th>
-                    <th>Exam</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for sub in recent_submissions %}
-                <tr>
-                    <td style="font-weight:700;">{{ sub.subject.name|default:"-" }}</td>
-                    <td>{{ sub.class_name }} {{ sub.stream }}</td>
-                    <td>{{ sub.exam_name }} · {{ sub.term }} {{ sub.year }}</td>
-                    <td><span class="td-status {{ sub.status }}">{{ sub.status|title }}</span></td>
-                    <td style="color:#737373;">{{ sub.submitted_at|date:"d M Y"|default:sub.reviewed_at|date:"d M Y" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="td-empty">
-            <div class="td-empty-icon"><i class="ph ph-files"></i></div>
-            <div class="td-empty-title">No submissions yet</div>
-            <div class="td-empty-desc">Your mark submissions will appear here once you submit scores.</div>
-        </div>
-        {% endif %}
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function showTab(name, el) {
-    document.querySelectorAll('.td-tab').forEach(function(t){ t.classList.remove('active'); });
-    document.querySelectorAll('.sub-nav-link').forEach(function(l){ l.classList.remove('active'); });
-    document.getElementById('tab-' + name).classList.add('active');
-    el.classList.add('active');
-}
 document.addEventListener('DOMContentLoaded', function() {
+    var C = 144.51;
+    document.querySelectorAll('.td-ring-fill').forEach(function(ring) {
+        ring.style.strokeDashoffset = C;
+        var val = parseInt(ring.getAttribute('data-value')) || 0;
+        var max = parseInt(ring.getAttribute('data-max')) || 10;
+        ring.style.strokeDashoffset = C - (Math.min(val / max, 1) * C);
+    });
     var Cm = 125.66;
     document.querySelectorAll('.dash-ring-fill').forEach(function(ring) {
         ring.style.strokeDashoffset = Cm;
         var val = parseInt(ring.getAttribute('data-value')) || 0;
         var max = parseInt(ring.getAttribute('data-max')) || 10;
         ring.style.strokeDashoffset = Cm - (Math.min(val / max, 1) * Cm);
-    });
-    var Cd = 131.95;
-    document.querySelectorAll('.td-ring-fill').forEach(function(ring) {
-        ring.style.strokeDashoffset = Cd;
-        var val = parseInt(ring.getAttribute('data-value')) || 0;
-        var max = parseInt(ring.getAttribute('data-max')) || 10;
-        ring.style.strokeDashoffset = Cd - (Math.min(val / max, 1) * Cd);
     });
 });
 </script>

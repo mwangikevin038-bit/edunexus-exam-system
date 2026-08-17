@@ -160,10 +160,6 @@
                     <i class="ph ph-medal"></i>
                     <span class="nav-label">Exams</span>
                 </a>
-                <a class="ps-nav-link {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' %}active{% endif %}" href="{% url 'results_list' %}">
-                    <i class="ph ph-chart-bar"></i>
-                    <span class="nav-label">Results</span>
-                </a>
                 <a class="ps-nav-link {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active{% endif %}" href="{% url 'manage_faculty_matrix' %}">
                     <i class="ph ph-chalkboard-teacher"></i>
                     <span class="nav-label">Teachers</span>
@@ -181,7 +177,7 @@
                 </a>
                 <a class="ps-nav-link {% if request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home_alt' %}">
                     <i class="ph ph-identification-badge"></i>
-                    <span class="nav-label">Faculty Profile</span>
+                    <span class="nav-label">Teacher Profile</span>
                 </a>
 
                 {% with ws=request.session.workspace_section sec=request.session.school_section teacher_sec=request.user.teacher_profile.school_section %}
@@ -198,19 +194,13 @@
                 {% endif %}
                 {% endwith %}
 
-                <a class="ps-nav-link {% if request.resolver_match.url_name == 'results_list' %}active{% endif %}" href="{% url 'results_list' %}">
+                <a class="ps-nav-link {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' %}active{% endif %}" href="{% url 'merit_list' %}">
                     <i class="ph ph-chart-bar"></i>
-                    <span class="nav-label">Published Results</span>
+                    <span class="nav-label">Results</span>
                 </a>
-                {% if "Class Teacher" in request.user.teacher_profile.assigned_task %}
-                <a class="ps-nav-link {% if request.resolver_match.url_name == 'report_forms' %}active{% endif %}" href="{% url 'report_forms' %}">
-                    <i class="ph ph-certificate"></i>
-                    <span class="nav-label">Report Cards</span>
-                </a>
-                {% endif %}
-                <a class="ps-nav-link {% if request.resolver_match.url_name == 'class_lists' %}active{% endif %}" href="{% url 'class_lists' %}">
-                    <i class="ph ph-users"></i>
-                    <span class="nav-label">Learner Lists</span>
+                <a class="ps-nav-link {% if request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'teacher_search_student' %}active{% endif %}" href="{% url 'class_lists' %}">
+                    <i class="ph ph-student"></i>
+                    <span class="nav-label">Students</span>
                 </a>
             {% endif %}
         </nav>
@@ -237,7 +227,7 @@
     </aside>
 
     <!-- SUB-NAVIGATION BAR (rendered outside app-content for full-width flush positioning) -->
-    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' or request.resolver_match.url_name == 'add_new_class' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'report_forms_display' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'edit_exam' or request.resolver_match.url_name == 'analyse_exam' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' or request.resolver_match.url_name == 'report_card_select' %}
+    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'select_exam' or request.resolver_match.url_name == 'select_exam_primary' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' or request.resolver_match.url_name == 'add_new_class' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'report_forms_display' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'edit_exam' or request.resolver_match.url_name == 'analyse_exam' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'teacher_search_student' or request.resolver_match.url_name == 'teacher_report_forms' or request.resolver_match.url_name == 'teacher_report_forms_display' or request.resolver_match.url_name == 'teachers_list_printout' %}
     {% block sub_tabs %}{% endblock %}
     {% endif %}
 

@@ -8,7 +8,7 @@
   .sub-nav-item{display:flex;align-items:stretch}
   .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
   .sub-nav-link:hover{color:#fff;background-color:#43A047}
-  .sub-nav-link.active{color:#fff;background-color:#388E3C;font-weight:700}
+  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
   .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 </style>
 <nav class="sub-nav-bar">
@@ -26,8 +26,9 @@
 {% block content %}
 <style>
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  .main-content{background:#eaecf0!important}
   .clp-page{max-width:1100px;margin:0 auto;padding:24px 28px 60px}
-  .clp-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,0.05);overflow:hidden}
+  .clp-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:0;box-shadow:0 4px 20px rgba(0,0,0,0.06),0 1px 4px rgba(0,0,0,0.04);overflow:hidden}
   .clp-card-header{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid #f1f5f9}
   .clp-card-header h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:18px;color:#111827;margin:0}
   .clp-toggle{background:none;border:none;cursor:pointer;padding:4px;color:#64748b;transition:color 0.15s}
@@ -53,54 +54,62 @@
   .clp-info-badge.total{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
   .clp-info-badge.boys{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8}
   .clp-info-badge.girls{background:#fdf2f8;border:1px solid #f9a8d4;color:#be185d}
-  .sheet-heading{display:flex;align-items:center;justify-content:center;margin-bottom:20px;position:relative;padding:0 130px;min-height:110px}
-  .sheet-logo{position:absolute;left:0;top:50%;transform:translateY(-50%);width:110px;height:110px;object-fit:contain;border-radius:8px}
+  .sheet-heading{display:flex;align-items:center;justify-content:center;margin-bottom:0;position:relative;padding:28px 140px;min-height:120px;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);border-radius:12px 12px 0 0;border:1px solid #e2e8f0;border-bottom:none;box-shadow:0 2px 8px rgba(0,0,0,0.03)}
+  .clp-sheet-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 4px 20px rgba(0,0,0,0.06),0 1px 4px rgba(0,0,0,0.04);overflow:hidden}
+  .clp-sheet-card .sheet-heading{border-radius:12px 12px 0 0;border:none}
+  .clp-sheet-card .clp-table-wrap{border-radius:0 0 12px 12px;margin:0 24px 24px;overflow:hidden}
+  .clp-sheet-card .clp-table-wrap .register-table{border:1.5px solid #111827;border-radius:0 0 11px 11px}
+  .sheet-accent-bar{height:4px;background:{{ section_accent|default:'#305CDE' }};border-radius:2px;margin:0 24px 12px}
+  .sheet-logo{position:absolute;left:24px;top:50%;transform:translateY(-50%);width:100px;height:100px;object-fit:contain;border-radius:10px;border:2px solid #f1f5f9;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
   .sheet-heading-copy{text-align:center}
-  .sheet-heading-copy h2{font-family:'Times New Roman',Times,serif;font-size:28px;font-weight:900;text-transform:uppercase;color:{{ section_accent|default:'#0f1727' }};margin:0}
-  .sheet-heading-copy p{font-family:'Times New Roman',Times,serif;font-size:13px;color:#64748b;margin:2px 0 0;font-weight:700}
-  .clp-table-wrap{overflow-x:auto;border:1.5px solid #111827}
-  .register-table{width:100%;min-width:850px;border-collapse:collapse;border:1.5px solid #111827;background:#fff;font-family:"Times New Roman",Times,serif;font-size:12pt}
-  .register-table th{background:#f8fafc;color:#334155;font-size:12pt;font-weight:900;text-transform:uppercase;letter-spacing:0.7px;padding:13px 14px;text-align:left;border:1.5px solid #111827}
-  .register-table td{padding:13px 14px;border:1.5px solid #111827;color:#0f172a;font-weight:800;vertical-align:middle}
+  .sheet-heading-copy h2{font-family:'Times New Roman',Times,serif;font-size:26px;font-weight:900;text-transform:uppercase;color:{{ section_accent|default:'#0f1727' }};margin:0;letter-spacing:0.06em;line-height:1.1}
+  .sheet-heading-copy .sheet-subtitle{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:12px;color:#64748b;margin:6px 0 0;font-weight:600;letter-spacing:0.04em;text-transform:uppercase}
+  .sheet-heading-copy .sheet-year{display:inline-block;background:{{ section_accent|default:'#305CDE' }};color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;margin-left:6px;letter-spacing:0.03em}
+  .sheet-addr{font-size:12px;color:#374151;font-weight:600;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
+  .sheet-contact{font-size:12px;color:#374151;font-weight:500;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
+
+  .clp-table-wrap{overflow-x:auto}
+  .register-table{width:100%;border-collapse:collapse;border:none;background:#fff;font-family:"Times New Roman",Times,serif;font-size:12pt;table-layout:fixed}
+  .register-table th{background:#E9ECF0;color:#1E293B;font-size:12pt;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;padding:5px 8px;text-align:left;border:1.5px solid #111827;line-height:1.2}
+  .register-table td{padding:4px 8px;border:1.5px solid #111827;color:#0f172a;font-weight:400;font-size:12pt;vertical-align:middle;line-height:1.2}
   .register-table tr{page-break-inside:avoid;break-inside:avoid}
-  .grid-cell{width:36px;height:34px;background:#f8fafc}
+  .grid-cell{width:28px;height:30px;background:#f8fafc}
   .clp-empty{text-align:center;padding:48px 24px;color:#94a3b8;font-size:14px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
   .clp-empty svg{width:48px;height:48px;stroke:#d1d5db;fill:none;stroke-width:1.5;margin-bottom:12px}
+  .print-watermark{display:none}
   .clp-actions-top{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
-  .clp-top-action{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.15s;text-decoration:none}
-  .clp-top-action.print{background:#166534;color:#fff}
-  .clp-top-action.print:hover{background:#14532d}
-  .clp-top-action.print svg,.clp-top-action.pdf svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2}
-  .clp-top-action.pdf{background:#1d4ed8;color:#fff}
-  .clp-top-action.pdf:hover{background:#1e40af}
-  .clp-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
-  .clp-action-btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.15s;text-decoration:none}
-  .clp-action-btn.print{background:#166534;color:#fff}
-  .clp-action-btn.print:hover{background:#14532d}
-  .clp-action-btn.print svg,.clp-action-btn.pdf svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2}
-  .clp-action-btn.pdf{background:#1d4ed8;color:#fff}
-  .clp-action-btn.pdf:hover{background:#1e40af}
+  .clp-top-action{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.2s ease;text-decoration:none}
+  .clp-top-action svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2}
+  .clp-top-action.print{background:#fff;border:1.5px solid #4CAF50;color:#4CAF50}
+  .clp-top-action.print:hover{background:#4CAF50;color:#fff;box-shadow:0 4px 12px rgba(76,175,80,0.3);transform:translateY(-1px)}
+  .clp-top-action.pdf{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
+  .clp-top-action.pdf:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
   @media(max-width:640px){.clp-filters{grid-template-columns:1fr}.clp-page{padding:16px 16px 40px}}
   @media print{
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
     html{overflow:visible!important}
     body{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important}
     .sub-nav-bar,.sidebar,.global-header,.bottom-nav,.clp-card,.clp-actions-top,.clp-btn-row,.clp-info-bar{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+    .print-watermark{display:block!important;position:fixed!important;bottom:0.25in!important;left:0!important;right:0!important;text-align:center!important;font-family:'Times New Roman',Times,serif!important;font-size:9pt!important;font-weight:700!important;color:#475569!important;text-transform:uppercase!important;letter-spacing:0.5pt!important}
     .clp-page{padding:0!important;margin:0!important;max-width:none!important}
     .clp-results{max-height:none!important;opacity:1!important;margin:0!important;overflow:visible!important;position:static!important}
     .clp-results-inner{border-top:none!important;padding-top:0!important}
-    .clp-table-wrap{border:none!important;border-radius:0!important;overflow:visible!important}
-    .sheet-heading{position:relative!important;display:block!important;padding:0 0 10pt 130px!important;min-height:110px!important;margin-bottom:10pt!important;text-align:center!important}
-    .sheet-logo{position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:110px!important;height:110px!important;object-fit:contain!important;display:block!important}
+    .clp-sheet-card{background:#fff!important;border:none!important;border-radius:0!important;overflow:visible!important;margin:0!important;box-shadow:none!important}
+    .clp-sheet-card .sheet-heading{border-radius:0!important;border:none!important;border-bottom:3px solid {{ section_accent|default:'#305CDE' }}!important;padding:12pt 0 10pt 130px!important;min-height:100px!important}
+    .clp-sheet-card .sheet-accent-bar{display:none!important}
+    .clp-sheet-card .clp-table-wrap{margin:0!important;border-radius:0!important;overflow:visible!important}
+    .clp-sheet-card .clp-table-wrap .register-table{border:1.5px solid #111827!important;border-radius:0!important}
+    .sheet-logo{position:absolute!important;left:12pt!important;top:50%!important;transform:translateY(-50%)!important;width:90pt!important;height:90pt!important;object-fit:contain!important;display:block!important;border-radius:8px!important;border:1px solid #e2e8f0!important}
     .sheet-heading-copy{text-align:center!important}
-    .sheet-heading-copy h2{font-family:"Times New Roman",Times,serif!important;font-size:25pt!important;font-weight:900!important;text-transform:uppercase!important;color:{{ section_accent|default:'#0f1727' }}!important;margin:0!important;line-height:1!important}
-    .sheet-heading-copy p{font-family:"Times New Roman",Times,serif!important;font-size:12pt!important;color:#64748b!important;margin:2px 0 0!important;font-weight:700!important}
-    .register-table{width:100%!important;min-width:0!important;border-collapse:collapse!important;border:1.5px solid #000!important;font-family:"Times New Roman",Times,serif!important;font-size:12pt!important;table-layout:fixed!important}
-    .register-table th{background:#f2f2f2!important;color:#000!important;font-weight:900!important;font-size:12pt!important;padding:3pt 5pt!important;border:1.5px solid #000!important;text-transform:uppercase!important;text-align:left!important}
-    .register-table td{padding:3pt 5pt!important;border:1.5px solid #000!important;color:#000!important;font-weight:800!important;font-size:12pt!important;line-height:1.05!important;vertical-align:middle!important}
+    .sheet-heading-copy h2{font-family:"Times New Roman",Times,serif!important;font-size:22pt!important;font-weight:900!important;text-transform:uppercase!important;color:{{ section_accent|default:'#0f1727' }}!important;margin:0!important;line-height:1!important;letter-spacing:0.06em!important}
+    .sheet-heading-copy .sheet-subtitle{font-family:"Plus Jakarta Sans","Inter",sans-serif!important;font-size:9pt!important;color:#64748b!important;margin:4px 0 0!important;font-weight:600!important;letter-spacing:0.04em!important;text-transform:uppercase!important}
+    .sheet-heading-copy .sheet-year{display:inline-block!important;background:{{ section_accent|default:'#305CDE' }}!important;color:#fff!important;font-size:8pt!important;font-weight:700!important;padding:1px 8px!important;border-radius:20px!important;margin-left:4px!important}
+    .register-table{width:100%!important;min-width:0!important;border-collapse:collapse!important;border:none!important;font-family:"Times New Roman",Times,serif!important;font-size:12pt!important;table-layout:fixed!important}
+    .register-table th{background:#E9ECF0!important;color:#1E293B!important;font-weight:900!important;font-size:12pt!important;padding:3px 5pt!important;border:1.5px solid #111827!important;text-transform:uppercase!important;text-align:left!important}
+    .register-table td{padding:3px 5pt!important;border:1.5px solid #111827!important;color:#0f172a!important;font-weight:400!important;font-size:12pt!important;line-height:1.05!important;vertical-align:middle!important}
     .register-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
     .register-table a{color:#000!important;text-decoration:none!important}
-    .grid-cell{width:24px!important;height:21pt!important;background:#fff!important}
+    .grid-cell{width:30px!important;height:20px!important;background:#fff!important}
     @page{size:A4 portrait;margin:0.5in}
   }
 </style>
@@ -149,27 +158,37 @@
       Download PDF
     </a>
   </div>
-
   <div class="clp-results visible" id="clpResults">
-    <div class="clp-results-inner">
+      <div class="clp-results-inner">
+      <div class="clp-sheet-card">
       <div class="sheet-heading">
         {% if request.school.logo %}
           <img class="sheet-logo" src="{{ request.school.logo.url }}" alt="{{ request.school.name }}" onerror="this.style.display='none';">
         {% endif %}
         <div class="sheet-heading-copy">
           <h2>{{ request.school.name }}</h2>
-          <p>{{ selected_grade }} {{ selected_stream }} | Teacher Mark Entry Sheet | {% now "Y" %}</p>
+          {% if request.school.address %}<p class="sheet-addr">Address: {{ request.school.address }}</p>{% endif %}
+          {% if request.school.phone or request.school.email %}
+          <p class="sheet-contact">
+            {% if request.school.phone %}Tel {{ request.school.phone }}{% endif %}
+            {% if request.school.phone and request.school.email %} &nbsp;|&nbsp; {% endif %}
+            {% if request.school.email %}Email {{ request.school.email }}{% endif %}
+          </p>
+          {% endif %}
+          <p class="sheet-subtitle">{{ selected_grade }} {{ selected_stream }} | Teacher Mark Entry Sheet <span class="sheet-year">{% now "Y" %}</span></p>
         </div>
       </div>
+      <div class="sheet-accent-bar"></div>
       <div class="clp-table-wrap">
         <table class="register-table" id="learnerTable">
           <thead>
             <tr>
-              <th style="width:70px">Adm</th>
+              <th style="width:50px">Adm</th>
               {% if selected_stream == 'Combined' %}
                 <th style="width:80px">Stream</th>
               {% endif %}
-              <th style="width:220px">Learner Name</th>
+              <th style="width:150px;white-space:nowrap">Learner Name</th>
+              <th style="width:80px">Gender</th>
               <th style="width:120px">Assessment No</th>
               {% for i in "123456789012345" %}
                 <th class="grid-cell"></th>
@@ -183,7 +202,8 @@
               {% if selected_stream == 'Combined' %}
                 <td>{{ s.stream }}</td>
               {% endif %}
-              <td>{{ s.name }}</td>
+              <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.name }}</td>
+              <td>{{ s.gender|default:"-" }}</td>
               <td>{{ s.assessment_no|default:"-" }}</td>
               {% for i in "123456789012345" %}
                 <td class="grid-cell"></td>
@@ -192,6 +212,7 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   </div>
@@ -205,6 +226,7 @@
     </div>
   </div>
   {% endif %}
+  <div class="print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM &copy;2026</div>
 </div>
 
 <script>

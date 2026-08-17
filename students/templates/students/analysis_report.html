@@ -8,7 +8,7 @@
   .sub-nav-item{display:flex;align-items:stretch}
   .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
   .sub-nav-link:hover{color:#fff;background-color:#43A047}
-  .sub-nav-link.active{color:#fff;background-color:#388E3C;font-weight:700}
+  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
   .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 </style>
 <nav class="sub-nav-bar">
@@ -67,12 +67,12 @@
   /* Toolbar between cards */
   .ar-toolbar{display:none;justify-content:flex-end;gap:10px;padding:14px 0}
   .ar-toolbar.visible{display:flex}
-  .ar-toolbar-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 20px;font-size:13px;font-weight:600;border-radius:0;border:none;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:all 0.15s}
-  .ar-toolbar-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .ar-toolbar-btn-print{background:#0f172a;color:#fff}
-  .ar-toolbar-btn-print:hover{background:#1e293b}
-  .ar-toolbar-btn-download{background:#0f172a;color:#fff}
-  .ar-toolbar-btn-download:hover{background:#1e293b}
+  .ar-toolbar-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;font-size:13px;font-weight:700;border-radius:8px;border:none;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.2s ease;text-decoration:none}
+  .ar-toolbar-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .ar-toolbar-btn-print{background:#fff;border:1.5px solid #4CAF50;color:#4CAF50}
+  .ar-toolbar-btn-print:hover{background:#4CAF50;color:#fff;box-shadow:0 4px 12px rgba(76,175,80,0.3);transform:translateY(-1px)}
+  .ar-toolbar-btn-download{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
+  .ar-toolbar-btn-download:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
   .ar-report.visible{display:block}
 
   /* School header */
@@ -189,16 +189,21 @@
   /* Empty state */
   .ar-empty{text-align:center;padding:60px 20px;color:#94a3b8}
   .ar-empty svg{width:48px;height:48px;stroke:#cbd5e1;margin-bottom:12px}
+  .print-watermark{display:none}
 
   /* Print styles */
   @media print{
-    body *{visibility:hidden}
-    .ar-report,.ar-report *{visibility:visible}
-    .ar-report{position:absolute;left:0;top:0;width:100%}
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+    html{overflow:visible!important}
+    body{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important}
+    .sub-nav-bar,.sidebar,.global-header,.bottom-nav,.ar-toolbar,.ar-card,.ar-empty{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+    .print-watermark{display:block!important;position:fixed!important;bottom:0.25in!important;left:0!important;right:0!important;text-align:center!important;font-family:'Times New Roman',Times,serif!important;font-size:9pt!important;font-weight:700!important;color:#475569!important;text-transform:uppercase!important;letter-spacing:0.5pt!important}
+    .ar-report{position:static!important;width:100%!important;display:block!important}
+    .ar-report,.ar-report *{visibility:visible!important}
     .ar-school-hdr{padding:4mm 0 2mm;align-items:center}
     .ar-table-wrap{padding:0 16px}
     .statistics-table-wrapper.cgs .target-data-table{font-size:11px}
-    .statistics-table-wrapper.cgs .target-data-table th{padding:4px 4px;font-size:11px}
+    .statistics-table-wrapper.cgs .target-data-table th{padding:4px 4px;font-size:11px;font-weight:800;background:#E9ECF0;color:#1E293B}
     .statistics-table-wrapper.cgs .target-data-table td{padding:3px 4px;font-size:11px}
     .ar-charts-row{padding:0 16px}
     .ar-pot-section{padding:0 16px}
@@ -207,6 +212,11 @@
     .ar-pot-wrap canvas{max-width:100%!important;height:auto!important}
     .target-data-table{page-break-inside:avoid}
     .ar-accent-bar,.ar-exam-banner,.ar-summary-row,.ar-summary-cards{page-break-inside:avoid}
+    .ar-accent-bar{height:6px;background:linear-gradient(90deg,#1e40af 0%,#2563EB 40%,#3b82f6 100%)}
+    .ar-section-title{font-weight:800;border-bottom:2px solid #e2e8f0}
+    .ar-subject-banner{font-weight:800;background:#e5e7eb}
+    .ar-table th{font-weight:800;background:#f8fafc}
+    .ar-chart-box{border:1px solid #e5e7eb;border-radius:10px}
     @page{size:landscape;margin:12mm 15mm 20mm 15mm}
   }
 </style>
@@ -281,6 +291,7 @@
 
   <!-- Report Container (inline) -->
   <div class="ar-report" id="arReport"></div>
+  <div class="print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM &copy;2026</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>

@@ -379,9 +379,13 @@ def manage_streams(request, grade_id):
 @login_required(login_url='login')
 @school_admin_required
 def api_class_list(request):
-    """JSON endpoint: returns student list for a given grade+stream."""
+    """JSON endpoint: returns student list for a given grade+stream.
+    For CRE/IRE/HRE subjects, filters by Student.religion tag.
+    If no students are tagged yet, returns all (first-time behavior).
+    """
     from django.http import JsonResponse
-    from ..models import Student, Stream
+    from ..models import Student, Stream, Subject
+    from .constants import RELIGION_SUBJECTS, RELIGION_TAG
 
     school = get_request_school(request)
     if not school:
@@ -389,6 +393,7 @@ def api_class_list(request):
 
     grade_name = request.GET.get('grade', '').strip()
     stream_name = request.GET.get('stream', '').strip()
+    subject_id = request.GET.get('subject_id', '').strip()
 
     if not grade_name:
         return JsonResponse({'students': [], 'has_multiple_streams': False})
@@ -403,6 +408,23 @@ def api_class_list(request):
     )
     if stream_name:
         students = students.filter(stream=stream_name)
+
+    # --- Religion-aware filtering for CRE/IRE/HRE ---
+    religion_tag = None
+    if subject_id:
+        try:
+            subject_obj = Subject.all_objects.get(id=int(subject_id), school=school)
+            subject_code = subject_obj.code
+            if subject_code in RELIGION_SUBJECTS:
+                religion_tag = RELIGION_TAG.get(subject_code, '')
+        except (Subject.DoesNotExist, ValueError, TypeError):
+            pass
+
+    if religion_tag:
+        tagged = students.filter(religion=religion_tag)
+        if tagged.exists():
+            students = tagged
+        # else: no students tagged yet → show all (first-time)
 
     from django.db.models import CharField, Value
     from django.db.models.functions import Substr, Length
@@ -578,8 +600,8 @@ def manage_subjects(request, grade_id, stream_name):
     )
     total_stream_count = all_students.count()
 
-    RELIGION_SUBJECTS = ['908', '909', 'CRE', 'IRE']
-    RELIGION_TAG = {'908': 'CRE', '909': 'IRE', 'CRE': 'CRE', 'IRE': 'IRE'}
+    RELIGION_SUBJECTS = ['908', '909', '910', 'CRE', 'IRE', 'HRE']
+    RELIGION_TAG = {'908': 'CRE', '909': 'IRE', '910': 'HRE', 'CRE': 'CRE', 'IRE': 'IRE', 'HRE': 'HRE'}
 
     subject_rows = []
     for a in assignments:

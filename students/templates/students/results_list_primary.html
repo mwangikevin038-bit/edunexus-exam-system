@@ -1365,7 +1365,7 @@
 
     /* ═══ FINAL @media print — MUST be last to override all mobile rules ═══ */
     @media print {
-        * { print-color-adjust: auto !important; -webkit-print-color-adjust: auto !important; }
+        * { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
         html { background: #ffffff !important; background-image: none !important; }
 
         /* Dual-view: hide mobile shell COMPLETELY, show desktop broadsheet */
@@ -1535,7 +1535,7 @@
         }
         .bs-header-block {
             border: none !important;
-            border-bottom: none !important;
+            border-bottom: 2px solid var(--section-accent, #305CDE) !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             margin-bottom: 0 !important;
@@ -1934,7 +1934,7 @@
             </tbody>
         </table>
     </div>
-    <div class="print-watermark-fixed">GENERATED FROM EDUNEXUS EXAM SYSTEM @2026</div>
+    <div class="print-watermark-fixed">GENERATED FROM EDUNEXUS EXAM SYSTEM &copy;2026</div>
 
     <!-- ===================== EXAM GROUP CARDS (Landing) ===================== -->
     {% elif published_contexts %}

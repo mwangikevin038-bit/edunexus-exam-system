@@ -571,7 +571,6 @@ def individual_report(request, student_id):
     # Grade-wide rank: count summaries with higher total_marks
     grade_summaries = ExamSummary.all_objects.filter(
         school=school,
-        student__class_name=student.class_name,
         year=year,
         term=term,
         exam_name=db_assessment,
@@ -595,20 +594,20 @@ def individual_report(request, student_id):
         total_points = sum(valid_points)
         assessed_subjects = len(valid_scores) if len(valid_scores) > 0 else 1
 
-        # READ-ONLY RANKING ENGINE: Compare this student's totals against classmates
-        class_scores_qs = (
+        # READ-ONLY RANKING ENGINE: Compare this student's totals against all grade peers
+        grade_scores_qs = (
             Mark.all_objects.filter(
-                school=school, student__class_name=student.class_name,
-                student__stream=student.stream, year=year, term=term,
+                school=school,
+                year=year, term=term,
                 exam_type=db_assessment, school_section=student.school_section,
             )
             .values('student_id')
             .annotate(student_total=Sum('score'))
         )
         current_student_score = total_marks
-        better_performing = sum(1 for c in class_scores_qs if (c['student_total'] or 0) > current_student_score)
+        better_performing = sum(1 for c in grade_scores_qs if (c['student_total'] or 0) > current_student_score)
         position = better_performing + 1 if current_student_score > 0 else 0
-        class_count = len(class_scores_qs) if class_scores_qs else 1
+        class_count = len(grade_scores_qs) if grade_scores_qs else 1
 
     if not class_count:
         class_count = grade_summaries.count()
@@ -688,11 +687,12 @@ def individual_report(request, student_id):
     from .constants import SUBJECT_SHORT_MAP as _JSS_SHORT, PRIMARY_SUBJECT_SHORT_MAP as _PRI_SHORT
     _short = _PRI_SHORT if is_primary else _JSS_SHORT
     chart_data_json = json.dumps({
-        'labels':     [_short.get(m.subject.code, m.subject_name) for m in marks_list if not m.is_absent],
-        'student':    [m.score for m in marks_list if not m.is_absent],
-        'class_avg':  [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
+        'labels':       [m.subject_name for m in marks_list if not m.is_absent],
+        'short_labels': [_short.get(m.subject.code, m.subject_name) for m in marks_list if not m.is_absent],
+        'student':      [m.score for m in marks_list if not m.is_absent],
+        'class_avg':    [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
         'student_name': student.name.split()[0] if student.name else 'Student',
-        'class_name':  f"{student.class_name} {student.stream}".strip(),
+        'class_name':   f"{student.class_name} {student.stream}".strip(),
     })
 
     # PLV — read from ExamSummary cache
@@ -931,14 +931,9 @@ def bulk_report_cards(request):
     all_summaries = {s.student_id: s for s in summaries_qs}
     total_class_count = len(all_summaries)
 
-    # Stream-specific rank: filter to target stream, sort by total_marks DESC
-    stream_summaries = sorted(
-        [s for s in summaries_qs if s.student.stream == sample.stream],
-        key=lambda s: (-s.total_marks, -s.total_points),
-    )
-    for rank, s in enumerate(stream_summaries, start=1):
-        s._stream_rank = rank
-    stream_rank_map = {s.student_id: s._stream_rank for s in stream_summaries}
+    # Grade-wide rank: sort ALL summaries by total_marks DESC, total_points DESC
+    grade_sorted = sorted(summaries_qs, key=lambda s: (-s.total_marks, -s.total_points))
+    grade_rank_map = {s.student_id: rank for rank, s in enumerate(grade_sorted, start=1)}
 
     # Class average per subject — cached in Redis for 1 hour
     class_avg_map = get_cached_class_averages(
@@ -1025,14 +1020,15 @@ def bulk_report_cards(request):
         from .constants import SUBJECT_SHORT_MAP as _JSS_SHORT2, PRIMARY_SUBJECT_SHORT_MAP as _PRI_SHORT2
         _short2 = _PRI_SHORT2 if is_primary else _JSS_SHORT2
         chart_data_json = json.dumps({
-            'labels':     [_short2.get(m.subject.code, m.subject_name) for m in marks if not m.is_absent],
-            'student':    [m.score for m in marks if not m.is_absent],
-            'class_avg':  [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent],
+            'labels':       [m.subject_name for m in marks if not m.is_absent],
+            'short_labels': [_short2.get(m.subject.code, m.subject_name) for m in marks if not m.is_absent],
+            'student':      [m.score for m in marks if not m.is_absent],
+            'class_avg':    [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent],
             'student_name': student.name.split()[0] if student.name else 'Student',
-            'class_name':  f"{student.class_name} {student.stream}".strip(),
+            'class_name':   f"{student.class_name} {student.stream}".strip(),
         })
 
-        position = stream_rank_map.get(student.id, 0)  # Stream-specific rank from ExamSummary
+        position = grade_rank_map.get(student.id, 0)  # Stream-specific rank from ExamSummary
 
         overall_plv          = summary.overall_plv if summary else ('-' if assessed_subjects == 0 else calculate_primary_plv(total_marks, assessed_subjects, sub_section=sample.sub_section, school=school, section=sample.school_section) if sample.school_section == 'PRIMARY' else calculate_report_plv(total_points, total_marks, school=school, section=sample.school_section))
         class_teacher_remark = ""
@@ -1184,9 +1180,9 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
     section = exam.school_section or 'JSS'
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
-    is_combined = stream == 'Combined'
+    is_combined = stream == 'Combined' or not stream
 
-    # Resolve actual streams for Combined mode
+    # Resolve actual streams for Combined / no-stream mode
     actual_streams = []
     if is_combined:
         from ..models import Stream
@@ -1255,14 +1251,17 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
         term=exam.term,
         exam_name=exam.name,
         school_section=db_section,
-        sub_section=db_sub,
     )
+    if db_sub:
+        summaries_qs = summaries_qs.filter(sub_section=db_sub)
+    else:
+        summaries_qs = summaries_qs.filter(Q(sub_section__isnull=True) | Q(sub_section=''))
     totals_map = {s.student_id: s for s in summaries_qs}
 
     all_marks = Mark.all_objects.filter(
         school=school,
         student__class_name=grade,
-        student__stream__in=actual_streams if is_combined else stream,
+        student__stream__in=actual_streams if is_combined else [stream],
         year=exam.year, term=exam.term, exam_type=exam.name,
         subject__in=published_subjects_qs,
     ).select_related('subject').order_by('subject', '-date_recorded', '-id')
@@ -1272,7 +1271,7 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
         marks_by_student.setdefault(mark.student_id, []).append(mark)
 
     students = Student.all_objects.filter(
-        school=school, class_name=grade, stream__in=actual_streams if is_combined else stream, is_active=True,
+        school=school, class_name=grade, stream__in=actual_streams if is_combined else [stream], is_active=True,
     ).order_by('admission_no')
 
     broadsheet = []
@@ -1361,7 +1360,7 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
     # Map assigned teachers for this grade/stream
     from ..models import SubjectAssignment
     teacher_map = {}
-    sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream__in=actual_streams if is_combined else stream).select_related('teacher_profile__user', 'subject')
+    sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream__in=actual_streams if is_combined else [stream]).select_related('teacher_profile__user', 'subject')
     if section == 'LOWER_PRIMARY':
         sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':

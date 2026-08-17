@@ -1,0 +1,118 @@
+<form method="POST"
+      action="{% url 'manage_master_comments' %}?year={{ selected_year }}&term={{ selected_term }}&grade={{ selected_grade }}&stream={{ selected_stream }}&assessment={{ selected_assessment }}&next={% url 'teacher_report_forms' %}%3Fgrade%3D{{ selected_grade|urlencode }}%26stream%3D{{ selected_stream|urlencode }}%26exam_id%3D{{ exam_id }}">
+{% csrf_token %}
+
+<style>
+  .tcc-date-card{background:#f8fafc;border:1px solid #f1f5f9;border-radius:14px;padding:14px;margin-bottom:20px}
+  .tcc-date-label{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px}
+  .tcc-date-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tcc-field{display:flex;flex-direction:column;gap:5px}
+  .tcc-field-label{font-size:11px;font-weight:600;color:#64748b}
+  .tcc-field-input{width:100%;padding:9px 11px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:#0f172a;outline:none;transition:border-color 0.2s,box-shadow 0.2s;box-sizing:border-box}
+  .tcc-field-input:focus{border-color:#24E55E;box-shadow:0 0 0 3px rgba(36,229,94,0.1)}
+  .tcc-context{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f8fafc;border:1px solid #f1f5f9;border-radius:14px;margin-bottom:20px}
+  .tcc-context-icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#24E55E,#199E41);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:15px;box-shadow:0 2px 8px rgba(36,229,94,0.25)}
+  .tcc-context-text{font-size:13px;font-weight:600;color:#0f172a}
+  .tcc-label{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px}
+  .tcc-comments{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+  .tcc-comment{background:#f8fafc;border:1px solid #f1f5f9;border-radius:12px;padding:14px;transition:border-color 0.2s,box-shadow 0.2s}
+  .tcc-comment:focus-within{border-color:#24E55E;box-shadow:0 0 0 3px rgba(36,229,94,0.08)}
+  .tcc-comment-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .tcc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .tcc-dot-ee{background:#22c55e}
+  .tcc-dot-me{background:#3b82f6}
+  .tcc-dot-ae{background:#f59e0b}
+  .tcc-dot-be{background:#ef4444}
+  .tcc-comment-name{font-size:12px;font-weight:700;color:#1e293b}
+  .tcc-comment textarea{width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;font-weight:500;color:#0f172a;line-height:1.45;resize:none;min-height:56px;outline:none;transition:border-color 0.2s;box-sizing:border-box}
+  .tcc-comment textarea:focus{border-color:#cbd5e1}
+  .tcc-comment textarea::placeholder{color:#cbd5e1}
+  .tcc-actions{display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid #f1f5f9}
+  .tcc-btn{height:42px;border:none;border-radius:10px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.15s;padding:0 24px}
+  .tcc-btn:active{transform:scale(0.97)}
+  .tcc-btn-cancel{background:#f1f5f9;color:#475569}
+  .tcc-btn-cancel:active{background:#e2e8f0}
+  .tcc-btn-save{background:linear-gradient(135deg,#199E41,#24E55E);color:#fff;box-shadow:0 4px 14px rgba(36,229,94,0.3)}
+  .tcc-btn-save:active{box-shadow:0 2px 8px rgba(36,229,94,0.2)}
+</style>
+
+<div class="tcc-date-card">
+  <div class="tcc-date-label">Term Dates</div>
+  <div class="tcc-date-grid">
+    <div class="tcc-field">
+      <span class="tcc-field-label">Opening Date</span>
+      <input type="date" name="opening_date" value="{{ comment_obj.opening_date|date:'Y-m-d' }}" class="tcc-field-input">
+    </div>
+    <div class="tcc-field">
+      <span class="tcc-field-label">Closing Date</span>
+      <input type="date" name="closing_date" value="{{ comment_obj.closing_date|date:'Y-m-d' }}" class="tcc-field-input">
+    </div>
+  </div>
+</div>
+
+<div class="tcc-context">
+  <div class="tcc-context-icon"><i class="ph ph-file-text"></i></div>
+  <div class="tcc-context-text">{{ selected_grade }} {{ selected_stream }} &middot; {{ selected_assessment_display }} {{ selected_term }} {{ selected_year }}</div>
+</div>
+
+<div class="tcc-label">Learner Remarks</div>
+<div class="tcc-comments">
+  {% if is_primary %}
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ee"></span><span class="tcc-comment-name">EE &mdash; Excellent</span></div>
+    <textarea name="comment_ee" rows="2" placeholder="Remark for excellent performance...">{{ comment_obj.comment_ee }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-me"></span><span class="tcc-comment-name">ME &mdash; Good</span></div>
+    <textarea name="comment_me" rows="2" placeholder="Remark for good performance...">{{ comment_obj.comment_me }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ae"></span><span class="tcc-comment-name">AE &mdash; Satisfactory</span></div>
+    <textarea name="comment_ae" rows="2" placeholder="Remark for satisfactory performance...">{{ comment_obj.comment_ae }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-be"></span><span class="tcc-comment-name">BE &mdash; Needs Improvement</span></div>
+    <textarea name="comment_be" rows="2" placeholder="Remark for needs improvement...">{{ comment_obj.comment_be }}</textarea>
+  </div>
+  {% else %}
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ee"></span><span class="tcc-comment-name">EE1 &mdash; Exceptional</span></div>
+    <textarea name="comment_ee1" rows="2" placeholder="Remark for exceptional performance...">{{ comment_obj.comment_ee1 }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ee"></span><span class="tcc-comment-name">EE2 &mdash; High Mastery</span></div>
+    <textarea name="comment_ee2" rows="2" placeholder="Remark for high mastery...">{{ comment_obj.comment_ee2 }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-me"></span><span class="tcc-comment-name">ME1 &mdash; Solid Competence</span></div>
+    <textarea name="comment_me1" rows="2" placeholder="Remark for solid competence...">{{ comment_obj.comment_me1 }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-me"></span><span class="tcc-comment-name">ME2 &mdash; Basic Competence</span></div>
+    <textarea name="comment_me2" rows="2" placeholder="Remark for basic competence...">{{ comment_obj.comment_me2 }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ae"></span><span class="tcc-comment-name">AE1 &mdash; Approaching</span></div>
+    <textarea name="comment_ae1" rows="2" placeholder="Remark for approaching...">{{ comment_obj.comment_ae1 }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ae"></span><span class="tcc-comment-name">AE2 &mdash; Developing</span></div>
+    <textarea name="comment_ae2" rows="2" placeholder="Remark for developing...">{{ comment_obj.comment_ae2 }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-be"></span><span class="tcc-comment-name">BE1 &mdash; Emerging</span></div>
+    <textarea name="comment_be1" rows="2" placeholder="Remark for emerging...">{{ comment_obj.comment_be1 }}</textarea>
+  </div>
+  <div class="tcc-comment">
+    <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-be"></span><span class="tcc-comment-name">BE2 &mdash; Critical Support</span></div>
+    <textarea name="comment_be2" rows="2" placeholder="Remark for critical support...">{{ comment_obj.comment_be2 }}</textarea>
+  </div>
+  {% endif %}
+</div>
+
+<div class="tcc-actions">
+  <button type="button" class="tcc-btn tcc-btn-cancel" onclick="document.getElementById('rfCommentCard').classList.add('hidden')">Cancel</button>
+  <button type="submit" class="tcc-btn tcc-btn-save">Save Configuration</button>
+</div>
+
+</form>
