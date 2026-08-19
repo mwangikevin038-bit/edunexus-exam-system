@@ -42,6 +42,8 @@ from .dashboard import (  # noqa: F401
     profile_view,
     dashboard,
     school_admin_dashboard,
+    school_settings,
+    term_dates,
 )
 
 # ── Student management views ─────────────────────────────────────────────────

@@ -401,6 +401,26 @@
     window.location.href=url;
   });
 
+  /* ── Auto-load from URL params (e.g. from dashboard "View Analysis") ─── */
+  var urlParams=new URLSearchParams(window.location.search);
+  var preClass=urlParams.get('class_name');
+  var preExamId=urlParams.get('exam_id');
+  if(preClass){
+    grade.value=preClass;
+    grade.dispatchEvent(new Event('change'));
+    var waitExams=setInterval(function(){
+      if(!exam.disabled&&exam.options.length>1){
+        clearInterval(waitExams);
+        if(preExamId){
+          exam.value=preExamId;
+          exam.dispatchEvent(new Event('change'));
+        }
+        if(grade.value&&exam.value) loadReport(grade.value,exam.value,'');
+      }
+    },150);
+    setTimeout(function(){clearInterval(waitExams)},8000);
+  }
+
   function loadReport(className, examId, streamName){
     reportDiv.innerHTML='<div class="ar-loading"><div class="spinner"></div><div>Loading analysis report...</div></div>';
     reportDiv.classList.add('visible');

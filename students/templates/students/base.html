@@ -69,50 +69,43 @@
     <header class="global-header">
         <div class="header-brand">
             <img src="{% static 'images/edunexus_logo_192.png' %}?v=2" alt="EDUNEXUS" class="brand-logo">
-            <span class="brand-text" style="display:inline-block !important; visibility:visible !important; opacity:1 !important; color:#0f172a !important; font-size:1.2rem !important; font-weight:800 !important;">EDU<span style="color:#9be816 !important;">NEXUS</span></span>
+            <span class="brand-text" style="display:inline-block !important; visibility:visible !important; opacity:1 !important; color:#0f172a !important; font-size:1.2rem !important; font-weight:800 !important;">EDU<span style="color:#4CAF50 !important;">NEXUS</span></span>
         </div>
         <div class="header-surface">
             {% if request.school %}
             <span class="school-name">{{ request.school.name }}</span>
             {% endif %}
             <div class="header-controls">
-                <button class="lang-dropdown" type="button" aria-label="Change language">
-                    <span class="lang-flag">&#127468;&#127463;</span>
-                    <span class="lang-label">English</span>
-                    <i class="ph ph-caret-down"></i>
-                </button>
-                <button class="icon-button" type="button" aria-label="Search">
+                <a href="{% url 'admin_add_student' %}?tab=directory" class="icon-button" style="text-decoration:none;color:inherit" aria-label="Search Students">
                     <i class="ph ph-magnifying-glass"></i>
-                </button>
+                </a>
                 <button class="icon-button" type="button" aria-label="Messages">
                     <i class="ph ph-envelope"></i>
                 </button>
                 <div class="header-user" id="headerUserMenu">
                     <div class="header-user-text">
                         <span class="user-name">{{ request.user.get_full_name|default:request.user.username }}</span>
-                        <span class="user-email">{{ request.user.email|default:"" }}</span>
+                        <span class="user-email">{{ request.user.username }}</span>
                     </div>
-                    <div class="user-avatar">{{ request.user.first_name|first|default:"U" }}</div>
+                    <div class="user-avatar">{{ request.user.get_full_name|first|default:request.user.username|first|upper }}</div>
                     <i class="ph ph-caret-down topbar-chevron"></i>
                     <div class="topbar-dropdown" id="headerDropdown">
                         <div class="topbar-dropdown-header">
-                            <div class="topbar-dropdown-avatar">{{ request.user.first_name|first|default:"U" }}</div>
+                            <div class="topbar-dropdown-avatar">{{ request.user.get_full_name|first|default:request.user.username|first|upper }}</div>
                             <div>
                                 <div class="topbar-dropdown-name">{{ request.user.get_full_name|default:request.user.username }}</div>
-                                <div class="topbar-dropdown-role">
-                                    {% if request.user.is_staff or request.user.is_superuser or request.user.school_admin_profile %}
-                                        School Administrator
-                                    {% elif request.user.teacher_profile %}
-                                        {{ request.user.teacher_profile.assigned_task|default:"Teacher" }}
-                                    {% else %}
-                                        Staff
-                                    {% endif %}
-                                </div>
+                                <div class="topbar-dropdown-role">{{ request.user.username }}</div>
                             </div>
                         </div>
                         <div class="topbar-dropdown-divider"></div>
+                        <a href="{% url 'home_alt' %}" class="topbar-dropdown-item">
+                            <i class="ph ph-user"></i> Profile
+                        </a>
+                        <a href="{% url 'school_settings' %}" class="topbar-dropdown-item">
+                            <i class="ph ph-gear-six"></i> Settings
+                        </a>
                         <a href="{% url 'logout' %}" class="topbar-dropdown-item topbar-logout">
-                            <i class="ph ph-sign-out"></i> Sign Out
+                            <i class="ph ph-sign-out"></i> Logout
                         </a>
                     </div>
                 </div>
@@ -227,7 +220,7 @@
     </aside>
 
     <!-- SUB-NAVIGATION BAR (rendered outside app-content for full-width flush positioning) -->
-    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'select_exam' or request.resolver_match.url_name == 'select_exam_primary' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' or request.resolver_match.url_name == 'add_new_class' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'report_forms_display' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'edit_exam' or request.resolver_match.url_name == 'analyse_exam' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'teacher_search_student' or request.resolver_match.url_name == 'teacher_report_forms' or request.resolver_match.url_name == 'teacher_report_forms_display' or request.resolver_match.url_name == 'teachers_list_printout' %}
+    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'select_exam' or request.resolver_match.url_name == 'select_exam_primary' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' or request.resolver_match.url_name == 'add_new_class' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'report_forms_display' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'edit_exam' or request.resolver_match.url_name == 'analyse_exam' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'teacher_search_student' or request.resolver_match.url_name == 'teacher_report_forms' or request.resolver_match.url_name == 'teacher_report_forms_display' or request.resolver_match.url_name == 'teachers_list_printout' or request.resolver_match.url_name == 'password_change' or request.resolver_match.url_name == 'school_settings' or request.resolver_match.url_name == 'term_dates' %}
     {% block sub_tabs %}{% endblock %}
     {% endif %}
 

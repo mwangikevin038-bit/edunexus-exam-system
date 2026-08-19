@@ -22,6 +22,7 @@ from ..models import (
     GradingConfig,
     Mark,
     MarkSubmission,
+    School,
     Student,
     SubjectAssignment,
     Teacher,
@@ -31,44 +32,200 @@ from ..models import (
 @login_required(login_url='login')
 def profile_view(request):
     """
-    Links the authenticated user session to the interface layout via the
-    unified Teacher model.
+    User profile page with editable fields.
+    Handles both Teacher and SchoolAdmin users.
     """
+    user = request.user
     try:
-        teacher = Teacher.objects.select_related('user').get(user=request.user)
+        teacher = Teacher.objects.select_related('user').get(user=user)
     except Teacher.DoesNotExist:
         teacher = None
-    assignments = SubjectAssignment.objects.filter(teacher_profile=teacher).order_by(
-        'class_name', 'stream', 'subject__code'
-    ) if teacher else SubjectAssignment.objects.none()
-    section = get_request_school_section(request)
-    # Scope assignments to current workspace section
-    if section == 'LOWER_PRIMARY':
-        assignments = assignments.filter(school_section='PRIMARY', sub_section='LOWER')
-    elif section == 'PRIMARY':
-        assignments = assignments.filter(school_section='PRIMARY', sub_section='UPPER')
-    elif section == 'JSS':
-        assignments = assignments.filter(school_section='JSS')
-    submissions = MarkSubmission.objects.filter(teacher=teacher)
-    if section == 'LOWER_PRIMARY':
-        submissions = submissions.filter(school_section='PRIMARY', sub_section='LOWER')
-    elif section == 'PRIMARY':
-        submissions = submissions.filter(school_section='PRIMARY', sub_section='UPPER')
-    elif section == 'JSS':
-        submissions = submissions.filter(school_section='JSS')
-    if not teacher:
-        submissions = MarkSubmission.objects.none()
-    class_scope = get_class_teacher_scope(teacher)
+
+    if request.method == 'POST':
+        user.first_name = request.POST.get('first_name', user.first_name).strip()
+        user.last_name = request.POST.get('surname', user.last_name).strip()
+        user.save()
+
+        if teacher:
+            teacher.other_names = request.POST.get('other_names', teacher.other_names).strip()
+            teacher.phone_number = request.POST.get('phone_number', teacher.phone_number).strip()
+            teacher.email = request.POST.get('personal_email', teacher.email).strip()
+            teacher.gender = request.POST.get('gender', teacher.gender)
+            teacher.national_id = request.POST.get('national_id', teacher.national_id).strip()
+            teacher.bio = request.POST.get('bio', teacher.bio).strip()
+
+            if request.FILES.get('profile_picture'):
+                teacher.profile_picture = request.FILES['profile_picture']
+            elif request.POST.get('delete_profile_picture') == '1':
+                teacher.profile_picture = None
+
+            if request.FILES.get('signature'):
+                teacher.signature = request.FILES['signature']
+            elif request.POST.get('delete_signature') == '1':
+                teacher.signature = None
+
+            teacher.save()
+
+        messages.success(request, 'Profile updated successfully.')
+        return redirect('home_alt')
+
+    assignments = SubjectAssignment.objects.none()
+    submissions = MarkSubmission.objects.none()
+    class_scope = None
+    assignment_count = 0
+    submitted_count = 0
+    returned_count = 0
+    published_count = 0
+
+    if teacher:
+        assignments = SubjectAssignment.objects.filter(teacher_profile=teacher).order_by(
+            'class_name', 'stream', 'subject__code'
+        )
+        section = get_request_school_section(request)
+        if section == 'LOWER_PRIMARY':
+            assignments = assignments.filter(school_section='PRIMARY', sub_section='LOWER')
+        elif section == 'PRIMARY':
+            assignments = assignments.filter(school_section='PRIMARY', sub_section='UPPER')
+        elif section == 'JSS':
+            assignments = assignments.filter(school_section='JSS')
+        submissions = MarkSubmission.objects.filter(teacher=teacher)
+        if section == 'LOWER_PRIMARY':
+            submissions = submissions.filter(school_section='PRIMARY', sub_section='LOWER')
+        elif section == 'PRIMARY':
+            submissions = submissions.filter(school_section='PRIMARY', sub_section='UPPER')
+        elif section == 'JSS':
+            submissions = submissions.filter(school_section='JSS')
+        class_scope = get_class_teacher_scope(teacher)
+        assignment_count = assignments.count()
+        submitted_count = submissions.filter(status__in=['submitted', 'approved', 'published']).count()
+        returned_count = submissions.filter(status='returned').count()
+        published_count = submissions.filter(status='published').count()
 
     return render(request, 'students/profile.html', {
-        'user': request.user,
+        'user': user,
         'teacher': teacher,
         'assignments': assignments,
-        'assignment_count': assignments.count(),
-        'submitted_count': submissions.filter(status__in=['submitted', 'approved', 'published']).count(),
-        'returned_count': submissions.filter(status='returned').count(),
-        'published_count': submissions.filter(status='published').count(),
+        'assignment_count': assignment_count,
+        'submitted_count': submitted_count,
+        'returned_count': returned_count,
+        'published_count': published_count,
         'class_teacher_scope': class_scope,
+    })
+
+
+@login_required(login_url='login')
+@school_admin_required
+def school_settings(request):
+    """School admin: edit school profile (name, logo, contact, etc.)."""
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school found.")
+        return redirect('school_admin_dashboard')
+
+    if request.method == 'POST':
+        school.name = request.POST.get('name', school.name).strip()
+        school.short_name = request.POST.get('short_name', school.short_name or '').strip()
+        school.phone_number = request.POST.get('phone_number', school.phone_number or '').strip()
+        school.email = request.POST.get('email', school.email or '').strip()
+        school.address = request.POST.get('address', school.address or '').strip()
+        school.gender_type = request.POST.get('gender_type', school.gender_type)
+        school.boarding_status = request.POST.get('boarding_status', school.boarding_status)
+        school.motto = request.POST.get('motto', school.motto or '').strip()
+        school.vision = request.POST.get('vision', school.vision or '').strip()
+        school.mission = request.POST.get('mission', school.mission or '').strip()
+
+        if request.FILES.get('logo'):
+            school.logo = request.FILES['logo']
+
+        school.save()
+        messages.success(request, "School profile updated successfully.")
+        return redirect('school_settings')
+
+    return render(request, 'students/school_settings.html', {
+        'school': school,
+        'gender_type_choices': School.GENDER_TYPE_CHOICES,
+        'boarding_status_choices': School.BOARDING_STATUS_CHOICES,
+    })
+
+
+@login_required(login_url='login')
+@school_admin_required
+def term_dates(request):
+    """School admin: manage term dates (CRUD)."""
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school found.")
+        return redirect('school_admin_dashboard')
+
+    from ..models import TermDate
+    from datetime import date
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'delete':
+            delete_id = request.POST.get('delete_id')
+            if delete_id:
+                TermDate.objects.filter(id=delete_id, school=school).delete()
+                messages.success(request, "Term date deleted successfully.")
+            return redirect('term_dates')
+
+        term_id = request.POST.get('term_id')
+        academic_year = request.POST.get('academic_year', '').strip()
+        term_name = request.POST.get('term', '').strip()
+        start_date = request.POST.get('start_date', '').strip()
+        end_date = request.POST.get('end_date', '').strip()
+        week_starts_on = request.POST.get('week_starts_on') or 'Monday'
+
+        if not all([academic_year, term_name, start_date, end_date]):
+            messages.error(request, "All fields are required.")
+            return redirect('term_dates')
+
+        try:
+            academic_year = int(academic_year)
+            start_dt = date.fromisoformat(start_date)
+            end_dt = date.fromisoformat(end_date)
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid date or year format.")
+            return redirect('term_dates')
+
+        if end_dt <= start_dt:
+            messages.error(request, "End date must be after start date.")
+            return redirect('term_dates')
+
+        if term_id:
+            td = TermDate.objects.filter(id=term_id, school=school).first()
+            if td:
+                td.academic_year = academic_year
+                td.term = term_name
+                td.start_date = start_dt
+                td.end_date = end_dt
+                td.week_starts_on = week_starts_on
+                td.save()
+                messages.success(request, "Term date updated successfully.")
+        else:
+            if TermDate.objects.filter(school=school, academic_year=academic_year, term=term_name).exists():
+                messages.error(request, f"{term_name} for {academic_year} already exists.")
+                return redirect('term_dates')
+            TermDate.objects.create(
+                school=school,
+                academic_year=academic_year,
+                term=term_name,
+                start_date=start_dt,
+                end_date=end_dt,
+                week_starts_on=week_starts_on,
+            )
+            messages.success(request, "Term date created successfully.")
+
+        return redirect('term_dates')
+
+    term_dates_qs = TermDate.objects.filter(school=school).order_by('-academic_year', 'term')
+    current_year = date.today().year
+    year_choices = list(range(current_year - 2, current_year + 3))
+
+    return render(request, 'students/term_dates.html', {
+        'term_dates': term_dates_qs,
+        'year_choices': year_choices,
     })
 
 
@@ -210,8 +367,12 @@ def school_admin_dashboard(request):
         name_order=exam_order,
     ).order_by("-year", "-term_num", "-name_order").first()
 
-    # --- Headline counts ---
-    total_students = student_qs.count()
+    # --- Headline counts (single aggregate query) ---
+    from django.db.models import Count as CountAgg, Q as CountQ
+    counts = Student.all_objects.filter(school=school).aggregate(
+        total_students=CountAgg('id'),
+    )
+    total_students = counts['total_students']
     total_teachers = teacher_qs.count()
     total_exams    = exam_qs.count()
 
@@ -284,16 +445,45 @@ def school_admin_dashboard(request):
                 return entry['level']
         return '\u2014'
 
-    # Get the TWO most recent exams for deviation calculation
-    # term field is "Term X" — extract the number with Substr for proper numeric sort
-    recent_exams = Exam.all_objects.filter(
+    # Get the TWO most recent DISTINCT exams with marks for deviation calculation
+    # For JSS: compare End of Term vs Opener (the two exams with complete marks)
+    jss_grades = ['Grade 7', 'Grade 8', 'Grade 9']
+    recent_exams_raw = Exam.all_objects.filter(
         school=school, is_deleted=False
     ).annotate(
         term_num=Cast(Substr('term', 6), output_field=IntegerField()),
         name_order=exam_order,
-    ).order_by('-year', '-term_num', '-name_order')[:2]
-    latest_exam = recent_exams[0] if recent_exams else None
-    previous_exam = recent_exams[1] if len(recent_exams) > 1 else None
+    ).order_by('-year', '-term_num', '-name_order')
+
+    # For JSS, find End of Term and Opener specifically
+    eot_exam = None
+    opener_exam = None
+    seen_exams = set()
+
+    # Batch-fetch all JSS exam keys in ONE query instead of N
+    jss_exam_keys = set(
+        Mark.all_objects.filter(
+            student__school=school,
+            student__class_name__in=jss_grades,
+        ).values_list('exam_type', 'term', 'year').distinct()
+    )
+
+    for ex in recent_exams_raw:
+        key = (ex.name, ex.term, ex.year)
+        if key in seen_exams:
+            continue
+        seen_exams.add(key)
+        if (ex.name, ex.term, ex.year) not in jss_exam_keys:
+            continue
+        if 'end of term' in ex.name.lower() and not eot_exam:
+            eot_exam = ex
+        elif 'opener' in ex.name.lower() and not opener_exam:
+            opener_exam = ex
+        if eot_exam and opener_exam:
+            break
+
+    latest_exam = eot_exam or opener_exam
+    previous_exam = opener_exam if latest_exam == eot_exam else eot_exam
 
     exam_label = ''
     if latest_exam:
@@ -303,7 +493,6 @@ def school_admin_dashboard(request):
     def _compute_grade_stats(exam):
         if not exam:
             return {}
-        exam_mark_filter = Q(pk__in=[])
         published_subs = submission_qs.filter(
             exam_name=exam.name, term=exam.term, year=exam.year, status="published",
         )
@@ -311,10 +500,20 @@ def school_admin_dashboard(request):
         for sub in published_subs:
             tuples.add((sub.class_name, sub.stream, sub.subject_id))
         if tuples:
-            f = Q()
-            for cls, strm, sid in tuples:
-                f |= Q(student__class_name=cls, student__stream=strm, subject_id=sid)
-            exam_mark_filter = f
+            class_names = [cls for cls, strm, sid in tuples]
+            streams = [strm for cls, strm, sid in tuples]
+            subject_ids = [sid for cls, strm, sid in tuples]
+            exam_mark_filter = (
+                Q(student__class_name__in=class_names) &
+                Q(student__stream__in=streams) &
+                Q(subject_id__in=subject_ids) &
+                Q(exam_type=exam.name, term=exam.term, year=exam.year)
+            )
+        else:
+            # No submissions — fall back to direct marks lookup
+            exam_mark_filter = Q(
+                student__school=school, exam_type=exam.name, term=exam.term, year=exam.year,
+            )
         marks = mark_qs.filter(exam_mark_filter)
         stats = {}
         for item in marks.values('student__class_name').annotate(
@@ -365,17 +564,13 @@ def school_admin_dashboard(request):
             'student_count': student_count,
             'score_dev': score_dev,
             'points_dev': points_dev,
+            'exam_id': latest_exam.id if latest_exam else None,
         })
 
-    overall_average = round(
-        mark_qs.filter(
-            Q(pk__in=[]) if not latest_exam else Q(
-                student__class_name__in=grade_choices,
-            )
-        ).aggregate(avg_score=Avg('score'))['avg_score'] or 0, 1
-    ) if latest_exam else 0
+    overall_average = 0
+    best_stream_data = None
 
-    # Recalculate overall from actual published marks
+    # Compute published tuples ONCE and reuse for overall_average + best_stream
     if latest_exam:
         published_tuples_all = set()
         for sub in submission_qs.filter(exam_name=latest_exam.name, term=latest_exam.term, year=latest_exam.year, status="published"):
@@ -385,16 +580,6 @@ def school_admin_dashboard(request):
             for cls, strm, sid in published_tuples_all:
                 f |= Q(student__class_name=cls, student__stream=strm, subject_id=sid)
             overall_average = round(mark_qs.filter(f).aggregate(avg_score=Avg('score'))['avg_score'] or 0, 1)
-
-    best_stream_data = None
-    if latest_exam:
-        published_tuples_all = set()
-        for sub in submission_qs.filter(exam_name=latest_exam.name, term=latest_exam.term, year=latest_exam.year, status="published"):
-            published_tuples_all.add((sub.class_name, sub.stream, sub.subject_id))
-        if published_tuples_all:
-            f = Q()
-            for cls, strm, sid in published_tuples_all:
-                f |= Q(student__class_name=cls, student__stream=strm, subject_id=sid)
             best_stream_data = (
                 mark_qs.filter(f)
                 .values('student__class_name', 'student__stream')
@@ -424,6 +609,19 @@ def school_admin_dashboard(request):
     # --- Active classes count ---
     active_classes = len([g for g, d in class_stats.items() if d['total'] > 0])
 
+    # --- Term dates for calendar ---
+    from ..models import TermDate
+    import json as _json
+    term_dates_qs = TermDate.objects.filter(school=school).order_by('-academic_year', 'term')
+    term_events = []
+    for td in term_dates_qs:
+        term_events.append({
+            'term': td.term,
+            'year': td.academic_year,
+            'start': td.start_date.isoformat(),
+            'end': td.end_date.isoformat(),
+        })
+
     return render(request, 'students/dashboard_admin.html', {
         'total_students':       total_students,
         'total_teachers':       total_teachers,
@@ -448,4 +646,5 @@ def school_admin_dashboard(request):
         'active_classes':       active_classes,
         'is_primary':           True,
         'section_label':        'All Sections',
+        'term_events_json':     _json.dumps(term_events),
     })

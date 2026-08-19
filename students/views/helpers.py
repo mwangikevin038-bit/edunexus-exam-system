@@ -22,9 +22,25 @@ from .constants import (
     RELIGION_SUBJECTS,
     RELIGION_TAG,
 )
-from ..models import Mark, MarkSubmission, Student, SubjectAssignment, Teacher
+from ..models import Mark, MarkSubmission, Student, SubjectAssignment, Teacher, TermDate
 from ..school_scope import get_current_school, get_current_school_section
 from ..security import user_has_main_school_admin_override
+
+
+# ── Term-date fallback for report cards ──────────────────────────────────────
+
+def resolve_term_dates(school, year, term):
+    """
+    Query TermDate for the given school/year/term and return (end_date, start_date)
+    suitable for use as closing_date / opening_date fallback on report cards.
+    Returns (None, None) if no TermDate record exists.
+    """
+    td = TermDate.objects.filter(
+        school=school, academic_year=year, term=term
+    ).first()
+    if td:
+        return td.end_date, td.start_date
+    return None, None
 
 
 # ── Cache TTL and key helpers ────────────────────────────────────────────────
@@ -930,6 +946,413 @@ def get_student_totals_with_rank(school, class_name, stream, year, term, assessm
         )
         .order_by('rank', '-total_points')
     )
+
+
+# ── Unified report-card context builder ──────────────────────────────────────
+
+def build_report_card_context(
+    school,
+    grade,
+    stream,
+    exam_id,
+    *,
+    student_ids=None,
+    include_chart_svg=True,
+    is_admin=False,
+):
+    # `exam_id` may be an int PK, a numeric string, or a DB exam name like
+    # "Opener Assessment" — the latter is what the bulk-PDF view receives.
+    # Resolve to the canonical Exam row before doing anything else.
+    from ..models import Exam as _Exam
+    try:
+        exam_pk = int(exam_id)
+        exam = _Exam.all_objects.get(id=exam_pk, school=school, is_deleted=False)
+    except (TypeError, ValueError, _Exam.DoesNotExist):
+        exam = (
+            _Exam.all_objects
+            .filter(school=school, name=str(exam_id), is_deleted=False)
+            .order_by('-year', 'term')
+            .first()
+        )
+        if not exam:
+            raise _Exam.DoesNotExist(
+                f"No Exam matches id/name={exam_id!r} for school={school.pk}"
+            )
+    """
+    Single source of truth for everything the report_card.html template needs.
+
+    Used by:
+      - report_forms_display       (students_mgmt.py) — web preview for the whole class
+      - download_bulk_report_pdf   (pdf_exports.py)   — server-side PDF for a batch
+
+    Returns a dict with the bulk "report context" structure:
+        {
+            'student_marks_list': [<per-student dict the template iterates>],
+            'selected_year':      str,
+            'selected_term':      str,
+            'selected_assessment': str,           # display label ("End Term")
+            'selected_assessment_raw': str,       # DB exam.name
+            'selected_grade':      str,
+            'selected_stream':     str,
+            'class_count':         int,           # denominator for "X / Y" position
+            'closing_date':        date|None,
+            'opening_date':        date|None,
+            'section_accent':      str (hex),
+            'grade_descriptors':   list,          # for the descriptors table
+            'max_points_per_subj': int,
+            'sample_school_section': str,
+            'sample_sub_section':     str|None,
+        }
+
+    The helper resolves the Exam once, prefetches the grading scale, fetches
+    every student's marks + ExamSummary in flat queries (no N+1), and computes
+    position / totals / PLV / chart data with a single uniform path so the
+    on-screen preview and the printed PDF can never disagree.
+
+    Falls back gracefully (no ValueError) when ExamSummary rows are missing —
+    the original per-student mark list is aggregated in Python instead, which
+    keeps historical reports renderable even if the Celery snapshot is stale.
+    """
+    import base64
+    import datetime as _dt
+    import json as _json
+
+    from ..models import (
+        ClassTeacherMasterComment,
+        Exam,
+        ExamSummary,
+        Mark,
+        SchoolHeadteacherComment,
+        Student,
+        Subject,
+        SubjectAssignment,
+        Teacher,
+    )
+    from ..school_scope import get_current_school_section
+    from django.db.models import Q, Sum
+    from .constants import (
+        LOWER_PRIMARY_SUBJECT_NAMES,
+        PRIMARY_SUBJECT_NAMES,
+        SUBJECT_DISPLAY_ORDER,
+        SUBJECT_SHORT_MAP,
+        PRIMARY_SUBJECT_SHORT_MAP,
+    )
+    from .exams import _get_primary_performance
+
+    # ── 1. Exam already resolved above (int pk / string name accepted) ─────────
+    year          = exam.year
+    term          = exam.term
+    db_assessment = exam.name
+
+    # Term-date fallback for closing / opening dates on report cards
+    _term_closing, _term_opening = resolve_term_dates(school, year, term)
+
+    # ── 2. Determine section from a sample student ────────────────────────────
+    students_qs = Student.all_objects.filter(
+        school=school, class_name=grade, stream=stream, is_active=True,
+    ).order_by('name')
+    if student_ids:
+        students_qs = students_qs.filter(id__in=student_ids)
+    selected_students = list(students_qs)
+    if not selected_students:
+        return {
+            'student_marks_list': [],
+            'selected_year': year, 'selected_term': term,
+            'selected_assessment': db_assessment, 'selected_assessment_raw': db_assessment,
+            'selected_grade': grade, 'selected_stream': stream,
+            'class_count': 0, 'closing_date': None, 'opening_date': None,
+            'section_accent': '#305CDE', 'grade_descriptors': [],
+            'max_points_per_subj': 8, 'sample_school_section': 'JSS',
+            'sample_sub_section': None,
+        }
+
+    sample = selected_students[0]
+    is_primary       = sample.school_section == 'PRIMARY'
+    is_lower_primary = is_primary and sample.sub_section == 'LOWER'
+
+    # ── 3. Prefetch grading & resolve descriptors once ─────────────────────────
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    prefetch_school_grading(school)
+    grade_descriptors   = resolve_scale_fast(school.pk, sample.school_section, sample.sub_section)
+    max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
+
+    # ── 4. Published subjects (single query) ──────────────────────────────────
+    published_subject_codes = get_published_subject_codes(
+        grade, stream, year, term, db_assessment,
+        sub_section=sample.sub_section if is_primary else None,
+        is_admin=is_admin,
+    )
+    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+
+    if is_lower_primary:
+        subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
+    elif is_primary:
+        subject_mapping = PRIMARY_SUBJECT_NAMES
+    else:
+        subject_mapping = {s.code: s.name for s in published_subjects_qs}
+
+    # ── 5. All marks for the class in a single index-optimized query ─────────
+    all_marks_qs = Mark.all_objects.filter(
+        school=school, year=year, term=term, exam_type=db_assessment,
+        subject__in=published_subjects_qs, school_section=sample.school_section,
+        student__class_name=grade, student__stream=stream,
+    ).select_related('subject').order_by('subject', '-date_recorded', '-id')
+
+    marks_by_student = {}
+    for mark in all_marks_qs:
+        marks_by_student.setdefault(mark.student_id, []).append(mark)
+
+    # ── 6. Grade-wide ExamSummary for rank + counts ──────────────────────────
+    summaries_qs = ExamSummary.all_objects.filter(
+        school=school,
+        student__class_name=grade, year=year, term=term, exam_name=db_assessment,
+        school_section=sample.school_section, sub_section=sample.sub_section,
+    ).select_related('student')
+    grade_sorted    = sorted(summaries_qs, key=lambda s: (-s.total_marks, -s.total_points))
+    grade_rank_map  = {s.student_id: rank for rank, s in enumerate(grade_sorted, start=1)}
+    total_class_count = len(grade_sorted)
+    summaries_by_id = {s.student_id: s for s in summaries_qs}
+
+    # ── 7. Bulk totals fallback (one query, all selected students) ────────────
+    totals_map = {
+        row['student_id']: row for row in
+        Mark.all_objects.filter(
+            school=school, year=year, term=term, exam_type=db_assessment,
+            subject__in=published_subjects_qs, school_section=sample.school_section,
+            student__in=selected_students,
+        ).values('student_id').annotate(total_score=Sum('score'), total_pts=Sum('points'))
+    }
+
+    # ── 8. Class averages (Redis cached) ──────────────────────────────────────
+    class_avg_map = get_cached_class_averages(
+        school, grade, stream, year, term, db_assessment, published_subjects_qs,
+    )
+
+    # ── 9. Subject teacher map ────────────────────────────────────────────────
+    teacher_map = {
+        a.subject.code: a.teacher_profile.get_full_title()
+        for a in SubjectAssignment.all_objects.filter(
+            school=school, class_name=grade, stream=stream,
+        ).select_related('teacher_profile__user', 'subject')
+        if a.subject
+    }
+
+    # ── 10. Class teacher name (string match on assigned_task) ────────────────
+    class_teacher_name = ""
+    ct_q = Teacher.all_objects.filter(
+        school=school, assigned_task__icontains=grade,
+    ).filter(Q(assigned_task__icontains=stream)).select_related('user').first()
+    if ct_q:
+        class_teacher_name = ct_q.get_full_title()
+
+    # ── 11. Master comments (class teacher + headteacher) ─────────────────────
+    master_comment = ClassTeacherMasterComment.objects.filter(
+        school=school, year=year, term=term, grade=grade,
+        stream=stream, exam_type=db_assessment,
+    ).first()
+    school_ht_comment = SchoolHeadteacherComment.objects.filter(
+        school=school, year=year, term=term, exam_type=db_assessment,
+        school_section=sample.school_section,
+    ).first()
+
+    freeze_threshold = _dt.timedelta(days=30)
+    now              = _dt.datetime.now(_dt.timezone.utc)
+
+    # ── 12. Build per-student context dicts ───────────────────────────────────
+    _short_map = PRIMARY_SUBJECT_SHORT_MAP if is_primary else SUBJECT_SHORT_MAP
+
+    student_marks_list = []
+    for student in selected_students:
+        marks = sorted(
+            marks_by_student.get(student.id, []),
+            key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99),
+        )
+
+        # Totals — try ExamSummary first, fall back to live aggregation
+        summary = summaries_by_id.get(student.id)
+        if summary:
+            total_marks, total_points, assessed_subjects = (
+                summary.total_marks, summary.total_points, summary.subject_count,
+            )
+        else:
+            totals_row    = totals_map.get(student.id, {})
+            total_marks   = totals_row.get('total_score') or 0
+            total_points  = totals_row.get('total_pts') or 0
+            valid_scores  = [m.score for m in marks if m.score is not None and not m.is_absent]
+            assessed_subjects = len(valid_scores) if valid_scores else 0
+
+        # Per-mark decoration (subject_name, teacher, class_avg, deviation)
+        for mark in marks:
+            mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
+            mark.teacher_name = teacher_map.get(mark.subject.code, '—')
+            if is_primary and not mark.is_absent:
+                pct = mark.score or 0
+                mark.performance_level, mark.points = _get_primary_performance(
+                    pct, school=school, section=student.school_section,
+                    sub_section=student.sub_section,
+                )
+            class_avg = class_avg_map.get(mark.subject.code)
+            mark.class_average = class_avg
+            if class_avg is not None and mark.score is not None and not mark.is_absent:
+                mark.deviation = round(mark.score - class_avg, 1)
+            else:
+                mark.deviation = None
+
+        # Aggregates for the stat row
+        if summary and summary.mean_points is not None:
+            mean_points = float(summary.mean_points)
+        else:
+            mean_points = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
+        max_total_marks  = assessed_subjects * 100
+        max_total_points = assessed_subjects * max_points_per_subj
+
+        # Chart payload — identical for web and PDF (short_labels included)
+        chart_labels       = [m.subject_name for m in marks if not m.is_absent]
+        chart_short_labels = [_short_map.get(m.subject.code, m.subject_code if hasattr(m, 'subject_code') else m.subject.code) for m in marks if not m.is_absent]
+        chart_student      = [m.score for m in marks if not m.is_absent]
+        chart_class_avg    = [class_avg_map.get(m.subject.code, 0) for m in marks if not m.is_absent]
+
+        chart_data_json = _json.dumps({
+            'labels':       chart_labels,
+            'short_labels': chart_short_labels,
+            'student':      chart_student,
+            'class_avg':    chart_class_avg,
+            'student_name': student.name.split()[0] if student.name else 'Student',
+            'class_name':   f"{student.class_name} {student.stream}".strip(),
+        })
+        chart_data_json_b64 = base64.b64encode(chart_data_json.encode('utf-8')).decode('ascii')
+
+        # Server-side vector chart (used by the PDF path).
+        # matplotlib with a long-lived Figure/Axes pair - see pdf_exports.py
+        # for the rationale. Cached per (student, exam) in Redis.
+        chart_svg = ''
+        if include_chart_svg and chart_labels:
+            chart_cache_key = f"student_chart_{student.id}_{year}_{term}_{db_assessment}"
+            from django.core.cache import cache as _cache
+            chart_svg = _cache.get(chart_cache_key)
+            if not chart_svg:
+                try:
+                    from .pdf_exports import generate_premium_vector_chart_svg
+                    chart_svg = generate_premium_vector_chart_svg(
+                        chart_labels, chart_student, chart_class_avg,
+                    )
+                    if chart_svg:
+                        _cache.set(chart_cache_key, chart_svg, timeout=86400)
+                except Exception:
+                    chart_svg = ''
+
+        # Position — prefer grade-wide sort; 0 means "no rank yet"
+        position = grade_rank_map.get(student.id, 0)
+
+        # Overall PLV (single source of truth — read from cache, else compute)
+        if summary and summary.overall_plv:
+            overall_plv = summary.overall_plv
+        else:
+            overall_plv = (
+                '-' if assessed_subjects == 0
+                else calculate_primary_plv(
+                    total_marks, assessed_subjects,
+                    sub_section=student.sub_section, school=school,
+                    section=student.school_section,
+                ) if is_primary
+                else calculate_report_plv(
+                    total_points, total_marks, school=school,
+                    section=student.school_section,
+                )
+            )
+
+        # Class-teacher + headteacher comment selection (live -> frozen fallback)
+        class_teacher_remark = ''
+        headteacher_comment  = ''
+        closing_date         = None
+        opening_date         = None
+
+        if master_comment and overall_plv not in ('', '-'):
+            ct_field = f"comment_{overall_plv.lower()}"
+            live_ct  = getattr(master_comment, ct_field, '') or ''
+            if live_ct.strip():
+                class_teacher_remark = live_ct
+            elif marks and marks[0].frozen_class_teacher_comment:
+                class_teacher_remark = marks[0].frozen_class_teacher_comment
+
+        if school_ht_comment and overall_plv not in ('', '-'):
+            ht_field = f"ht_comment_{overall_plv.lower()}"
+            live_ht  = getattr(school_ht_comment, ht_field, '') or ''
+            if live_ht.strip():
+                headteacher_comment = live_ht
+            elif marks and marks[0].frozen_headteacher_comment:
+                headteacher_comment = marks[0].frozen_headteacher_comment
+
+        if master_comment:
+            closing_date = master_comment.closing_date
+            opening_date = master_comment.opening_date
+        if not closing_date and marks and marks[0].frozen_closing_date:
+            closing_date = marks[0].frozen_closing_date
+        if not opening_date and marks and marks[0].frozen_opening_date:
+            opening_date = marks[0].frozen_opening_date
+        if not closing_date and _term_closing:
+            closing_date = _term_closing
+        if not opening_date and _term_opening:
+            opening_date = _term_opening
+
+        student_marks_list.append({
+            'student':              student,
+            'marks':                list(marks),
+            'total_marks':          total_marks,
+            'total_points':         total_points,
+            'overall_plv':          overall_plv,
+            'mean_points':          mean_points,
+            'mean_points_max':      max_points_per_subj,
+            'max_total_marks':      max_total_marks,
+            'max_total_points':     max_total_points,
+            'grade_descriptors':    grade_descriptors,
+            'chart_data_json':      chart_data_json,
+            'chart_data_json_b64':  chart_data_json_b64,
+            'chart_svg':            chart_svg or '',
+            'class_teacher_remark': class_teacher_remark,
+            'class_teacher_name':   class_teacher_name,
+            'headteacher_comment':  headteacher_comment,
+            'closing_date':         closing_date,
+            'opening_date':         opening_date,
+            'position':             position,
+            'class_count':          total_class_count,
+        })
+
+    student_marks_list.sort(key=lambda x: (x['position'] == 0, x['position']))
+
+    # ── 13. Section accent colour ──────────────────────────────────────────────
+    _section_colors = {'JSS': '#305CDE', 'PRIMARY': '#00674F', 'LOWER_PRIMARY': '#B45309'}
+    if is_lower_primary:
+        section_accent = _section_colors['LOWER_PRIMARY']
+    elif is_primary:
+        section_accent = _section_colors['PRIMARY']
+    else:
+        section_accent = _section_colors['JSS']
+
+    # Display label for the assessment ("End Term", "Mid Term", "Opener")
+    _lower = db_assessment.lower()
+    if 'end'   in _lower: display_assessment = 'End Term'
+    elif 'mid' in _lower: display_assessment = 'Mid Term'
+    elif 'open' in _lower: display_assessment = 'Opener'
+    else:                 display_assessment = db_assessment
+
+    return {
+        'student_marks_list':      student_marks_list,
+        'selected_year':           year,
+        'selected_term':           term,
+        'selected_assessment':     display_assessment,
+        'selected_assessment_raw': db_assessment,
+        'selected_grade':          grade,
+        'selected_stream':         stream,
+        'class_count':             total_class_count,
+        'closing_date':            master_comment.closing_date if master_comment else None,
+        'opening_date':            master_comment.opening_date if master_comment else None,
+        'section_accent':          section_accent,
+        'grade_descriptors':       grade_descriptors,
+        'max_points_per_subj':     max_points_per_subj,
+        'sample_school_section':   sample.school_section,
+        'sample_sub_section':      sample.sub_section,
+    }
 
 
 # ── Atomic mark upsert (PostgreSQL SELECT FOR UPDATE + single write) ──────────

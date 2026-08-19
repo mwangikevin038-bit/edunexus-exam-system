@@ -1,6 +1,12 @@
 {% extends 'students/base.html' %}
 {% load static %}
 
+{# Unified print stylesheet — single source of truth shared with the PDF path. #}
+{# Loaded normally; @media print rules inside the file control when they apply. #}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'students/css/report_card_print.css' %}">
+{% endblock %}
+
 {% block sub_tabs %}
 <style>
   .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
@@ -753,65 +759,215 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
-       PRINT
+       PRINT — Inline rules that fire when the user hits Ctrl+P
        ═══════════════════════════════════════════════════════════ */
     @media print {
-        @page { size: A4 portrait; margin: 8mm; }
-        *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-        .rv-shell, .rc-topbar, .rc-context-card, .rc-action-buttons, .rc-info-bar, .sidebar, .sidebar-overlay, .sidebar-header, .sidebar-footer, .sidebar-nav, .sidebar-user, .navbar, .left-menu, .control-panel, .green-header-box, nav, .bottom-nav, .mobile-topbar, .hamburger-btn, .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header, .mobile-menu-backdrop, .system-footer { display: none !important; }
-        html, body { font-family: 'Times New Roman', Times, serif !important; font-size: 12pt !important; background: white !important; margin: 0 !important; padding: 0 !important; max-height: 285mm !important; overflow: hidden !important; }
-        .container-fluid { margin: 0 !important; padding: 0 !important; max-width: none !important; width: 100% !important; }
-        #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-        .report-card {
-            display: block !important; page-break-inside: avoid !important; break-inside: avoid !important;
-            margin: 0 !important; width: 7.9in !important; max-height: 285mm !important; overflow: hidden !important;
-            border: none !important;
-            position: relative !important; font-family: 'Times New Roman', Times, serif !important;
-            font-size: 12pt !important; box-sizing: border-box !important;
-            padding: 0.12in 0.4in 0.15in !important; line-height: 1.15 !important; flex-shrink: 1 !important;
+        @page { size: A4 portrait; margin: 6mm; }
+
+        /* Force print-color fidelity — backgrounds, gradients, borders render */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
         }
-        .report-card + .report-card { page-break-before: always !important; break-before: always !important; }
-        .report-content { display: flex !important; flex-direction: column !important; flex: 1 !important; gap: 6px !important; }
-        .report-logo, .rc-logo-placeholder { width: 72px !important; height: 72px !important; }
-        .rc-logo-spacer { width: 72px !important; }
-        .rc-logo-placeholder { font-size: 28px !important; }
-        .rc-schoolinfo h1 { font-size: 15pt !important; margin: 0 0 2px !important; }
-        .rc-schoolinfo .rc-tagline { font-size: 8pt !important; margin-bottom: 2px !important; }
-        .rc-schoolinfo .rc-address { font-size: 10pt !important; margin-bottom: 1px !important; }
-        .rc-schoolinfo .rc-contact-line { font-size: 9pt !important; }
-        .rc-header { gap: 10px !important; padding-bottom: 5px !important; border-bottom: 3px solid var(--section-accent, var(--rc-green)) !important; }
-        .rc-banner { padding: 4px 12px !important; font-size: 10pt !important; }
-        .rc-top-grid { gap: 16px !important; }
-        .rc-photo-placeholder { width: 85px !important; height: 95px !important; border-radius: 6px !important; }
-        .rc-student-name { font-size: 13pt !important; margin-bottom: 4px !important; }
-        .rc-detail { font-size: 10pt !important; margin-bottom: 2px !important; }
-        .rc-chart-canvas-wrap { display: block !important; height: 220px !important; }
-        .rc-chart-title { font-size: 9pt !important; margin: 0 !important; padding: 0 !important; }
-        .rc-chart-block { padding: 0 !important; margin: 0 !important; }
-        .rc-stats { gap: 6px !important; }
-        .rc-stat { padding: 6px 6px !important; border-top: 3px solid var(--section-accent, #16A34A) !important; border-radius: 10px !important; }
-        .rc-stat-label { font-size: 7pt !important; margin-bottom: 2px !important; font-weight: 800 !important; color: var(--section-accent, #16A34A) !important; letter-spacing: 0.06em !important; }
-        .rc-stat-value { font-size: 13pt !important; font-weight: 800 !important; color: #1E293B !important; }
+
+        /* Hide ALL screen chrome */
+        .global-header,
+        .premium-sidebar, .sidebar, .sidebar-overlay,
+        .sub-nav-bar,
+        .rc-topbar, .rc-action-buttons, .rc-info-bar, .rc-context-card,
+        .rc-loading-overlay,
+        .hamburger-btn,
+        .global-loader-overlay, .bottom-nav,
+        .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body,
+        .mobile-menu-header, .mobile-menu-backdrop,
+        .system-footer, .rc-print-watermark,
+        nav, header, .navbar, .left-menu, .control-panel,
+        .mobile-topbar, .topbar, .topbar-right, .workspace-toggle {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        /* Reset page */
+        html, body {
+            margin: 0 !important; padding: 0 !important;
+            background: #fff !important;
+            font-family: 'Times New Roman', Times, serif !important;
+            font-size: 12pt !important;
+            color: #1C1C1E !important;
+            width: 100% !important;
+        }
+        .app-content, .main-content, .container-fluid {
+            margin: 0 !important; padding: 0 !important;
+            max-width: none !important; width: 100% !important;
+        }
+        #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+
+        /* ═══════════════════════════════════════════════════════
+           GLOBAL PRINT CONTAINER — MIRROR BROWSER VIEW
+           Card at full width, blue line INSIDE the card,
+           banner extends left to connect with the blue line.
+           ═══════════════════════════════════════════════════════ */
+        .report-card {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0.16in 0.35in 0.25in 0.55in !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            position: relative !important;
+            font-family: 'Times New Roman', Times, serif !important;
+            font-size: 12pt !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+        .report-card + .report-card { page-break-before: always !important; }
+
+        /* Content fills its parent */
+        .report-content {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-family: 'Times New Roman', Times, serif !important;
+            font-size: 12pt !important;
+            gap: 8px !important;
+        }
+
+        /* All internal children locked to 100% width */
+        .rc-header, .rc-banner, .rc-top-grid, .rc-stats,
+        .table-scroll, .rc-table,
+        .rc-comments-header, .rc-remarks-grid,
+        .rc-descriptors, .rc-descriptors-table,
+        .footer-dates, .date-box,
+        .rc-remark-box {
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        /* School header */
+        .rc-header {
+            gap: 14px !important; padding-bottom: 6px !important;
+            margin-bottom: 4px !important;
+            border-bottom: none !important;
+        }
+        .report-logo, .rc-logo-placeholder { width: 88px !important; height: 88px !important; border-radius: 8px !important; }
+        .rc-logo-spacer { width: 88px !important; }
+        .rc-schoolinfo h1 { font-size: 16pt !important; margin: 0 0 4px !important; }
+        .rc-schoolinfo .rc-address { font-size: 11pt !important; margin-bottom: 2px !important; }
+        .rc-schoolinfo .rc-contact-line { font-size: 11pt !important; }
+
+        /* ═══════════════════════════════════════════════════════
+           BLUE DECORATIVE LINE — INSIDE the card, connects to banner
+           Matches browser: left:14px, width:19px, top:50px, bottom:20px
+           ═══════════════════════════════════════════════════════ */
+        .report-card::before {
+            content: '' !important;
+            display: block !important;
+            position: absolute !important;
+            left: 14px !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            width: 19px !important;
+            height: auto !important;
+            background: var(--section-accent) !important;
+            border-radius: 0 24px 24px 0 !important;
+            z-index: 1 !important;
+        }
+
+        /* Banner — extends left to connect with the blue line */
+        .rc-banner {
+            padding: 4px 12px !important;
+            font-size: 11pt !important;
+            white-space: nowrap !important;
+            margin-left: calc(-0.55in + 33px) !important;
+            box-decoration-break: clone !important;
+            -webkit-box-decoration-break: clone !important;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           FORCE SIDE-BY-SIDE COLUMNS
+           Student info (30%) + Chart (65%) stay horizontal
+           ═══════════════════════════════════════════════════════ */
+        .rc-top-grid {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: flex-start !important;
+            width: 100% !important;
+            gap: 10px !important;
+            overflow: hidden !important;
+        }
+        .rc-student-block {
+            width: 30% !important;
+            min-width: 0 !important;
+            flex-shrink: 0 !important;
+        }
+        .rc-chart-block {
+            width: 65% !important;
+            min-width: 0 !important;
+            flex-shrink: 0 !important;
+            min-height: 0 !important;
+            max-height: 50mm !important;
+            overflow: hidden !important;
+        }
+
+        /* Student info */
+        .rc-initials-avatar { width: 22mm !important; height: 26mm !important; font-size: 22pt !important; }
+        .rc-student-name { font-size: 12pt !important; }
+        .rc-detail { font-size: 10pt !important; margin-bottom: 1px !important; }
+
+        /* Chart */
+        .rc-chart-title { font-size: 8.5pt !important; margin-bottom: 2px !important; }
+        .rc-chart-canvas-wrap { height: 45mm !important; max-height: 45mm !important; overflow: hidden !important; }
+        .rc-chart-canvas-wrap canvas { max-width: 100% !important; max-height: 45mm !important; }
+        .rc-chart-svg svg { max-height: 45mm !important; }
+
+        /* Stats */
+        .rc-stats { gap: 4px !important; margin-top: 2px !important; }
+        .rc-stat { padding: 4px !important; border-top: 2px solid var(--section-accent, #305CDE) !important; }
+        .rc-stat-label { font-size: 7pt !important; }
+        .rc-stat-value { font-size: 11pt !important; }
+
+        /* Table */
         .table-scroll { overflow: visible !important; }
-        .rc-table td { padding: 4px 6px !important; font-size: 9pt !important; line-height: 1.2 !important; }
-        .rc-table thead th { padding: 6px 8px !important; font-size: 9pt !important; background: #E9ECF0 !important; color: #1E293B !important; font-weight: 800 !important; }
-        .rc-comments-header { margin-left: -39px !important; margin-right: 20px !important; padding: 4px 10px !important; border-radius: 8px 20px 0 0 !important; }
-        .rc-remarks-grid { gap: 12px !important; padding: 12px !important; margin-left: -39px !important; margin-right: 20px !important; border-radius: 0 0 8px 8px !important; }
-        .rc-remark-box { padding: 12px 14px !important; border-radius: 10px !important; border: 1px solid #E2E8F0 !important; }
-        .rc-remark-title { font-size: 9pt !important; margin-bottom: 8px !important; font-weight: 800 !important; }
-        .rc-remark-text { font-size: 9.5pt !important; margin-bottom: 10px !important; line-height: 1.4 !important; }
-        .rc-signature { font-size: 8pt !important; padding-top: 6px !important; border-top: 1px dashed #CBD5E1 !important; }
-        .rc-descriptors-title { font-size: 9pt !important; margin-bottom: 4px !important; padding-bottom: 3px !important; border-bottom: 2px solid var(--section-accent, #16A34A) !important; }
-        .rc-descriptors-table th { background: #E9ECF0 !important; font-weight: 800 !important; }
-        .rc-descriptors-table th, .rc-descriptors-table td { padding: 4px 6px !important; font-size: 8.5pt !important; }
-        .footer-dates { gap: 14px !important; margin-top: 10px !important; }
-        .date-box { font-size: 9pt !important; padding: 6px 10px !important; border-radius: 8px !important; border: 1px solid #E2E8F0 !important; }
-        .system-footer { display: none !important; }
-        .rc-print-watermark { display: block !important; position: fixed !important; bottom: 0.25in !important; left: 0 !important; right: 0 !important; text-align: center !important; font-family: 'Times New Roman', Times, serif !important; font-size: 9pt !important; font-weight: 700 !important; color: #475569 !important; text-transform: uppercase !important; letter-spacing: 0.5pt !important; }
-        .rc-table, .rc-table th, .rc-table td, .rc-stat, .rc-descriptors-table, .rc-descriptors-table th, .rc-descriptors-table td { border-color: #000 !important; }
+        .rc-table { width: 100% !important; min-width: 0 !important; }
+        .rc-table th {
+            padding: 3px 5px !important; font-size: 9pt !important;
+            border: 1px solid #000 !important; font-weight: 800 !important;
+            background: #E9ECF0 !important;
+        }
+        .rc-table td { padding: 2px 5px !important; font-size: 9pt !important; border: 1px solid #000 !important; }
+
+        /* Comments — extend left to connect with blue bar */
+        .rc-comments-header {
+            padding: 3px 10px !important; font-size: 9pt !important;
+            margin: 4px 0 0 !important;
+            margin-left: -39px !important; margin-right: 20px !important;
+            box-decoration-break: clone !important;
+            -webkit-box-decoration-break: clone !important;
+        }
+        .rc-remarks-grid { gap: 6px !important; padding: 6px !important; margin-left: 0 !important; margin-right: 20px !important; }
+        .rc-remark-box { padding: 8px 12px !important; border: 1px solid #E2E8F0 !important; }
+        .rc-remark-title { font-size: 9pt !important; margin-bottom: 4px !important; }
+        .rc-remark-text { font-size: 9pt !important; line-height: 1.3 !important; margin-bottom: 4px !important; flex-grow: 0 !important; min-height: 0 !important; }
+        .rc-signature { font-size: 8pt !important; padding-top: 4px !important; }
+
+        /* Descriptors */
+        .rc-descriptors { margin-top: 6px !important; }
+        .rc-descriptors-title { font-size: 9pt !important; margin-bottom: 3px !important; }
+        .rc-descriptors-table th, .rc-descriptors-table td { padding: 2px 4px !important; font-size: 8pt !important; border: 1px solid #000 !important; }
+
+        /* Footer dates */
+        .footer-dates { gap: 8px !important; margin-top: 6px !important; }
+        .date-box { padding: 5px 8px !important; font-size: 9pt !important; border: 1px solid #E2E8F0 !important; }
+        .date-box span:first-child { font-size: 8pt !important; }
+
+        /* Disable hover/animation */
+        * { transition: none !important; animation: none !important; }
     }
-    .rv-card-container, .rv-card-scroll, #reportCardsContainer { border: none !important; border-image: none !important; outline: none !important; box-shadow: none !important; }
-    @media (min-width: 769px) { .report-card { box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important; } }
 </style>
 
 {% if view_mode == 'individual' %}
@@ -834,7 +990,7 @@
         </div>
     </div>
     <div class="rv-actions">
-        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}&mode=inline" target="_blank" class="rv-btn rv-btn-ghost" style="text-decoration:none;text-align:center;"><i class="ph ph-printer"></i> Print</a>
+        <button type="button" class="rv-btn rv-btn-ghost" onclick="window.print()"><i class="ph ph-printer"></i> Print</button>
         <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="rv-btn rv-btn-green" style="text-decoration:none;text-align:center;"><i class="ph ph-file-pdf"></i> Download PDF</a>
     </div>
     <div class="rv-scroll">
@@ -908,16 +1064,16 @@
 
     <div class="rc-action-buttons">
         {% if view_mode == 'bulk' %}
-        <button type="button" onclick="printAllReportCards(this, event)" class="rc-action-btn rc-action-btn-outline">
+        <button type="button" class="rc-action-btn rc-action-btn-outline" onclick="window.print()">
             <i class="ph ph-printer"></i> Print
         </button>
-        <a href="{% url 'download_bulk_report_pdf' %}?{{ request.GET.urlencode }}" class="rc-action-btn rc-action-btn-green" style="text-decoration:none;text-align:center;">
+        <a href="{% url 'download_bulk_report_pdf' %}?grade={{ selected_grade|default:'' }}&stream={{ selected_stream|default:'' }}&exam_id={{ selected_exam_id|default:'' }}" class="rc-action-btn rc-action-btn-green" style="text-decoration:none;text-align:center;">
             <i class="ph ph-file-pdf"></i> Download PDF
         </a>
         {% elif view_mode == 'individual' %}
-        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}&mode=inline" target="_blank" class="rc-action-btn rc-action-btn-outline" style="text-decoration:none;text-align:center;">
+        <button type="button" class="rc-action-btn rc-action-btn-outline" onclick="window.print()">
             <i class="ph ph-printer"></i> Print
-        </a>
+        </button>
         <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="rc-action-btn rc-action-btn-green" style="text-decoration:none;text-align:center;">
             <i class="ph ph-file-pdf"></i> Download PDF
         </a>
@@ -951,26 +1107,139 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
 
 <script>
 (function() {
-    window._allChartsConverted = true;
 
     /* ═══════════════════════════════════════════════════════════
-       PRINT
+       PRINT HANDLER — Direct DOM manipulation
+       CSS @media print is unreliable for position:fixed elements.
+       This JS hides chrome and resets layout before the browser
+       captures the print snapshot, then restores everything after.
        ═══════════════════════════════════════════════════════════ */
-    window.printAllReportCards = function(btn, e) {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
-        if (!window._allChartsConverted) {
-            alert('Charts still rendering — please wait a moment.');
-            return;
+
+    /* Elements to hide during print */
+    var HIDE_SELECTORS = [
+        '.global-header',
+        '.premium-sidebar', '.sidebar', '.sidebar-overlay',
+        '.sub-nav-bar',
+        '.rc-topbar', '.rc-action-buttons', '.rc-info-bar', '.rc-context-card',
+        '.rc-loading-overlay',
+        '.hamburger-btn',
+        '.global-loader-overlay', '.bottom-nav',
+        '.mobile-menu-sheet', '.mobile-menu-panel', '.mobile-menu-body',
+        '.mobile-menu-header', '.mobile-menu-backdrop',
+        '.system-footer', '.rc-print-watermark'
+    ].join(',');
+
+    /* Store original inline styles so we can restore them */
+    var savedStyles = [];
+
+    function prepareForPrint() {
+        savedStyles = [];
+
+        /* 1. Hide all screen chrome */
+        var els = document.querySelectorAll(HIDE_SELECTORS);
+        els.forEach(function(el) {
+            savedStyles.push({ el: el, orig: el.style.cssText });
+            el.style.cssText = 'display:none !important; visibility:hidden !important; height:0 !important; overflow:hidden !important;';
+        });
+
+        /* 2. Reset .app-content margin-top (was pushing card down) */
+        var appContent = document.querySelector('.app-content');
+        if (appContent) {
+            savedStyles.push({ el: appContent, orig: appContent.style.cssText });
+            appContent.style.cssText = 'margin-top:0 !important;';
         }
-        var origText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="ph ph-spinner"></i> Preparing...';
-        setTimeout(function() {
-            window.print();
-            btn.disabled = false;
-            btn.innerHTML = origText;
-        }, 200);
-    };
+
+        /* 3. Reset .main-content margin-left and max-width (was offset by sidebar width) */
+        var mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            savedStyles.push({ el: mainContent, orig: mainContent.style.cssText });
+            mainContent.style.cssText = 'margin-left:0 !important; max-width:100% !important; padding:0 !important;';
+        }
+
+        /* 4. GLOBAL CONTAINER — mirror browser: full width, original padding */
+        var cards = document.querySelectorAll('.report-card');
+        cards.forEach(function(card) {
+            savedStyles.push({ el: card, orig: card.style.cssText });
+            card.style.cssText = 'width:100% !important; max-width:none !important; margin:0 !important; padding:0.16in 0.35in 0.25in 0.55in !important; border:none !important; border-radius:0 !important; box-shadow:none !important; position:relative !important; font-family:"Times New Roman",Times,serif !important; font-size:12pt !important;';
+        });
+
+        /* 5. Content fills its parent */
+        var reportContents = document.querySelectorAll('.report-content');
+        reportContents.forEach(function(el) {
+            savedStyles.push({ el: el, orig: el.style.cssText });
+            el.style.cssText = 'width:100% !important; margin:0 !important; padding:0 !important; font-family:"Times New Roman",Times,serif !important; font-size:12pt !important; gap:8px !important;';
+        });
+
+        /* 6. Force side-by-side columns with explicit widths */
+        var topGrids = document.querySelectorAll('.rc-top-grid');
+        topGrids.forEach(function(el) {
+            savedStyles.push({ el: el, orig: el.style.cssText });
+            el.style.cssText = 'display:flex !important; flex-direction:row !important; justify-content:space-between !important; align-items:flex-start !important; width:100% !important; gap:10px !important; overflow:hidden !important;';
+        });
+        var studentBlocks = document.querySelectorAll('.rc-student-block');
+        studentBlocks.forEach(function(el) {
+            savedStyles.push({ el: el, orig: el.style.cssText });
+            el.style.cssText = 'width:30% !important; min-width:0 !important; flex-shrink:0 !important;';
+        });
+        var chartBlocks = document.querySelectorAll('.rc-chart-block');
+        chartBlocks.forEach(function(el) {
+            savedStyles.push({ el: el, orig: el.style.cssText });
+            el.style.cssText = 'width:65% !important; min-width:0 !important; flex-shrink:0 !important; min-height:0 !important; max-height:50mm !important; overflow:hidden !important;';
+        });
+
+        /* 7. Constrain chart canvases */
+        var canvases = document.querySelectorAll('.rc-chart-canvas-wrap');
+        canvases.forEach(function(el) {
+            savedStyles.push({ el: el, orig: el.style.cssText });
+            el.style.cssText = 'height:45mm !important; max-height:45mm !important; overflow:hidden !important;';
+        });
+
+        /* 7. Fix blue background bleed on banners and headers */
+        var bleedEls = document.querySelectorAll('.rc-banner, .rc-comments-header');
+        bleedEls.forEach(function(el) {
+            savedStyles.push({ el: el, orig: el.style.cssText });
+            el.style.cssText += '; box-decoration-break:clone !important; -webkit-box-decoration-break:clone !important;';
+        });
+
+        /* 7b. Comments header + remarks grid — extend left to connect with blue bar */
+        var commentsHeader = document.querySelectorAll('.rc-comments-header');
+        commentsHeader.forEach(function(el) {
+            savedStyles.push({ el: el, orig: el.style.cssText });
+            el.style.cssText += '; margin-left:-39px !important; margin-right:20px !important;';
+        });
+        var remarksGrids = document.querySelectorAll('.rc-remarks-grid');
+        remarksGrids.forEach(function(el) {
+            savedStyles.push({ el: el, orig: el.style.cssText });
+            el.style.cssText += '; margin-left:0 !important; margin-right:20px !important;';
+        });
+
+        /* 8. Blue decorative line — INSIDE card, matches browser exactly */
+        var stripeStyle = document.createElement('style');
+        stripeStyle.id = 'print-stripe-fix';
+        stripeStyle.textContent = '.report-card::before{content:""!important;display:block!important;position:absolute!important;left:14px!important;top:0!important;bottom:0!important;width:19px!important;height:auto!important;background:var(--section-accent)!important;border-radius:0 24px 24px 0!important;z-index:1!important;}.rc-banner{margin-left:calc(-0.55in + 33px)!important;}.rc-comments-header{margin-left:-39px!important;margin-right:20px!important;}.rc-remarks-grid{margin-left:0!important;margin-right:20px!important;}';
+        document.head.appendChild(stripeStyle);
+
+        /* 8. Force Chart.js to re-render for print */
+        if (typeof Chart !== 'undefined' && Chart.instances) {
+            Object.keys(Chart.instances).forEach(function(key) {
+                var chart = Chart.instances[key];
+                if (chart && chart.resize) chart.resize();
+            });
+        }
+    }
+
+    function restoreAfterPrint() {
+        savedStyles.forEach(function(item) {
+            item.el.style.cssText = item.orig;
+        });
+        savedStyles = [];
+        /* Remove injected stripe fix style */
+        var injected = document.getElementById('print-stripe-fix');
+        if (injected) injected.parentNode.removeChild(injected);
+    }
+
+    window.addEventListener('beforeprint', prepareForPrint);
+    window.addEventListener('afterprint', restoreAfterPrint);
 
     /* ═══════════════════════════════════════════════════════════
        AJAX POLLING (bulk view only)

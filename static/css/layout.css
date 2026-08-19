@@ -64,9 +64,9 @@
 }
 
 .school-name {
-    font-size: 13px;
-    font-weight: var(--weight-bold);
-    color: var(--en-green);
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #4CAF50;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
@@ -75,7 +75,7 @@
 }
 
 .school-name span {
-    color: var(--en-green);
+    color: #4CAF50;
 }
 
 /* ── Controls Group ───────────────────────────────────────── */
@@ -148,7 +148,7 @@
 .header-user {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 10px;
     padding-left: var(--space-3);
     border-left: 1px solid var(--en-border-light);
     cursor: pointer;
@@ -163,29 +163,33 @@
 }
 
 .user-name {
-    font-size: 13px;
-    font-weight: var(--weight-bold);
-    color: var(--en-navy);
+    font-size: 14px;
+    font-weight: 800;
+    color: #0f172a;
     white-space: nowrap;
 }
 
 .user-email {
     font-size: 11px;
-    color: var(--en-text-muted);
+    color: #94a3b8;
     white-space: nowrap;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .user-avatar {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: var(--radius-full);
-    background-color: var(--en-green-light);
-    color: var(--en-navy);
+    background-color: #EF4444;
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: var(--weight-bold);
-    font-size: var(--text-sm);
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.5px;
     flex-shrink: 0;
 }
 
@@ -343,16 +347,17 @@
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    background: var(--en-bg-elevated);
-    border: 1px solid var(--en-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    min-width: 220px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+    min-width: 240px;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-4px);
     transition: all var(--duration-fast) var(--ease-out);
     z-index: var(--z-dropdown);
+    overflow: hidden;
 }
 
 .header-user.open .topbar-dropdown {
@@ -364,56 +369,67 @@
 .topbar-dropdown-header {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-4);
+    gap: 12px;
+    padding: 16px 18px;
 }
 
 .topbar-dropdown-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-full);
-    background: var(--en-green-light);
-    color: var(--en-navy);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #EF4444;
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: var(--weight-bold);
-    font-size: var(--text-sm);
+    font-weight: 800;
+    font-size: 14px;
+    flex-shrink: 0;
 }
 
 .topbar-dropdown-name {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-    color: var(--en-text);
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
 }
 
 .topbar-dropdown-role {
-    font-size: 11px;
-    color: var(--en-text-muted);
+    font-size: 12px;
+    color: #94a3b8;
 }
 
 .topbar-dropdown-divider {
     height: 1px;
-    background: var(--en-border-light);
+    background: #f1f5f9;
 }
 
 .topbar-dropdown-item {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--text-sm);
-    color: var(--en-text-secondary);
+    gap: 10px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #475569;
     text-decoration: none;
-    transition: background var(--duration-fast) var(--ease-out);
+    transition: background 0.15s ease;
 }
 
 .topbar-dropdown-item:hover {
-    background: var(--en-surface);
+    background: #f8fafc;
+}
+
+.topbar-dropdown-item i {
+    color: #4CAF50;
+    font-size: 18px;
 }
 
 .topbar-logout {
-    color: var(--en-danger) !important;
+    color: #EF4444 !important;
+}
+
+.topbar-logout i {
+    color: #EF4444 !important;
 }
 
 .app-content {

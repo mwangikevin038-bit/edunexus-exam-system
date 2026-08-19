@@ -12,6 +12,12 @@ urlpatterns = [
     path('password-change/',
          views.custom_password_change,
          name='password_change'),
+    path('school-admin/school-settings/',
+         views.school_settings,
+         name='school_settings'),
+    path('school-admin/term-dates/',
+         views.term_dates,
+         name='term_dates'),
 
     # ── Student management ────────────────────────────────────────────────
     path('add-student/', views.add_student, name='add_student'),

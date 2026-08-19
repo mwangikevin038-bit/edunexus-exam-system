@@ -1557,11 +1557,12 @@ def analyse_exam(request):
         if detected_section:
             section = detected_section[0]
         if detected_sub:
-            sub_section = [s for s in detected_sub if s]
-            sub_section = sub_section[0] if sub_section else sub_section
+            sub_section_filtered = [s for s in detected_sub if s]
+            sub_section = sub_section_filtered[0] if sub_section_filtered else None
 
     breakdown_levels = PRIMARY_ORDERED_LEVELS if section == 'PRIMARY' else ORDERED_LEVELS
-    from .grading_engine import resolve_scale_fast, get_grading_scale
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast, get_grading_scale
+    prefetch_school_grading(school)
     grade_descriptors = resolve_scale_fast(
         school.pk, section, sub_section,
         subject_id=None, is_total_calculation=False,
@@ -1649,6 +1650,32 @@ def analyse_exam(request):
         school=school, year=exam.year, is_deleted=False,
     ).exclude(id=exam.id).order_by('term', 'name')
 
+    # Filter other exams to only those with marks for the current grade
+    if class_name_filter:
+        from ..models import MarkSubmission, Mark as MarkModel
+
+        other_complete_ids = []
+        for ex in other_exams:
+            has_data = MarkSubmission.all_objects.filter(
+                school=school,
+                class_name=class_name_filter,
+                exam_name=ex.name,
+                term=ex.term,
+                year=ex.year,
+                status='published',
+            ).values('subject').distinct().exists()
+            if not has_data:
+                has_data = MarkModel.all_objects.filter(
+                    student__school=school,
+                    student__class_name=class_name_filter,
+                    exam_type=ex.name,
+                    term=ex.term,
+                    year=ex.year,
+                ).values('subject').distinct().exists()
+            if has_data:
+                other_complete_ids.append(ex.id)
+        other_exams = other_exams.filter(id__in=other_complete_ids)
+
     # Compute comparison exam stats for change calculation
     prev_exam = other_exams.first() if other_exams else None
     prev_mean_marks = 0
@@ -1705,9 +1732,8 @@ def analyse_exam(request):
 
     overall_plv = '-'
     if grading_scale_obj and grading_scale_obj.total_scale:
-        total_marks_800 = overall_mean_marks * 8
         for level_def in grading_scale_obj.total_scale:
-            if level_def.get('min_marks', 0) <= total_marks_800 <= level_def.get('max_marks', 0):
+            if level_def.get('min_marks', 0) <= overall_mean_marks <= level_def.get('max_marks', 0):
                 overall_plv = level_def.get('level', '-')
                 break
     grade_breakdown = []
@@ -1735,9 +1761,8 @@ def analyse_exam(request):
         row['mp_dev'] = round(row['mean_points'] - overall_mean_points, 4)
 
         if grading_scale_obj and grading_scale_obj.total_scale:
-            total_m = row['mean_marks'] * 8
             for level_def in grading_scale_obj.total_scale:
-                if level_def.get('min_marks', 0) <= total_m <= level_def.get('max_marks', 0):
+                if level_def.get('min_marks', 0) <= row['mean_marks'] <= level_def.get('max_marks', 0):
                     row['performance_level'] = level_def.get('level', '-')
                     break
         else:
@@ -1836,6 +1861,32 @@ def analyse_exam(request):
         school=school, year=exam.year, is_deleted=False,
     ).order_by('-year', 'term', 'name')
 
+    # Only show exams that have published submissions or actual marks for the current grade
+    if class_name_filter:
+        from ..models import MarkSubmission, Mark as MarkModel
+
+        complete_exam_ids = []
+        for ex in all_exams_for_school:
+            has_data = MarkSubmission.all_objects.filter(
+                school=school,
+                class_name=class_name_filter,
+                exam_name=ex.name,
+                term=ex.term,
+                year=ex.year,
+                status='published',
+            ).values('subject').distinct().exists()
+            if not has_data:
+                has_data = MarkModel.all_objects.filter(
+                    student__school=school,
+                    student__class_name=class_name_filter,
+                    exam_type=ex.name,
+                    term=ex.term,
+                    year=ex.year,
+                ).values('subject').distinct().exists()
+            if has_data:
+                complete_exam_ids.append(ex.id)
+        all_exams_for_school = all_exams_for_school.filter(id__in=complete_exam_ids)
+
     # Group exams by grade + term for the custom dropdown
     exam_groups_dict = {}
     seen_exam_keys = set()
@@ -1843,12 +1894,7 @@ def analyse_exam(request):
         key = (ex.name, ex.term, ex.year)
         if key in seen_exam_keys:
             continue
-        grade_label = ex.school_section or 'JSS'
-        first_summary = ExamSummary.all_objects.filter(
-            school=school, exam_name=ex.name, term=ex.term, year=ex.year,
-        ).select_related('student').first()
-        if first_summary and first_summary.student:
-            grade_label = first_summary.student.class_name
+        grade_label = class_name_filter or ex.school_section or 'JSS'
         term_label = f"{grade_label} - {ex.term} ({ex.year})"
         if term_label not in exam_groups_dict:
             exam_groups_dict[term_label] = []

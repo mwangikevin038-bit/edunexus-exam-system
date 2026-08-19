@@ -33,6 +33,25 @@ class School(models.Model):
     phone_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="Official Phone")
     email = models.EmailField(blank=True, null=True, verbose_name="Billing/Contact Email")
     motto = models.CharField(max_length=255, blank=True, null=True, verbose_name="School Motto", help_text="e.g., Excellence · Discipline · Character")
+
+    short_name = models.CharField(max_length=50, blank=True, null=True, verbose_name="Short Name", help_text="e.g., CSS")
+
+    GENDER_TYPE_CHOICES = [
+        ('Mixed School', 'Mixed School'),
+        ('Boys School', 'Boys School'),
+        ('Girls School', 'Girls School'),
+    ]
+    gender_type = models.CharField(max_length=20, choices=GENDER_TYPE_CHOICES, default='Mixed School', blank=True, verbose_name="Gender Type")
+
+    BOARDING_STATUS_CHOICES = [
+        ('Day', 'Day'),
+        ('Boarding', 'Boarding'),
+        ('Day & Boarding', 'Day & Boarding'),
+    ]
+    boarding_status = models.CharField(max_length=20, choices=BOARDING_STATUS_CHOICES, default='Day', blank=True, verbose_name="Boarding Status")
+
+    vision = models.TextField(blank=True, null=True, verbose_name="Vision")
+    mission = models.TextField(blank=True, null=True, verbose_name="Mission")
     
     # Subscription Management (Zeraki Style)
     SUBSCRIPTION_TIERS = [
@@ -59,6 +78,39 @@ class School(models.Model):
     class Meta:
         verbose_name = "Subscribed School"
         verbose_name_plural = "Subscribed Schools"
+
+
+class TermDate(models.Model):
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name='term_dates',
+    )
+    academic_year = models.IntegerField(verbose_name="Academic Year")
+    TERM_CHOICES = [
+        ('Term 1', 'Term 1'),
+        ('Term 2', 'Term 2'),
+        ('Term 3', 'Term 3'),
+    ]
+    term = models.CharField(max_length=10, choices=TERM_CHOICES, verbose_name="Term")
+    start_date = models.DateField(verbose_name="Start Date")
+    end_date = models.DateField(verbose_name="End Date")
+    WEEK_CHOICES = [
+        ('Monday', 'Monday'),
+        ('Sunday', 'Sunday'),
+    ]
+    week_starts_on = models.CharField(max_length=10, choices=WEEK_CHOICES, default='Monday', verbose_name="Week Starts On")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.academic_year} - {self.term}"
+
+    class Meta:
+        verbose_name = "Term Date"
+        verbose_name_plural = "Term Dates"
+        unique_together = ('school', 'academic_year', 'term')
+        ordering = ['-academic_year', 'term']
 
 
 class SchoolScopedModel(models.Model):
@@ -708,6 +760,14 @@ class Teacher(SchoolScopedModel):
     )
 
     # ============ ADDITIONAL PROFILE INFORMATION ============
+    other_names = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name="Other Names",
+        help_text="Middle or other names"
+    )
+
     national_id = models.CharField(
         max_length=30,
         blank=True,
@@ -737,6 +797,14 @@ class Teacher(SchoolScopedModel):
         default='',
         verbose_name="Bio",
         help_text="Short biography or notes about the teacher"
+    )
+
+    profile_picture = models.ImageField(
+        upload_to='teacher_profiles/',
+        blank=True,
+        null=True,
+        verbose_name="Profile Picture",
+        help_text="Teacher's profile photo"
     )
 
     signature = models.ImageField(

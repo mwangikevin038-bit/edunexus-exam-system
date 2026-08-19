@@ -1,26 +1,28 @@
 {% extends 'students/base.html' %}
 {% load static %}
 
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/profile-mobile.css' %}">
-{% endblock %}
-
 {% block sub_tabs %}
 <style>
-  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:40px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
   .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
   .sub-nav-item{display:flex;align-items:stretch}
-  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 16px;display:flex;align-items:center;gap:7px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
   .sub-nav-link:hover{color:#fff;background-color:#43A047}
-  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
-  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .sub-nav-link.active{color:#fff;background-color:rgba(0,0,0,0.15);font-weight:700}
+  .sub-nav-link svg,.sub-nav-link i{width:16px;height:16px;flex-shrink:0}
 </style>
 <nav class="sub-nav-bar">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="{% url 'home_alt' %}" class="sub-nav-link active">
-        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Teacher Profile
+        <i class="ph ph-user"></i>
+        Update Profile
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'password_change' %}" class="sub-nav-link">
+        <i class="ph ph-shield-check"></i>
+        Change Password
       </a>
     </li>
   </ul>
@@ -28,273 +30,215 @@
 {% endblock %}
 
 {% block content %}
-<!-- ═══════════════════════════════════════════════════════════
-     iOS 17 MOBILE PROFILE (hidden on desktop)
-     ═══════════════════════════════════════════════════════════ -->
-<div class="pf-shell">
-    <!-- HEADER -->
-    <header class="pf-header">
-        <div class="pf-header-left">
-            <div class="pf-header-greeting" id="pfGreeting">Good day, {{ request.user.first_name|default:"Teacher" }}</div>
-            <div class="pf-header-sub">Faculty Profile</div>
-        </div>
-        <div class="pf-avatar">{{ request.user.first_name|first|default:"U" }}</div>
-    </header>
-
-    <!-- SCROLLABLE BODY -->
-    <main class="pf-body">
-        <!-- HERO CARD -->
-        <section class="pf-hero">
-            <div class="pf-hero-avatar"><i class="ph ph-user-circle"></i></div>
-            <div class="pf-hero-name">{% if teacher %}{{ teacher.get_full_title }}{% else %}{{ user.username }}{% endif %}</div>
-            <div class="pf-hero-subtitle">Personal faculty profile, subject allocations, and school account details.</div>
-            <span class="pf-hero-badge">
-                <i class="ph ph-shield-check"></i>
-                {% if class_teacher_scope %}Class Teacher{% else %}Subject Teacher{% endif %}
-            </span>
-        </section>
-
-        <!-- ACCOUNT DETAILS -->
-        <div class="pf-section-label">Account Details</div>
-        <div class="pf-details-card">
-            <div class="pf-detail-row">
-                <div class="pf-detail-icon"><i class="ph ph-hash"></i></div>
-                <div class="pf-detail-content">
-                    <div class="pf-detail-label">TSC Number</div>
-                    <div class="pf-detail-value">{{ teacher.tsc_number|default:"Not assigned" }}</div>
-                </div>
-            </div>
-            <div class="pf-detail-row">
-                <div class="pf-detail-icon"><i class="ph ph-user"></i></div>
-                <div class="pf-detail-content">
-                    <div class="pf-detail-label">System Username</div>
-                    <div class="pf-detail-value">{{ user.username }}</div>
-                </div>
-            </div>
-            <div class="pf-detail-row">
-                <div class="pf-detail-icon"><i class="ph ph-phone"></i></div>
-                <div class="pf-detail-content">
-                    <div class="pf-detail-label">Phone Number</div>
-                    <div class="pf-detail-value">{{ teacher.phone_number|default:"Not provided" }}</div>
-                </div>
-            </div>
-            <div class="pf-detail-row">
-                <div class="pf-detail-icon"><i class="ph ph-envelope"></i></div>
-                <div class="pf-detail-content">
-                    <div class="pf-detail-label">Email Address</div>
-                    <div class="pf-detail-value">{{ teacher.email|default:"Not provided" }}</div>
-                </div>
-            </div>
-            <div class="pf-detail-row">
-                <div class="pf-detail-icon"><i class="ph ph-chalkboard-teacher"></i></div>
-                <div class="pf-detail-content">
-                    <div class="pf-detail-label">Class Teacher Scope</div>
-                    <div class="pf-detail-value">{% if class_teacher_scope %}{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}{% else %}Not assigned{% endif %}</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SUBJECT ALLOCATIONS -->
-        <div class="pf-alloc-header">
-            <div class="pf-alloc-title">Subject Allocations</div>
-            <div class="pf-alloc-count">{{ assignment_count }} {% if assignment_count == 1 %}subject{% else %}subjects{% endif %}</div>
-        </div>
-        <div class="pf-alloc-list">
-            {% for assignment in assignments %}
-                <div class="pf-alloc-item">
-                    <div class="pf-alloc-icon">
-                        <i class="ph ph-book-open"></i>
-                    </div>
-                    <div class="pf-alloc-info">
-                        <div class="pf-alloc-subject">{{ assignment.subject.name }}</div>
-                        <div class="pf-alloc-class">{{ assignment.class_name }} {{ assignment.stream }}</div>
-                    </div>
-                </div>
-            {% empty %}
-                <div class="pf-alloc-empty">
-                    <div class="pf-alloc-empty-icon">
-                        <i class="ph ph-inbox"></i>
-                    </div>
-                    <div class="pf-alloc-empty-title">No active allocations</div>
-                    <div class="pf-alloc-empty-desc">The school admin has not linked subjects to this profile yet.</div>
-                </div>
-            {% endfor %}
-        </div>
-
-        <!-- ACTIONS -->
-        <div class="pf-actions">
-            <a href="{% url 'password_change' %}" class="pf-btn pf-btn-primary">
-                <i class="ph ph-shield-check"></i> Change Account Password
-            </a>
-        </div>
-    </main>
-</div>
-
-<!-- ═══ DESKTOP PROFILE (hidden on mobile) ═══ -->
 <style>
-    @keyframes pfFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-    .pf-dt{padding:28px 0 56px;max-width:100%;animation:pfFadeUp .5s cubic-bezier(.16,1,.3,1) both}
+  @keyframes profFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .prof-page{display:grid;grid-template-columns:300px 1fr;gap:24px;max-width:1200px;margin:0 auto;padding:28px 24px 60px;animation:profFadeUp .5s cubic-bezier(.16,1,.3,1) both}
 
-    .pf-dt-hero{background:linear-gradient(135deg,#4CAF50 0%,#43A047 40%,#388E3C 100%);border-radius:20px;padding:32px 34px;margin-bottom:24px;display:flex;align-items:center;gap:24px;box-shadow:0 8px 32px -8px rgba(76,175,80,.45);position:relative;overflow:hidden}
-    .pf-dt-hero::before{content:'';position:absolute;top:-40%;right:-10%;width:300px;height:300px;background:radial-gradient(circle,rgba(255,255,255,.1) 0%,transparent 70%);pointer-events:none}
-    .pf-dt-hero::after{content:'';position:absolute;bottom:-30%;left:20%;width:200px;height:200px;background:radial-gradient(circle,rgba(255,255,255,.06) 0%,transparent 70%);pointer-events:none}
-    .pf-dt-avatar{width:80px;height:80px;border-radius:20px;background:rgba(255,255,255,.2);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1;border:2px solid rgba(255,255,255,.15)}
-    .pf-dt-avatar i{font-size:38px;color:#fff}
-    .pf-dt-hero-text{flex:1;min-width:0;position:relative;z-index:1}
-    .pf-dt-hero-text h1{font-size:1.65rem;font-weight:800;color:#fff;letter-spacing:-.03em;margin:0 0 6px}
-    .pf-dt-hero-text p{font-size:.8125rem;color:rgba(255,255,255,.78);margin:0;font-weight:500;letter-spacing:-.01em}
-    .pf-dt-badge{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:20px;background:rgba(255,255,255,.2);backdrop-filter:blur(10px);color:#fff;font-size:.6875rem;font-weight:700;letter-spacing:.02em;flex-shrink:0;align-self:flex-start;margin-top:2px;position:relative;z-index:1;border:1px solid rgba(255,255,255,.15)}
-    .pf-dt-badge i{font-size:13px}
+  .prof-sidebar{background:#fff;border:1px solid #e8e8ec;border-radius:16px;padding:32px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;height:fit-content;position:sticky;top:calc(var(--global-header-height,64px) + 40px + 24px)}
+  .prof-avatar-wrapper{position:relative;width:130px;height:130px;margin-bottom:14px}
+  .prof-avatar{width:130px;height:130px;border-radius:50%;background:linear-gradient(145deg,#94a3b8,#cbd5e1);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.1)}
+  .prof-avatar img{width:100%;height:100%;object-fit:cover}
+  .prof-avatar i{font-size:60px;color:#e2e8f0}
+  .prof-change-photo{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.88);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;backdrop-filter:blur(4px);transition:background 0.15s;display:flex;align-items:center;gap:5px}
+  .prof-change-photo:hover{background:rgba(15,23,42,0.97)}
+  .prof-change-photo i{font-size:13px}
+  .prof-sidebar-name{font-size:1.15rem;font-weight:700;color:#0f172a;margin:10px 0 2px}
+  .prof-sidebar-username{font-size:.8rem;color:#64748b;font-weight:500;margin-bottom:18px}
+  .prof-sidebar-username-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;display:block;margin-bottom:2px}
+  .prof-sidebar-divider{width:100%;height:1px;background:#f1f5f9;margin:4px 0 16px}
+  .prof-sidebar-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;align-self:flex-start;margin-bottom:8px}
 
-    .pf-dt-section-label{font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#86868b;margin-bottom:14px}
+  .prof-signature-box{width:100%;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;min-height:80px;display:flex;align-items:center;justify-content:center;background:#f8fafc;position:relative;margin-bottom:12px}
+  .prof-signature-box img{width:100%;max-height:80px;object-fit:contain;padding:10px}
+  .prof-signature-box .no-sig{font-size:.8rem;color:#94a3b8;font-style:italic}
+  .prof-sig-delete{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:6px;background:#EF4444;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:background 0.15s;box-shadow:0 2px 6px rgba(239,68,68,0.3)}
+  .prof-sig-delete:hover{background:#DC2626}
+  .prof-change-sig{width:100%;background:#1e293b;color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:.8rem;font-weight:600;cursor:pointer;transition:background 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .prof-change-sig:hover{background:#0f172a}
+  .prof-change-sig i{font-size:15px}
 
-    .pf-dt-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px}
-    .pf-dt-stat{background:#fff;border:1px solid #e8e8ec;border-radius:16px;padding:22px 18px;text-align:center;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s;position:relative;overflow:hidden}
-    .pf-dt-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#4CAF50,#66BB6A);opacity:0;transition:opacity .2s}
-    .pf-dt-stat:hover{transform:translateY(-3px);box-shadow:0 8px 24px -6px rgba(0,0,0,.06)}
-    .pf-dt-stat:hover::before{opacity:1}
-    .pf-dt-stat-val{font-size:1.75rem;font-weight:800;color:#1a1a1a;letter-spacing:-.03em;line-height:1;margin-bottom:6px}
-    .pf-dt-stat-label{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#86868b}
+  .prof-form-card{background:#fff;border:1px solid #e8e8ec;border-radius:16px;padding:32px 36px}
+  .prof-form-title{font-size:1.3rem;font-weight:800;color:#0f172a;margin:0 0 28px;letter-spacing:-.02em}
 
-    .pf-dt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:32px}
-    .pf-dt-card{background:#fff;border:1px solid #e8e8ec;border-radius:14px;padding:20px 18px;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s}
-    .pf-dt-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px -4px rgba(0,0,0,.05)}
-    .pf-dt-card-label{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#86868b;margin-bottom:10px}
-    .pf-dt-card-icon{display:flex;align-items:center;gap:12px}
-    .pf-dt-card-icon i{width:36px;height:36px;border-radius:10px;background:rgba(76,175,80,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;color:#4CAF50}
-    .pf-dt-card-icon span{font-size:.8125rem;font-weight:600;color:#1a1a1a;line-height:1.3}
+  .prof-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px 28px}
+  .prof-field{display:flex;flex-direction:column;gap:6px}
+  .prof-field.full{grid-column:1/-1}
+  .prof-field label{font-size:.8rem;font-weight:600;color:#1e293b}
+  .prof-field label .required{color:#EF4444;margin-left:2px}
 
-    .pf-dt-alloc{background:#fff;border:1px solid #e8e8ec;border-radius:16px;overflow:hidden;margin-bottom:32px;transition:box-shadow .2s}
-    .pf-dt-alloc:hover{box-shadow:0 4px 16px -4px rgba(0,0,0,.04)}
-    .pf-dt-alloc-head{padding:20px 24px;border-bottom:1px solid #f0f0f2;display:flex;align-items:center;justify-content:space-between}
-    .pf-dt-alloc-head h2{font-size:1rem;font-weight:700;color:#1a1a1a;margin:0;letter-spacing:-.01em}
-    .pf-dt-alloc-head p{font-size:.75rem;color:#86868b;margin:0;font-weight:500}
-    .pf-dt-alloc-body{padding:20px 24px 24px}
-    .pf-dt-alloc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-    .pf-dt-alloc-item{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#fafafa;border:1px solid #e8e8ec;border-radius:12px;transition:all .2s cubic-bezier(.16,1,.3,1)}
-    .pf-dt-alloc-item:hover{background:#fff;border-color:#d4d4d8;transform:translateY(-1px);box-shadow:0 2px 8px -2px rgba(0,0,0,.04)}
-    .pf-dt-alloc-icon{width:42px;height:42px;border-radius:12px;background:rgba(76,175,80,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .pf-dt-alloc-icon i{font-size:19px;color:#4CAF50}
-    .pf-dt-alloc-name{font-size:.8125rem;font-weight:700;color:#1a1a1a;letter-spacing:-.01em}
-    .pf-dt-alloc-meta{font-size:.6875rem;color:#86868b;font-weight:500;margin-top:3px}
-    .pf-dt-alloc-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;padding:40px 20px;text-align:center}
-    .pf-dt-alloc-empty-icon{width:56px;height:56px;border-radius:14px;background:#f5f5f7;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
-    .pf-dt-alloc-empty-icon i{font-size:26px;color:#c7c7cc}
-    .pf-dt-alloc-empty-title{font-size:.875rem;font-weight:700;color:#1a1a1a;margin-bottom:4px}
-    .pf-dt-alloc-empty-desc{font-size:.75rem;color:#86868b;max-width:260px}
+  .prof-field input,.prof-field select,.prof-field textarea{padding:12px 14px;border:1.5px solid #c6f0d5;border-radius:10px;font-size:.875rem;font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#0f172a;background:#f0faf3;transition:border-color 0.15s,box-shadow 0.15s,background 0.15s;outline:none}
+  .prof-field input:focus,.prof-field select:focus,.prof-field textarea:focus{border-color:#4CAF50;box-shadow:0 0 0 3px rgba(76,175,80,0.12);background:#fff}
+  .prof-field input::placeholder,.prof-field textarea::placeholder{color:#86b89a}
+  .prof-field textarea{min-height:140px;resize:vertical}
+  .prof-field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386b89a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;background-color:#f0faf3}
+  .prof-field input[readonly]{background:#f0faf3;color:#475569;cursor:default}
 
-    .pf-dt-pass{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:14px;background:linear-gradient(135deg,#4CAF50,#43A047);color:#fff;font-size:.8125rem;font-weight:700;text-decoration:none;transition:all .2s cubic-bezier(.16,1,.3,1);box-shadow:0 4px 14px -4px rgba(76,175,80,.4)}
-    .pf-dt-pass:hover{transform:translateY(-2px);box-shadow:0 8px 24px -6px rgba(76,175,80,.5)}
-    .pf-dt-pass i{font-size:17px}
+  .prof-phone-group{display:flex;align-items:stretch}
+  .prof-phone-prefix{display:flex;align-items:center;gap:6px;padding:0 14px;border:1.5px solid #c6f0d5;border-right:none;border-radius:10px 0 0 10px;background:#f0faf3;font-size:.8rem;font-weight:600;color:#334155;white-space:nowrap}
+  .prof-phone-flag{width:22px;height:16px;border-radius:2px;object-fit:cover;border:1px solid #e2e8f0;flex-shrink:0}
+  .prof-phone-group input{flex:1;border-radius:0 10px 10px 0}
 
-    @media(max-width:980px){
-        .pf-dt-grid{grid-template-columns:repeat(2,1fr)}
-        .pf-dt-alloc-grid{grid-template-columns:1fr}
-    }
-    @media(max-width:640px){
-        .pf-dt-stats{grid-template-columns:repeat(2,1fr)}
-        .pf-dt-grid{grid-template-columns:1fr}
-    }
+  .prof-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:32px;padding-top:22px;border-top:1px solid #f1f5f9}
+  .prof-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 28px;border-radius:10px;font-size:.85rem;font-weight:700;border:none;cursor:pointer;transition:all 0.15s;text-decoration:none}
+  .prof-btn-cancel{background:#fff;color:#475569;border:1.5px solid #e2e8f0}
+  .prof-btn-cancel:hover{background:#f8fafc;border-color:#cbd5e1}
+  .prof-btn-save{background:#4CAF50;color:#fff}
+  .prof-btn-save:hover{background:#43A047;box-shadow:0 4px 14px rgba(76,175,80,0.35)}
+  .prof-btn i{font-size:15px}
+
+  @media(max-width:768px){.prof-page{grid-template-columns:1fr;padding:16px}.prof-sidebar{position:static}}
 </style>
 
-<div class="pf-dt">
-    <div class="pf-dt-hero">
-        <div class="pf-dt-avatar"><i class="ph ph-user-circle"></i></div>
-        <div class="pf-dt-hero-text">
-            <h1>{% if teacher %}{{ teacher.get_full_title }}{% else %}{{ user.username }}{% endif %}</h1>
-            <p>Personal faculty profile, subject allocations, and school account details.</p>
-        </div>
-        <div class="pf-dt-badge"><i class="ph ph-shield-check"></i> {% if class_teacher_scope %}Class Teacher{% else %}Subject Teacher{% endif %}</div>
+<form method="POST" enctype="multipart/form-data" id="profileForm">
+{% csrf_token %}
+<input type="hidden" name="delete_signature" id="deleteSignature" value="0">
+<input type="hidden" name="delete_profile_picture" id="deleteProfilePicture" value="0">
+<input type="file" name="profile_picture" id="profilePictureUpload" accept="image/*" style="display:none">
+<input type="file" name="signature" id="sigFileUpload" accept="image/*" style="display:none">
+
+<div class="prof-page">
+  <aside class="prof-sidebar">
+    <div class="prof-avatar-wrapper">
+      <div class="prof-avatar" id="avatarBox">
+        {% if teacher.profile_picture %}
+          <img src="{{ teacher.profile_picture.url }}" alt="Profile" id="avatarImg">
+        {% else %}
+          <i class="ph-fill ph-user-circle" id="avatarIcon"></i>
+        {% endif %}
+      </div>
+      <button type="button" class="prof-change-photo" onclick="document.getElementById('profilePictureUpload').click()"><i class="ph ph-camera"></i> Change Image</button>
+    </div>
+    <div class="prof-sidebar-name">{% if user.first_name %}{{ user.first_name }}{% else %}{{ user.username }}{% endif %}</div>
+    <div class="prof-sidebar-username">
+      <span class="prof-sidebar-username-label">USERNAME</span>
+      {{ user.username }}
     </div>
 
-    <div class="pf-dt-section-label">Overview</div>
-    <div class="pf-dt-stats">
-        <div class="pf-dt-stat">
-            <div class="pf-dt-stat-val">{{ assignment_count }}</div>
-            <div class="pf-dt-stat-label">Allocations</div>
+    <div class="prof-sidebar-divider"></div>
+
+    <div class="prof-sidebar-label">Signature</div>
+    <div class="prof-signature-box" id="sigBox">
+      {% if teacher.signature %}
+        <img src="{{ teacher.signature.url }}" alt="Signature" id="sigPreview">
+        <button type="button" class="prof-sig-delete" id="sigDeleteBtn" onclick="document.getElementById('deleteSignature').value='1';var p=document.getElementById('sigPreview');if(p)p.style.display='none';this.style.display='none';var n=document.getElementById('noSig');if(n)n.style.display='flex';" title="Remove signature"><i class="ph ph-trash"></i></button>
+        <span class="no-sig" id="noSig" style="display:none">No signature</span>
+      {% else %}
+        <span class="no-sig" id="noSig">No signature</span>
+      {% endif %}
+    </div>
+    <button type="button" class="prof-change-sig" onclick="document.getElementById('sigFileUpload').click()"><i class="ph ph-pen"></i> Change Signature</button>
+  </aside>
+
+  <div class="prof-form-card">
+    <h2 class="prof-form-title">User Profile</h2>
+
+    <div class="prof-form-grid">
+      <div class="prof-field">
+        <label>Surname</label>
+        <input type="text" name="surname" value="{{ user.last_name|default:'' }}" placeholder="Surname">
+      </div>
+      <div class="prof-field">
+        <label>First Name</label>
+        <input type="text" name="first_name" value="{{ user.first_name|default:'' }}" placeholder="First Name">
+      </div>
+
+      <div class="prof-field">
+        <label>Other Names</label>
+        <input type="text" name="other_names" value="{{ teacher.other_names|default:'' }}" placeholder="Other Names"{% if not teacher %} readonly{% endif %}>
+      </div>
+      <div class="prof-field">
+        <label>Initials</label>
+        <input type="text" value="{% if user.last_name %}{{ user.last_name|first|upper }}{% endif %}{% if user.first_name %}{{ user.first_name|first|upper }}{% endif %}" placeholder="--" readonly>
+      </div>
+
+      <div class="prof-field">
+        <label>Phone Number <span class="required">*</span></label>
+        <div class="prof-phone-group">
+          <span class="prof-phone-prefix">
+            <svg class="prof-phone-flag" viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg" style="width:22px;height:16px;border-radius:2px;border:1px solid #e2e8f0">
+              <rect width="640" height="96" y="0" fill="#000"/>
+              <rect width="640" height="16" y="96" fill="#fff"/>
+              <rect width="640" height="176" y="112" fill="#BB0000"/>
+              <rect width="640" height="16" y="288" fill="#fff"/>
+              <rect width="640" height="192" y="304" fill="#006600"/>
+            </svg>
+            +254
+          </span>
+          <input type="tel" name="phone_number" value="{{ teacher.phone_number|default:'' }}" placeholder="0700000000"{% if not teacher %} readonly{% endif %}>
         </div>
-        <div class="pf-dt-stat">
-            <div class="pf-dt-stat-val">{{ submitted_count }}</div>
-            <div class="pf-dt-stat-label">Submitted</div>
-        </div>
-        <div class="pf-dt-stat">
-            <div class="pf-dt-stat-val">{{ returned_count }}</div>
-            <div class="pf-dt-stat-label">Returned</div>
-        </div>
-        <div class="pf-dt-stat">
-            <div class="pf-dt-stat-val">{{ published_count }}</div>
-            <div class="pf-dt-stat-label">Published</div>
-        </div>
+      </div>
+      <div class="prof-field">
+        <label>Personal Email</label>
+        <input type="email" name="personal_email" value="{{ teacher.email|default:'' }}" placeholder="Personal Email Address"{% if not teacher %} readonly{% endif %}>
+      </div>
+
+      <div class="prof-field">
+        <label>Gender</label>
+        <select name="gender"{% if not teacher %} disabled{% endif %}>
+          <option value="" {% if not teacher.gender %}selected{% endif %}>Select Gender</option>
+          <option value="Male" {% if teacher.gender == 'Male' %}selected{% endif %}>Male</option>
+          <option value="Female" {% if teacher.gender == 'Female' %}selected{% endif %}>Female</option>
+        </select>
+      </div>
+      <div class="prof-field">
+        <label>National ID No.</label>
+        <input type="text" name="national_id" value="{{ teacher.national_id|default:'' }}" placeholder="National ID No."{% if not teacher %} readonly{% endif %}>
+      </div>
+
+      <div class="prof-field full">
+        <label>Bio</label>
+        <textarea name="bio" placeholder="Bio"{% if not teacher %} readonly{% endif %}>{{ teacher.bio|default:'' }}</textarea>
+      </div>
     </div>
 
-    <div class="pf-dt-section-label">Account Details</div>
-    <div class="pf-dt-grid">
-        <div class="pf-dt-card">
-            <div class="pf-dt-card-label">TSC Number</div>
-            <div class="pf-dt-card-icon"><i class="ph ph-hash"></i><span>{{ teacher.tsc_number|default:"Not assigned" }}</span></div>
-        </div>
-        <div class="pf-dt-card">
-            <div class="pf-dt-card-label">System Username</div>
-            <div class="pf-dt-card-icon"><i class="ph ph-user"></i><span>{{ user.username }}</span></div>
-        </div>
-        <div class="pf-dt-card">
-            <div class="pf-dt-card-label">Phone Number</div>
-            <div class="pf-dt-card-icon"><i class="ph ph-phone"></i><span>{{ teacher.phone_number|default:"Not provided" }}</span></div>
-        </div>
-        <div class="pf-dt-card">
-            <div class="pf-dt-card-label">Email Address</div>
-            <div class="pf-dt-card-icon"><i class="ph ph-envelope"></i><span>{{ teacher.email|default:"Not provided" }}</span></div>
-        </div>
-        <div class="pf-dt-card">
-            <div class="pf-dt-card-label">Assigned Task</div>
-            <div class="pf-dt-card-icon"><i class="ph ph-briefcase"></i><span>{{ teacher.assigned_task|default:"Instructor" }}</span></div>
-        </div>
-        <div class="pf-dt-card">
-            <div class="pf-dt-card-label">Class Teacher Scope</div>
-            <div class="pf-dt-card-icon"><i class="ph ph-chalkboard-teacher"></i><span>{% if class_teacher_scope %}{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}{% else %}Not assigned{% endif %}</span></div>
-        </div>
+    <div class="prof-actions">
+      <button type="button" class="prof-btn prof-btn-cancel" onclick="window.history.back()"><i class="ph ph-x-circle"></i> Cancel</button>
+      <button type="submit" class="prof-btn prof-btn-save"><i class="ph ph-floppy-disk"></i> Save</button>
     </div>
-
-    <div class="pf-dt-alloc">
-        <div class="pf-dt-alloc-head">
-            <h2>Subject Allocations</h2>
-            <p>{{ assignment_count }} {% if assignment_count == 1 %}subject{% else %}subjects{% endif %} currently assigned</p>
-        </div>
-        <div class="pf-dt-alloc-body">
-            <div class="pf-dt-alloc-grid">
-                {% for assignment in assignments %}
-                    <div class="pf-dt-alloc-item">
-                        <div class="pf-dt-alloc-icon"><i class="ph ph-book-open"></i></div>
-                        <div>
-                            <div class="pf-dt-alloc-name">{{ assignment.subject.name }}</div>
-                            <div class="pf-dt-alloc-meta">{{ assignment.class_name }} {{ assignment.stream }}</div>
-                        </div>
-                    </div>
-                {% empty %}
-                    <div class="pf-dt-alloc-empty">
-                        <div class="pf-dt-alloc-empty-icon"><i class="ph ph-inbox"></i></div>
-                        <div class="pf-dt-alloc-empty-title">No active allocations</div>
-                        <div class="pf-dt-alloc-empty-desc">The school admin has not linked subjects to this profile yet.</div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-
-    <a href="{% url 'password_change' %}" class="pf-dt-pass"><i class="ph ph-shield-check"></i> Change Account Password</a>
+  </div>
 </div>
-{% endblock %}
+</form>
 
-{% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var greetEl = document.getElementById('pfGreeting');
-    if (greetEl) {
-        var h = new Date().getHours();
-        var name = '{{ request.user.first_name|escapejs|default:"Teacher" }}';
-        var g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-        greetEl.textContent = g + ', ' + name;
-    }
+document.getElementById('profilePictureUpload').addEventListener('change', function(e) {
+  if (e.target.files && e.target.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var box = document.getElementById('avatarBox');
+      var existing = document.getElementById('avatarImg');
+      if (existing) existing.remove();
+      var icon = document.getElementById('avatarIcon');
+      if (icon) icon.style.display = 'none';
+      var img = document.createElement('img');
+      img.src = ev.target.result;
+      img.alt = 'Profile';
+      img.id = 'avatarImg';
+      box.prepend(img);
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  }
+});
+
+document.getElementById('sigFileUpload').addEventListener('change', function(e) {
+  if (e.target.files && e.target.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var box = document.getElementById('sigBox');
+      var existing = document.getElementById('sigPreview');
+      if (existing) existing.remove();
+      var delBtn = document.getElementById('sigDeleteBtn');
+      if (delBtn) delBtn.style.display = 'none';
+      var noSig = document.getElementById('noSig');
+      if (noSig) noSig.style.display = 'none';
+      var img = document.createElement('img');
+      img.src = ev.target.result;
+      img.alt = 'Signature';
+      img.id = 'sigPreview';
+      box.prepend(img);
+      document.getElementById('deleteSignature').value = '0';
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  }
 });
 </script>
 {% endblock %}

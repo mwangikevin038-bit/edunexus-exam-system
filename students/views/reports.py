@@ -43,6 +43,7 @@ from .helpers import (
     get_selected_context,
     get_students_ordered,
     get_teacher_for_user,
+    resolve_term_dates,
     user_can_access_class_stream,
 )
 from ..models import (
@@ -528,6 +529,9 @@ def individual_report(request, student_id):
     assessment = request.GET.get('assessment', 'opener')
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
 
+    # Term-date fallback for closing / opening dates
+    _term_closing, _term_opening = resolve_term_dates(school, int(year), term)
+
     # Determine sub_section from grade for Lower Primary filtering
     student_sub_section = 'LOWER' if student.class_name in LOWER_PRIMARY_GRADE_CHOICES else ('UPPER' if student.school_section == 'PRIMARY' else None)
 
@@ -765,6 +769,10 @@ def individual_report(request, student_id):
         closing_date = marks_list[0].frozen_closing_date
     if not opening_date and marks_list and marks_list[0].frozen_opening_date:
         opening_date = marks_list[0].frozen_opening_date
+    if not closing_date and _term_closing:
+        closing_date = _term_closing
+    if not opening_date and _term_opening:
+        opening_date = _term_opening
 
     section_colors = {
         'JSS':           '#305CDE',
@@ -848,6 +856,9 @@ def bulk_report_cards(request):
     term          = request.GET.get('term', 'Term 1')
     assessment    = request.GET.get('assessment', 'opener')
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
+
+    # Term-date fallback for closing / opening dates
+    _term_closing, _term_opening = resolve_term_dates(school, int(year), term)
 
     selected_students_base = Student.all_objects.filter(id__in=student_ids, school=school)
     sample = selected_students_base.first()
@@ -1075,6 +1086,10 @@ def bulk_report_cards(request):
             closing_date = marks[0].frozen_closing_date
         if not opening_date and marks and marks[0].frozen_opening_date:
             opening_date = marks[0].frozen_opening_date
+        if not closing_date and _term_closing:
+            closing_date = _term_closing
+        if not opening_date and _term_opening:
+            opening_date = _term_opening
 
         student_marks_list.append({
             'student':             student,
@@ -1119,8 +1134,8 @@ def bulk_report_cards(request):
         'selected_grade':     sample.class_name if sample else '',
         'selected_stream':    sample.stream if sample else '',
         'class_count':        total_class_count,
-        'closing_date':       master_comment.closing_date if master_comment else None,
-        'opening_date':       master_comment.opening_date if master_comment else None,
+        'closing_date':       (master_comment.closing_date if master_comment and master_comment.closing_date else None) or _term_closing,
+        'opening_date':       (master_comment.opening_date if master_comment and master_comment.opening_date else None) or _term_opening,
         'section_accent':     section_accent,
         'view_mode':          'bulk',
         'show_mobile_shell':  False,

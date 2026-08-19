@@ -101,19 +101,19 @@
             </div>
         </div>
 
-        <!-- Component 3: Missing 2x2 Statistics Cards Grid -->
+        <!-- Component 3: Statistics Cards Grid -->
         <div class="statistics-cards-grid">
             <!-- Teachers Card -->
-            <div class="stat-card">
+            <a href="{% url 'manage_faculty_matrix' %}" class="stat-card" style="text-decoration:none;color:inherit">
                 <div class="stat-icon-box blue-theme"><i class="ph ph-users-three"></i></div>
                 <div class="stat-info">
-                    <span class="stat-number">34</span>
+                    <span class="stat-number">{{ total_teachers }}</span>
                     <span class="stat-label">Teachers</span>
                 </div>
                 <i class="ph ph-arrow-right stat-arrow"></i>
-            </div>
+            </a>
             <!-- Students Card -->
-            <a href="/school-admin/registration/?tab=directory" class="stat-card" style="text-decoration:none;color:inherit">
+            <a href="{% url 'admin_add_student' %}?tab=directory" class="stat-card" style="text-decoration:none;color:inherit">
                 <div class="stat-icon-box blue-theme"><i class="ph ph-student"></i></div>
                 <div class="stat-info">
                     <span class="stat-number">{{ total_students }}</span>
@@ -121,24 +121,24 @@
                 </div>
                 <i class="ph ph-arrow-right stat-arrow"></i>
             </a>
-            <!-- Staff Card -->
-            <div class="stat-card">
-                <div class="stat-icon-box blue-theme"><i class="ph ph-identification-card"></i></div>
+            <!-- Exams Card -->
+            <a href="{% url 'manage_exams' %}" class="stat-card" style="text-decoration:none;color:inherit">
+                <div class="stat-icon-box blue-theme"><i class="ph ph-clipboard-text"></i></div>
                 <div class="stat-info">
-                    <span class="stat-number">11</span>
-                    <span class="stat-label">Staff</span>
+                    <span class="stat-number">{{ total_exams }}</span>
+                    <span class="stat-label">Exams</span>
                 </div>
                 <i class="ph ph-arrow-right stat-arrow"></i>
-            </div>
+            </a>
             <!-- Streams Card -->
-            <div class="stat-card">
+            <a href="{% url 'manage_classes' %}" class="stat-card" style="text-decoration:none;color:inherit">
                 <div class="stat-icon-box blue-theme"><i class="ph ph-house-line"></i></div>
                 <div class="stat-info">
-                    <span class="stat-number">17</span>
+                    <span class="stat-number">{{ active_classes }}</span>
                     <span class="stat-label">Streams</span>
                 </div>
                 <i class="ph ph-arrow-right stat-arrow"></i>
-            </div>
+            </a>
         </div>
 
     </div>
@@ -160,21 +160,21 @@
 
             <!-- Row 2: Date Selector Block (Centered Layout) -->
             <div class="events-date-slider">
-                <button class="date-nav-arrow"><i class="ph ph-caret-left"></i></button>
+                <button class="date-nav-arrow" onclick="calNav(-1)"><i class="ph ph-caret-left"></i></button>
                 <div class="date-display-box">
-                    <span class="main-date-range">27 Jul –</span>
-                    <span class="sub-date-range">2 Aug 2026</span>
+                    <span class="main-date-range" id="calMain"></span>
+                    <span class="sub-date-range" id="calSub"></span>
                 </div>
-                <button class="date-nav-arrow"><i class="ph ph-caret-right"></i></button>
+                <button class="date-nav-arrow" onclick="calNav(1)"><i class="ph ph-caret-right"></i></button>
             </div>
 
             <!-- Row 3: Full Width View Filter Row -->
             <div class="events-filter-bar">
                 <div class="view-filter-pills">
-                    <button class="view-pill">month</button>
-                    <button class="view-pill">Week</button>
-                    <button class="view-pill">Day</button>
-                    <button class="view-pill active">List</button>
+                    <button class="view-pill" onclick="setCalView('month',this)">month</button>
+                    <button class="view-pill" onclick="setCalView('week',this)">Week</button>
+                    <button class="view-pill active" onclick="setCalView('day',this)">Day</button>
+                    <button class="view-pill" onclick="setCalView('list',this)">List</button>
                 </div>
             </div>
 
@@ -209,9 +209,25 @@
                 <div class="cell-value-group">
                     <span class="cell-number">{{ card.mean_points|floatformat:4 }}</span>
                     {% if card.points_dev is not None %}
-                    <span class="deviation-badge {% if card.points_dev >= 0 %}positive{% else %}negative{% endif %}">
-                        {% if card.points_dev >= 0 %}+{% endif %}{{ card.points_dev|floatformat:3 }}
-                    </span>
+                        {% if card.points_dev > 0 %}
+                        <span style="display:inline-flex;align-items:center;gap:3px;color:#16A34A;font-weight:700;font-size:12px;">
+                            +{{ card.points_dev|floatformat:3 }}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
+                                <path d="M 3 21 L 14 21 L 14 8" stroke="#16A34A" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/>
+                                <polygon points="7,9 14,2 21,9" fill="#16A34A"/>
+                            </svg>
+                        </span>
+                        {% elif card.points_dev < 0 %}
+                        <span style="display:inline-flex;align-items:center;gap:3px;color:#DC2626;font-weight:700;font-size:12px;">
+                            {{ card.points_dev|floatformat:3 }}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
+                                <path d="M 3 3 L 14 3 L 14 16" stroke="#DC2626" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/>
+                                <polygon points="7,15 14,22 21,15" fill="#DC2626"/>
+                            </svg>
+                        </span>
+                        {% else %}
+                        <span style="color:#9CA3AF;font-weight:500;font-size:12px;">0.0</span>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -220,9 +236,25 @@
                 <div class="cell-value-group">
                     <span class="cell-number">{{ card.mean_score|floatformat:2 }}%</span>
                     {% if card.score_dev is not None %}
-                    <span class="deviation-badge {% if card.score_dev >= 0 %}positive{% else %}negative{% endif %}">
-                        {% if card.score_dev >= 0 %}+{% endif %}{{ card.score_dev|floatformat:2 }}
-                    </span>
+                        {% if card.score_dev > 0 %}
+                        <span style="display:inline-flex;align-items:center;gap:3px;color:#16A34A;font-weight:700;font-size:12px;">
+                            +{{ card.score_dev|floatformat:2 }}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
+                                <path d="M 3 21 L 14 21 L 14 8" stroke="#16A34A" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/>
+                                <polygon points="7,9 14,2 21,9" fill="#16A34A"/>
+                            </svg>
+                        </span>
+                        {% elif card.score_dev < 0 %}
+                        <span style="display:inline-flex;align-items:center;gap:3px;color:#DC2626;font-weight:700;font-size:12px;">
+                            {{ card.score_dev|floatformat:2 }}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
+                                <path d="M 3 3 L 14 3 L 14 16" stroke="#DC2626" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/>
+                                <polygon points="7,15 14,22 21,15" fill="#DC2626"/>
+                            </svg>
+                        </span>
+                        {% else %}
+                        <span style="color:#9CA3AF;font-weight:500;font-size:12px;">0.0</span>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -235,7 +267,7 @@
                 <span class="cell-number" style="color:{{ card.accent }}">{{ card.student_count }}</span>
             </div>
         </div>
-        <button class="btn-view-analysis" style="background-color:{{ card.accent }};color:#fff;border-top-color:{{ card.border }}">
+        <button class="btn-view-analysis" style="background-color:{{ card.accent }};color:#fff;border-top-color:{{ card.border }}" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
             View Analysis
         </button>
     </div>
@@ -263,5 +295,99 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
         this.parentElement.classList.add('active');
     });
 });
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+    var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var FULL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var baseDate = new Date();
+    var offset = 0;
+    var view = 'day';
+    var termEvents = {{ term_events_json|safe }};
+
+    function startOfWeek(d){ var s=new Date(d); var day=s.getDay(); s.setDate(s.getDate()-day); s.setHours(0,0,0,0); return s; }
+    function endOfWeek(d){ var e=startOfWeek(d); e.setDate(e.getDate()+6); e.setHours(23,59,59,999); return e; }
+    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+
+    function renderEvents(){
+        var now = new Date();
+        now.setHours(0,0,0,0);
+        var vp = document.querySelector('.events-viewport');
+        if(!vp) return;
+
+        var events = [];
+        termEvents.forEach(function(te){
+            var sd = new Date(te.start);
+            var ed = new Date(te.end);
+            events.push({
+                label: te.term + ' ' + te.year + ' (' + sd.getDate()+' '+MONTHS[sd.getMonth()]+' – '+ed.getDate()+' '+MONTHS[ed.getMonth()]+')',
+                start: sd,
+                end: ed,
+                status: (now >= sd && now <= ed) ? 'active' : (now < sd ? 'upcoming' : 'past')
+            });
+        });
+
+        if(events.length === 0){
+            vp.innerHTML = '<p class="empty-events-text">No term dates configured</p>';
+            return;
+        }
+
+        var html = '';
+        events.forEach(function(ev){
+            var icon = ev.status === 'active' ? '&#9679;' : (ev.status === 'upcoming' ? '&#9654;' : '&#9632;');
+            var color = ev.status === 'active' ? '#4CAF50' : (ev.status === 'upcoming' ? '#3b82f6' : '#94a3b8');
+            var bg = ev.status === 'active' ? '#f0fdf4' : (ev.status === 'upcoming' ? '#eff6ff' : '#f8fafc');
+            html += '<div class="event-item" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:8px;background:'+bg+';border:1px solid '+color+'22">';
+            html += '<span style="color:'+color+';font-size:10px">'+icon+'</span>';
+            html += '<div style="flex:1"><div style="font-size:.82rem;font-weight:600;color:#1e293b">'+ev.label+'</div>';
+            html += '<div style="font-size:.72rem;color:#64748b;margin-top:2px">'+ev.status.charAt(0).toUpperCase()+ev.status.slice(1)+'</div></div>';
+            html += '</div>';
+        });
+        vp.innerHTML = html;
+    }
+
+    function render(){
+        var now = new Date();
+        var ref = new Date(now);
+        var mainEl = document.getElementById('calMain');
+        var subEl = document.getElementById('calSub');
+        if(!mainEl || !subEl) return;
+
+        if(view==='week'){
+            ref.setDate(now.getDate() + offset*7);
+            var ws = startOfWeek(ref), we = endOfWeek(ref);
+            mainEl.textContent = ws.getDate()+' '+MONTHS[ws.getMonth()]+' –';
+            subEl.textContent = we.getDate()+' '+MONTHS[we.getMonth()]+' '+we.getFullYear();
+        } else if(view==='day'){
+            ref.setDate(now.getDate() + offset);
+            mainEl.textContent = ref.getDate()+' '+MONTHS[ref.getMonth()];
+            subEl.textContent = ref.getFullYear();
+        } else if(view==='month'){
+            ref.setMonth(now.getMonth() + offset);
+            mainEl.textContent = FULL_MONTHS[ref.getMonth()];
+            subEl.textContent = ref.getFullYear();
+        } else {
+            ref.setDate(now.getDate() + offset*7);
+            var ws2 = startOfWeek(ref), we2 = endOfWeek(ref);
+            mainEl.textContent = ws2.getDate()+' '+MONTHS[ws2.getMonth()]+' –';
+            subEl.textContent = we2.getDate()+' '+MONTHS[we2.getMonth()]+' '+we2.getFullYear();
+        }
+        renderEvents();
+    }
+
+    window.calNav = function(dir){ offset+=dir; render(); };
+    window.setCalView = function(v, btn){
+        view=v; offset=0;
+        document.querySelectorAll('.view-filter-pills .view-pill').forEach(function(p){p.classList.remove('active');});
+        if(btn) btn.classList.add('active');
+        render();
+    };
+
+    render();
+})();
 </script>
 {% endblock %}

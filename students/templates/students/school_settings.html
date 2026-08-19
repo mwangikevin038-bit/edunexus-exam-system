@@ -1,0 +1,213 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block sub_tabs %}
+<style>
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
+  .sub-nav-item{display:flex;align-items:stretch}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
+  .sub-nav-link:hover{color:#fff;background-color:#43A047}
+  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
+  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'school_settings' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        School Profile
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'term_dates' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Term Dates
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+  @keyframes profFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .main-content{background:#f1f5f9!important}
+  .settings-page{display:grid;grid-template-columns:300px 1fr;gap:24px;max-width:1200px;margin:0 auto;padding:28px 24px 60px;animation:profFadeUp .5s cubic-bezier(.16,1,.3,1) both;align-items:stretch}
+  .settings-page > *{position:sticky;top:calc(var(--global-header-height,64px) + 35px + 24px)}
+
+  .settings-sidebar{background:#fff;border:1px solid #e8e8ec;border-radius:16px;padding:32px 24px;text-align:center;height:100%}
+  .settings-logo-wrapper{position:relative;width:140px;height:140px;margin:0 auto 16px}
+  .settings-logo{width:140px;height:140px;border-radius:12px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid #e2e8f0}
+  .settings-logo img{width:100%;height:100%;object-fit:contain;padding:8px}
+  .settings-logo i{font-size:48px;color:#cbd5e1}
+  .settings-logo-edit{position:absolute;bottom:4px;right:4px;width:32px;height:32px;border-radius:50%;background:#4CAF50;color:#fff;border:2px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:background .15s;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+  .settings-logo-edit:hover{background:#43A047}
+  .settings-school-name{font-size:1.1rem;font-weight:800;color:#0f172a;margin:8px 0 4px;letter-spacing:-.01em}
+  .settings-school-motto{font-size:.75rem;color:#4CAF50;font-weight:600;font-style:italic;margin-bottom:18px}
+  .settings-sidebar-divider{width:100%;height:1px;background:#f1f5f9;margin:4px 0 16px}
+  .settings-sidebar-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:4px;text-align:left}
+  .settings-sidebar-value{font-size:.85rem;color:#334155;font-weight:500;text-align:left;margin-bottom:14px}
+
+  .settings-form-card{background:#fff;border:1px solid #e8e8ec;border-radius:16px;padding:32px 36px}
+  .settings-form-title{font-size:1.3rem;font-weight:800;color:#0f172a;margin:0 0 28px;letter-spacing:-.02em}
+
+  .settings-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 28px}
+  .settings-field{display:flex;flex-direction:column;gap:6px}
+  .settings-field.full{grid-column:1/-1}
+  .settings-field label{font-size:.8rem;font-weight:600;color:#1e293b}
+  .settings-field label .required{color:#EF4444;margin-left:2px}
+  .settings-field select{padding:8px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:.875rem;font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#111827;background:#f0faf3;transition:border-color 0.15s,box-shadow 0.15s;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;cursor:pointer}
+  .settings-field select:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+  .settings-field textarea{padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:.875rem;font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#111827;background:#f0faf3;transition:border-color 0.15s,box-shadow 0.15s;outline:none;min-height:80px;resize:vertical}
+  .settings-field textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+  .settings-field textarea::placeholder{color:#9ca3af}
+
+  .settings-input-group{display:flex;align-items:stretch;background:#f0faf3;border:1.5px solid #d1d5db;border-radius:8px;transition:border-color 0.15s,box-shadow 0.15s}
+  .settings-input-group:focus-within{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+  .settings-input-icon{display:flex;align-items:center;justify-content:center;width:40px;border-right:1.5px solid #d1d5db;color:#6b7280;font-size:15px;flex-shrink:0;background:#e5e7eb}
+  .settings-input-group input{flex:1;border:none;background:#f0faf3;padding:8px 12px;outline:none;font-size:.875rem;font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#111827}
+  .settings-input-group input::placeholder{color:#9ca3af}
+
+  .settings-actions{display:flex;justify-content:flex-end;margin-top:28px;padding-top:20px;border-top:1px solid #f1f5f9}
+  .settings-btn-save{display:inline-flex;align-items:center;gap:8px;padding:11px 28px;border-radius:10px;font-size:.85rem;font-weight:700;border:none;cursor:pointer;transition:all 0.15s;background:#4CAF50;color:#fff}
+  .settings-btn-save:hover{background:#43A047;box-shadow:0 4px 14px rgba(76,175,80,0.35)}
+  .settings-btn-save i{font-size:15px}
+
+  @media(max-width:768px){.settings-page{grid-template-columns:1fr;padding:16px}.settings-sidebar{position:static}}
+</style>
+
+<form method="POST" enctype="multipart/form-data" id="schoolSettingsForm">
+{% csrf_token %}
+<input type="file" name="logo" id="logoUpload" accept="image/*" style="display:none">
+
+<div class="settings-page">
+  <aside class="settings-sidebar">
+    <div class="settings-logo-wrapper">
+      <div class="settings-logo">
+        {% if school.logo %}
+          <img src="{{ school.logo.url }}" alt="School Logo" id="logoPreview">
+        {% else %}
+          <i class="ph-fill ph-buildings" id="logoIcon"></i>
+        {% endif %}
+      </div>
+      <button type="button" class="settings-logo-edit" onclick="document.getElementById('logoUpload').click()" title="Change logo"><i class="ph ph-pencil-simple"></i></button>
+    </div>
+    <div class="settings-school-name">{{ school.name|upper }}</div>
+    {% if school.motto %}
+      <div class="settings-school-motto">"{{ school.motto }}"</div>
+    {% endif %}
+
+    <div class="settings-sidebar-divider"></div>
+
+    <div class="settings-sidebar-label">EMAIL ADDRESS</div>
+    <div class="settings-sidebar-value">{{ school.email|default:"Not set" }}</div>
+
+    <div class="settings-sidebar-label">PHONE NUMBER</div>
+    <div class="settings-sidebar-value">{{ school.phone_number|default:"Not set" }}</div>
+  </aside>
+
+  <div class="settings-form-card">
+    <h2 class="settings-form-title">School Profile</h2>
+
+    <div class="settings-form-grid">
+      <div class="settings-field">
+        <label>School Name <span class="required">*</span></label>
+        <div class="settings-input-group">
+          <span class="settings-input-icon"><i class="ph ph-buildings"></i></span>
+          <input type="text" name="name" value="{{ school.name|default:'' }}" placeholder="School Name" required>
+        </div>
+      </div>
+      <div class="settings-field">
+        <label>School Name (Short Version) <span class="required">*</span></label>
+        <div class="settings-input-group">
+          <span class="settings-input-icon"><i class="ph ph-buildings"></i></span>
+          <input type="text" name="short_name" value="{{ school.short_name|default:'' }}" placeholder="e.g. CSS">
+        </div>
+      </div>
+
+      <div class="settings-field">
+        <label>Phone Number <span class="required">*</span></label>
+        <div class="settings-input-group">
+          <span class="settings-input-icon"><i class="ph ph-phone"></i></span>
+          <input type="text" name="phone_number" value="{{ school.phone_number|default:'' }}" placeholder="Phone Number">
+        </div>
+      </div>
+      <div class="settings-field">
+        <label>Email Address <span class="required">*</span></label>
+        <div class="settings-input-group">
+          <span class="settings-input-icon"><i class="ph ph-envelope-simple"></i></span>
+          <input type="email" name="email" value="{{ school.email|default:'' }}" placeholder="Email Address">
+        </div>
+      </div>
+
+      <div class="settings-field">
+        <label>Postal Address <span class="required">*</span></label>
+        <div class="settings-input-group">
+          <span class="settings-input-icon"><i class="ph ph-map-pin"></i></span>
+          <input type="text" name="address" value="{{ school.address|default:'' }}" placeholder="P.O. Box ...">
+        </div>
+      </div>
+      <div class="settings-field">
+        <label>Gender Type <span class="required">*</span></label>
+        <select name="gender_type">
+          {% for value, label in gender_type_choices %}
+            <option value="{{ value }}" {% if school.gender_type == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="settings-field">
+        <label>Boarding Status <span class="required">*</span></label>
+        <select name="boarding_status">
+          {% for value, label in boarding_status_choices %}
+            <option value="{{ value }}" {% if school.boarding_status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="settings-field">
+        <label>School Motto</label>
+        <div class="settings-input-group">
+          <span class="settings-input-icon"><i class="ph ph-flag-banner"></i></span>
+          <input type="text" name="motto" value="{{ school.motto|default:'' }}" placeholder="School Motto">
+        </div>
+      </div>
+
+      <div class="settings-field">
+        <label>Vision</label>
+        <textarea name="vision" placeholder="Enter school vision here...">{{ school.vision|default:'' }}</textarea>
+      </div>
+      <div class="settings-field">
+        <label>Mission</label>
+        <textarea name="mission" placeholder="Enter school mission here...">{{ school.mission|default:'' }}</textarea>
+      </div>
+    </div>
+
+    <div class="settings-actions">
+      <button type="submit" class="settings-btn-save"><i class="ph ph-check-circle"></i> Update</button>
+    </div>
+  </div>
+</div>
+</form>
+
+<script>
+document.getElementById('logoUpload').addEventListener('change', function(e) {
+  if (e.target.files && e.target.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var logoDiv = document.querySelector('.settings-logo');
+      var existing = document.getElementById('logoPreview');
+      if (existing) existing.remove();
+      var icon = document.getElementById('logoIcon');
+      if (icon) icon.style.display = 'none';
+      var img = document.createElement('img');
+      img.src = ev.target.result;
+      img.alt = 'School Logo';
+      img.id = 'logoPreview';
+      logoDiv.prepend(img);
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  }
+});
+</script>
+{% endblock %}

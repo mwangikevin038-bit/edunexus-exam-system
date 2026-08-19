@@ -1,0 +1,258 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block sub_tabs %}
+<style>
+  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
+  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
+  .sub-nav-item{display:flex;align-items:stretch}
+  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
+  .sub-nav-link:hover{color:#fff;background-color:#43A047}
+  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
+  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'school_settings' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        School Profile
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'term_dates' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Term Dates
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+  @keyframes profFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .main-content{background:#f1f5f9!important}
+  .td-page{max-width:1100px;margin:0 auto;padding:28px 24px 60px;animation:profFadeUp .5s cubic-bezier(.16,1,.3,1) both}
+
+  .td-card{background:#fff;border:1px solid #e5e7eb;border-radius:0;padding:28px 32px;box-shadow:0 1px 4px rgba(0,0,0,0.05);margin-bottom:24px}
+
+  .td-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+  .td-title{font-size:1.2rem;font-weight:800;color:#0f172a;letter-spacing:-.01em}
+  .td-create-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;font-size:.85rem;font-weight:700;border:none;cursor:pointer;transition:all 0.15s;background:#4CAF50;color:#fff;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-create-btn:hover{background:#43A047;box-shadow:0 4px 14px rgba(76,175,80,0.35)}
+  .td-create-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .td-table{width:100%;border-collapse:collapse}
+  .td-table th{text-align:left;padding:12px 16px;font-size:.82rem;font-weight:700;color:#475569;border-bottom:1px solid #111827;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-table th:last-child{text-align:right}
+  .td-table td{padding:14px 16px;font-size:.875rem;color:#1e293b;border-bottom:1px solid #f1f5f9;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-table tbody tr:nth-child(even) td{background:#f8fafc}
+  .td-table tbody tr:hover td{background:#f1f5f9}
+
+  .td-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+  .td-btn-edit{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:6px;font-size:.8rem;font-weight:600;border:1.5px solid #4CAF50;cursor:pointer;transition:all 0.15s;background:#fff;color:#4CAF50;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-btn-edit:hover{background:#f0fdf4;box-shadow:0 2px 8px rgba(76,175,80,0.15)}
+  .td-btn-edit svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .td-btn-delete{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;transition:all 0.15s;background:#f97316;color:#fff;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-btn-delete:hover{background:#ea580c;box-shadow:0 2px 8px rgba(249,115,22,0.25)}
+  .td-btn-delete svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .td-empty{text-align:center;padding:40px 16px;color:#94a3b8;font-size:.9rem}
+
+  .td-form-card{background:#fff;border:1px solid #e5e7eb;border-radius:0;padding:28px 32px;box-shadow:0 1px 4px rgba(0,0,0,0.05);margin-bottom:24px}
+  .td-form-title{font-size:1.2rem;font-weight:800;color:#0f172a;margin:0 0 24px;letter-spacing:-.01em}
+  .td-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 28px}
+  .td-form-field{display:flex;flex-direction:column;gap:6px}
+  .td-form-field label{font-size:.82rem;font-weight:600;color:#1e293b}
+  .td-form-field label .req{color:#EF4444;margin-left:2px}
+  .td-form-field select,.td-form-field input[type="date"]{padding:9px 12px;border:1.5px solid #c6f0d5;border-radius:8px;font-size:.875rem;font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#111827;background-color:#f0faf3 !important;transition:border-color 0.15s,box-shadow 0.15s;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;cursor:pointer}
+  .td-form-field select:focus,.td-form-field input[type="date"]:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+  .td-form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+  .td-form-cancel{padding:9px 20px;border-radius:8px;font-size:.85rem;font-weight:600;border:1.5px solid #d1d5db;cursor:pointer;background:#fff;color:#475569;transition:all 0.15s;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-form-cancel:hover{background:#f8fafc}
+  .td-form-save{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:8px;font-size:.85rem;font-weight:700;border:none;cursor:pointer;background:#4CAF50;color:#fff;transition:all 0.15s;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-form-save:hover{background:#43A047}
+  .td-form-save svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .td-inline-select,.td-inline-input{padding:8px 10px;border:1.5px solid #d1d5db;border-radius:6px;font-size:.85rem;font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#111827;background:#fff;outline:none;transition:border-color 0.15s,box-shadow 0.15s;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:28px;cursor:pointer;min-width:120px}
+  .td-inline-input{padding-right:10px;background-image:none;min-width:140px}
+  .td-inline-select:focus,.td-inline-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+
+  .td-btn-save{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;transition:all 0.15s;background:#4CAF50;color:#fff;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-btn-save:hover{background:#43A047;box-shadow:0 2px 8px rgba(76,175,80,0.2)}
+  .td-btn-save svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .td-btn-cancel{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:6px;font-size:.8rem;font-weight:600;border:1.5px solid #d1d5db;cursor:pointer;transition:all 0.15s;background:#fff;color:#475569;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-btn-cancel:hover{background:#f8fafc}
+
+  .td-modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center}
+  .td-modal-overlay.active{display:flex}
+  .td-modal{background:#fff;border-radius:12px;padding:24px 28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+  .td-modal p{color:#475569;font-size:.9rem;margin:0 0 4px}
+  .td-modal small{color:#94a3b8;font-size:.8rem}
+  .td-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+  .td-modal-cancel{padding:8px 18px;border-radius:8px;font-size:.85rem;font-weight:600;border:1.5px solid #d1d5db;cursor:pointer;background:#fff;color:#475569;transition:all 0.15s;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+  .td-modal-cancel:hover{background:#f8fafc}
+</style>
+
+<div class="td-page">
+
+  <!-- Create/Edit Form Card (hidden by default, shown above table) -->
+  <div class="td-form-card" id="termFormCard" style="display:none">
+    <h3 class="td-form-title" id="formTitle">Set Term Dates</h3>
+    <form method="POST" id="termForm">
+      {% csrf_token %}
+      <input type="hidden" name="term_id" id="termId" value="">
+      <div class="td-form-grid">
+        <div class="td-form-field">
+          <label>Academic Year <span class="req">*</span></label>
+          <select name="academic_year" id="formYear" required>
+            <option value="" disabled selected>Select Academic Year</option>
+            {% for year in year_choices %}
+            <option value="{{ year }}">{{ year }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="td-form-field">
+          <label>Term <span class="req">*</span></label>
+          <select name="term" id="formTerm" required>
+            <option value="" disabled selected>Select Term</option>
+            <option value="Term 1">Term 1</option>
+            <option value="Term 2">Term 2</option>
+            <option value="Term 3">Term 3</option>
+          </select>
+        </div>
+        <div class="td-form-field">
+          <label>Start Date <span class="req">*</span></label>
+          <input type="date" name="start_date" id="formStart" required>
+        </div>
+        <div class="td-form-field">
+          <label>End Date <span class="req">*</span></label>
+          <input type="date" name="end_date" id="formEnd" required>
+        </div>
+        <div class="td-form-field">
+          <label>Week Starts On <span class="req">*</span></label>
+          <select name="week_starts_on" id="formWeekStart" required>
+            <option value="" disabled selected>Week Starts On</option>
+            <option value="Monday">Monday</option>
+            <option value="Sunday">Sunday</option>
+          </select>
+        </div>
+      </div>
+      <div class="td-form-actions">
+        <button type="button" class="td-form-cancel" onclick="hideForm()">Cancel</button>
+        <button type="submit" class="td-form-save">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Save
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- List Card -->
+  <div class="td-card">
+    <div class="td-header">
+      <h2 class="td-title">Term Dates</h2>
+      <button class="td-create-btn" onclick="showCreateForm()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create New Term Dates
+      </button>
+    </div>
+
+    <table class="td-table">
+      <thead>
+        <tr>
+          <th>Academic Year</th>
+          <th>Term</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+          <th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if term_dates %}
+          {% for td in term_dates %}
+          <tr id="row-{{ td.id }}">
+            <td id="cell-year-{{ td.id }}">{{ td.academic_year }}</td>
+            <td id="cell-term-{{ td.id }}">{{ td.term }}</td>
+            <td id="cell-start-{{ td.id }}">{{ td.start_date|date:"d/m/Y" }}</td>
+            <td id="cell-end-{{ td.id }}">{{ td.end_date|date:"d/m/Y" }}</td>
+            <td>
+              <div class="td-actions" style="justify-content:flex-end">
+                <button class="td-btn-edit" id="edit-btn-{{ td.id }}" onclick="startEdit({{ td.id }}, {{ td.academic_year }}, '{{ td.term }}', '{{ td.start_date|date:"Y-m-d" }}', '{{ td.end_date|date:"Y-m-d" }}', '{{ td.week_starts_on }}')">
+                  <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Edit
+                </button>
+                <button class="td-btn-delete" id="del-btn-{{ td.id }}" onclick="openDeleteModal({{ td.id }}, '{{ td.academic_year }} - {{ td.term }}')">
+                  <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="5" class="td-empty">No term dates configured yet. Click "Create New Term Dates" to add one.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="td-modal-overlay" id="deleteModal">
+  <div class="td-modal">
+    <h3 style="font-size:1.1rem;font-weight:800;color:#0f172a;margin:0 0 12px">Delete Term Date</h3>
+    <p>Are you sure you want to delete <strong id="deleteLabel"></strong>?</p>
+    <small>This action cannot be undone.</small>
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="delete_id" id="deleteId" value="">
+      <div class="td-modal-actions">
+        <button type="button" class="td-modal-cancel" onclick="closeDeleteModal()">Cancel</button>
+        <button type="submit" name="action" value="delete" class="td-btn-delete" style="border:none">Delete</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function showCreateForm() {
+  document.getElementById('formTitle').textContent = 'Set Term Dates';
+  document.getElementById('termId').value = '';
+  document.getElementById('formYear').value = '';
+  document.getElementById('formTerm').value = '';
+  document.getElementById('formStart').value = '';
+  document.getElementById('formEnd').value = '';
+  document.getElementById('formWeekStart').value = '';
+  var card = document.getElementById('termFormCard');
+  card.style.display = 'block';
+  card.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function hideForm() {
+  document.getElementById('termFormCard').style.display = 'none';
+}
+function startEdit(id, year, term, start, end, weekStart) {
+  document.getElementById('formTitle').textContent = 'Set Term Dates';
+  document.getElementById('termId').value = id;
+  document.getElementById('formYear').value = year;
+  document.getElementById('formTerm').value = term;
+  document.getElementById('formStart').value = start;
+  document.getElementById('formEnd').value = end;
+  document.getElementById('formWeekStart').value = weekStart;
+  var card = document.getElementById('termFormCard');
+  card.style.display = 'block';
+  card.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function openDeleteModal(id, label) {
+  document.getElementById('deleteId').value = id;
+  document.getElementById('deleteLabel').textContent = label;
+  document.getElementById('deleteModal').classList.add('active');
+}
+function closeDeleteModal() {
+  document.getElementById('deleteModal').classList.remove('active');
+}
+</script>
+{% endblock %}

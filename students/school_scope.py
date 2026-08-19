@@ -8,6 +8,7 @@ based on subdomain, session, or user profile.
 import ipaddress
 import logging
 from contextvars import ContextVar
+from django.core.cache import cache
 from django.db import models
 from django.utils.deprecation import MiddlewareMixin
 
@@ -243,15 +244,34 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
         """Return the user's school_section from their profile, or None. Cached."""
         if not user or not user.is_authenticated or user.is_superuser:
             return 'BOTH'
+
+        cache_key = f"user_school_section:{user.pk}"
+        try:
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return cached
+        except Exception:
+            pass
+
         from students.models import Teacher, SchoolAdmin
         if SchoolAdmin.objects.filter(user=user, is_active=True).exists():
-            return 'BOTH'
-        teacher = Teacher.all_objects.filter(user=user).first()
-        if teacher:
-            if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER':
-                return 'LOWER_PRIMARY'
-            return teacher.school_section
-        return 'BOTH'
+            section = 'BOTH'
+        else:
+            teacher = Teacher.all_objects.filter(user=user).first()
+            if teacher:
+                if teacher.school_section == 'PRIMARY' and teacher.sub_section == 'LOWER':
+                    section = 'LOWER_PRIMARY'
+                else:
+                    section = teacher.school_section
+            else:
+                section = 'BOTH'
+
+        try:
+            cache.set(cache_key, section, 3600)
+        except Exception:
+            pass
+
+        return section
 
     def process_response(self, request, response):
         token = getattr(request, "_current_school_token", None)
