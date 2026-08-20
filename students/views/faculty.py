@@ -183,8 +183,9 @@ def teacher_load_comments(request):
             exam_obj = Exam.all_objects.get(id=exam_id)
             year = str(exam_obj.year)
             term = exam_obj.term
-            # Convert display name to slug (e.g. "Mid Term" -> "mid")
-            assessment = ASSESSMENT_SLUG_MAP.get(exam_obj.assessment, exam_obj.assessment)
+            # Convert display name to slug (e.g. "Mid Term Assessment" -> "mid")
+            exam_display = exam_obj.name.replace(' Assessment', '').strip()
+            assessment = ASSESSMENT_SLUG_MAP.get(exam_display, exam_display)
         except Exam.DoesNotExist:
             return HttpResponse('<div style="padding:20px;color:#94a3b8;">Exam not found.</div>')
 
@@ -214,6 +215,81 @@ def teacher_load_comments(request):
         'exam_id': exam_id,
     }
     return render(request, 'students/teacher_comment_form.html', context)
+
+
+@login_required(login_url='login')
+@never_cache
+def teacher_class_comments(request):
+    """Class Comments page — class teachers only. Auto-loads the latest exam and pre-fills saved comments."""
+    from ..models import Exam, ClassTeacherMasterComment
+    from .constants import ASSESSMENT_MAP, ASSESSMENT_SLUG_MAP
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('dashboard_alt')
+
+    teacher = get_teacher_for_user(request.user)
+    class_teacher_scope = get_class_teacher_scope(teacher)
+    if not class_teacher_scope:
+        messages.error(request, "Report cards are available to class teachers only.")
+        return redirect('merit_list')
+
+    ct_grade, ct_stream = class_teacher_scope
+    section = get_request_school_section(request) or 'JSS'
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
+
+    # Auto-find the latest exam for this school
+    latest_exam = Exam.all_objects.filter(school=school, is_deleted=False).order_by('-year', 'term', 'name').first()
+
+    comment_obj = None
+    exam_id = ''
+    year = ''
+    term = ''
+    assessment = ''
+    assessment_display = ''
+
+    if latest_exam:
+        exam_id = str(latest_exam.id)
+        year = str(latest_exam.year)
+        term = latest_exam.term
+        exam_display = latest_exam.name.replace(' Assessment', '').strip()
+        assessment = ASSESSMENT_SLUG_MAP.get(exam_display, exam_display)
+        assessment_display = ASSESSMENT_MAP.get(assessment, assessment)
+
+    # Find the most recently saved comment for this teacher's class
+    existing_comment = ClassTeacherMasterComment.objects.filter(
+        school=school, grade=ct_grade, stream=ct_stream
+    ).order_by('-last_modified').first()
+
+    if existing_comment:
+        comment_obj = existing_comment
+        # Use the saved comment's year/term/exam so form submits to the right record
+        year = existing_comment.year
+        term = existing_comment.term
+        assessment_display = existing_comment.exam_type
+        reverse_map = {v: k for k, v in ASSESSMENT_MAP.items()}
+        assessment = reverse_map.get(assessment_display, assessment)
+    elif latest_exam:
+        # No saved comment, create blank
+        comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
+            school=school, year=year, term=term, grade=ct_grade, stream=ct_stream, exam_type=assessment_display,
+            defaults={'school_section': 'PRIMARY' if is_primary else 'JSS'},
+        )
+
+    return render(request, 'students/teacher_class_comments.html', {
+        'selected_grade': ct_grade,
+        'selected_stream': ct_stream,
+        'selected_exam_id': exam_id,
+        'selected_year': year,
+        'selected_term': term,
+        'selected_assessment': assessment,
+        'selected_assessment_display': assessment_display,
+        'comment_obj': comment_obj,
+        'is_primary': is_primary,
+        'latest_exam': latest_exam,
+    })
 
 
 @login_required(login_url='login')

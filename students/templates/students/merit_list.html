@@ -3,37 +3,38 @@
 
 {% block sub_tabs %}
 <style>
-  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
-  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
-  .sub-nav-item{display:flex;align-items:stretch;flex:1}
-  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap;width:100%}
-  .sub-nav-link:hover{color:#fff;background-color:#43A047}
-  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
-  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .btn-print-premium:hover{background:#4CAF50!important;color:#fff!important;box-shadow:0 4px 12px rgba(76,175,80,0.3)!important;transform:translateY(-1px)!important}
   .btn-pdf-premium:hover{background:#3d8b40!important;border-color:#3d8b40!important;box-shadow:0 4px 12px rgba(76,175,80,0.35)!important;transform:translateY(-1px)!important}
 </style>
 <nav class="sub-nav-bar">
   <ul class="sub-nav-list">
+    {% if is_teacher_view %}
     <li class="sub-nav-item">
-      {% if is_teacher_view %}
       <a href="{% url 'merit_list' %}" class="sub-nav-link active">
         <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
         Results
       </a>
-      {% if is_class_teacher %}
+    </li>
+    <li class="sub-nav-item">
       <a href="{% url 'teacher_report_forms' %}" class="sub-nav-link">
         <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         Report Cards
       </a>
-      {% endif %}
-      {% else %}
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'teacher_class_comments' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Class Comments
+      </a>
+    </li>
+    {% else %}
+    <li class="sub-nav-item">
       <a href="{% url 'printouts_hub' %}" class="sub-nav-link active">
         <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Printouts
       </a>
-      {% endif %}
     </li>
+    {% endif %}
   </ul>
 </nav>
 {% endblock %}

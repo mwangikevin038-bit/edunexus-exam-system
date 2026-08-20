@@ -1486,16 +1486,11 @@ def edit_exam(request):
 
 
 @login_required(login_url='login')
-@school_admin_required
 def analyse_exam(request):
     """
     Exam analysis page showing subject performance, stream comparison,
     grade breakdown, and performance over time.
     """
-    if not user_has_main_school_admin_override(request.user):
-        messages.error(request, "You are not allowed to analyse exams.")
-        return redirect('select_exam')
-
     school = get_request_school(request)
     if not school:
         messages.error(request, "School context is required.")
@@ -1509,12 +1504,12 @@ def analyse_exam(request):
             exam_id = latest_exam.id
         else:
             messages.error(request, "No exams found.")
-            return redirect('manage_exams')
+            return redirect('dashboard_alt')
 
     exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
     if not exam:
         messages.error(request, "Exam not found.")
-        return redirect('manage_exams')
+        return redirect('dashboard_alt')
 
     from ..models import ExamSummary, Subject, GradingConfig
     from .constants import ORDERED_LEVELS
@@ -1646,9 +1641,12 @@ def analyse_exam(request):
     all_stream_marks = [v['mean_marks'] for v in stream_stats.values()]
     overall_mean_marks = round(sum(all_stream_marks) / len(all_stream_marks), 1) if all_stream_marks else 0
 
+    TERM_ORDER = {'Term 1': 1, 'Term 2': 2, 'Term 3': 3}
+    current_term_num = TERM_ORDER.get(exam.term, 0)
+
     other_exams = Exam.all_objects.filter(
         school=school, year=exam.year, is_deleted=False,
-    ).exclude(id=exam.id).order_by('term', 'name')
+    ).exclude(id=exam.id).exclude(name=exam.name).order_by('term', 'name')
 
     # Filter other exams to only those with marks for the current grade
     if class_name_filter:
@@ -1676,29 +1674,72 @@ def analyse_exam(request):
                 other_complete_ids.append(ex.id)
         other_exams = other_exams.filter(id__in=other_complete_ids)
 
-    # Compute comparison exam stats for change calculation
-    prev_exam = other_exams.first() if other_exams else None
+    # Fallback: if no previous exam found in same year, look at previous year
+    if not other_exams.exists():
+        prev_year_exams = Exam.all_objects.filter(
+            school=school, year=str(int(exam.year) - 1), is_deleted=False,
+        ).exclude(name=exam.name).order_by('term', 'name')
+        if class_name_filter:
+            prev_year_complete_ids = []
+            for ex in prev_year_exams:
+                has_data = MarkSubmission.all_objects.filter(
+                    school=school,
+                    class_name=class_name_filter,
+                    exam_name=ex.name,
+                    term=ex.term,
+                    year=ex.year,
+                    status='published',
+                ).values('subject').distinct().exists()
+                if not has_data:
+                    has_data = MarkModel.all_objects.filter(
+                        student__school=school,
+                        student__class_name=class_name_filter,
+                        exam_type=ex.name,
+                        term=ex.term,
+                        year=ex.year,
+                    ).values('subject').distinct().exists()
+                if has_data:
+                    prev_year_complete_ids.append(ex.id)
+            prev_year_exams = prev_year_exams.filter(id__in=prev_year_complete_ids)
+        other_exams = prev_year_exams
+
+    # Pick the closest previous exam (most recent before current, or earliest after)
+    prev_exam = None
+    if other_exams.exists():
+        exams_before = []
+        exams_after = []
+        for ex in other_exams:
+            ex_num = TERM_ORDER.get(ex.term, 0)
+            if ex_num < current_term_num:
+                exams_before.append(ex)
+            else:
+                exams_after.append(ex)
+        if exams_before:
+            prev_exam = sorted(exams_before, key=lambda e: (TERM_ORDER.get(e.term, 0), e.name), reverse=True)[0]
+        elif exams_after:
+            prev_exam = sorted(exams_after, key=lambda e: (TERM_ORDER.get(e.term, 0), e.name))[0]
     prev_mean_marks = 0
     prev_mean_points = 0
     if prev_exam:
-        prev_summaries = ExamSummary.all_objects.filter(
-            school=school, exam_name=prev_exam.name, term=prev_exam.term, year=prev_exam.year,
-        )
+        prev_marks_filter = {
+            'student__school': school,
+            'term': prev_exam.term,
+            'year': prev_exam.year,
+            'exam_type': prev_exam.name,
+        }
         if class_name_filter:
-            prev_summaries = prev_summaries.filter(student__class_name=class_name_filter)
+            prev_marks_filter['student__class_name'] = class_name_filter
+        prev_all_marks = Mark.all_objects.filter(**prev_marks_filter)
 
-        prev_student_ids = prev_summaries.values_list('student_id', flat=True).distinct()
-        prev_all_marks = Mark.all_objects.filter(
-            student__school=school,
-            student_id__in=prev_student_ids,
-            term=prev_exam.term,
-            year=prev_exam.year,
-            exam_type=prev_exam.name,
-        )
         prev_stream_pts = []
         prev_stream_marks = []
         for s in streams:
-            s_ids = prev_summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+            s_ids = Student.all_objects.filter(
+                school=school, stream=s, is_active=True, status='Active',
+            )
+            if class_name_filter:
+                s_ids = s_ids.filter(class_name=class_name_filter)
+            s_ids = s_ids.values_list('id', flat=True)
             s_marks = prev_all_marks.filter(student_id__in=s_ids)
             count = s_marks.count() if s_marks.count() > 0 else 1
             prev_stream_pts.append(sum(m.points for m in s_marks) / count)
@@ -1728,7 +1769,7 @@ def analyse_exam(request):
             prev_mean = prev_data['total_points'] / prev_data['count']
             row['change'] = round(row['points'] - prev_mean, 4)
         else:
-            row['change'] = 0.0
+            row['change'] = None
 
     overall_plv = '-'
     if grading_scale_obj and grading_scale_obj.total_scale:
@@ -1988,6 +2029,7 @@ def analyse_exam(request):
         'available_grades': available_grades,
         'exam_groups': exam_groups,
         'current_exam_id': exam.id,
+        'is_admin': user_has_main_school_admin_override(request.user),
         'pot_labels_json': json.dumps(pot_labels),
         'pot_streams_data_json': json.dumps(pot_streams_data),
         'plv_labels': PLV_LABELS,

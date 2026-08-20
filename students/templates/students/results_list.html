@@ -8,6 +8,31 @@
 <link rel="stylesheet" href="{% static 'css/results-mobile.css' %}">
 {% endblock %}
 
+{% block sub_tabs %}
+<nav class="sub-nav-bar">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'merit_list' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+        Results
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'teacher_report_forms' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Report Cards
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'teacher_class_comments' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Class Comments
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
 {% block content %}
 <style>
     /* ── Force print colors ── */

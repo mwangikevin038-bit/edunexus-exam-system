@@ -31,6 +31,7 @@ urlpatterns = [
     path('teacher-report-forms/', views.teacher_report_forms, name='teacher_report_forms'),
     path('teacher-report-forms/display/', views.teacher_report_forms_display, name='teacher_report_forms_display'),
     path('teacher-report-forms/comments/', views.teacher_load_comments, name='teacher_load_comments'),
+    path('teacher-class-comments/', views.teacher_class_comments, name='teacher_class_comments'),
     path('class-lists/download-pdf/', views.download_classlist_pdf, name='download_classlist_pdf'),
     path('printouts/', views.printouts_hub, name='printouts_hub'),
     path('printouts/class-list/', views.class_list_printout, name='class_list_printout'),

@@ -1,5 +1,5 @@
 <form method="POST"
-      action="{% url 'manage_master_comments' %}?year={{ selected_year }}&term={{ selected_term }}&grade={{ selected_grade }}&stream={{ selected_stream }}&assessment={{ selected_assessment }}&next={% url 'teacher_report_forms' %}%3Fgrade%3D{{ selected_grade|urlencode }}%26stream%3D{{ selected_stream|urlencode }}%26exam_id%3D{{ exam_id }}">
+      action="{% url 'manage_master_comments' %}?year={{ selected_year }}&term={{ selected_term }}&grade={{ selected_grade }}&stream={{ selected_stream }}&assessment={{ selected_assessment }}&next={% url 'teacher_class_comments' %}">
 {% csrf_token %}
 
 <style>
@@ -111,7 +111,7 @@
 </div>
 
 <div class="tcc-actions">
-  <button type="button" class="tcc-btn tcc-btn-cancel" onclick="document.getElementById('rfCommentCard').classList.add('hidden')">Cancel</button>
+  <button type="button" class="tcc-btn tcc-btn-cancel" onclick="var p=document.getElementById('rcCommentsBody')||document.getElementById('rfCommentCard');if(p)p.classList.add('collapsed')">Cancel</button>
   <button type="submit" class="tcc-btn tcc-btn-save">Save Configuration</button>
 </div>
 

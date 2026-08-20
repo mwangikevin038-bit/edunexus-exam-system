@@ -7,15 +7,8 @@
 
 {% block sub_tabs %}
 <style>
-  .main-content{background:#eaecf0!important}
-<style>
-  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:35px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
-  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
-  .sub-nav-item{display:flex;align-items:stretch;flex:1}
-  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:6px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap;width:100%}
-  .sub-nav-link:hover{color:#fff;background-color:#43A047}
-  .sub-nav-link.active{color:#fff;background-color:#2e6b31;font-weight:700}
-  .sub-nav-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .app-content{background:#eaecf0!important;min-height:100vh}
+  body{background:#eaecf0!important}
 </style>
 <nav class="sub-nav-bar">
   <ul class="sub-nav-list">
@@ -58,30 +51,30 @@
   .clp-fetch-btn:hover{background:#1d4ed8;box-shadow:0 4px 14px rgba(37,99,235,0.4);transform:translateY(-1px)}
   .clp-fetch-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
   .clp-results{margin-top:0;overflow:hidden;max-height:0;opacity:0;transition:max-height 0.5s ease,opacity 0.4s ease,margin-top 0.4s ease}
-  .clp-results.visible{max-height:10000px;opacity:1;margin-top:28px}
-  .clp-results-inner{border-top:1px solid #e5e7eb;padding-top:24px}
-  .clp-info-bar{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+  .clp-results.visible{max-height:10000px;opacity:1;margin-top:32px}
+  .clp-results-inner{border-top:1px solid #e5e7eb;padding-top:24px;background:#fff;border-radius:12px;padding:24px 28px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+  .clp-info-bar{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
   .clp-info-badge{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif}
   .clp-info-badge.total{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
   .clp-info-badge.boys{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8}
   .clp-info-badge.girls{background:#fdf2f8;border:1px solid #f9a8d4;color:#be185d}
-  .sheet-heading{display:flex;align-items:center;justify-content:center;margin-bottom:20px;position:relative;padding:0 130px;min-height:110px}
-  .sheet-logo{position:absolute;left:0;top:50%;transform:translateY(-50%);width:110px;height:110px;object-fit:contain;border-radius:8px}
+  .sheet-heading{display:flex;align-items:center;justify-content:center;margin-bottom:12px;position:relative;padding:0 130px;min-height:80px}
+  .sheet-logo{position:absolute;left:0;top:50%;transform:translateY(-50%);width:90px;height:90px;object-fit:contain;border-radius:8px}
   .sheet-heading-copy{text-align:center}
-  .sheet-heading-copy h2{font-family:'Times New Roman',Times,serif;font-size:28px;font-weight:900;text-transform:uppercase;color:{{ section_accent|default:'#0f1727' }};margin:0}
+  .sheet-heading-copy h2{font-family:'Times New Roman',Times,serif;font-size:24px;font-weight:900;text-transform:uppercase;color:{{ section_accent|default:'#0f1727' }};margin:0}
   .sheet-heading-copy p{font-family:'Times New Roman',Times,serif;font-size:13px;color:#64748b;margin:2px 0 0;font-weight:700}
   .sheet-addr{font-size:12px;color:#374151;font-weight:600;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
   .sheet-contact{font-size:12px;color:#374151;font-weight:500;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
-  .clp-table-wrap{overflow-x:auto;border:1.5px solid #111827}
-  .register-table{width:100%;min-width:850px;border-collapse:collapse;border:1.5px solid #111827;background:#fff;font-family:"Times New Roman",Times,serif;font-size:12pt}
-  .register-table th{background:#f8fafc;color:#334155;font-size:12pt;font-weight:900;text-transform:uppercase;letter-spacing:0.7px;padding:13px 14px;text-align:left;border:1.5px solid #111827}
-  .register-table td{padding:13px 14px;border:1.5px solid #111827;color:#0f172a;font-weight:800;vertical-align:middle}
+  .clp-table-wrap{overflow-x:auto}
+  .register-table{width:100%;min-width:850px;border-collapse:collapse;background:#fff;font-family:"Times New Roman",Times,serif;font-size:12pt}
+  .register-table th{background:#f8fafc;color:#334155;font-size:12pt;font-weight:900;text-transform:uppercase;letter-spacing:0.7px;padding:6px 10px;text-align:left;border:1.5px solid #111827}
+  .register-table td{padding:5px 10px;border:1.5px solid #111827;color:#0f172a;font-weight:400;vertical-align:middle}
   .register-table tr{page-break-inside:avoid;break-inside:avoid}
   .grid-cell{width:36px;height:34px;background:#f8fafc}
   .clp-empty{text-align:center;padding:48px 24px;color:#94a3b8;font-size:14px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
   .clp-empty svg{width:48px;height:48px;stroke:#d1d5db;fill:none;stroke-width:1.5;margin-bottom:12px}
   .print-watermark{display:none}
-  .clp-actions-top{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+  .clp-actions-top{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
   .clp-top-action{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.2s ease;text-decoration:none}
   .clp-top-action svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2}
   .clp-top-action.print{background:#fff;border:1.5px solid #4CAF50;color:#4CAF50}

@@ -120,6 +120,7 @@ from .faculty import (  # noqa: F401
     download_teachers_list_pdf,
     teacher_classes,
     teacher_load_comments,
+    teacher_class_comments,
 )
 
 # ── PDF export views ─────────────────────────────────────────────────────────

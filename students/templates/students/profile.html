@@ -2,15 +2,6 @@
 {% load static %}
 
 {% block sub_tabs %}
-<style>
-  .sub-nav-bar{position:fixed;top:var(--global-header-height,64px);left:var(--sidebar-width,260px);right:0;z-index:40;display:flex;align-items:stretch;background-color:#4CAF50;height:40px;box-shadow:0 2px 6px rgba(0,0,0,0.08);flex-shrink:0}
-  .sub-nav-list{display:flex;list-style:none;padding:0;margin:0;height:100%;align-items:stretch;gap:0}
-  .sub-nav-item{display:flex;align-items:stretch}
-  .sub-nav-link{color:rgba(255,255,255,0.85);text-decoration:none;padding:0 16px;display:flex;align-items:center;gap:7px;height:100%;font-weight:600;font-size:13px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background-color 0.15s ease,color 0.15s ease;white-space:nowrap}
-  .sub-nav-link:hover{color:#fff;background-color:#43A047}
-  .sub-nav-link.active{color:#fff;background-color:rgba(0,0,0,0.15);font-weight:700}
-  .sub-nav-link svg,.sub-nav-link i{width:16px;height:16px;flex-shrink:0}
-</style>
 <nav class="sub-nav-bar">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
@@ -66,7 +57,7 @@
   .prof-field label{font-size:.8rem;font-weight:600;color:#1e293b}
   .prof-field label .required{color:#EF4444;margin-left:2px}
 
-  .prof-field input,.prof-field select,.prof-field textarea{padding:12px 14px;border:1.5px solid #c6f0d5;border-radius:10px;font-size:.875rem;font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#0f172a;background:#f0faf3;transition:border-color 0.15s,box-shadow 0.15s,background 0.15s;outline:none}
+  .prof-field input,.prof-field select,.prof-field textarea{padding:8px 14px;border:1.5px solid #c6f0d5;border-radius:10px;font-size:.875rem;font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#0f172a;background:#f0faf3;transition:border-color 0.15s,box-shadow 0.15s,background 0.15s;outline:none}
   .prof-field input:focus,.prof-field select:focus,.prof-field textarea:focus{border-color:#4CAF50;box-shadow:0 0 0 3px rgba(76,175,80,0.12);background:#fff}
   .prof-field input::placeholder,.prof-field textarea::placeholder{color:#86b89a}
   .prof-field textarea{min-height:140px;resize:vertical}

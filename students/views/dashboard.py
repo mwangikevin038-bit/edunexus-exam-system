@@ -14,7 +14,7 @@ from django.db.models.functions import Cast, Substr
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 
-from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES
+from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES, JSS_GRADE_CHOICES
 from .helpers import get_teacher_for_user, get_class_teacher_scope, get_published_contexts_for_user
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
 from ..models import (
@@ -26,6 +26,7 @@ from ..models import (
     Student,
     SubjectAssignment,
     Teacher,
+    TermDate,
 )
 
 
@@ -309,6 +310,174 @@ def dashboard(request):
             assignment.total_students = 0
             assignment.progress_pct = 0
 
+    # --- Term dates for calendar ---
+    import json as _json
+    term_dates_qs = TermDate.objects.filter(school=school).order_by('-academic_year', 'term') if school else TermDate.objects.none()
+    term_events = []
+    for td in term_dates_qs:
+        term_events.append({
+            'term': td.term,
+            'year': td.academic_year,
+            'start': td.start_date.isoformat(),
+            'end': td.end_date.isoformat(),
+        })
+
+    # --- Section-scoped grade choices ---
+    if section == 'JSS':
+        section_grades = JSS_GRADE_CHOICES
+    elif section == 'PRIMARY':
+        section_grades = PRIMARY_GRADE_CHOICES
+    elif section == 'LOWER_PRIMARY':
+        section_grades = LOWER_PRIMARY_GRADE_CHOICES
+    else:
+        section_grades = LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES + JSS_GRADE_CHOICES
+
+    # --- Grade performance cards (section-scoped) ---
+    SECTION_COLORS = {
+        'LOWER_PRIMARY': {'accent': '#B45309', 'bg': '#FFFBEB', 'border': '#fde68a', 'text': '#92400e'},
+        'PRIMARY':       {'accent': '#00674F', 'bg': '#ECFDF5', 'border': '#a7f3d0', 'text': '#065f46'},
+        'JSS':           {'accent': '#305CDE', 'bg': '#EFF6FF', 'border': '#bfdbfe', 'text': '#1e40af'},
+    }
+
+    def _section_key_for_grade(g):
+        if g in LOWER_PRIMARY_GRADE_CHOICES:
+            return 'LOWER_PRIMARY'
+        if g in PRIMARY_GRADE_CHOICES:
+            return 'PRIMARY'
+        return 'JSS'
+
+    def _mean_grade_from_score(avg_score, section_key):
+        scale = GradingConfig.get_default_subject_scale(section_key)
+        for entry in scale:
+            if entry['min_score'] <= avg_score < entry['max_score'] + 1:
+                return entry['level']
+        return '\u2014'
+
+    exam_order = Case(
+        When(name__icontains='end of term', then=Value(3)),
+        When(name__icontains='mid term', then=Value(2)),
+        When(name__icontains='opener', then=Value(1)),
+        default=Value(0),
+        output_field=IntegerField(),
+    )
+
+    recent_exams_raw = Exam.all_objects.filter(
+        school=school, is_deleted=False
+    ).annotate(
+        term_num=Cast(Substr('term', 6), output_field=IntegerField()),
+        name_order=exam_order,
+    ).order_by('-year', '-term_num', '-name_order') if school else Exam.objects.none()
+
+    # Find the two most recent exams with published marks in this section
+    section_exam_keys = set(
+        Mark.all_objects.filter(
+            student__school=school,
+            student__class_name__in=section_grades,
+        ).values_list('exam_type', 'term', 'year').distinct()
+    ) if school and section_grades else set()
+
+    eot_exam = None
+    opener_exam = None
+    seen_exams = set()
+    for ex in recent_exams_raw:
+        key = (ex.name, ex.term, ex.year)
+        if key in seen_exams:
+            continue
+        seen_exams.add(key)
+        if key not in section_exam_keys:
+            continue
+        if 'end of term' in ex.name.lower() and not eot_exam:
+            eot_exam = ex
+        elif 'opener' in ex.name.lower() and not opener_exam:
+            opener_exam = ex
+        if eot_exam and opener_exam:
+            break
+
+    latest_exam = eot_exam or opener_exam
+    previous_exam = opener_exam if latest_exam == eot_exam else eot_exam
+
+    exam_label = ''
+    if latest_exam:
+        exam_label = f"{latest_exam.name.upper()} - ({latest_exam.year} TERM {latest_exam.term})"
+
+    submission_qs = MarkSubmission.all_objects.filter(school=school) if school else MarkSubmission.objects.none()
+    mark_qs = Mark.all_objects.filter(school=school) if school else Mark.objects.none()
+
+    def _compute_grade_stats(exam):
+        if not exam:
+            return {}
+        published_subs = submission_qs.filter(
+            exam_name=exam.name, term=exam.term, year=exam.year, status="published",
+        )
+        tuples = set()
+        for sub in published_subs:
+            if sub.class_name in section_grades:
+                tuples.add((sub.class_name, sub.stream, sub.subject_id))
+        if tuples:
+            class_names = [cls for cls, strm, sid in tuples]
+            streams = [strm for cls, strm, sid in tuples]
+            subject_ids = [sid for cls, strm, sid in tuples]
+            exam_mark_filter = (
+                Q(student__class_name__in=class_names) &
+                Q(student__stream__in=streams) &
+                Q(subject_id__in=subject_ids) &
+                Q(exam_type=exam.name, term=exam.term, year=exam.year)
+            )
+        else:
+            exam_mark_filter = Q(
+                student__school=school, exam_type=exam.name, term=exam.term, year=exam.year,
+                student__class_name__in=section_grades,
+            )
+        marks = mark_qs.filter(exam_mark_filter)
+        stats = {}
+        for item in marks.values('student__class_name').annotate(
+            avg_score=Avg('score'), avg_points=Avg('points'), student_count=Count('student', distinct=True)
+        ):
+            g = item['student__class_name']
+            if g not in section_grades:
+                continue
+            avg_sc = round(item['avg_score'] or 0, 2)
+            avg_pts = round(item['avg_points'] or 0, 4)
+            sk = _section_key_for_grade(g)
+            stats[g] = {
+                'mean_score': avg_sc,
+                'mean_points': avg_pts,
+                'mean_grade': _mean_grade_from_score(avg_sc, sk),
+                'student_count': item['student_count'],
+            }
+        return stats
+
+    current_stats = _compute_grade_stats(latest_exam)
+    previous_stats = _compute_grade_stats(previous_exam)
+
+    grade_performance_cards = []
+    for g in section_grades:
+        sk = _section_key_for_grade(g)
+        colors = SECTION_COLORS[sk]
+        cur = current_stats.get(g, {})
+        prev = previous_stats.get(g, {})
+        mean_score = cur.get('mean_score', 0)
+        mean_points = cur.get('mean_points', 0)
+        mean_grade = cur.get('mean_grade', '\u2014')
+        student_count = cur.get('student_count', 0)
+        score_dev = round(mean_score - prev.get('mean_score', mean_score), 2) if prev else None
+        points_dev = round(mean_points - prev.get('mean_points', mean_points), 4) if prev else None
+        grade_performance_cards.append({
+            'label': g,
+            'section_key': sk,
+            'accent': colors['accent'],
+            'bg': colors['bg'],
+            'border': colors['border'],
+            'text': colors['text'],
+            'mean_score': mean_score,
+            'mean_points': mean_points,
+            'mean_grade': mean_grade,
+            'student_count': student_count,
+            'score_dev': score_dev,
+            'points_dev': points_dev,
+            'exam_id': latest_exam.id if latest_exam else None,
+        })
+
     return render(request, 'students/dashboard.html', {
         'teacher': teacher,
         'assignments': assignments,
@@ -324,6 +493,9 @@ def dashboard(request):
         'class_teacher_scope': class_scope,
         'current_year': datetime.date.today().year,
         'section': section,
+        'term_events_json': _json.dumps(term_events),
+        'grade_performance_cards': grade_performance_cards,
+        'exam_label': exam_label,
     })
 
 
