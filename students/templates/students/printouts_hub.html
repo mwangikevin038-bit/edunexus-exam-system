@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block sub_tabs %}
-<nav class="sub-nav-bar">
+<nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="{% url 'printouts_hub' %}" class="sub-nav-link active">
@@ -47,7 +47,89 @@
   .po-card.disabled .po-card-icon{color:#d1d5db;border-color:#e5e7eb;background:#f9fafb}
 
   @media(max-width:1000px){.po-grid{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:640px){.po-grid{grid-template-columns:1fr}.po-page{padding:16px 16px 40px}}
+  @media(max-width:640px){
+    .main-content {
+      padding: 0 !important;
+      max-width: 100% !important;
+      margin-left: 0 !important;
+    }
+
+    .po-page {
+      padding: 12px 12px calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
+    }
+
+    .po-header {
+      margin-bottom: 20px !important;
+    }
+
+    .po-header h1 {
+      font-size: 22px !important;
+      font-weight: 800 !important;
+      letter-spacing: -0.02em !important;
+    }
+
+    .po-header p {
+      font-size: 13px !important;
+    }
+
+    .po-section-label {
+      font-size: 11px !important;
+      margin: 20px 0 10px !important;
+      letter-spacing: 0.08em !important;
+    }
+
+    .po-grid {
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+
+    .po-card {
+      padding: 16px !important;
+      border-radius: 14px !important;
+      border: none !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 14px !important;
+    }
+
+    .po-card:hover {
+      transform: none !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 12px 32px rgba(0,0,0,0.08) !important;
+    }
+
+    .po-card-icon {
+      width: 44px !important;
+      height: 44px !important;
+      flex-shrink: 0 !important;
+      border-radius: 12px !important;
+    }
+
+    .po-card-icon svg {
+      width: 22px !important;
+      height: 22px !important;
+    }
+
+    .po-card-title {
+      font-size: 15px !important;
+    }
+
+    .po-card-desc {
+      font-size: 12px !important;
+      margin-top: 2px !important;
+    }
+
+    .po-card-badge {
+      position: static !important;
+      align-self: flex-start !important;
+      margin-left: auto !important;
+      flex-shrink: 0 !important;
+    }
+
+    .po-card.disabled {
+      opacity: 0.4 !important;
+    }
+  }
 </style>
 
 <div class="po-page">

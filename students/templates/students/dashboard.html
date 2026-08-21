@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block sub_tabs %}
-<nav class="sub-nav-bar">
+<nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="{% url 'dashboard_alt' %}" class="sub-nav-link active">
@@ -318,38 +318,69 @@
 
 <!-- ═══ iOS 17 MOBILE DASHBOARD ═══ -->
 <div class="dash-ios" id="dashIos">
-    <!-- HEADER -->
+    <!-- HEADER — mobile global header with controls -->
     <header class="dash-header">
         <div class="dash-greeting">
             <div class="dash-greeting-main">Welcome back, {{ request.user.first_name|default:"Teacher" }}</div>
             <div class="dash-greeting-sub">{% if teacher %}{{ teacher.get_full_title }}{% endif %} · {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</div>
         </div>
-        <div class="dash-avatar">{{ request.user.first_name|first|default:"U" }}</div>
+        <div class="dash-header-controls">
+            {% if request.user.teacher_profile %}
+            <a href="{% url 'teacher_search_student' %}" class="admin-icon-btn" aria-label="Search Students">
+                <i class="ph ph-magnifying-glass"></i>
+            </a>
+            {% endif %}
+            <button class="admin-icon-btn" type="button" aria-label="Messages">
+                <i class="ph ph-envelope"></i>
+            </button>
+            <div class="admin-user-menu" id="dashUserMenu">
+                <div class="dash-avatar-btn">{{ request.user.first_name|first|default:"U" }}</div>
+                <div class="admin-dropdown" id="dashDropdown">
+                    <div class="admin-dropdown-header">
+                        <div class="admin-dropdown-avatar">{{ request.user.get_full_name|first|default:request.user.username|first|upper }}</div>
+                        <div>
+                            <div class="admin-dropdown-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+                            <div class="admin-dropdown-role">{{ user.username }}</div>
+                        </div>
+                    </div>
+                    <div class="admin-dropdown-divider"></div>
+                    <a href="{% url 'home_alt' %}" class="admin-dropdown-item">
+                        <i class="ph ph-user"></i> Profile
+                    </a>
+                    <a href="{% url 'password_change' %}" class="admin-dropdown-item">
+                        <i class="ph ph-shield-check"></i> Change Password
+                    </a>
+                    <a href="{% url 'logout' %}" class="admin-dropdown-item admin-logout">
+                        <i class="ph ph-sign-out"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
     </header>
+
+    <!-- MOBILE SUB-NAV -->
+    <nav class="sub-nav-bar dm-subnav">
+      <ul class="sub-nav-list">
+        <li class="sub-nav-item">
+          <a href="{% url 'dashboard_alt' %}" class="sub-nav-link active">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Overview
+          </a>
+        </li>
+      </ul>
+    </nav>
 
     <!-- SCROLLABLE BODY -->
     <main class="dash-body">
-        <!-- QUICK ACTIONS -->
-        <section class="dash-actions" aria-label="Quick actions">
-            <a class="dash-action" href="{% url 'results_list' %}">
-                <div class="dash-action-icon green">
-                    <i class="ph ph-chart-line-up"></i>
-                </div>
-                <div class="dash-action-label">Results</div>
-            </a>
-            <a class="dash-action" href="{% url 'class_lists' %}">
-                <div class="dash-action-icon blue">
-                    <i class="ph ph-users"></i>
-                </div>
-                <div class="dash-action-label">Class Lists</div>
-            </a>
-            <a class="dash-action" href="{% url 'home_alt' %}">
-                <div class="dash-action-icon purple">
-                    <i class="ph ph-user-circle"></i>
-                </div>
-                <div class="dash-action-label">Profile</div>
-            </a>
-        </section>
+
+        <!-- WELCOME BANNER -->
+        <div class="dm-welcome">
+            <div class="dm-welcome-avatar">{{ request.user.first_name|first|default:"T" }}</div>
+            <div class="dm-welcome-text">
+                <div class="dm-welcome-name">Welcome, {{ request.user.first_name|default:"Teacher" }}</div>
+                <div class="dm-welcome-sub">{% if teacher %}{{ teacher.get_full_title }}{% endif %} · {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</div>
+            </div>
+        </div>
 
         <!-- HERO: Score Capture -->
         {% if section == 'JSS' %}
@@ -371,64 +402,79 @@
             </div>
         </a>
 
-        <!-- OVERVIEW -->
+        <!-- STAT CARDS -->
         <div class="dash-section-label">Overview</div>
-        <section class="dash-overview" aria-label="Overview metrics">
-            <div class="dash-metric">
-                <div class="dash-ring">
-                    <svg viewBox="0 0 48 48">
-                        <circle class="dash-ring-track" cx="24" cy="24" r="20"></circle>
-                        <circle class="dash-ring-fill navy" cx="24" cy="24" r="20"
-                                stroke-dasharray="125.66"
-                                data-value="{{ assignment_count }}"
-                                data-max="10"></circle>
-                    </svg>
-                    <div class="dash-ring-value">{{ assignment_count }}</div>
+        <section class="dash-stat-cards" aria-label="Statistics">
+            <a class="dash-stat-card" href="{% url 'class_lists' %}">
+                <div class="dash-stat-icon-wrap blue">
+                    <i class="ph ph-books"></i>
                 </div>
-                <div class="dash-metric-label">Allocations</div>
+                <div class="dash-stat-info">
+                    <div class="dash-stat-number">{{ assignment_count }}</div>
+                    <div class="dash-stat-label">Allocations</div>
+                </div>
+                <i class="ph ph-arrow-right dash-stat-arrow"></i>
+            </a>
+            <a class="dash-stat-card" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
+                <div class="dash-stat-icon-wrap green">
+                    <i class="ph ph-clipboard-text"></i>
+                </div>
+                <div class="dash-stat-info">
+                    <div class="dash-stat-number">{{ active_exam_count }}</div>
+                    <div class="dash-stat-label">Active Exams</div>
+                </div>
+                <i class="ph ph-arrow-right dash-stat-arrow"></i>
+            </a>
+            <a class="dash-stat-card" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
+                <div class="dash-stat-icon-wrap emerald">
+                    <i class="ph ph-paper-plane-tilt"></i>
+                </div>
+                <div class="dash-stat-info">
+                    <div class="dash-stat-number">{{ submitted_count }}</div>
+                    <div class="dash-stat-label">Submitted</div>
+                </div>
+                <i class="ph ph-arrow-right dash-stat-arrow"></i>
+            </a>
+            <a class="dash-stat-card" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
+                <div class="dash-stat-icon-wrap amber">
+                    <i class="ph ph-arrow-u-up-left"></i>
+                </div>
+                <div class="dash-stat-info">
+                    <div class="dash-stat-number">{{ returned_count }}</div>
+                    <div class="dash-stat-label">Returned</div>
+                </div>
+                <i class="ph ph-arrow-right dash-stat-arrow"></i>
+            </a>
+        </section>
+
+        <!-- UPCOMING EVENTS -->
+        <div class="dash-section-label">Calendar</div>
+        <section class="dash-events-card" aria-label="Upcoming Events">
+            <div class="dash-events-head">
+                <h3 class="dash-events-title">Upcoming Events</h3>
+                <button class="dash-events-cal-btn"><i class="ph ph-calendar"></i></button>
             </div>
-            <div class="dash-metric">
-                <div class="dash-ring">
-                    <svg viewBox="0 0 48 48">
-                        <circle class="dash-ring-track" cx="24" cy="24" r="20"></circle>
-                        <circle class="dash-ring-fill blue" cx="24" cy="24" r="20"
-                                stroke-dasharray="125.66"
-                                data-value="{{ active_exam_count }}"
-                                data-max="10"></circle>
-                    </svg>
-                    <div class="dash-ring-value">{{ active_exam_count }}</div>
+            <div class="dash-events-nav">
+                <button class="dash-events-arrow" onclick="calNav(-1)"><i class="ph ph-caret-left"></i></button>
+                <div class="dash-events-date">
+                    <span class="dash-events-main" id="calMain"></span>
+                    <span class="dash-events-sub" id="calSub"></span>
                 </div>
-                <div class="dash-metric-label">Active Exams</div>
+                <button class="dash-events-arrow" onclick="calNav(1)"><i class="ph ph-caret-right"></i></button>
             </div>
-            <div class="dash-metric">
-                <div class="dash-ring">
-                    <svg viewBox="0 0 48 48">
-                        <circle class="dash-ring-track" cx="24" cy="24" r="20"></circle>
-                        <circle class="dash-ring-fill green" cx="24" cy="24" r="20"
-                                stroke-dasharray="125.66"
-                                data-value="{{ submitted_count }}"
-                                data-max="10"></circle>
-                    </svg>
-                    <div class="dash-ring-value">{{ submitted_count }}</div>
-                </div>
-                <div class="dash-metric-label">Submitted</div>
+            <div class="dash-events-pills">
+                <button class="dash-pill" onclick="setCalView('month',this)">Month</button>
+                <button class="dash-pill" onclick="setCalView('week',this)">Week</button>
+                <button class="dash-pill active" onclick="setCalView('day',this)">Day</button>
+                <button class="dash-pill" onclick="setCalView('list',this)">List</button>
             </div>
-            <div class="dash-metric">
-                <div class="dash-ring">
-                    <svg viewBox="0 0 48 48">
-                        <circle class="dash-ring-track" cx="24" cy="24" r="20"></circle>
-                        <circle class="dash-ring-fill amber" cx="24" cy="24" r="20"
-                                stroke-dasharray="125.66"
-                                data-value="{{ returned_count }}"
-                                data-max="10"></circle>
-                    </svg>
-                    <div class="dash-ring-value">{{ returned_count }}</div>
-                </div>
-                <div class="dash-metric-label">Returned</div>
+            <div class="dash-events-viewport" id="eventsViewport">
+                <p class="dash-events-empty">No events to display</p>
             </div>
         </section>
 
         <!-- MY CLASSES -->
+        {% if assignments %}
         <section aria-label="My Classes">
             <div class="dash-section-head">
                 <h2 class="dash-section-title">My Classes</h2>
@@ -453,7 +499,7 @@
                                 <div class="dash-progress-fill" style="width: {{ assignment.progress_pct }}%"></div>
                             </div>
                             <div class="dash-class-stats">
-                                <span class="dash-class-stat"><strong>{{ assignment.marks_entered }}</strong> / {{ assignment.total_students }} exams entered</span>
+                                <span class="dash-class-stat"><strong>{{ assignment.marks_entered }}</strong> / {{ assignment.total_students }} entered</span>
                                 <a class="dash-class-capture"
                                    href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
                                     Capture <i class="ph ph-arrow-right"></i>
@@ -461,17 +507,69 @@
                             </div>
                         </div>
                     </div>
-                {% empty %}
-                    <div class="dash-empty">
-                        <div class="dash-empty-icon">
-                            <i class="ph ph-inbox"></i>
-                        </div>
-                        <div class="dash-empty-title">No assignments yet</div>
-                        <div class="dash-empty-desc">Subject allocations will appear here once assigned by your admin.</div>
-                    </div>
                 {% endfor %}
             </div>
         </section>
+        {% endif %}
+
+        <!-- ACADEMIC PERFORMANCE -->
+        {% if grade_performance_cards %}
+        <section aria-label="Academic Performance">
+            <div class="dash-section-head">
+                <h2 class="dash-section-title">Academic Performance</h2>
+                {% if exam_label %}
+                <span class="dash-section-sub">{{ exam_label }}</span>
+                {% endif %}
+            </div>
+            <div class="dash-perf-cards">
+                {% for card in grade_performance_cards %}
+                <div class="dash-perf-card" style="border-top: 3px solid {{ card.accent }}">
+                    <div class="dash-perf-header" style="background:{{ card.bg }}">
+                        <span class="dash-perf-grade" style="color:{{ card.text }}">{{ card.label }}</span>
+                        <span class="dash-perf-exam">{{ exam_label|default:"No Data" }}</span>
+                    </div>
+                    <div class="dash-perf-grid">
+                        <div class="dash-perf-cell">
+                            <span class="dash-perf-cell-label">Mean Points</span>
+                            <span class="dash-perf-cell-value">{{ card.mean_points|floatformat:4 }}</span>
+                            {% if card.points_dev is not None %}
+                                {% if card.points_dev > 0 %}
+                                <span class="dash-perf-dev up">+{{ card.points_dev|floatformat:3 }}</span>
+                                {% elif card.points_dev < 0 %}
+                                <span class="dash-perf-dev down">{{ card.points_dev|floatformat:3 }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="dash-perf-cell">
+                            <span class="dash-perf-cell-label">Mean Marks</span>
+                            <span class="dash-perf-cell-value">{{ card.mean_score|floatformat:2 }}%</span>
+                            {% if card.score_dev is not None %}
+                                {% if card.score_dev > 0 %}
+                                <span class="dash-perf-dev up">+{{ card.score_dev|floatformat:2 }}</span>
+                                {% elif card.score_dev < 0 %}
+                                <span class="dash-perf-dev down">{{ card.score_dev|floatformat:2 }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="dash-perf-cell">
+                            <span class="dash-perf-cell-label">Mean Grade</span>
+                            <span class="dash-perf-cell-value">{{ card.mean_grade }}</span>
+                        </div>
+                        <div class="dash-perf-cell">
+                            <span class="dash-perf-cell-label">Students</span>
+                            <span class="dash-perf-cell-value" style="color:{{ card.accent }}">{{ card.student_count }}</span>
+                        </div>
+                    </div>
+                    {% if card.exam_id %}
+                    <button class="dash-perf-btn" style="background:{{ card.accent }}" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
+                        View Analysis <i class="ph ph-arrow-right"></i>
+                    </button>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
 
         <!-- PUBLISHED RESULTS -->
         {% if published_contexts %}
@@ -501,17 +599,42 @@
 
         <!-- CLASS TEACHER SCOPE -->
         {% if class_teacher_scope %}
-        <div class="dash-ct-dt" style="background:#fff; border:1px solid var(--dm-border); border-radius:var(--dm-radius); padding:14px 16px; margin-bottom:24px;">
-            <div class="dash-ct-label-dt">Class Teacher</div>
-            <div class="dash-ct-value-dt">{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</div>
+        <div class="dash-ct-card">
+            <div class="dash-ct-label">Class Teacher</div>
+            <div class="dash-ct-value">{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</div>
         </div>
         {% endif %}
+
+        <!-- FOOTER -->
+        <div class="dash-footer">&copy; 2026 EduNexus. All Rights Reserved.</div>
     </main>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// Dash user dropdown toggle
+(function(){
+    var menu = document.getElementById('dashUserMenu');
+    var dropdown = document.getElementById('dashDropdown');
+    if(!menu || !dropdown) return;
+
+    menu.querySelector('.dash-avatar-btn').addEventListener('click', function(e){
+        e.stopPropagation();
+        dropdown.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function(e){
+        if(!menu.contains(e.target)){
+            dropdown.classList.remove('open');
+        }
+    });
+
+    dropdown.addEventListener('click', function(e){
+        e.stopPropagation();
+    });
+})();
+
 (function(){
     var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     var FULL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -525,7 +648,7 @@
     function renderEvents(){
         var now = new Date();
         now.setHours(0,0,0,0);
-        var vp = document.querySelector('.events-viewport');
+        var vp = document.getElementById('eventsViewport') || document.querySelector('.events-viewport');
         if(!vp) return;
 
         var events = [];
@@ -541,19 +664,19 @@
         });
 
         if(events.length === 0){
-            vp.innerHTML = '<p class="empty-events-text">No term dates configured</p>';
+            vp.innerHTML = '<p class="dash-events-empty" style="text-align:center;color:var(--dm-text-muted);font-style:italic;padding:16px 0">No term dates configured</p>';
             return;
         }
 
         var html = '';
         events.forEach(function(ev){
             var icon = ev.status === 'active' ? '&#9679;' : (ev.status === 'upcoming' ? '&#9654;' : '&#9632;');
-            var color = ev.status === 'active' ? '#4CAF50' : (ev.status === 'upcoming' ? '#3b82f6' : '#94a3b8');
-            var bg = ev.status === 'active' ? '#f0fdf4' : (ev.status === 'upcoming' ? '#eff6ff' : '#f8fafc');
-            html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:8px;background:'+bg+';border:1px solid '+color+'22">';
-            html += '<span style="color:'+color+';font-size:10px">'+icon+'</span>';
-            html += '<div style="flex:1"><div style="font-size:.82rem;font-weight:600;color:#1e293b">'+ev.label+'</div>';
-            html += '<div style="font-size:.72rem;color:#64748b;margin-top:2px">'+ev.status.charAt(0).toUpperCase()+ev.status.slice(1)+'</div></div>';
+            var color = ev.status === 'active' ? '#22C55E' : (ev.status === 'upcoming' ? '#3B82F6' : '#8E8E93');
+            var bg = ev.status === 'active' ? 'rgba(34,197,94,0.06)' : (ev.status === 'upcoming' ? 'rgba(59,130,246,0.06)' : 'rgba(142,142,147,0.06)');
+            html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:8px;background:'+bg+';border:0.5px solid '+color+'22">';
+            html += '<span style="color:'+color+';font-size:8px">'+icon+'</span>';
+            html += '<div style="flex:1"><div style="font-size:0.8125rem;font-weight:600;color:var(--dm-text)">'+ev.label+'</div>';
+            html += '<div style="font-size:0.6875rem;color:var(--dm-text-muted);margin-top:2px">'+ev.status.charAt(0).toUpperCase()+ev.status.slice(1)+'</div></div>';
             html += '</div>';
         });
         vp.innerHTML = html;
@@ -591,7 +714,7 @@
     window.calNav = function(dir){ offset+=dir; render(); };
     window.setCalView = function(v, btn){
         view=v; offset=0;
-        document.querySelectorAll('.view-filter-pills .view-pill').forEach(function(p){p.classList.remove('active');});
+        document.querySelectorAll('.view-filter-pills .view-pill, .dash-events-pills .dash-pill').forEach(function(p){p.classList.remove('active');});
         if(btn) btn.classList.add('active');
         render();
     };

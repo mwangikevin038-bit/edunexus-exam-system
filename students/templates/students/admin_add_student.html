@@ -324,9 +324,555 @@
 
   @media (max-width: 900px) { .form-grid-2 { grid-template-columns: 1fr; } .form-group.full-span { grid-column: 1; } .radio-matrix { grid-template-columns: repeat(2, 1fr); } .radio-matrix .full-span { grid-column: 1 / span 2; } .search-fields-row { grid-template-columns: 1fr !important; } }
   @media (max-width: 500px) { .radio-matrix { grid-template-columns: 1fr; } .radio-matrix .full-span { grid-column: 1; } }
+
+  /* ═══════════════════════════════════════════════════════════════
+     MOBILE STYLES — Student Search, Profile, Analytics (HTMX views)
+     ═══════════════════════════════════════════════════════════════ */
+  @media (max-width: 768px) {
+
+    /* ── Search Results: table scroll ─────────────────────────── */
+    #search-card-container > div > div:first-child {
+      font-size: 16px !important;
+      margin-bottom: 14px !important;
+    }
+
+    #search-card-container > div > div:nth-child(2) {
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    #search-card-container table {
+      min-width: 600px !important;
+    }
+
+    #search-card-container table td,
+    #search-card-container table th {
+      padding: 10px 12px !important;
+      font-size: 13px !important;
+      white-space: nowrap !important;
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       ADD STUDENT FORM — iOS 17 Premium Mobile
+       ════════════════════════════════════════════════════════════ */
+    .form-card {
+      border-radius: 16px !important;
+      border: none !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+      overflow: hidden !important;
+    }
+
+    .form-card-header {
+      padding: 18px 20px !important;
+      background: #ffffff !important;
+    }
+
+    .form-card-header h3 {
+      font-size: 17px !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.01em !important;
+    }
+
+    .personal-info-card .form-card-header h3 {
+      color: #16a34a !important;
+    }
+
+    .form-card-body {
+      padding: 16px 20px !important;
+    }
+
+    .form-card-body > div[style*="flex"] {
+      flex-direction: column !important;
+      gap: 14px !important;
+    }
+
+    .form-card .form-grid-2 {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 16px !important;
+    }
+
+    .form-card .form-group {
+      width: 100% !important;
+    }
+
+    .form-label {
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.06em !important;
+      margin-bottom: 4px !important;
+    }
+
+    .form-input, .form-select {
+      height: 46px !important;
+      border-radius: 12px !important;
+      border: 1.5px solid #e2e8f0 !important;
+      padding: 0 16px !important;
+      font-size: 15px !important;
+      background: #f8fafc !important;
+      transition: border-color 0.2s, box-shadow 0.2s !important;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: #16a34a !important;
+      box-shadow: 0 0 0 3px rgba(22,163,74,0.12) !important;
+      background: #ffffff !important;
+      outline: none !important;
+    }
+
+    .phone-group {
+      border-radius: 12px !important;
+      border: 1.5px solid #e2e8f0 !important;
+      height: 46px !important;
+    }
+
+    .phone-group:focus-within {
+      border-color: #16a34a !important;
+      box-shadow: 0 0 0 3px rgba(22,163,74,0.12) !important;
+    }
+
+    .phone-input {
+      font-size: 15px !important;
+      height: 100% !important;
+    }
+
+    .form-actions {
+      padding: 16px 20px !important;
+      gap: 12px !important;
+      flex-direction: column !important;
+    }
+
+    .form-actions .btn-save-exit,
+    .form-actions .btn-next {
+      width: 100% !important;
+      height: 46px !important;
+      border-radius: 12px !important;
+      font-size: 14px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.01em !important;
+    }
+
+    .btn-save-exit {
+      background: #f1f5f9 !important;
+      color: #334155 !important;
+      border: 1.5px solid #e2e8f0 !important;
+    }
+
+    .btn-next {
+      background: linear-gradient(145deg, #22c55e 0%, #16a34a 100%) !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 12px rgba(22,163,74,0.3) !important;
+    }
+
+    .radio-option {
+      font-size: 14px !important;
+      padding: 14px 16px !important;
+      border-radius: 12px !important;
+      border: 1.5px solid #e2e8f0 !important;
+      background: #f8fafc !important;
+      transition: border-color 0.2s, background 0.2s !important;
+    }
+
+    .radio-option:has(input:checked) {
+      border-color: #16a34a !important;
+      background: #f0fdf4 !important;
+    }
+
+    .radio-option .radio-custom {
+      width: 20px !important;
+      height: 20px !important;
+    }
+
+    /* ── Move Students tab ─────────────────────────────────── */
+    .form-card .form-card-body form .form-grid-2 {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 16px !important;
+    }
+
+    .form-card .search-btn {
+      width: 100% !important;
+      height: 46px !important;
+      border-radius: 12px !important;
+      justify-content: center !important;
+      font-size: 14px !important;
+    }
+
+    /* ── Content wrapper padding ──────────────────────────── */
+    #content > div:first-child,
+    .main-content > div:first-child {
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+    }
+
+    /* ── Enrolment Section + Options: vertical radio layout ── */
+    #section-toggle-card .form-card-body > div,
+    .form-card:first-child .form-card-body > div {
+      flex-direction: column !important;
+      gap: 12px !important;
+    }
+
+    /* ── Move Students: table card ────────────────────────── */
+    .form-card[style*="overflow"] {
+      border-radius: 16px !important;
+      border: none !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+      overflow: hidden !important;
+    }
+
+    .form-card[style*="overflow"] > div:first-child {
+      padding: 16px 20px !important;
+    }
+
+    .form-card[style*="overflow"] > div:first-child h3 {
+      font-size: 16px !important;
+    }
+
+    .form-card[style*="overflow"] table th,
+    .form-card[style*="overflow"] table td {
+      padding: 12px 16px !important;
+      font-size: 13px !important;
+    }
+  }
+
+    /* ════════════════════════════════════════════════════════════
+       PROFILE CARD (view profile tab)
+       ════════════════════════════════════════════════════════════ */
+    .profile-card-wrap {
+      padding: 0 !important;
+      border: none !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+    }
+
+    .profile-banner {
+      flex-direction: column !important;
+      text-align: center !important;
+      padding: 28px 20px !important;
+      gap: 14px !important;
+      border-radius: 16px !important;
+      margin: 12px 12px 0 12px !important;
+    }
+
+    .profile-banner h2 {
+      font-size: 20px !important;
+      letter-spacing: -0.02em !important;
+      line-height: 1.2 !important;
+    }
+
+    .profile-banner p { font-size: 13px !important; }
+
+    .profile-banner > div:first-child {
+      width: 72px !important;
+      height: 72px !important;
+    }
+
+    .profile-banner > div:first-child > div:first-child {
+      width: 72px !important;
+      height: 72px !important;
+    }
+
+    .profile-banner > div:first-child > div:first-child svg {
+      width: 36px !important;
+      height: 36px !important;
+    }
+
+    .profile-info-card {
+      margin: 12px !important;
+      padding: 20px 16px !important;
+      border-radius: 16px !important;
+      border: none !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+    }
+
+    .profile-info-card > div:first-child {
+      margin-bottom: 16px !important;
+      padding: 0 !important;
+    }
+
+    .profile-info-card > div:first-child h3 {
+      font-size: 15px !important;
+      font-weight: 700 !important;
+    }
+
+    .profile-info-grid {
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+    }
+
+    .profile-info-grid > div {
+      padding: 12px 14px !important;
+      border-radius: 12px !important;
+      background: #f1f5f9 !important;
+    }
+
+    .profile-info-grid > div p:first-child {
+      font-size: 10px !important;
+      letter-spacing: 0.06em !important;
+      margin-bottom: 3px !important;
+      color: #64748b !important;
+    }
+
+    .profile-info-grid > div p:last-child {
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      color: #0f172a !important;
+      line-height: 1.3 !important;
+      word-break: break-word !important;
+    }
+
+    .profile-card-wrap > div:nth-child(3),
+    .profile-card-wrap > div:nth-child(4) {
+      padding: 0 12px !important;
+      margin-top: 12px !important;
+    }
+
+    .profile-card-wrap > div:nth-child(3) > button,
+    .profile-card-wrap > div:nth-child(4) > button {
+      width: 100% !important;
+      justify-content: center !important;
+      padding: 14px 20px !important;
+      border-radius: 12px !important;
+      font-size: 14px !important;
+    }
+
+    .profile-card-wrap > div:nth-child(4) {
+      margin-bottom: 12px !important;
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       ANALYTICS VIEW — use :has(.an-profile-header) to isolate
+       from search-results CSS that also targets #search-card-container
+       ════════════════════════════════════════════════════════════ */
+
+    /* ── Wrapper: kill all padding, keep radius ───────────────── */
+    #search-card-container > div:has(> .an-profile-header) {
+      padding: 0 !important;
+      border-radius: 14px !important;
+      overflow: hidden !important;
+    }
+
+    /* ── Profile Header: center everything ────────────────────── */
+    .an-profile-header {
+      padding: 24px 16px 18px 16px !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+    }
+
+    .an-profile-header > div {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 16px !important;
+      text-align: center !important;
+    }
+
+    .an-profile-header > div > div:first-child {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 12px !important;
+    }
+
+    .an-profile-header > div > div:first-child h2 {
+      font-size: 18px !important;
+      line-height: 1.3 !important;
+      word-break: break-word !important;
+      text-align: center !important;
+    }
+
+    .an-profile-header > div > div:first-child p {
+      font-size: 13px !important;
+      text-align: center !important;
+    }
+
+    /* ── Controls: stack vertically ───────────────────────────── */
+    .an-profile-header + div {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 12px !important;
+      padding: 20px 16px !important;
+    }
+
+    .an-profile-header + div > div:last-child {
+      display: flex !important;
+      gap: 10px !important;
+      width: 100% !important;
+    }
+
+    .an-profile-header + div > div:last-child > button,
+    .an-profile-header + div > div:last-child > select {
+      flex: 1 !important;
+      min-width: 0 !important;
+    }
+
+    /* ── Curriculum Link ──────────────────────────────────────── */
+    .an-profile-header + div + div {
+      padding: 4px 16px 12px 16px !important;
+    }
+
+    /* ── Two-Column Grid → single column ──────────────────────── */
+    .an-workspace-wrap {
+      padding: 12px 16px !important;
+    }
+
+    .an-workspace-grid {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 16px !important;
+      margin-top: 8px !important;
+    }
+
+    /* ── Mean Grade Card: full width ──────────────────────────── */
+    .an-workspace-grid > div:first-child > div:first-child {
+      width: 100% !important;
+      padding: 16px !important;
+      box-sizing: border-box !important;
+      border-radius: 12px !important;
+    }
+
+    .an-workspace-grid > div:first-child > div:first-child > p:last-child {
+      font-size: 14px !important;
+    }
+
+    /* ── Compare pills ────────────────────────────────────────── */
+    .an-workspace-grid > div:first-child > div:nth-child(2) {
+      padding: 0 !important;
+    }
+
+    .an-workspace-grid > div:first-child > div:nth-child(2) > p {
+      font-size: 13px !important;
+      margin-bottom: 8px !important;
+    }
+
+    .an-workspace-grid > div:first-child > div:nth-child(2) > div {
+      flex-wrap: wrap !important;
+      gap: 8px !important;
+    }
+
+    .an-workspace-grid > div:first-child > div:nth-child(2) > div > label {
+      font-size: 13px !important;
+      padding: 10px 14px !important;
+    }
+
+    /* ── Metric Cards: 2×2 grid compact ───────────────────────── */
+    .an-workspace-grid > div:first-child > div:last-child {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+    }
+
+    .an-workspace-grid > div:first-child > div:last-child > div {
+      padding: 12px !important;
+      border-radius: 10px !important;
+    }
+
+    .an-workspace-grid > div:first-child > div:last-child > div p:first-child {
+      font-size: 9px !important;
+    }
+
+    .an-workspace-grid > div:first-child > div:last-child > div p:last-child {
+      font-size: 18px !important;
+    }
+
+    /* ── Chart: full width below ──────────────────────────────── */
+    .an-workspace-grid > div:last-child {
+      position: relative !important;
+      width: 100% !important;
+      min-height: 260px !important;
+    }
+
+    .an-workspace-grid > div:last-child > div {
+      position: relative !important;
+      width: 100% !important;
+      height: 260px !important;
+    }
+
+    .an-workspace-grid > div:last-child > div > canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* ── Subject Performance: scrollable ──────────────────────── */
+    .an-subject-section {
+      padding: 0 16px 20px 16px !important;
+    }
+
+    .an-subject-section > div {
+      border-radius: 12px !important;
+      overflow: hidden !important;
+    }
+
+    .an-subject-section > div > div:first-child {
+      padding: 16px !important;
+    }
+
+    .an-subject-section > div > table,
+    .an-subject-section > div > div:last-child {
+      display: block !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      width: 100% !important;
+    }
+
+    .an-subject-section > div > table td,
+    .an-subject-section > div > table th,
+    .an-subject-section > div > div:last-child td,
+    .an-subject-section > div > div:last-child th {
+      padding: 10px 12px !important;
+      font-size: 12px !important;
+      white-space: nowrap !important;
+    }
+
+    /* ── Timeline Chart ───────────────────────────────────────── */
+    .an-timeline-section {
+      padding: 0 16px 24px 16px !important;
+    }
+
+    .an-timeline-section > div {
+      padding: 16px !important;
+      border-radius: 12px !important;
+    }
+
+    .an-timeline-section > div > div:last-child {
+      height: 220px !important;
+      position: relative !important;
+    }
+
+    .an-timeline-section > div > div:last-child > canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* ── Back button ──────────────────────────────────────────── */
+    .an-back-btn {
+      width: calc(100% - 32px) !important;
+      margin: 0 16px 24px 16px !important;
+      justify-content: center !important;
+      padding: 14px 20px !important;
+      box-sizing: border-box !important;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .an-profile-header > div > div:first-child h2 {
+      font-size: 16px !important;
+    }
+
+    .an-workspace-grid > div:first-child > div:last-child > div p:last-child {
+      font-size: 16px !important;
+    }
+
+    .an-subject-section > div > table td,
+    .an-subject-section > div > table th,
+    .an-subject-section > div > div:last-child td,
+    .an-subject-section > div > div:last-child th {
+      padding: 8px !important;
+      font-size: 11px !important;
+    }
+  }
 </style>
 
-<nav class="sub-nav-bar">
+<nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="?tab=directory" class="sub-nav-link {% if active_tab == 'directory' %}active{% endif %}">

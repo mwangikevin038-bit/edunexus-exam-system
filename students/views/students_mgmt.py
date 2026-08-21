@@ -813,10 +813,10 @@ def admin_student_profile_card(request, student_id):
         '  .student-delete-btn:active { transform:translateY(0); box-shadow:0 2px 6px rgba(220,38,38,0.2); }'
         '</style>'
 
-        '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">'
+        '<div class="profile-card-wrap" style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">'
 
         # ── Premium Header Banner ──
-        '  <div style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #bfdbfe;border-radius:14px;padding:32px 36px;margin-bottom:28px;display:flex;align-items:center;gap:28px;">'
+        '  <div class="profile-banner" style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #bfdbfe;border-radius:14px;padding:32px 36px;margin-bottom:28px;display:flex;align-items:center;gap:28px;">'
         '    <div style="position:relative;width:88px;height:88px;flex-shrink:0;">'
         '      <div style="width:88px;height:88px;border-radius:50%;background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.8);box-shadow:0 8px 24px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;">'
         '        <svg width="44" height="44" fill="none" stroke="#64748b" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
@@ -839,7 +839,7 @@ def admin_student_profile_card(request, student_id):
         '  </div>'
 
         # ── Personal Information Card ──
-        '  <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:28px 32px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05),0 8px 10px -6px rgba(0,0,0,0.05);">'
+        '  <div class="profile-info-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:28px 32px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05),0 8px 10px -6px rgba(0,0,0,0.05);">'
         '    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">'
         '      <h3 style="margin:0;color:#059669;font-size:16px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Personal Information</h3>'
         f'      <button class="section-edit-btn" hx-get="/school-admin/registration/profile/{student.id}/edit/" hx-target="#search-card-container" hx-swap="innerHTML" title="Edit personal details">'
@@ -1005,7 +1005,7 @@ def admin_student_profile_edit(request, student_id):
         '        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
         '        Personal Information'
         '      </h3>'
-        '      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">'
+        '    <div class="profile-info-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">'
 
         # Name
         '        <div class="ios-edit-tile">'
@@ -1565,8 +1565,6 @@ def admin_student_analytics(request, student_id):
         '  .an-dropdown-select { background:#ffffff; border:1px solid #e2e8f0; color:#334155; padding:10px 32px 10px 14px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; font-family:"Inter",sans-serif; transition:all 0.15s; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }'
         '  .an-dropdown-select:hover { border-color:#94a3b8; }'
         '</style>'
-
-        # ── Inline <script> data block (dual-path: data-* attrs + global vars) ──
         '<script>'
         f'window.__chartData = {{'
         f'"labels": {chart_labels_json},'
@@ -1581,13 +1579,10 @@ def admin_student_analytics(request, student_id):
         f'"student": {timeline_student_json}'
         f'}};'
         '</script>'
-
         '<div style="background:#ffffff;padding:0;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">'
-
-        # ── Profile Header ──
-        '  <div style="padding:32px 40px;border-bottom:1px solid #e2e8f0;">'
+        '  <div class="an-profile-header" style="padding:20px 16px;border-bottom:1px solid #e2e8f0;">'
         '    <div style="display:flex;align-items:center;justify-content:space-between;">'
-        '      <div style="display:flex;align-items:center;gap:24px;">'
+        '      <div style="display:flex;align-items:center;gap:16px;">'
         f'        <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#f97316 0%,#ef4444 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(249,115,22,0.3);flex-shrink:0;">'
         f'          <span style="color:#ffffff;font-size:26px;font-weight:700;font-family:"Plus Jakarta Sans",sans-serif;letter-spacing:0.02em;">{initials}</span>'
         '        </div>'
@@ -1600,7 +1595,7 @@ def admin_student_analytics(request, student_id):
         '  </div>'
 
         # ── Analysis Heading + Download/Term Controls ──
-        '  <div style="padding:28px 40px 24px 40px;display:flex;align-items:flex-start;justify-content:space-between;">'
+        '  <div style="padding:16px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">'
         '    <div>'
         '      <h3 style="margin:0;color:#0f172a;font-size:20px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Analysis</h3>'
         '      <p style="margin:4px 0 0;color:#64748b;font-size:14px;">Student\'s exam performance analysis</p>'
@@ -1615,13 +1610,13 @@ def admin_student_analytics(request, student_id):
         '  </div>'
 
         # ── Curriculum Subjects Link ──
-        '  <div style="padding:0 40px;">'
+        '  <div style="padding:0 16px 12px;">'
         '    <span class="an-curriculum-link">Curriculum Subjects</span>'
         '  </div>'
 
         # ── Two-Column Split Workspace ──
-        '  <div style="padding:20px 40px 32px 40px;">'
-        '    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:24px;margin-top:16px;align-items:stretch;">'
+        '  <div class="an-workspace-wrap" style="padding:12px 16px;">'
+        '    <div class="an-workspace-grid" style="display:flex;flex-direction:column;gap:16px;margin-top:16px;">'
 
         # ═══ LEFT COLUMN ═══
         '      <div style="display:flex;flex-direction:column;gap:16px;">'
@@ -1656,47 +1651,35 @@ def admin_student_analytics(request, student_id):
         '        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;">'
 
         # Card 1: Mean Marks
-        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
-        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Mean Marks</p>'
-        '            <div style="display:flex;align-items:baseline;gap:6px;">'
-        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{mean_marks}%</p>'
-        f'              <span style="font-size:10px;font-weight:600;color:{trend_color};">{trend_icon} {abs(marks_trend)}%</span>'
-        '            </div>'
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;min-height:72px;">'
+        '            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Mean Marks</p>'
+        f'            <p style="margin:0;font-size:22px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;line-height:1;">{mean_marks}%</p>'
+        f'            <span style="font-size:10px;font-weight:600;color:{trend_color};margin-top:4px;">{trend_icon} {abs(marks_trend)}%</span>'
         '          </div>'
 
         # Card 2: Total Points
-        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
-        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Total Points</p>'
-        '            <div style="display:flex;align-items:baseline;gap:6px;">'
-        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{total_points}</p>'
-        f'              <span style="font-size:9px;color:#94a3b8;font-weight:500;">/ {latest.subject_count * 12 if latest else 0}</span>'
-        '            </div>'
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;min-height:72px;">'
+        '            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Total Points</p>'
+        f'            <p style="margin:0;font-size:22px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;line-height:1;">{total_points}<span style="font-size:12px;font-weight:500;color:#94a3b8;"> / {latest.subject_count * 12 if latest else 0}</span></p>'
         '          </div>'
 
         # Card 3: Overall Position
-        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
-        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Overall Position</p>'
-        '            <div style="display:flex;align-items:baseline;gap:6px;">'
-        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{overall_pos}</p>'
-        '            </div>'
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;min-height:72px;">'
+        '            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Overall Position</p>'
+        f'            <p style="margin:0;font-size:22px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;line-height:1;">{overall_pos}</p>'
         '          </div>'
 
         # Card 4: Stream Position
-        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
-        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Stream Position</p>'
-        '            <div style="display:flex;align-items:baseline;gap:6px;">'
-        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{stream_pos}</p>'
-        '            </div>'
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;min-height:72px;">'
+        '            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Stream Position</p>'
+        f'            <p style="margin:0;font-size:22px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;line-height:1;">{stream_pos}</p>'
         '          </div>'
 
         '        </div>'
         '      </div>'
 
-        # ═══ RIGHT COLUMN ═══
-        '      <div style="position:relative;min-height:0;">'
-
-        # ── Chart Canvas with inline data ──
-        '        <div style="position:absolute;inset:0;">'
+        # ═══ CHART (full width below) ═══
+        '      <div style="width:100%;height:280px;position:relative;">'
         + (f'          <canvas id="performanceLineChart" '
            f'data-labels=\'{chart_labels_json}\' '
            f'data-student-data=\'{chart_student_data_json}\' '
@@ -1709,21 +1692,20 @@ def admin_student_analytics(request, student_id):
            '            <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/></svg>'
            '            <p style="margin:0;color:#94a3b8;font-size:14px;font-weight:500;font-family:Inter,sans-serif;">No performance data records available for this exam term session.</p>'
            '          </div>'
-          )
-        + '        </div>'
-
-        '      </div>'
+           )
+        + '      </div>'
 
         '    </div>'
         '  </div>'
 
         # ── Subject Performance Table (Full Width) ──
-        '  <div style="padding:0 40px 32px 40px;">'
+        '  <div class="an-subject-section" style="padding:0 16px 20px;">'
         '    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">'
         '      <div style="padding:20px 24px 0 24px;">'
         '        <h3 style="margin:0;color:#0f172a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Subject Performance</h3>'
         '      </div>'
-        '      <table style="width:100%;border-collapse:collapse;margin-top:12px;">'
+        '      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">'
+        '      <table style="width:100%;border-collapse:collapse;margin-top:12px;min-width:520px;">'
         '        <thead>'
         '          <tr style="border-bottom:1px solid #e2e8f0;">'
         '            <th style="padding:10px 20px;text-align:left;font-size:12px;font-weight:600;color:#94a3b8;">Name</th>'
@@ -1736,11 +1718,12 @@ def admin_student_analytics(request, student_id):
         '        </thead>'
         f'        <tbody>{subject_perf_rows}</tbody>'
         '      </table>'
+        '      </div>'
         '    </div>'
         '  </div>'
 
         # ── Performance Over Time Chart (Full Width) ──
-        '  <div style="padding:0 40px 32px 40px;">'
+        '  <div class="an-timeline-section" style="padding:0 16px 20px;">'
         '    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;">'
         '      <h3 style="margin:0 0 16px;color:#0f172a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Performance Over Time</h3>'
         '      <div style="position:relative;height:280px;">'
@@ -1755,7 +1738,7 @@ def admin_student_analytics(request, student_id):
         '  </div>'
 
         # ── Back to Student List Button ──
-        '  <div style="padding:0 40px 40px 40px;display:flex;justify-content:flex-start;">'
+        '  <div style="padding:0 16px 24px;display:flex;justify-content:flex-start;">'
         '    <button class="an-back-btn" hx-get="/school-admin/registration/search-submit/?tab=directory" hx-target="#search-card-container" hx-swap="innerHTML">'
         '      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
         '      Back'
@@ -2268,10 +2251,10 @@ def teacher_student_profile_card(request, student_id):
         '  .profile-back-btn:hover { background:linear-gradient(135deg,#1e40af 0%,#1d4ed8 100%); box-shadow:0 4px 12px rgba(30,58,138,0.35); transform:translateY(-1px); }'
         '</style>'
 
-        '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">'
+        '<div class="profile-card-wrap" style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">'
 
         # ── Premium Header Banner ──
-        '  <div style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #bfdbfe;border-radius:14px;padding:32px 36px;margin-bottom:28px;display:flex;align-items:center;gap:28px;">'
+        '  <div class="profile-banner" style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #bfdbfe;border-radius:14px;padding:32px 36px;margin-bottom:28px;display:flex;align-items:center;gap:28px;">'
         '    <div style="position:relative;width:88px;height:88px;flex-shrink:0;">'
         '      <div style="width:88px;height:88px;border-radius:50%;background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.8);box-shadow:0 8px 24px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;">'
         '        <svg width="44" height="44" fill="none" stroke="#64748b" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
@@ -2285,11 +2268,11 @@ def teacher_student_profile_card(request, student_id):
         '  </div>'
 
         # ── Personal Information Card ──
-        '  <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:28px 32px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05),0 8px 10px -6px rgba(0,0,0,0.05);">'
+        '  <div class="profile-info-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:28px 32px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05),0 8px 10px -6px rgba(0,0,0,0.05);">'
         '    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">'
         '      <h3 style="margin:0;color:#059669;font-size:16px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Personal Information</h3>'
         '    </div>'
-        '    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">'
+        '    <div class="profile-info-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">'
 
         # Name tile
         '      <div style="background:#f8fafc;border-radius:8px;padding:14px 16px;">'
@@ -2373,7 +2356,7 @@ def teacher_student_analytics(request, student_id):
             '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;text-align:center;">'
             '  <p style="color:#94a3b8;font-size:15px;margin:0;">Student not found.</p>'
             '  <div style="margin-top:24px;">'
-            '    <button class="an-back-btn" hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML">&larr; Back to Search</button>'
+            '    <button class="an-back-btn" hx-get="/class-lists/search/submit/" hx-target="#search-card-container" hx-swap="innerHTML">&larr; Back to Search</button>'
             '  </div>'
             '</div>'
         )
@@ -2394,7 +2377,7 @@ def teacher_student_analytics(request, student_id):
                 '<div style="background:#ffffff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;text-align:center;">'
                 '  <p style="color:#94a3b8;font-size:15px;margin:0;">You do not have access to this student.</p>'
                 '  <div style="margin-top:24px;">'
-                '    <button class="an-back-btn" hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML">&larr; Back to Search</button>'
+                '    <button class="an-back-btn" hx-get="/class-lists/search/submit/" hx-target="#search-card-container" hx-swap="innerHTML">&larr; Back to Search</button>'
                 '  </div>'
                 '</div>'
             )
@@ -2704,13 +2687,10 @@ def teacher_student_analytics(request, student_id):
         f'"student": {timeline_student_json}'
         f'}};'
         '</script>'
-
         '<div style="background:#ffffff;padding:0;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">'
-
-        # ── Profile Header ──
-        '  <div style="padding:32px 40px;border-bottom:1px solid #e2e8f0;">'
+        '  <div class="an-profile-header" style="padding:20px 16px;border-bottom:1px solid #e2e8f0;">'
         '    <div style="display:flex;align-items:center;justify-content:space-between;">'
-        '      <div style="display:flex;align-items:center;gap:24px;">'
+        '      <div style="display:flex;align-items:center;gap:16px;">'
         f'        <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#f97316 0%,#ef4444 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(249,115,22,0.3);flex-shrink:0;">'
         f'          <span style="color:#ffffff;font-size:26px;font-weight:700;font-family:"Plus Jakarta Sans",sans-serif;letter-spacing:0.02em;">{initials}</span>'
         '        </div>'
@@ -2723,7 +2703,7 @@ def teacher_student_analytics(request, student_id):
         '  </div>'
 
         # ── Analysis Heading + Download/Term Controls ──
-        '  <div style="padding:28px 40px 24px 40px;display:flex;align-items:flex-start;justify-content:space-between;">'
+        '  <div style="padding:16px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">'
         '    <div>'
         '      <h3 style="margin:0;color:#0f172a;font-size:20px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Analysis</h3>'
         '      <p style="margin:4px 0 0;color:#64748b;font-size:14px;">Student\'s exam performance analysis</p>'
@@ -2738,13 +2718,13 @@ def teacher_student_analytics(request, student_id):
         '  </div>'
 
         # ── Curriculum Subjects Link ──
-        '  <div style="padding:0 40px;">'
+        '  <div style="padding:0 16px 12px;">'
         '    <span class="an-curriculum-link">Curriculum Subjects</span>'
         '  </div>'
 
         # ── Two-Column Split Workspace ──
-        '  <div style="padding:20px 40px 32px 40px;">'
-        '    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:24px;margin-top:16px;align-items:stretch;">'
+        '  <div class="an-workspace-wrap" style="padding:12px 16px;">'
+        '    <div class="an-workspace-grid" style="display:flex;flex-direction:column;gap:16px;margin-top:16px;">'
 
         # ═══ LEFT COLUMN ═══
         '      <div style="display:flex;flex-direction:column;gap:16px;">'
@@ -2779,47 +2759,36 @@ def teacher_student_analytics(request, student_id):
         '        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;">'
 
         # Card 1: Mean Marks
-        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
-        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Mean Marks</p>'
-        '            <div style="display:flex;align-items:baseline;gap:6px;">'
-        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{mean_marks}%</p>'
-        f'              <span style="font-size:10px;font-weight:600;color:{trend_color};">{trend_icon} {abs(marks_trend)}%</span>'
-        '            </div>'
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;min-height:72px;">'
+        '            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Mean Marks</p>'
+        '            <p style="margin:0;font-size:22px;font-weight:800;color:#0f172a;font-family:\'Plus Jakarta Sans\',sans-serif;line-height:1.1;">{mean_marks}%</p>'
+        f'            <p style="margin:2px 0 0;font-size:11px;font-weight:600;color:{trend_color};">{trend_icon} {abs(marks_trend)}%</p>'
         '          </div>'
 
         # Card 2: Total Points
-        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
-        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Total Points</p>'
-        '            <div style="display:flex;align-items:baseline;gap:6px;">'
-        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{total_points}</p>'
-        f'              <span style="font-size:9px;color:#94a3b8;font-weight:500;">/ {latest.subject_count * 12 if latest else 0}</span>'
-        '            </div>'
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;min-height:72px;">'
+        '            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Total Points</p>'
+        '            <p style="margin:0;font-size:22px;font-weight:800;color:#0f172a;font-family:\'Plus Jakarta Sans\',sans-serif;line-height:1.1;">{total_points}</p>'
+        f'            <p style="margin:2px 0 0;font-size:11px;color:#94a3b8;font-weight:500;">/ {latest.subject_count * 12 if latest else 0}</p>'
         '          </div>'
 
         # Card 3: Overall Position
-        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
-        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Overall Position</p>'
-        '            <div style="display:flex;align-items:baseline;gap:6px;">'
-        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{overall_pos}</p>'
-        '            </div>'
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;min-height:72px;">'
+        '            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Overall Position</p>'
+        '            <p style="margin:0;font-size:22px;font-weight:800;color:#0f172a;font-family:\'Plus Jakarta Sans\',sans-serif;line-height:1.1;">{overall_pos}</p>'
         '          </div>'
 
         # Card 4: Stream Position
-        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;">'
-        '            <p style="margin:0 0 2px;font-size:9px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Stream Position</p>'
-        '            <div style="display:flex;align-items:baseline;gap:6px;">'
-        f'              <p style="margin:0;font-size:18px;font-weight:800;color:#0f172a;font-family:"Plus Jakarta Sans",sans-serif;">{stream_pos}</p>'
-        '            </div>'
+        '          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;flex-direction:column;justify-content:center;min-height:72px;">'
+        '            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;letter-spacing:0.05em;text-transform:uppercase;">Stream Position</p>'
+        '            <p style="margin:0;font-size:22px;font-weight:800;color:#0f172a;font-family:\'Plus Jakarta Sans\',sans-serif;line-height:1.1;">{stream_pos}</p>'
         '          </div>'
 
         '        </div>'
         '      </div>'
 
-        # ═══ RIGHT COLUMN ═══
-        '      <div style="position:relative;min-height:0;">'
-
-        # ── Chart Canvas with inline data ──
-        '        <div style="position:absolute;inset:0;">'
+        # ═══ CHART (full width below) ═══
+        '      <div style="width:100%;height:280px;position:relative;">'
         + (f'          <canvas id="performanceLineChart" '
            f'data-labels=\'{chart_labels_json}\' '
            f'data-student-data=\'{chart_student_data_json}\' '
@@ -2832,21 +2801,20 @@ def teacher_student_analytics(request, student_id):
            '            <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/></svg>'
            '            <p style="margin:0;color:#94a3b8;font-size:14px;font-weight:500;font-family:Inter,sans-serif;">No performance data records available for this exam term session.</p>'
            '          </div>'
-          )
-        + '        </div>'
-
-        '      </div>'
+           )
+        + '      </div>'
 
         '    </div>'
         '  </div>'
 
         # ── Subject Performance Table ──
-        '  <div style="padding:0 40px 32px 40px;">'
+        '  <div class="an-subject-section" style="padding:0 16px 20px;">'
         '    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">'
         '      <div style="padding:20px 24px 0 24px;">'
         '        <h3 style="margin:0;color:#0f172a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Subject Performance</h3>'
         '      </div>'
-        '      <table style="width:100%;border-collapse:collapse;margin-top:12px;">'
+        '      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">'
+        '      <table style="width:100%;border-collapse:collapse;margin-top:12px;min-width:520px;">'
         '        <thead>'
         '          <tr style="border-bottom:1px solid #e2e8f0;">'
         '            <th style="padding:10px 20px;text-align:left;font-size:12px;font-weight:600;color:#94a3b8;">Name</th>'
@@ -2859,11 +2827,12 @@ def teacher_student_analytics(request, student_id):
         '        </thead>'
         f'        <tbody>{subject_perf_rows}</tbody>'
         '      </table>'
+        '      </div>'
         '    </div>'
         '  </div>'
 
         # ── Performance Over Time Chart ──
-        '  <div style="padding:0 40px 32px 40px;">'
+        '  <div class="an-timeline-section" style="padding:0 16px 20px;">'
         '    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;">'
         '      <h3 style="margin:0 0 16px;color:#0f172a;font-size:17px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:700;">Performance Over Time</h3>'
         '      <div style="position:relative;height:280px;">'
@@ -2878,8 +2847,8 @@ def teacher_student_analytics(request, student_id):
         '  </div>'
 
         # ── Back Button ──
-        '  <div style="padding:0 40px 40px 40px;display:flex;justify-content:flex-start;">'
-        '    <button class="an-back-btn" hx-get="/class-lists/search/reset/" hx-target="#search-card-container" hx-swap="innerHTML">'
+        '  <div style="padding:0 16px 24px;display:flex;justify-content:flex-start;">'
+        '    <button class="an-back-btn" hx-get="/class-lists/search/submit/" hx-target="#search-card-container" hx-swap="innerHTML">'
         '      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
         '      Back'
         '    </button>'

@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block sub_tabs %}
-<nav class="sub-nav-bar">
+<nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="{% url 'manage_exams' %}?tab=manage" class="sub-nav-link active">
@@ -483,6 +483,271 @@
     .breakdown-table .perf-level {
         text-align: left;
     }
+
+    /* ════════════════════════════════════════════════════════════
+       MOBILE — iOS 17 Premium
+       ════════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+        .main-content {
+            padding: 0 !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+        }
+
+        .analysis-page {
+            padding: 12px 16px !important;
+            padding-top: 12px !important;
+        }
+
+        .analysis-header {
+            flex-direction: column !important;
+            gap: 12px !important;
+            margin-bottom: 16px !important;
+        }
+
+        .analysis-header-left h1 {
+            font-size: 22px !important;
+            letter-spacing: -0.02em !important;
+        }
+
+        .analysis-header-left p {
+            font-size: 13px !important;
+        }
+
+        .analysis-header-right {
+            width: 100% !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+
+        .custom-dropdown {
+            min-width: 0 !important;
+            width: 100% !important;
+        }
+
+        .custom-dropdown-btn {
+            height: 46px !important;
+            border-radius: 12px !important;
+            font-size: 15px !important;
+        }
+
+        .analysis-select {
+            height: 46px !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            border-radius: 12px !important;
+            font-size: 15px !important;
+        }
+
+        .analysis-summary-card {
+            flex-direction: column !important;
+            gap: 16px !important;
+            padding: 20px !important;
+            border-radius: 16px !important;
+            border: none !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+            margin-bottom: 16px !important;
+        }
+
+        .analysis-summary-card .count {
+            font-size: 28px !important;
+        }
+
+        .analysis-downloads-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            height: 44px !important;
+            border-radius: 12px !important;
+            font-size: 14px !important;
+        }
+
+        .analysis-tabs {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            margin-bottom: 16px !important;
+        }
+
+        .analysis-tab {
+            padding: 10px 16px !important;
+            font-size: 13px !important;
+            white-space: nowrap !important;
+        }
+
+        .analysis-row {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+            margin-bottom: 16px !important;
+        }
+
+        .mean-grade-box {
+            padding: 16px !important;
+            border-radius: 14px !important;
+            margin-bottom: 16px !important;
+        }
+
+        .mean-grade-box .mg-value {
+            font-size: 20px !important;
+        }
+
+        .mean-grade-box .mg-exam {
+            float: none !important;
+            display: block !important;
+            font-size: 11px !important;
+            margin-top: 4px !important;
+        }
+
+        .compare-section {
+            margin-bottom: 16px !important;
+        }
+
+        .compare-radio-group {
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+
+        .compare-radio {
+            padding: 14px 16px !important;
+            border-radius: 12px !important;
+            font-size: 14px !important;
+            border: 1.5px solid #e2e8f0 !important;
+        }
+
+        .comparison-exam-label {
+            font-size: 13px !important;
+        }
+
+        .chart-container {
+            border-radius: 16px !important;
+            border: none !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+            padding: 16px !important;
+        }
+
+        .chart-container canvas {
+            max-height: 240px !important;
+        }
+
+        .summary-cards-container {
+            flex-direction: column !important;
+            gap: 10px !important;
+            max-width: none !important;
+            margin-bottom: 16px !important;
+        }
+
+        .metric-card {
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 14px 16px !important;
+            border-radius: 14px !important;
+            border: none !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+        }
+
+        .metric-number {
+            font-size: 20px !important;
+        }
+
+        .metric-trend svg {
+            width: 16px !important;
+            height: 16px !important;
+        }
+
+        .subject-perf-section {
+            margin-bottom: 24px !important;
+        }
+
+        .subject-perf-section h2 {
+            font-size: 17px !important;
+            margin-bottom: 12px !important;
+        }
+
+        .table-container {
+            border-radius: 14px !important;
+            border: none !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+        }
+
+        .performance-table {
+            font-size: 13px !important;
+        }
+
+        .performance-table th {
+            padding: 10px 12px !important;
+            font-size: 11px !important;
+            white-space: nowrap !important;
+        }
+
+        .performance-table td {
+            padding: 10px 12px !important;
+            font-size: 13px !important;
+            white-space: nowrap !important;
+        }
+
+        .perf-over-time {
+            margin-bottom: 24px !important;
+        }
+
+        .perf-over-time h2 {
+            font-size: 17px !important;
+        }
+
+        .perf-over-time canvas {
+            max-height: 240px !important;
+        }
+
+        .grade-breakdown {
+            margin-bottom: 24px !important;
+        }
+
+        .grade-breakdown h2 {
+            font-size: 17px !important;
+        }
+
+        .grade-breakdown-select {
+            width: 100% !important;
+            height: 44px !important;
+            border-radius: 12px !important;
+            font-size: 14px !important;
+        }
+
+        .breakdown-table-wrap {
+            border-radius: 14px !important;
+            border: none !important;
+        }
+
+        .breakdown-table th {
+            padding: 10px 10px !important;
+            font-size: 10px !important;
+        }
+
+        .breakdown-table td {
+            padding: 10px 10px !important;
+            font-size: 12px !important;
+        }
+
+        .analysis-page {
+            padding-bottom: 80px !important;
+        }
+
+        .chart-container {
+            height: 300px !important;
+            position: relative !important;
+        }
+
+        .chart-container canvas {
+            max-height: 280px !important;
+        }
+
+        .perf-over-time {
+            position: relative !important;
+            height: 320px !important;
+        }
+
+        .perf-over-time canvas {
+            max-height: 300px !important;
+        }
+    }
 </style>
 
 <div class="analysis-page">
@@ -813,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Stream Mean Chart
-    var smLabels = streams.map(function(s) { return gradeName + ' ' + s; });
+    var smLabels = streams.map(function(s) { return s; });
     var smData = streams.map(function(s) { return streamStats[s] ? streamStats[s].mean_points : 0; });
     var smCtx = document.getElementById('streamMeanChart');
     if (smCtx) {
@@ -825,11 +1090,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Stream Mean',
                     data: smData,
                     fill: false,
-                    borderColor: '#bbf7d0',
+                    borderColor: '#22c55e',
                     borderWidth: 2.5,
                     tension: 0,
-                    pointBackgroundColor: '#bbf7d0',
-                    pointBorderColor: '#86efac',
+                    pointBackgroundColor: '#22c55e',
+                    pointBorderColor: '#16a34a',
                     pointBorderWidth: 2,
                     pointRadius: 5,
                     pointHoverRadius: 7
@@ -838,6 +1103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                devicePixelRatio: window.devicePixelRatio || 2,
                 layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
                 interaction: {
                     mode: 'nearest',
@@ -887,10 +1153,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         border: { color: '#111827', width: 2 },
                         ticks: {
                             color: '#374151',
-                            minRotation: 45,
-                            maxRotation: 45,
+                            maxRotation: 0,
                             padding: 12,
-                            font: { size: 12 }
+                            font: { size: 11, weight: '600' }
                         }
                     },
                     y: {
@@ -901,9 +1166,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         ticks: {
                             color: '#9ca3af',
                             padding: 12,
-                            font: { size: 12 },
+                            font: { size: 11 },
                             callback: function(value) {
-                                return value.toFixed(2);
+                                return value.toFixed(1);
                             }
                         }
                     }
@@ -921,18 +1186,18 @@ document.addEventListener('DOMContentLoaded', function() {
         var potDatasets = streams.map(function(s, i) {
             var color = potColors[i % potColors.length];
             return {
-                label: gradeName + ' ' + s,
+                label: s,
                 data: potStreamsData[s] || [],
                 fill: false,
                 borderColor: color,
                 backgroundColor: color,
-                borderWidth: 2,
+                borderWidth: 2.5,
                 tension: 0.1,
-                pointRadius: 4,
+                pointRadius: 5,
                 pointBackgroundColor: color,
-                pointBorderColor: 'transparent',
+                pointBorderColor: '#ffffff',
                 pointBorderWidth: 2,
-                pointHoverRadius: 6,
+                pointHoverRadius: 7,
                 pointHoverBackgroundColor: color + '33',
                 pointHoverBorderColor: color,
                 pointHoverBorderWidth: 3
@@ -940,10 +1205,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         new Chart(ptCtx.getContext('2d'), {
             type: 'line',
-            data: { labels: potLabels, datasets: potDatasets },
+            data: {
+                labels: potLabels.map(function(l) {
+                    var short = l.replace('Grade ', 'G').replace('Grade ', 'G');
+                    short = short.replace('End of Term Assessment', 'End Term');
+                    short = short.replace('Mid Term Assessment', 'Mid Term');
+                    short = short.replace('Opener Assessment', 'Opener');
+                    short = short.replace('Term 1', 'T1').replace('Term 2', 'T2').replace('Term 3', 'T3');
+                    return short;
+                }),
+                datasets: potDatasets
+            },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                devicePixelRatio: window.devicePixelRatio || 2,
                 layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
                 interaction: {
                     mode: 'nearest',
@@ -995,8 +1271,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         border: { color: '#111827', width: 1.5 },
                         ticks: {
                             color: '#4b5563',
+                            maxRotation: 45,
+                            minRotation: 30,
                             padding: 12,
-                            font: { size: 12 }
+                            font: { size: 11, weight: '500' }
                         }
                     },
                     y: {
@@ -1005,9 +1283,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         ticks: {
                             color: '#9ca3af',
                             padding: 12,
-                            font: { size: 12 },
+                            font: { size: 11 },
                             callback: function(value) {
-                                return value.toFixed(2);
+                                return value.toFixed(1);
                             }
                         },
                         grid: { color: '#f3f4f6', drawTicks: false },

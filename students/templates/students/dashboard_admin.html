@@ -1,25 +1,17 @@
 {% extends 'students/base.html' %}
 {% load static %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/dashboard-mobile.css' %}">
+{% endblock %}
+
 {% block sub_tabs %}
-<nav class="sub-nav-bar">
+<nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
-      <a href="#" class="sub-nav-link active">
+      <a href="{% url 'school_admin_dashboard' %}" class="sub-nav-link active">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Dashboard
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="#" class="sub-nav-link">
-        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        My Subjects
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="#" class="sub-nav-link">
-        <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-        Graduated Classes
+        Overview
       </a>
     </li>
   </ul>
@@ -235,6 +227,205 @@
     <p class="footer-copyright-note">&copy; 2026 EduNexus. All Rights Reserved.</p>
 </footer>
 
+<!-- ═══ iOS 17 MOBILE ADMIN DASHBOARD ═══ -->
+<div class="admin-ios" id="adminIos">
+    <!-- HEADER — mobile global header with controls -->
+    <header class="admin-header">
+        <div class="admin-header-left">
+            {% if request.school %}
+            <span class="admin-school-name">{{ request.school.name }}</span>
+            {% else %}
+            <span class="admin-school-name">EduNexus</span>
+            {% endif %}
+        </div>
+        <div class="admin-header-controls">
+            <a href="{% url 'admin_add_student' %}?tab=directory" class="admin-icon-btn" aria-label="Search Students">
+                <i class="ph ph-magnifying-glass"></i>
+            </a>
+            <button class="admin-icon-btn" type="button" aria-label="Messages">
+                <i class="ph ph-envelope"></i>
+            </button>
+            <div class="admin-user-menu" id="adminUserMenu">
+                <div class="admin-avatar-btn">{{ user.get_full_name|first|default:"A" }}</div>
+                <div class="admin-dropdown" id="adminDropdown">
+                    <div class="admin-dropdown-header">
+                        <div class="admin-dropdown-avatar">{{ user.get_full_name|first|default:"A" }}</div>
+                        <div>
+                            <div class="admin-dropdown-name">{{ user.get_full_name|default:"Admin" }}</div>
+                            <div class="admin-dropdown-role">{{ user.username }}</div>
+                        </div>
+                    </div>
+                    <div class="admin-dropdown-divider"></div>
+                    <a href="{% url 'home_alt' %}" class="admin-dropdown-item">
+                        <i class="ph ph-user"></i> Profile
+                    </a>
+                    {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
+                    <a href="{% url 'school_settings' %}" class="admin-dropdown-item">
+                        <i class="ph ph-gear-six"></i> Settings
+                    </a>
+                    {% else %}
+                    <a href="{% url 'password_change' %}" class="admin-dropdown-item">
+                        <i class="ph ph-shield-check"></i> Change Password
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'logout' %}" class="admin-dropdown-item admin-logout">
+                        <i class="ph ph-sign-out"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MOBILE SUB-NAV -->
+    <nav class="sub-nav-bar dm-subnav">
+      <ul class="sub-nav-list">
+        <li class="sub-nav-item">
+          <a href="{% url 'school_admin_dashboard' %}" class="sub-nav-link active">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Overview
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- SCROLLABLE BODY -->
+    <main class="admin-body">
+        <!-- WELCOME BANNER -->
+        <div class="dm-welcome">
+            <div class="dm-welcome-avatar">{{ user.get_full_name|first|default:"A" }}</div>
+            <div class="dm-welcome-text">
+                <div class="dm-welcome-name">Welcome, {{ user.get_full_name|default:"Admin" }}</div>
+                <div class="dm-welcome-sub">Manage exams from the comfort of your phone</div>
+            </div>
+        </div>
+
+        <!-- STAT CARDS -->
+        <div class="dash-section-label">Overview</div>
+        <section class="admin-stats" aria-label="School statistics">
+            <a class="dash-stat-card" href="{% url 'manage_faculty_matrix' %}">
+                <div class="dash-stat-icon-wrap blue"><i class="ph ph-users-three"></i></div>
+                <div class="dash-stat-info">
+                    <div class="dash-stat-number">{{ total_teachers }}</div>
+                    <div class="dash-stat-label">Teachers</div>
+                </div>
+                <i class="ph ph-arrow-right dash-stat-arrow"></i>
+            </a>
+            <a class="dash-stat-card" href="{% url 'admin_add_student' %}?tab=add_student">
+                <div class="dash-stat-icon-wrap green"><i class="ph ph-student"></i></div>
+                <div class="dash-stat-info">
+                    <div class="dash-stat-number">{{ total_students }}</div>
+                    <div class="dash-stat-label">Students</div>
+                </div>
+                <i class="ph ph-arrow-right dash-stat-arrow"></i>
+            </a>
+            <a class="dash-stat-card" href="{% url 'manage_exams' %}">
+                <div class="dash-stat-icon-wrap emerald"><i class="ph ph-clipboard-text"></i></div>
+                <div class="dash-stat-info">
+                    <div class="dash-stat-number">{{ total_exams }}</div>
+                    <div class="dash-stat-label">Exams</div>
+                </div>
+                <i class="ph ph-arrow-right dash-stat-arrow"></i>
+            </a>
+            <a class="dash-stat-card" href="{% url 'manage_classes' %}">
+                <div class="dash-stat-icon-wrap amber"><i class="ph ph-house-line"></i></div>
+                <div class="dash-stat-info">
+                    <div class="dash-stat-number">{{ active_classes }}</div>
+                    <div class="dash-stat-label">Streams</div>
+                </div>
+                <i class="ph ph-arrow-right dash-stat-arrow"></i>
+            </a>
+        </section>
+
+        <!-- UPCOMING EVENTS -->
+        <div class="dash-section-label">Calendar</div>
+        <section class="dash-events-card" aria-label="Upcoming Events">
+            <div class="dash-events-head">
+                <h3 class="dash-events-title">Upcoming Events</h3>
+                <button class="dash-events-cal-btn"><i class="ph ph-calendar"></i></button>
+            </div>
+            <div class="dash-events-nav">
+                <button class="dash-events-arrow" onclick="calNav(-1)"><i class="ph ph-caret-left"></i></button>
+                <div class="dash-events-date">
+                    <span class="dash-events-main" id="calMain"></span>
+                    <span class="dash-events-sub" id="calSub"></span>
+                </div>
+                <button class="dash-events-arrow" onclick="calNav(1)"><i class="ph ph-caret-right"></i></button>
+            </div>
+            <div class="dash-events-pills">
+                <button class="dash-pill" onclick="setCalView('month',this)">Month</button>
+                <button class="dash-pill" onclick="setCalView('week',this)">Week</button>
+                <button class="dash-pill active" onclick="setCalView('day',this)">Day</button>
+                <button class="dash-pill" onclick="setCalView('list',this)">List</button>
+            </div>
+            <div class="dash-events-viewport" id="eventsViewport">
+                <p class="dash-events-empty">No events to display</p>
+            </div>
+        </section>
+
+        <!-- ACADEMIC PERFORMANCE -->
+        {% if grade_performance_cards %}
+        <section aria-label="Academic Performance">
+            <div class="dash-section-head">
+                <h2 class="dash-section-title">Academic Performance</h2>
+                {% if exam_label %}
+                <span class="dash-section-sub">{{ exam_label }}</span>
+                {% endif %}
+            </div>
+            <div class="dash-perf-cards">
+                {% for card in grade_performance_cards %}
+                <div class="dash-perf-card" style="border-top: 3px solid {{ card.accent }}">
+                    <div class="dash-perf-header" style="background:{{ card.bg }}">
+                        <span class="dash-perf-grade" style="color:{{ card.text }}">{{ card.label }}</span>
+                        <span class="dash-perf-exam">{{ exam_label|default:"No Data" }}</span>
+                    </div>
+                    <div class="dash-perf-grid">
+                        <div class="dash-perf-cell">
+                            <span class="dash-perf-cell-label">Mean Points</span>
+                            <span class="dash-perf-cell-value">{{ card.mean_points|floatformat:4 }}</span>
+                            {% if card.points_dev is not None %}
+                                {% if card.points_dev > 0 %}
+                                <span class="dash-perf-dev up">+{{ card.points_dev|floatformat:3 }}</span>
+                                {% elif card.points_dev < 0 %}
+                                <span class="dash-perf-dev down">{{ card.points_dev|floatformat:3 }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="dash-perf-cell">
+                            <span class="dash-perf-cell-label">Mean Marks</span>
+                            <span class="dash-perf-cell-value">{{ card.mean_score|floatformat:2 }}%</span>
+                            {% if card.score_dev is not None %}
+                                {% if card.score_dev > 0 %}
+                                <span class="dash-perf-dev up">+{{ card.score_dev|floatformat:2 }}</span>
+                                {% elif card.score_dev < 0 %}
+                                <span class="dash-perf-dev down">{{ card.score_dev|floatformat:2 }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="dash-perf-cell">
+                            <span class="dash-perf-cell-label">Mean Grade</span>
+                            <span class="dash-perf-cell-value">{{ card.mean_grade }}</span>
+                        </div>
+                        <div class="dash-perf-cell">
+                            <span class="dash-perf-cell-label">Students</span>
+                            <span class="dash-perf-cell-value" style="color:{{ card.accent }}">{{ card.student_count }}</span>
+                        </div>
+                    </div>
+                    {% if card.exam_id %}
+                    <button class="dash-perf-btn" style="background:{{ card.accent }}" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
+                        View Analysis <i class="ph ph-arrow-right"></i>
+                    </button>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- FOOTER -->
+        <div class="dash-footer">&copy; 2026 EduNexus. All Rights Reserved.</div>
+    </main>
+</div>
+
 <script>
 document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
     link.addEventListener('click', function(e) {
@@ -245,6 +436,28 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
         this.parentElement.classList.add('active');
     });
 });
+
+// Admin user dropdown toggle
+(function(){
+    var menu = document.getElementById('adminUserMenu');
+    var dropdown = document.getElementById('adminDropdown');
+    if(!menu || !dropdown) return;
+
+    menu.querySelector('.admin-avatar-btn').addEventListener('click', function(e){
+        e.stopPropagation();
+        dropdown.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function(e){
+        if(!menu.contains(e.target)){
+            dropdown.classList.remove('open');
+        }
+    });
+
+    dropdown.addEventListener('click', function(e){
+        e.stopPropagation();
+    });
+})();
 </script>
 {% endblock %}
 
@@ -266,7 +479,7 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
     function renderEvents(){
         var now = new Date();
         now.setHours(0,0,0,0);
-        var vp = document.querySelector('.events-viewport');
+        var vp = document.getElementById('eventsViewport') || document.querySelector('.events-viewport');
         if(!vp) return;
 
         var events = [];
@@ -332,7 +545,7 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
     window.calNav = function(dir){ offset+=dir; render(); };
     window.setCalView = function(v, btn){
         view=v; offset=0;
-        document.querySelectorAll('.view-filter-pills .view-pill').forEach(function(p){p.classList.remove('active');});
+        document.querySelectorAll('.view-filter-pills .view-pill, .dash-events-pills .dash-pill').forEach(function(p){p.classList.remove('active');});
         if(btn) btn.classList.add('active');
         render();
     };

@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block sub_tabs %}
-<nav class="sub-nav-bar">
+<nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="?tab=manage" class="sub-nav-link {% if active_tab == 'manage' or not active_tab %}active{% endif %}">
@@ -342,32 +342,618 @@
     }
 
     @media (max-width: 768px) {
+        /* Fix sidebar offset on mobile */
+        .main-content {
+            padding: 0 !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+        }
+
         .manage-exams-page {
-            padding: 14px;
+            padding: 12px;
+            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px);
+        }
+
+        .create-exam-page {
+            padding: 12px;
+            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px);
+        }
+
+        .deleted-exams-wrap {
+            padding: 12px;
+            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px);
         }
 
         .page-header h1 {
-            font-size: 22px;
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+
+        .year-filter-card {
+            padding: 16px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+        }
+
+        .year-filter-card label {
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .year-filter-card select {
+            height: 42px;
+            font-size: 13px;
+            border-radius: 8px;
+        }
+
+        .exam-list-card {
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
         }
 
         .exam-list-card-header {
-            padding: 14px 16px;
+            padding: 12px 16px;
+            border-radius: 12px 12px 0 0;
         }
 
         .exam-list-card-header h3 {
             font-size: 14px;
+            font-weight: 700;
         }
 
-        .exam-list-table th,
-        .exam-list-table td {
-            padding: 10px 10px;
+        /* Hide the desktop table on mobile */
+        .exam-list-table-wrap {
+            display: none;
+        }
+
+        /* Show mobile card layout instead */
+        .exam-mobile-cards {
+            display: block !important;
+            padding: 12px;
+        }
+
+        .exam-mobile-card {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+
+        .exam-mobile-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .exam-mob-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            gap: 8px;
+        }
+
+        .exam-mob-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.3;
+        }
+
+        .exam-mob-class {
             font-size: 13px;
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 6px;
         }
 
-        .btn-action {
-            padding: 4px 6px;
-            font-size: 10px;
+        .exam-mob-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            gap: 8px;
         }
+
+        .exam-mob-date {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .exam-mob-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .exam-mob-actions .btn-action {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 13px;
+            border-radius: 8px;
+            justify-content: center;
+        }
+
+        .exam-mob-actions .btn-action i {
+            font-size: 15px;
+        }
+
+        /* ═══ CREATE EXAM — iOS 17 Premium ═══ */
+        .create-exam-card {
+            padding: 20px 16px !important;
+            border-radius: 16px !important;
+            border: none !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+        }
+
+        .create-exam-title {
+            font-size: 20px !important;
+            margin-bottom: 20px !important;
+            letter-spacing: -0.02em !important;
+        }
+
+        .ce-field-row {
+            flex-direction: column !important;
+            gap: 16px !important;
+            margin-bottom: 16px !important;
+        }
+
+        .ce-field label {
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.06em !important;
+            text-transform: uppercase !important;
+            margin-bottom: 4px !important;
+        }
+
+        .ce-field input[type="text"],
+        .ce-field select {
+            height: 46px !important;
+            border-radius: 12px !important;
+            font-size: 15px !important;
+            border: 1.5px solid #e2e8f0 !important;
+            background: #f8fafc !important;
+        }
+
+        .ce-field input:focus,
+        .ce-field select:focus {
+            border-color: #16a34a !important;
+            box-shadow: 0 0 0 3px rgba(22,163,74,0.12) !important;
+        }
+
+        .ce-divider {
+            font-size: 14px !important;
+            margin: 12px 0 12px !important;
+        }
+
+        .ce-select-all {
+            padding: 12px 0 !important;
+            margin-bottom: 4px !important;
+        }
+
+        .ce-class-row {
+            padding: 14px 4px !important;
+            gap: 12px !important;
+        }
+
+        .ce-class-row .ce-class-name {
+            font-size: 14px !important;
+            min-width: 0 !important;
+            flex: 1 !important;
+        }
+
+        .ce-class-row .ce-badge {
+            font-size: 10px !important;
+            padding: 3px 8px !important;
+        }
+
+        .ce-btn-row {
+            margin-top: 20px !important;
+        }
+
+        .ce-btn-create {
+            width: 100% !important;
+            height: 46px !important;
+            border-radius: 12px !important;
+            font-size: 14px !important;
+            justify-content: center !important;
+        }
+
+        /* ═══ MANAGE TAB — Premium Mobile Cards ═══ */
+        .manage-exams-page {
+            padding: 12px !important;
+            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
+        }
+
+        .year-filter-card {
+            padding: 16px !important;
+            border-radius: 16px !important;
+            border: none !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+            margin-bottom: 16px !important;
+        }
+
+        .year-filter-card label {
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.06em !important;
+            text-transform: uppercase !important;
+            margin-bottom: 4px !important;
+        }
+
+        .year-filter-card select {
+            height: 46px !important;
+            border-radius: 12px !important;
+            font-size: 15px !important;
+            border: 1.5px solid #e2e8f0 !important;
+        }
+
+        .exam-list-card {
+            border-radius: 16px !important;
+            border: none !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+            margin-bottom: 12px !important;
+            overflow: hidden !important;
+        }
+
+        .exam-list-card-header {
+            padding: 14px 16px !important;
+            border-radius: 16px 16px 0 0 !important;
+        }
+
+        .exam-list-card-header h3 {
+            font-size: 14px !important;
+            font-weight: 700 !important;
+        }
+
+        .exam-mobile-card {
+            background: #f8fafc !important;
+            border: 1.5px solid #e5e7eb !important;
+            border-radius: 14px !important;
+            padding: 16px !important;
+            margin-bottom: 10px !important;
+        }
+
+        .exam-mob-header {
+            margin-bottom: 10px !important;
+        }
+
+        .exam-mob-name {
+            font-size: 15px !important;
+            font-weight: 700 !important;
+        }
+
+        .status-pill {
+            padding: 4px 10px !important;
+            border-radius: 8px !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.02em !important;
+        }
+
+        .exam-mob-class {
+            font-size: 13px !important;
+            margin-bottom: 6px !important;
+        }
+
+        .exam-mob-actions {
+            gap: 8px !important;
+        }
+
+        .exam-mob-actions .btn-action {
+            height: 40px !important;
+            border-radius: 10px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            padding: 0 16px !important;
+            gap: 6px !important;
+        }
+
+        .btn-edit { background: #f1f5f9 !important; color: #334155 !important; border: 1.5px solid #e2e8f0 !important; }
+        .btn-analyze { background: linear-gradient(145deg, #22c55e 0%, #16a34a 100%) !important; color: #fff !important; border: none !important; }
+        .btn-withdraw { background: #fef3c7 !important; color: #92400e !important; border: 1.5px solid #fde68a !important; }
+
+        /* ═══ GRADING TAB — Premium Mobile ═══ */
+        .gs-page {
+            padding: 12px !important;
+            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
+        }
+
+        .gs-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+            margin-bottom: 16px !important;
+        }
+
+        .gs-header h2 {
+            font-size: 20px !important;
+        }
+
+        .gs-btn-create {
+            width: 100% !important;
+            height: 46px !important;
+            border-radius: 12px !important;
+            font-size: 14px !important;
+            justify-content: center !important;
+        }
+
+        .gs-card {
+            border-radius: 16px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+        }
+
+        .gs-list-table-wrap,
+        .gs-list-table {
+            width: 100% !important;
+        }
+
+        .gs-list-table th {
+            padding: 12px 16px !important;
+            font-size: 12px !important;
+        }
+
+        .gs-list-table td {
+            padding: 14px 16px !important;
+            font-size: 14px !important;
+        }
+
+        .gs-list-table th:last-child {
+            width: auto !important;
+        }
+
+        .gs-action-cell {
+            flex-direction: column !important;
+            gap: 6px !important;
+        }
+
+        .gs-btn-view,
+        .gs-btn-delete {
+            width: 100% !important;
+            justify-content: center !important;
+            height: 38px !important;
+            border-radius: 10px !important;
+            font-size: 13px !important;
+        }
+
+        /* ═══ Grading Grid — Fix cramped inputs ═══ */
+        .gs-grid-wrap {
+            margin: 0 -4px !important;
+            padding: 0 4px !important;
+        }
+
+        .gs-grid-table {
+            min-width: 100% !important;
+        }
+
+        .gs-grid-table th {
+            padding: 10px 8px !important;
+            font-size: 10px !important;
+            text-align: center !important;
+        }
+
+        .gs-grid-table th:first-child { width: 30px !important; }
+
+        .gs-grid-table td {
+            padding: 6px 4px !important;
+        }
+
+        .gs-grid-table td:first-child {
+            text-align: center !important;
+            width: 30px !important;
+            font-size: 13px !important;
+        }
+
+        .gs-grid-input {
+            width: 100% !important;
+            height: 40px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            text-align: center !important;
+            padding: 0 6px !important;
+        }
+
+        .gs-grid-input.grade-input {
+            text-align: center !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+        }
+
+        .gs-actions-cell {
+            gap: 4px !important;
+        }
+
+        .gs-btn-add,
+        .gs-btn-remove {
+            padding: 6px 10px !important;
+            font-size: 11px !important;
+            border-radius: 8px !important;
+            height: 34px !important;
+        }
+
+        .gs-scale-card {
+            border-radius: 16px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+        }
+
+        .gs-scale-header {
+            padding: 16px !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+        }
+
+        .gs-btn-close {
+            width: 100% !important;
+            justify-content: center !important;
+            height: 40px !important;
+            border-radius: 10px !important;
+        }
+
+        .gs-scale-table th,
+        .gs-scale-table td {
+            padding: 10px 12px !important;
+            font-size: 12px !important;
+        }
+
+        /* Grading Form */
+        .gs-card[style*="32px"] {
+            padding: 16px !important;
+        }
+
+        .gs-card[style*="32px"] .gs-form-group {
+            margin-bottom: 16px !important;
+        }
+
+        .gs-card[style*="32px"] .gs-form-group label {
+            font-size: 11px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.06em !important;
+        }
+
+        .gs-form-input {
+            height: 46px !important;
+            border-radius: 12px !important;
+            font-size: 15px !important;
+        }
+
+        .gs-card[style*="32px"] > form > div[style*="grid"] {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+        }
+
+        .gs-grid-wrap {
+            border-radius: 12px !important;
+            overflow: hidden !important;
+        }
+
+        .gs-grid-input {
+            height: 42px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+        }
+
+        .gs-btn-add,
+        .gs-btn-remove {
+            height: 34px !important;
+            border-radius: 8px !important;
+            font-size: 11px !important;
+        }
+
+        .gs-sample-toggle {
+            font-size: 13px !important;
+        }
+
+        .gs-sample-tabs {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+
+        .gs-sample-tab {
+            padding: 10px 14px !important;
+            font-size: 13px !important;
+            white-space: nowrap !important;
+        }
+
+        .gs-btn-row {
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+
+        .gs-btn-autofill {
+            width: 100% !important;
+            justify-content: center !important;
+            height: 42px !important;
+            border-radius: 10px !important;
+        }
+
+        .gs-save-row {
+            margin-top: 16px !important;
+        }
+
+        .gs-btn-save {
+            width: 100% !important;
+            height: 46px !important;
+            border-radius: 12px !important;
+            justify-content: center !important;
+        }
+
+        .gs-back-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            height: 42px !important;
+            border-radius: 10px !important;
+        }
+
+        .gs-empty {
+            padding: 32px 16px !important;
+        }
+
+        /* ═══ DELETED TAB — Premium Mobile ═══ */
+        .deleted-exams-wrap {
+            padding: 12px !important;
+            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
+        }
+
+        .deleted-exams-title {
+            font-size: 20px !important;
+            font-weight: 800 !important;
+            letter-spacing: -0.02em !important;
+            padding-bottom: 12px !important;
+        }
+
+        .deleted-year-select {
+            height: 46px !important;
+            border-radius: 12px !important;
+            font-size: 15px !important;
+            border: 1.5px solid #e2e8f0 !important;
+            background: #f8fafc !important;
+            margin-bottom: 16px !important;
+        }
+
+        .deleted-section-header {
+            padding: 12px 16px !important;
+            border-radius: 12px !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            margin-bottom: 8px !important;
+        }
+
+        .deleted-exam-table {
+            border-radius: 0 0 12px 12px !important;
+            overflow: hidden !important;
+            display: block !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+
+        .deleted-exam-table th {
+            padding: 10px 12px !important;
+            font-size: 10px !important;
+            white-space: nowrap !important;
+        }
+
+        .deleted-exam-table td {
+            padding: 12px 12px !important;
+            font-size: 13px !important;
+            white-space: nowrap !important;
+        }
+
+        .btn-recover {
+            padding: 8px 14px !important;
+            border-radius: 10px !important;
+            font-size: 12px !important;
+            white-space: nowrap !important;
+        }
+
+        .deleted-empty {
+            padding: 32px 16px !important;
+        }
+    }
+
+    /* Desktop: hide mobile cards */
+    .exam-mobile-cards {
+        display: none;
     }
 </style>
 
@@ -520,7 +1106,7 @@
         align-items: center;
         gap: 8px;
         padding: 10px 28px;
-        background: #0d9488;
+        background: #16a34a;
         color: #ffffff;
         border: none;
         border-radius: 6px;
@@ -531,7 +1117,7 @@
         font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
     }
     .ce-btn-create:hover {
-        background: #0f766e;
+        background: #15803d;
     }
     .ce-btn-create i {
         font-size: 16px;
@@ -607,8 +1193,41 @@
                     </button>
                 </div>
             </form>
+            </div>
+
+            <!-- Mobile card layout (hidden on desktop, shown on mobile via CSS) -->
+            <div class="exam-mobile-cards">
+                {% for exam in term_data.exams %}
+                    {% for class_row in exam.classes %}
+                    <div class="exam-mobile-card">
+                        <div class="exam-mob-header">
+                            {% if forloop.parentloop.first and forloop.first %}
+                            <span class="exam-mob-name">{{ exam.name }}</span>
+                            {% elif forloop.first %}
+                            <span class="exam-mob-name">{{ exam.name }}</span>
+                            {% endif %}
+                            <span class="status-pill status-{{ class_row.status|slugify }}">{{ class_row.status }}</span>
+                        </div>
+                        <div class="exam-mob-class">{{ class_row.class_name }}</div>
+                        <div class="exam-mob-meta">
+                            <span class="exam-mob-date">{{ class_row.updated_on|date:"d/m/Y" }}</span>
+                        </div>
+                        <div class="exam-mob-actions">
+                            <a href="{% url 'edit_exam' %}?exam_id={{ class_row.exam_id }}" class="btn-action btn-edit">
+                                <i class="ph ph-pencil-simple"></i> Edit Exam
+                            </a>
+                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
+                                <i class="ph ph-chart-bar"></i> Analyse Exam
+                            </a>
+                            <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}" class="btn-action btn-withdraw">
+                                <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
         </div>
-    </div>
 </div>
 
 <script>
@@ -626,8 +1245,8 @@ function toggleSelectAll(checkbox) {
     .gs-shell{max-width:1100px;margin:0 auto}
     .gs-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
     .gs-header h2{font-size:24px;font-weight:800;color:#1a1a2e;margin:0;font-family:'Inter','Plus Jakarta Sans',sans-serif}
-    .gs-btn-create{display:inline-flex;align-items:center;gap:6px;padding:12px 28px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:all .15s;box-shadow:0 2px 8px rgba(13,148,136,.25)}
-    .gs-btn-create:hover{background:#0f766e;box-shadow:0 4px 12px rgba(13,148,136,.35)}
+    .gs-btn-create{display:inline-flex;align-items:center;gap:6px;padding:12px 28px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:all .15s;box-shadow:0 2px 8px rgba(22,163,74,.25)}
+    .gs-btn-create:hover{background:#15803d;box-shadow:0 4px 12px rgba(22,163,74,.35)}
     .gs-card{background:#fff;border-radius:14px;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
     .gs-list-table{width:100%;border-collapse:collapse}
     .gs-list-table th{background:#fff;color:#1e293b;padding:16px 24px;text-align:left;font-size:15px;font-weight:700;border-bottom:2px solid #e5e7eb;font-family:'Inter','Plus Jakarta Sans',sans-serif}
@@ -656,30 +1275,30 @@ function toggleSelectAll(checkbox) {
     .gs-form-group label{display:block;font-size:14px;font-weight:600;color:#1e293b;margin-bottom:6px;font-family:'Inter','Plus Jakarta Sans',sans-serif}
     .gs-form-group .required{color:#ef4444}
     .gs-form-input{width:100%;height:44px;border:1.5px solid #d1d5db;border-radius:6px;background:#fff;color:#1f2937;font-size:14px;font-weight:500;padding:0 14px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:border-color .15s}
-    .gs-form-input:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 2px rgba(13,148,136,.12)}
+    .gs-form-input:focus{outline:none;border-color:#16a34a;box-shadow:0 0 0 2px rgba(22,163,74,.12)}
     .gs-form-input::placeholder{color:#9ca3af}
     .gs-hint-italic{font-size:14px;font-weight:600;color:#5b7a2e;font-style:italic;margin:8px 0 16px;font-family:'Inter','Plus Jakarta Sans',sans-serif}
-    .gs-hint-green{font-size:13px;color:#0d9488;font-style:italic;margin:12px 0 4px;font-family:'Inter','Plus Jakarta Sans',sans-serif}
+    .gs-hint-green{font-size:13px;color:#16a34a;font-style:italic;margin:12px 0 4px;font-family:'Inter','Plus Jakarta Sans',sans-serif}
     .gs-grid-wrap{overflow-x:auto;margin-bottom:8px}
     .gs-grid-table{width:100%;border-collapse:collapse;min-width:650px}
     .gs-grid-table th{background:#f9fafb;color:#6b7280;padding:10px 14px;text-align:left;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #e5e7eb;font-family:'Inter','Plus Jakarta Sans',sans-serif;white-space:nowrap}
     .gs-grid-table td{padding:8px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;font-family:'Inter','Plus Jakarta Sans',sans-serif}
     .gs-grid-table td:first-child{color:#6b7280;font-weight:600;font-size:13px;text-align:center;width:40px}
     .gs-grid-input{width:100%;height:38px;border:1.5px solid #d1d5db;border-radius:6px;background:#fff;color:#1f2937;font-size:14px;font-weight:500;padding:0 12px;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:border-color .15s}
-    .gs-grid-input:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 2px rgba(13,148,136,.1)}
+    .gs-grid-input:focus{outline:none;border-color:#16a34a;box-shadow:0 0 0 2px rgba(22,163,74,.1)}
     .gs-grid-input.grade-input{background:#fff;border-color:#e2e8f0;color:#1e293b;font-weight:600}
     .gs-grid-input.pts-input{background:#fff;border-color:#e2e8f0;color:#1e293b;font-weight:600;text-align:center;width:70px}
     .gs-actions-cell{white-space:nowrap;display:flex;gap:6px;align-items:center}
-    .gs-btn-add{display:inline-flex;align-items:center;gap:3px;padding:6px 12px;background:#0d9488;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;white-space:nowrap;transition:background .15s}
-    .gs-btn-add:hover{background:#0f766e}
+    .gs-btn-add{display:inline-flex;align-items:center;gap:3px;padding:6px 12px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;white-space:nowrap;transition:background .15s}
+    .gs-btn-add:hover{background:#15803d}
     .gs-btn-remove{display:inline-flex;align-items:center;gap:3px;padding:6px 12px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;white-space:nowrap;transition:background .15s}
     .gs-btn-remove:hover{background:#dc2626}
     .gs-sample-toggle{display:inline-block;font-size:14px;font-weight:600;color:#1e293b;cursor:pointer;margin:8px 0 16px;font-family:'Inter','Plus Jakarta Sans',sans-serif;user-select:none}
-    .gs-sample-toggle:hover{color:#0d9488}
+    .gs-sample-toggle:hover{color:#16a34a}
     .gs-sample-tabs{display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px}
     .gs-sample-tab{padding:10px 18px;font-size:14px;font-weight:600;color:#64748b;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:all .15s}
     .gs-sample-tab:hover{color:#1e293b}
-    .gs-sample-tab.active{color:#0d9488;border-bottom-color:#0d9488}
+    .gs-sample-tab.active{color:#16a34a;border-bottom-color:#16a34a}
     .gs-sample-table{width:100%;border-collapse:collapse}
     .gs-sample-table th{background:#f8fafc;color:#374151;padding:12px 20px;text-align:left;font-size:14px;font-weight:700;border-bottom:2px solid #e5e7eb;font-family:'Inter','Plus Jakarta Sans',sans-serif}
     .gs-sample-table td{padding:12px 20px;border-bottom:1px solid #f1f5f9;color:#1f2937;font-size:14px;font-weight:500;font-family:'Inter','Plus Jakarta Sans',sans-serif}
@@ -687,8 +1306,8 @@ function toggleSelectAll(checkbox) {
     .gs-btn-row{display:flex;justify-content:flex-end;margin-top:16px;gap:12px}
     .gs-btn-autofill{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background .15s}
     .gs-btn-autofill:hover{background:#334155}
-    .gs-btn-save{display:inline-flex;align-items:center;gap:6px;padding:10px 28px;background:#0d9488;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background .15s}
-    .gs-btn-save:hover{background:#0f766e}
+    .gs-btn-save{display:inline-flex;align-items:center;gap:6px;padding:10px 28px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter','Plus Jakarta Sans',sans-serif;transition:background .15s}
+    .gs-btn-save:hover{background:#15803d}
     .gs-save-row{display:flex;justify-content:flex-end;margin-top:24px}
     .gs-hidden{display:none}
     .gs-empty{padding:48px 24px;text-align:center;color:#9ca3af;font-size:14px;font-family:'Inter','Plus Jakarta Sans',sans-serif}
@@ -1232,6 +1851,35 @@ function gsAutofill() {
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile card layout (hidden on desktop, shown on mobile via CSS) -->
+            <div class="exam-mobile-cards">
+                {% for exam in term_data.exams %}
+                    {% for class_row in exam.classes %}
+                    <div class="exam-mobile-card">
+                        <div class="exam-mob-header">
+                            <span class="exam-mob-name">{{ exam.name }}</span>
+                            <span class="status-pill status-{{ class_row.status|slugify }}">{{ class_row.status }}</span>
+                        </div>
+                        <div class="exam-mob-class">{{ class_row.class_name }}</div>
+                        <div class="exam-mob-meta">
+                            <span class="exam-mob-date">{{ class_row.updated_on|date:"d/m/Y" }}</span>
+                        </div>
+                        <div class="exam-mob-actions">
+                            <a href="{% url 'edit_exam' %}?exam_id={{ class_row.exam_id }}" class="btn-action btn-edit">
+                                <i class="ph ph-pencil-simple"></i> Edit Exam
+                            </a>
+                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
+                                <i class="ph ph-chart-bar"></i> Analyse Exam
+                            </a>
+                            <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}" class="btn-action btn-withdraw">
+                                <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endfor %}
             </div>
         </div>
         {% empty %}

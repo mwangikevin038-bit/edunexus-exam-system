@@ -1,16 +1,12 @@
 {% extends 'students/base.html' %}
 {% load static %}
 
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/learners-mobile.css' %}">
-{% endblock %}
-
 {% block sub_tabs %}
 <style>
   .app-content{background:#eaecf0!important;min-height:100vh}
   body{background:#eaecf0!important}
 </style>
-<nav class="sub-nav-bar">
+<nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="{% url 'class_lists' %}" class="sub-nav-link active">
@@ -31,6 +27,7 @@
 {% block content %}
 <style>
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+
   .clp-page{max-width:1100px;margin:0 auto;padding:24px 28px 60px}
   .clp-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,0.05);overflow:hidden}
   .clp-card-header{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid #f1f5f9}
@@ -81,7 +78,42 @@
   .clp-top-action.print:hover{background:#4CAF50;color:#fff;box-shadow:0 4px 12px rgba(76,175,80,0.3);transform:translateY(-1px)}
   .clp-top-action.pdf{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
   .clp-top-action.pdf:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
-  @media(max-width:640px){.clp-filters{grid-template-columns:1fr}.clp-page{padding:16px 16px 40px}}
+
+  @media(max-width:768px){
+    .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
+    .app-content{margin-top:0!important}
+    .clp-page{padding:12px 12px 80px!important;max-width:100%!important}
+    .clp-card{border-radius:16px!important;border:none!important;box-shadow:0 2px 12px rgba(0,0,0,0.06)!important}
+    .clp-card-header{padding:14px 16px!important;border-bottom:none!important}
+    .clp-card-header h2{font-size:16px!important}
+    .clp-toggle svg{width:22px;height:22px}
+    .clp-card-body{padding:12px 16px 16px!important}
+    .clp-filters{grid-template-columns:1fr!important;gap:12px!important}
+    .clp-field label{font-size:12px!important}
+    .clp-field select{padding:12px 10px!important;border-radius:12px!important;font-size:14px!important;height:46px!important}
+    .clp-btn-row.visible{margin-top:16px!important}
+    .clp-fetch-btn{width:100%!important;justify-content:center!important;padding:14px!important;border-radius:12px!important;font-size:14px!important}
+    .clp-results{margin-top:0!important}
+    .clp-results-inner{border-radius:16px!important;padding:16px!important;box-shadow:0 2px 12px rgba(0,0,0,0.06)!important;border:none!important;border-top:none!important}
+    .clp-info-bar{gap:8px!important;justify-content:center!important}
+    .clp-info-badge{border-radius:10px!important;padding:6px 12px!important;font-size:11px!important}
+    .sheet-heading{padding:0!important;min-height:auto!important;flex-direction:column!important;gap:8px!important;margin-bottom:16px!important;position:relative!important}
+    .sheet-logo{position:static!important;transform:none!important;width:72px!important;height:72px!important;margin-bottom:4px!important}
+    .sheet-heading-copy{text-align:center!important}
+    .sheet-heading-copy h2{font-size:16px!important}
+    .sheet-heading-copy p,.sheet-addr,.sheet-contact{font-size:11px!important}
+    .clp-table-wrap{border-radius:12px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;border:1px solid #e5e7eb!important}
+    .register-table{min-width:700px!important;font-size:11pt!important}
+    .register-table th,.register-table td{padding:5px 6px!important;font-size:10pt!important}
+    .grid-cell{width:28px!important;height:28px!important}
+    .clp-actions-top{flex-direction:column!important;gap:10px!important;margin-top:16px!important}
+    .clp-top-action{width:100%!important;justify-content:center!important;padding:14px!important;border-radius:12px!important;font-size:14px!important}
+    .clp-top-action.print{background:#fff!important}
+    .clp-top-action.pdf{background:#16a34a!important;border-color:#16a34a!important}
+    .clp-empty{padding:48px 16px!important}
+    .clp-empty svg{width:40px!important;height:40px!important}
+  }
+
   @media print{
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
     html{overflow:visible!important}

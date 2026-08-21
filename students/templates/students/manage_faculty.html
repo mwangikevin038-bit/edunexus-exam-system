@@ -5,7 +5,7 @@
 <style>
   .main-content{background:#eaecf0!important}
 </style>
-<nav class="sub-nav-bar">
+<nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="?tab=manage" class="sub-nav-link {% if active_tab == 'manage' %}active{% endif %}">
@@ -645,7 +645,7 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    background: #84cc16;
+    background: #16a34a;
     padding: 0 24px;
     height: 42px;
     display: flex;
@@ -1286,98 +1286,126 @@
 
   /* ===== MOBILE ===== */
   @media (max-width: 768px) {
+    .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
+    .app-content{margin-top:0!important}
     .faculty-page {
-      padding: 16px;
+      padding: 12px 12px 80px!important;
+      max-width: 100%!important;
     }
 
     .page-header {
       flex-direction: column;
       align-items: flex-start;
-      gap: 16px;
+      gap: 12px;
     }
+    .page-header-left{gap:10px}
+    .header-icon{width:40px!important;height:40px!important;border-radius:10px!important;font-size:18px!important}
+    .page-title{font-size:18px!important}
+    .page-subtitle{font-size:12px!important}
 
     .btn-create {
       width: 100%;
       justify-content: center;
+      padding: 13px!important;
+      border-radius: 12px!important;
+      font-size: 13px!important;
     }
 
     .faculty-grid {
       grid-template-columns: 1fr;
-      gap: 20px;
+      gap: 16px;
     }
 
     .allocation-card {
       position: static;
+      border-radius: 16px!important;
+      border: none!important;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06)!important;
     }
+    .allocation-header{padding:14px 16px!important}
+    .allocation-header h3{font-size:13px!important}
+    .allocation-body{padding:16px!important}
+    .field-label{font-size:10px!important}
+    .field-select{padding:12px 12px 12px 36px!important;border-radius:10px!important;height:44px!important;font-size:13px!important}
+    .btn-deploy{padding:14px!important;border-radius:10px!important;font-size:13px!important}
+
+    .teachers-header-bar {
+      flex-direction: column;
+      gap: 10px;
+      align-items: stretch;
+      padding: 14px 16px!important;
+      border-radius: 16px!important;
+      border: none!important;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06)!important;
+    }
+    .teachers-title{font-size:15px!important}
+    .teachers-controls{width:100%!important}
+    .teachers-search{width:100%!important}
+    .teachers-search input{width:100%!important;padding:12px 14px 12px 38px!important;border-radius:10px!important;font-size:14px!important}
+    .btn-list-view{width:100%!important;justify-content:center!important;padding:12px!important;border-radius:10px!important}
+
+    .teacher-directory{padding:0 0 12px 0!important}
+    .profile-cards-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
+    .profile-card{padding:20px 10px 16px!important;border-radius:14px!important;border:none!important;box-shadow:0 2px 10px rgba(0,0,0,0.06)!important}
+    .profile-avatar{width:72px!important;height:72px!important;border-width:2px!important}
+    .profile-avatar svg{width:40px!important;height:40px!important}
+    .profile-actions{gap:6px!important;margin-top:-14px!important;margin-bottom:8px!important}
+    .profile-action-btn{width:28px!important;height:28px!important}
+    .profile-action-btn svg{width:13px!important;height:13px!important}
+    .profile-name{font-size:12px!important}
+    .profile-email{font-size:10px!important}
 
     .table-toolbar {
       flex-direction: column;
       gap: 10px;
+      padding: 12px 16px!important;
     }
+    .search-box{width:100%!important}
+    .teacher-count{width:100%!important;justify-content:center!important}
 
-    .search-box {
-      width: 100%;
-    }
+    .teacher-cards{border-radius:12px!important}
+    .teacher-card{grid-template-columns:auto 1fr;gap:14px;padding:16px!important}
+    .teacher-actions{grid-column:1/-1;margin-top:4px}
 
-    .teacher-count {
-      width: 100%;
-      justify-content: center;
-    }
+    .list-view-container{border-radius:14px!important;padding:12px 0!important}
+    .list-view-controls{flex-direction:column;gap:10px;padding:12px 14px!important}
+    .list-view-actions{width:100%;flex-direction:column}
+    .btn-close-list,.btn-print-list,.btn-download-list{width:100%!important;justify-content:center!important;padding:12px!important;border-radius:10px!important}
+    .a4-paper{border-radius:8px!important}
+    .a4-header{flex-direction:column;gap:12px;padding:16px!important}
+    .a4-header-right{text-align:left!important}
+    .a4-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .a4-table{min-width:500px;font-size:10pt!important}
+    .a4-table th,.a4-table td{padding:4pt 5pt!important;font-size:9pt!important}
 
-    .teacher-cards {
-      border-radius: 12px;
-    }
+    .modal-overlay{background:#f8fafc!important}
+    .modal-subnav{padding:0 16px!important;height:46px!important}
+    .modal-subnav-title{font-size:13px!important}
+    .modal-close-btn{font-size:22px!important;padding:4px 8px!important}
+    .modal-content{flex-direction:column!important;padding:16px!important;gap:20px!important}
+    .modal-left{width:100%!important;padding:20px 16px!important;text-align:center!important}
+    .modal-avatar{width:80px!important;height:80px!important;margin:0 auto 10px!important}
+    .modal-avatar svg{width:44px!important;height:44px!important}
+    .modal-teacher-name{font-size:18px!important}
+    .modal-teacher-username{font-size:12px!important}
+    .modal-teacher-phone{font-size:12px!important}
+    .modal-signature-box{padding:16px!important;min-height:60px!important}
+    .modal-delete-btn{width:100%!important;justify-content:center!important;padding:12px!important;border-radius:10px!important;font-size:13px!important;margin-top:12px!important}
+    .modal-right{width:100%!important;padding:16px!important;margin-left:0!important}
+    .modal-form-title{font-size:16px!important;margin-bottom:12px!important}
+    .section-picker{flex-direction:column!important;gap:8px!important}
+    .section-pick-tab{flex-direction:row!important;padding:12px!important;gap:10px!important;width:100%!important}
+    .section-locked{flex-wrap:wrap!important;gap:6px!important;padding:10px 12px!important;border-radius:10px!important}
+    .form-grid-2col{grid-template-columns:1fr!important;gap:12px!important}
+    .form-field-label{font-size:11px!important;margin-bottom:4px!important}
+    .form-field-input{min-height:46px!important;font-size:15px!important;border-radius:10px!important;padding:12px!important}
+    .modal-form-footer{flex-direction:column-reverse!important;gap:10px!important;margin-top:16px!important;padding-top:16px!important}
+    .modal-form-footer .btn-back,.modal-form-footer .btn-save{width:100%!important;justify-content:center!important;padding:14px!important;border-radius:12px!important;font-size:14px!important}
+    .form-grid{grid-template-columns:1fr!important;gap:12px!important}
+  }
 
-    .teacher-card {
-      grid-template-columns: auto 1fr;
-      gap: 14px;
-      padding: 16px;
-    }
-
-    .teacher-actions {
-      grid-column: 1 / -1;
-      margin-top: 4px;
-    }
-
-    .modal-box {
-      max-width: 100%;
-      border-radius: 16px;
-    }
-
-    .modal-body {
-      padding: 18px;
-    }
-
-    .modal-top {
-      padding: 18px 18px 14px;
-      border-radius: 16px 16px 0 0;
-    }
-
-    .modal-top h3 {
-      font-size: 16px;
-    }
-
-    .modal-footer {
-      padding: 14px 18px 18px;
-      flex-direction: column-reverse;
-    }
-
-    .modal-footer button {
-      width: 100%;
-      justify-content: center;
-      min-height: 48px;
-      font-size: 14px;
-    }
-
-    .form-grid {
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-
-    .form-field-input {
-      min-height: 44px;
-      font-size: 16px;
-    }
+  @media (max-width: 600px) {
+    .profile-cards-grid { grid-template-columns: 1fr!important; }
   }
 
   /* ===== TEACHER DIRECTORY GRID ===== */
@@ -1858,16 +1886,6 @@
     .a4-body{padding:0 4mm!important}
     @page{size:A4 portrait;margin:0.5in}
   }
-
-  @media (max-width: 900px) {
-    .profile-cards-grid { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 600px) {
-    .profile-cards-grid { grid-template-columns: 1fr; }
-    .teachers-header-bar { flex-direction: column; gap: 12px; align-items: flex-start; }
-    .teachers-controls { width: 100%; }
-    .teachers-search input { width: 100%; }
-  }
 </style>
 
 <div class="faculty-page">
@@ -2026,6 +2044,198 @@
       <div class="print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM &copy;2026</div>
     </div>
   </div>
+  <!-- EDIT TEACHER MODAL -->
+  <div id="facultyModal" class="modal-overlay" style="display:none;">
+    <div class="modal-subnav">
+      <div class="modal-subnav-title"><i class="bi bi-info-circle-fill"></i> Teacher Details</div>
+      <button class="modal-close-btn" onclick="closeFacultyModal()">&times;</button>
+    </div>
+    <form id="facultyActionForm" method="POST" action="{% url 'manage_faculty_matrix' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" id="modal_action_type" name="action_type" value="">
+      <input type="hidden" id="modal_teacher_id" name="teacher_id" value="">
+      <input type="hidden" name="school_section_posting" id="school_section_posting" value="">
+      <div class="modal-content">
+        <div class="modal-left">
+          <div class="modal-avatar">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <h2 class="modal-teacher-name" id="previewName">&mdash;</h2>
+          <p class="modal-teacher-username" id="previewUsername">&mdash;</p>
+          <p class="modal-teacher-phone">Phone: <span id="previewPhone">&mdash;</span></p>
+          <div class="modal-signature-label">Signature</div>
+          <div class="modal-signature-box" id="signaturePreview"><span>No signature</span></div>
+          <button type="button" class="modal-delete-btn" id="deleteTeacherBtn" style="display:none;" onclick="confirmDeleteTeacher()">
+            <i class="bi bi-trash-fill"></i> Delete
+          </button>
+        </div>
+        <div class="modal-right">
+          <h2 class="modal-form-title" id="modalFormTitle">Update details</h2>
+          <div id="sectionPickerBlock">
+            <div class="form-field-label" style="margin-bottom:8px;"><i class="bi bi-geo-alt-fill" style="color:#22c55e;"></i> Where will this teacher be posted?</div>
+            <div class="section-picker" id="sectionPicker" role="tablist">
+              <button type="button" class="section-pick-tab" data-section="LOWER_PRIMARY" role="tab"><i class="bi bi-book-half"></i><div class="section-pick-title">Lower Primary</div><div class="section-pick-sub">Grades 1 - 3</div></button>
+              <button type="button" class="section-pick-tab" data-section="PRIMARY" role="tab"><i class="bi bi-book"></i><div class="section-pick-title">Upper Primary</div><div class="section-pick-sub">Grades 4 - 6</div></button>
+              <button type="button" class="section-pick-tab" data-section="JSS" role="tab"><i class="bi bi-mortarboard-fill"></i><div class="section-pick-title">Junior Secondary</div><div class="section-pick-sub">Grades 7 - 9</div></button>
+            </div>
+          </div>
+          <div class="section-locked" id="sectionLockedChip" style="display:none;">
+            <span style="font-size:12px;color:#64748b;">Posted to</span>
+            <span id="sectionLockedValue" style="font-size:12px;font-weight:700;color:#0f172a;">&mdash;</span>
+            <i class="bi bi-lock-fill" style="color:#94a3b8;font-size:12px;"></i>
+          </div>
+          <div class="form-grid-2col" style="margin-top:20px;">
+            <div><label class="form-field-label">First Name <span class="req">*</span></label><input type="text" id="field_full_name" name="full_name" class="form-field-input" placeholder="First Name" required></div>
+            <div><label class="form-field-label">Surname</label><input type="text" id="field_surname" name="surname" class="form-field-input" placeholder="Surname"></div>
+            <div><label class="form-field-label">Title <span class="req">*</span></label><select id="field_title" name="title" class="form-field-input"><option value="Mr.">Mr.</option><option value="Ms.">Ms.</option><option value="Mrs.">Mrs.</option><option value="Dr.">Dr.</option><option value="Prof.">Prof.</option></select></div>
+            <div><label class="form-field-label">Initials</label><input type="text" id="field_initials" name="initials" class="form-field-input" placeholder="e.g. LA" maxlength="5" readonly style="background:#f1f5f9;"></div>
+            <div><label class="form-field-label">Personal Email</label><input type="email" id="field_personal_email" name="personal_email" class="form-field-input" placeholder="personal@email.com"></div>
+            <div><label class="form-field-label">Phone Number <span class="req">*</span></label><input type="text" id="field_phone_number" name="phone_number" class="form-field-input" placeholder="e.g. 0712345678"></div>
+            <div><label class="form-field-label">Gender</label><select id="field_gender" name="gender" class="form-field-input"><option value="">-- Select Gender --</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
+            <div><label class="form-field-label">TSC Number</label><input type="text" id="field_tsc_number" name="tsc_number" class="form-field-input" placeholder="e.g. 123456"></div>
+            <div><label class="form-field-label">National ID No.</label><input type="text" id="field_national_id" name="national_id" class="form-field-input" placeholder="National ID No."></div>
+            <div><label class="form-field-label">Address</label><input type="text" id="field_address" name="address" class="form-field-input" placeholder="Address"></div>
+            <div><label class="form-field-label">Employee Number</label><input type="text" id="field_employee_number" name="employee_number" class="form-field-input" placeholder="Employee Number"></div>
+            <div><label class="form-field-label">Assigned Role</label><select name="assigned_task" class="form-field-input"><option value="Teacher">Regular Teacher</option>{% for role in grade_streams %}<option value="{{ role }}">{{ role }}</option>{% endfor %}</select></div>
+          </div>
+          <div style="margin-top:16px;"><label class="form-field-label">Bio</label><textarea id="field_bio" name="bio" class="form-field-input" placeholder="Short biography or notes about the teacher" rows="3"></textarea></div>
+          <div style="margin-top:16px;"><label class="form-field-label">Signature</label><input type="file" id="field_signature" name="signature" class="form-field-input" accept="image/*" style="padding:8px;"></div>
+          <div class="modal-form-footer">
+            <button type="button" onclick="closeFacultyModal()" class="btn-back"><i class="bi bi-arrow-left"></i> Back</button>
+            <button type="submit" class="btn-save"><i class="bi bi-save-fill"></i> Save</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    function filterTeacherCards() {
+      var input = document.getElementById("teacherSearch").value.toUpperCase();
+      var container = document.getElementById("teacherGrid");
+      var cards = container.getElementsByClassName("teacher-card-row");
+      for (var i = 0; i < cards.length; i++) {
+        var textContent = cards[i].textContent || cards[i].innerText;
+        cards[i].style.display = textContent.toUpperCase().indexOf(input) > -1 ? "" : "none";
+      }
+    }
+
+    function toggleListView() {
+      var cardView = document.querySelector('.teacher-directory');
+      var listView = document.getElementById('listViewContainer');
+      if (listView.style.display === 'block') {
+        listView.style.display = 'none';
+        cardView.style.display = 'block';
+      } else {
+        listView.style.display = 'block';
+        cardView.style.display = 'none';
+      }
+    }
+
+    function toggleListColumn(col, show) {
+      var ths = document.querySelectorAll('[data-col="' + col + '"]');
+      for (var i = 0; i < ths.length; i++) {
+        ths[i].style.display = show ? '' : 'none';
+      }
+    }
+
+    function printTeachersList() {
+      window.print();
+    }
+
+    function handleEditClick(buttonElement) {
+      var d = buttonElement.dataset;
+      openEditModal(d.id, d.title, d.firstname, d.surname, d.tsc, d.phone, d.email, d.section, d.sectionToken, d.assignedTask, d.gender, d.nationalId, d.address, d.employeeNumber, d.bio, d.username);
+    }
+
+    function openEditModal(id, title, firstName, surname, tscNumber, phoneNumber, email, sectionLabel, sectionToken, assignedTask, gender, nationalId, address, employeeNumber, bio, username) {
+      var modal = document.getElementById("facultyModal");
+      document.getElementById("modal_action_type").value = "edit_profile";
+      document.getElementById("modal_teacher_id").value = id;
+      document.getElementById("modalFormTitle").textContent = "Update details for " + (firstName || username || "Teacher");
+      document.getElementById("field_title").value = title || "Mr.";
+      document.getElementById("field_full_name").value = firstName || "";
+      document.getElementById("field_surname").value = surname || "";
+      document.getElementById("field_gender").value = gender || "";
+      document.getElementById("field_tsc_number").value = tscNumber || "";
+      document.getElementById("field_phone_number").value = phoneNumber || "";
+      document.getElementById("field_personal_email").value = email || "";
+      document.getElementById("field_national_id").value = nationalId || "";
+      document.getElementById("field_address").value = address || "";
+      document.getElementById("field_employee_number").value = employeeNumber || "";
+      document.getElementById("field_bio").value = bio || "";
+      var initials = ((firstName || "").charAt(0) + (surname || "").charAt(0)).toUpperCase();
+      document.getElementById("field_initials").value = initials;
+      document.getElementById("previewName").textContent = (title || "") + " " + (firstName || surname || username || "\u2014");
+      document.getElementById("previewUsername").textContent = username || "\u2014";
+      document.getElementById("previewPhone").textContent = phoneNumber || "\u2014";
+      document.getElementById("sectionPickerBlock").style.display = "none";
+      document.getElementById("sectionLockedChip").style.display = "flex";
+      document.getElementById("sectionLockedValue").textContent = sectionLabel || sectionToken || "\u2014";
+      document.getElementById("school_section_posting").value = sectionToken || "";
+      document.getElementById("deleteTeacherBtn").style.display = "flex";
+      fetchGradeStreams(sectionToken || 'JSS');
+      setTimeout(function() {
+        var sel = document.querySelector('select[name="assigned_task"]');
+        if (sel) {
+          if (assignedTask) {
+            var found = false;
+            for (var i = 0; i < sel.options.length; i++) {
+              if (sel.options[i].value === assignedTask) { found = true; break; }
+            }
+            if (!found) {
+              var opt = document.createElement("option");
+              opt.value = assignedTask;
+              opt.textContent = assignedTask;
+              sel.appendChild(opt);
+            }
+          }
+          sel.value = assignedTask || 'Teacher';
+        }
+      }, 300);
+      modal.style.display = "block";
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeFacultyModal() {
+      document.getElementById("facultyModal").style.display = "none";
+      document.body.style.overflow = "";
+    }
+
+    function confirmDeleteTeacher() {
+      if (confirm('Are you sure you want to delete this teacher? This action cannot be undone.')) {
+        var teacherId = document.getElementById("modal_teacher_id").value;
+        if (teacherId) {
+          window.location.href = '{% url "manage_faculty_matrix" %}?action=delete&teacher_id=' + teacherId;
+        }
+      }
+    }
+
+    function fetchGradeStreams(section) {
+      fetch("{% url 'faculty_grade_streams' %}?section=" + encodeURIComponent(section))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var sel = document.querySelector('select[name="assigned_task"]');
+          if (!sel) return;
+          sel.innerHTML = '<option value="Teacher" selected>Regular Teacher</option>';
+          (data.options || []).forEach(function(opt) {
+            var o = document.createElement("option");
+            o.value = opt; o.textContent = opt; sel.appendChild(o);
+          });
+        });
+    }
+
+    document.querySelectorAll(".section-pick-tab").forEach(function(el) {
+      el.addEventListener("click", function() {
+        var token = this.getAttribute("data-section");
+        document.getElementById("school_section_posting").value = (token === "PRIMARY") ? "LOWER_PRIMARY" : token;
+        document.querySelectorAll(".section-pick-tab").forEach(function(t) { t.classList.remove("active"); });
+        el.classList.add("active");
+        fetchGradeStreams(token);
+      });
+    });
+  </script>
+
   {% endif %}
 
   {% if active_tab == 'add' %}

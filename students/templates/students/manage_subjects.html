@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block sub_tabs %}
-<nav class="sub-nav-bar">
+<nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="{% url 'manage_classes' %}?tab=manage" class="sub-nav-link active">
@@ -278,10 +278,44 @@
     }
     .btn-back:hover { background: #475569; }
 
+    /* Mobile Cards */
+    .subjects-mobile-cards { display: none; }
+
     @media (max-width: 768px) {
-        .classes-page { padding: 16px; }
-        .classes-table thead th, .classes-table tbody td, .classes-table tfoot td { padding: 12px 10px; font-size: 12px; }
-        .td-actions { flex-wrap: wrap; gap: 6px; }
+        .main-content { padding: 0 !important; max-width: 100% !important; margin-left: 0 !important; }
+        .classes-page { padding: 12px 16px 80px; }
+        .classes-card { border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: none; padding: 0; overflow: hidden; }
+        .classes-card-header { padding: 14px 16px; border-bottom: none; flex-wrap: wrap; gap: 10px; }
+        .classes-card-header h1 { font-size: 16px; }
+        .btn-add-subject { width: 100%; justify-content: center; padding: 12px; border-radius: 12px; font-size: 13px; }
+        .classes-table-wrap, .classes-table { display: none !important; }
+        .subjects-mobile-cards { display: flex; flex-direction: column; gap: 12px; padding: 0 12px 12px; }
+        .subject-mobile-card { background: #fff; border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 14px 16px; border: none; }
+        .subject-mobile-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .subject-mobile-card-name { font-family: 'Plus Jakarta Sans','Inter',sans-serif; font-weight: 700; font-size: 15px; color: #1e293b; }
+        .subject-mobile-card-badge { font-family: 'Plus Jakarta Sans','Inter',sans-serif; font-size: 12px; font-weight: 600; color: #2563EB; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 2px 10px; }
+        .subject-mobile-card-teacher { display: flex; align-items: center; gap: 6px; font-family: 'Plus Jakarta Sans','Inter',sans-serif; font-size: 13px; color: #64748b; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
+        .subject-mobile-card-teacher svg { width: 14px; height: 14px; stroke: #94a3b8; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+        .subject-mobile-card-teacher .assign-select { flex: 1; padding: 10px 10px; border-radius: 10px; font-size: 13px; border: 1px solid #e2e8f0; background: #f8fafc; max-width: none; }
+        .subject-mobile-card-teacher .teacher-name { font-weight: 600; color: #1e293b; flex: 1; }
+        .subject-mobile-card-teacher .icon-delete { position: static; transform: none; padding: 6px; border-radius: 8px; }
+        .subject-mobile-card-actions { display: flex; gap: 8px; }
+        .subject-mobile-card-actions .btn-actions { flex: 1; justify-content: center; padding: 10px 12px; border-radius: 10px; font-size: 12px; }
+        .subject-mobile-card-more { position: relative; flex: 0 0 auto; }
+        .btn-back { width: 100%; justify-content: center; padding: 12px; border-radius: 12px; margin-top: 12px; }
+
+        /* Modals */
+        #addSubjectModal > div,
+        #deleteSubjectModal > div { width: 92vw; border-radius: 20px; padding: 24px 20px; }
+        #addSubjectModal h3,
+        #deleteSubjectModal h3 { font-size: 16px; }
+        #addSubjectModal select,
+        #deleteSubjectModal select { padding: 14px 12px; border-radius: 12px; font-size: 15px; }
+        #addSubjectModal div[style*="display:flex"],
+        #deleteSubjectModal div[style*="display:flex"] { flex-direction: column-reverse; gap: 10px; }
+        #addSubjectModal button,
+        #deleteSubjectModal button { width: 100% !important; justify-content: center; padding: 14px !important; border-radius: 12px !important; font-size: 14px !important; }
+        #addSubjectModal label { font-size: 11px !important; }
     }
 </style>
 
@@ -386,6 +420,63 @@
             {% else %}
             <div class="classes-empty">
                 No subjects in {{ grade.name }} {{ stream_name }} yet. Click <strong>+ Subject</strong> to add one.
+            </div>
+            {% endif %}
+
+            {% if subject_rows %}
+            <div class="subjects-mobile-cards">
+                {% for row in subject_rows %}
+                <div class="subject-mobile-card">
+                    <div class="subject-mobile-card-top">
+                        <span class="subject-mobile-card-name">{{ row.subject_name }}</span>
+                        <span class="subject-mobile-card-badge">{{ row.student_count }} students</span>
+                    </div>
+                    <div class="subject-mobile-card-teacher">
+                        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        {% if row.teacher_id %}
+                        <span class="teacher-name">{{ row.teacher_name }}</span>
+                        <form method="POST" style="display:inline;margin:0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="unassign_teacher">
+                            <input type="hidden" name="assignment_id" value="{{ row.id }}">
+                            <button type="submit" class="icon-delete" title="Unassign teacher"
+                                    onclick="return confirm('Remove {{ row.teacher_name }} from {{ row.subject_name }}?');">
+                                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            </button>
+                        </form>
+                        {% else %}
+                        <form method="POST" style="display:inline;margin:0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="assign_teacher">
+                            <input type="hidden" name="assignment_id" value="{{ row.id }}">
+                            <select name="teacher_id" class="assign-select" onchange="this.form.submit()">
+                                <option value="">Assign Teacher</option>
+                                {% for t in teachers %}
+                                <option value="{{ t.id }}">{{ t.get_full_title }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        {% endif %}
+                    </div>
+                    <div class="subject-mobile-card-actions">
+                        <div class="subject-mobile-card-more">
+                            <button type="button" class="btn-actions" onclick="toggleActionsDropdown(this)">
+                                &hellip; Actions
+                            </button>
+                            <div class="actions-dropdown">
+                                <a href="{% url 'class_list_page' %}?grade={{ grade.name|urlencode }}&stream={{ stream_name|urlencode }}">
+                                    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                    Class list
+                                </a>
+                                <button type="button" class="dropdown-delete" onclick="openDeleteSubjectModal('{{ row.id }}', '{{ row.subject_name }}')">
+                                    <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
             {% endif %}
 

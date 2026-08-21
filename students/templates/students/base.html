@@ -66,11 +66,11 @@
 <body>
 
     {% if user.is_authenticated %}
-    <!-- ═══ GLOBAL HEADER ═══ -->
+    <!-- ═══ GLOBAL HEADER (Desktop) ═══ -->
     <header class="global-header">
         <div class="header-brand">
             <img src="{% static 'images/edunexus_logo_192.png' %}?v=2" alt="EDUNEXUS" class="brand-logo">
-            <span class="brand-text" style="display:inline-block !important; visibility:visible !important; opacity:1 !important; color:#0f172a !important; font-size:1.2rem !important; font-weight:800 !important;">EDU<span style="color:#4CAF50 !important;">NEXUS</span></span>
+            <span class="brand-text">EDU<span>NEXUS</span></span>
         </div>
         <div class="header-surface">
             {% if request.school %}
@@ -121,6 +121,59 @@
                             <i class="ph ph-sign-out"></i> Logout
                         </a>
                     </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══ MOBILE HEADER (shown on mobile via CSS, matches dashboard admin-header) ═══ -->
+    <header class="mobile-global-header">
+        <div class="mg-header-left">
+            {% if request.school %}
+            <span class="mg-school-name">{{ request.school.name }}</span>
+            {% else %}
+            <span class="mg-school-name">EduNexus</span>
+            {% endif %}
+        </div>
+        <div class="mg-header-controls">
+            {% if request.user.teacher_profile %}
+            <a href="{% url 'teacher_search_student' %}" class="mg-icon-btn" aria-label="Search Students">
+                <i class="ph ph-magnifying-glass"></i>
+            </a>
+            {% else %}
+            <a href="{% url 'admin_add_student' %}?tab=directory" class="mg-icon-btn" aria-label="Search Students">
+                <i class="ph ph-magnifying-glass"></i>
+            </a>
+            {% endif %}
+            <button class="mg-icon-btn" type="button" aria-label="Messages">
+                <i class="ph ph-envelope"></i>
+            </button>
+            <div class="mg-user-menu" id="mgUserMenu">
+                <div class="mg-avatar-btn">{{ request.user.get_full_name|first|default:request.user.username|first|upper }}</div>
+                <div class="mg-dropdown" id="mgDropdown">
+                    <div class="mg-dropdown-header">
+                        <div class="mg-dropdown-avatar">{{ request.user.get_full_name|first|default:request.user.username|first|upper }}</div>
+                        <div>
+                            <div class="mg-dropdown-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+                            <div class="mg-dropdown-role">{{ request.user.username }}</div>
+                        </div>
+                    </div>
+                    <div class="mg-dropdown-divider"></div>
+                    <a href="{% url 'home_alt' %}" class="mg-dropdown-item">
+                        <i class="ph ph-user"></i> Profile
+                    </a>
+                    {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
+                    <a href="{% url 'school_settings' %}" class="mg-dropdown-item">
+                        <i class="ph ph-gear-six"></i> Settings
+                    </a>
+                    {% else %}
+                    <a href="{% url 'password_change' %}" class="mg-dropdown-item">
+                        <i class="ph ph-shield-check"></i> Change Password
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'logout' %}" class="mg-dropdown-item mg-logout">
+                        <i class="ph ph-sign-out"></i> Logout
+                    </a>
                 </div>
             </div>
         </div>
@@ -233,9 +286,7 @@
     </aside>
 
     <!-- SUB-NAVIGATION BAR (rendered outside app-content for full-width flush positioning) -->
-    {% if request.resolver_match.url_name == 'school_admin_dashboard' or request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'select_exam' or request.resolver_match.url_name == 'select_exam_primary' or request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'manage_streams' or request.resolver_match.url_name == 'manage_subjects' or request.resolver_match.url_name == 'add_new_class' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'report_forms_display' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'edit_exam' or request.resolver_match.url_name == 'analyse_exam' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'teacher_search_student' or request.resolver_match.url_name == 'teacher_report_forms' or request.resolver_match.url_name == 'teacher_report_forms_display' or request.resolver_match.url_name == 'teacher_class_comments' or request.resolver_match.url_name == 'teachers_list_printout' or request.resolver_match.url_name == 'password_change' or request.resolver_match.url_name == 'school_settings' or request.resolver_match.url_name == 'term_dates' %}
     {% block sub_tabs %}{% endblock %}
-    {% endif %}
 
     <!-- MAIN CONTENT -->
     <div class="app-content">
@@ -248,14 +299,14 @@
     <!-- BOTTOM NAV BAR (Mobile) -->
     <nav class="bottom-nav" id="bottomNav" aria-label="Main navigation">
         {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
-            {# ── ADMIN: Home · Students · Exams · Results · Menu ── #}
+            {# ── ADMIN: Dashboard · Students · Exams · Classes · Menu ── #}
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'school_admin_dashboard' %}active{% endif %}"
                href="{% url 'school_admin_dashboard' %}"
-               aria-label="Home">
-                <i class="ph ph-house-line"></i>
-                <span>Home</span>
+               aria-label="Dashboard">
+                <i class="ph ph-squares-four"></i>
+                <span>Dashboard</span>
             </a>
-            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'manage_classes' or request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'learner_profile' or request.resolver_match.url_name == 'premium_csv_upload' %}active{% endif %}"
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'admin_add_student' or request.resolver_match.url_name == 'learner_profile' or request.resolver_match.url_name == 'premium_csv_upload' %}active{% endif %}"
                href="{% url 'admin_add_student' %}"
                aria-label="Students">
                 <i class="ph ph-student"></i>
@@ -263,20 +314,20 @@
             </a>
             <a class="bottom-nav-item nav-center {% if request.resolver_match.url_name == 'manage_exams' or request.resolver_match.url_name == 'edit_exam' or request.resolver_match.url_name == 'review_submission' or request.resolver_match.url_name == 'review_stream_submission' or request.resolver_match.url_name == 'manage_assessment_locks' %}active{% endif %}"
                href="{% url 'manage_exams' %}"
-               aria-label="Assessments">
+               aria-label="Exams">
                 <div class="nav-center-ring">
                     <i class="ph ph-clipboard-text"></i>
                 </div>
                 <span>Exams</span>
             </a>
-            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' %}active{% endif %}"
-               href="{% url 'results_list' %}"
-               aria-label="Results">
-                <i class="ph ph-chart-bar"></i>
-                <span>Results</span>
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'manage_classes' %}active{% endif %}"
+               href="{% url 'manage_classes' %}"
+               aria-label="Classes">
+                <i class="ph ph-buildings"></i>
+                <span>Classes</span>
             </a>
             <button type="button"
-                    class="bottom-nav-item {% if request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'password_change' or request.resolver_match.url_name == 'grading_configuration' %}active{% endif %}"
+                    class="bottom-nav-item {% if request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'grading_configuration' or request.resolver_match.url_name == 'report_card_select' %}active{% endif %}"
                     id="mobileMenuBtn"
                     aria-label="Open menu"
                     aria-expanded="false"
@@ -351,21 +402,27 @@
             <div class="mobile-menu-body">
                 {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
                     <div class="mobile-menu-section">
+                        <div class="mobile-menu-section-label">Navigation</div>
+                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active{% endif %}" href="{% url 'manage_faculty_matrix' %}">
+                            <i class="ph ph-chalkboard-teacher"></i> Teachers
+                        </a>
+                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'merit_list' %}active{% endif %}" href="{% url 'printouts_hub' %}">
+                            <i class="ph ph-printer"></i> Printouts
+                        </a>
+                    </div>
+                    <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">Reports</div>
                         <a class="mobile-menu-link {% if request.resolver_match.url_name == 'report_card_select' %}active{% endif %}" href="{% url 'report_card_select' %}">
                             <i class="ph ph-certificate"></i> Report Cards
                         </a>
                     </div>
                     <div class="mobile-menu-section">
-                        <div class="mobile-menu-section-label">Staff</div>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active{% endif %}" href="{% url 'manage_faculty_matrix' %}">
-                            <i class="ph ph-users-three"></i> Faculty
-                        </a>
-                    </div>
-                    <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">Settings</div>
                         <a class="mobile-menu-link {% if request.resolver_match.url_name == 'grading_configuration' %}active{% endif %}" href="{% url 'grading_configuration' %}">
                             <i class="ph ph-sliders"></i> Grading Config
+                        </a>
+                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'school_settings' %}active{% endif %}" href="{% url 'school_settings' %}">
+                            <i class="ph ph-gear-six"></i> School Settings
                         </a>
                     </div>
                 {% else %}
@@ -667,6 +724,19 @@
                 this.classList.toggle('open');
             });
             document.addEventListener('click', () => headerUser.classList.remove('open'));
+        }
+
+        // ── Mobile Header Dropdown ───────────────────────────────
+        const mgUser = document.getElementById('mgUserMenu');
+        const mgDrop = document.getElementById('mgDropdown');
+        if (mgUser && mgDrop) {
+            mgUser.addEventListener('click', function(e) {
+                e.stopPropagation();
+                mgDrop.classList.toggle('open');
+            });
+            document.addEventListener('click', function() {
+                mgDrop.classList.remove('open');
+            });
         }
     </script>
 
