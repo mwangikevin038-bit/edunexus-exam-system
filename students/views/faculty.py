@@ -1268,15 +1268,15 @@ def teacher_classes(request, teacher_id):
         school=school, teacher_profile=teacher
     ).select_related('subject').order_by('class_name', 'stream', 'subject__code')
 
-    # Get the latest published exam per section
+    # Get active exams per section for fallback labels
     now = _dt.date.today()
-    latest_exams = {}
+    active_exams = {}
     for section_key in ('JSS', 'PRIMARY'):
-        exam = Exam.all_objects.filter(
+        exams = Exam.all_objects.filter(
             school=school, school_section=section_key, year=now.year, status='active', is_deleted=False
-        ).order_by('-created_at').first()
-        if exam:
-            latest_exams[section_key] = exam
+        ).order_by('-created_at')
+        if exams.exists():
+            active_exams[section_key] = exams.first()
 
     # Get grading config
     grading_config = GradingConfig.objects.filter(school=school).first()
@@ -1306,7 +1306,7 @@ def teacher_classes(request, teacher_id):
             ct_stream = task_words[-1]
             is_class_teacher = True
 
-    # Build one card per subject assignment using PREVIOUS exam data
+    # Build one card per subject assignment
     subject_cards = []
     for a in assignments:
         if not a.subject:
@@ -1314,18 +1314,37 @@ def teacher_classes(request, teacher_id):
         class_name = a.class_name
         stream = a.stream
         section_key = 'JSS' if class_name in ('Grade 7', 'Grade 8', 'Grade 9') else 'PRIMARY'
-        exam = latest_exams.get(section_key)
 
-        # Latest exam marks for this specific subject in this class+stream
+        # Find marks for this subject/class/stream, ordered by most recent exam
         mark_qs = Mark.all_objects.filter(
             school=school,
             student__class_name=class_name,
             student__stream=stream,
             student__is_active=True,
             subject=a.subject,
-        )
-        if exam:
-            mark_qs = mark_qs.filter(term=exam.term, year=exam.year, exam_type=exam.name)
+        ).order_by('-year', '-term', '-exam_type')
+
+        # Get the latest exam_type/term/year combo that has actual marks
+        latest_combo = mark_qs.values('term', 'year', 'exam_type').distinct()[:1]
+        if latest_combo.exists():
+            combo = latest_combo.first()
+            mark_qs = mark_qs.filter(
+                term=combo['term'], year=combo['year'], exam_type=combo['exam_type']
+            )
+            exam_label = combo['exam_type'].upper()
+            exam_year = combo['year']
+            exam_term = combo['term']
+        else:
+            # No marks yet — fall back to active exam label
+            fallback = active_exams.get(section_key)
+            if fallback:
+                exam_label = fallback.name.upper()
+                exam_year = fallback.year
+                exam_term = fallback.term
+            else:
+                exam_label = '—'
+                exam_year = ''
+                exam_term = ''
 
         stats = mark_qs.aggregate(
             mean_score=Avg('score'),
@@ -1339,7 +1358,6 @@ def teacher_classes(request, teacher_id):
             school=school, class_name=class_name, stream=stream, is_active=True
         ).count()
 
-        exam_name, exam_year, exam_term = _get_exam_label(exam)
         accent = grade_colors.get(class_name, '#8ae325')
 
         # Mark if this is the class teacher's supervised class
@@ -1355,7 +1373,7 @@ def teacher_classes(request, teacher_id):
             'mean_points': mean_points,
             'mean_grade': mean_grade,
             'student_count': student_count,
-            'exam_name': exam_name,
+            'exam_name': exam_label,
             'exam_term': exam_term,
             'exam_year': exam_year,
             'accent': accent,
