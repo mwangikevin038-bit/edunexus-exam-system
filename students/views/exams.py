@@ -134,7 +134,7 @@ def select_exam(request):
         .order_by('class_name', 'stream', 'subject__code')
     )
 
-    active_exams = Exam.objects.filter(school=school, status='active', school_section='JSS', is_deleted=False).order_by('-year', 'term', 'name')
+    active_exams = Exam.objects.filter(school=school, status='active', school_section='JSS', is_deleted=False).order_by('-created_at')[:1]
 
     selected_assignment = None
     selected_exam = None
@@ -2823,9 +2823,10 @@ def select_exam_primary(request):
 
     active_exams = Exam.all_objects.filter(
         school=school, status='active', school_section=exam_section, is_deleted=False
-    ).order_by('-year', 'term', 'name')
+    ).order_by('-created_at')
     if exam_sub_section:
         active_exams = active_exams.filter(sub_section=exam_sub_section)
+    active_exams = active_exams[:1]
 
     selected_assignment = None
     selected_exam = None
@@ -3470,6 +3471,212 @@ def save_mark(request):
         exam.year, exam.term, exam.name,
     )
     return JsonResponse({'ok': True, 'saved': True, 'mark_id': mark_id})
+
+
+@login_required(login_url='login')
+@tenant_read_only_required
+def batch_save_marks(request):
+    """
+    AJAX endpoint to batch-save multiple marks in a single DB transaction.
+    POST JSON: {marks: [{student_id, score, maximum_marks}, ...], assignment_id, exam_id}
+
+    This replaces per-student individual saves with a single atomic bulk operation,
+    reducing DB round-trips from N to ~3 and eliminating SELECT FOR UPDATE contention.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    if not user_can_mutate_marks(request.user):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    marks_data = data.get('marks', [])
+    assignment_id = data.get('assignment_id')
+    exam_id = data.get('exam_id')
+    maximum_marks_default = data.get('maximum_marks', 100)
+
+    if not marks_data or not assignment_id or not exam_id:
+        return JsonResponse({'error': 'Missing parameters'}, status=400)
+
+    # Rate limit: 1 batch per 2 seconds per user
+    user_id = request.user.id
+    cache_key = f"rate_limit_batch_{user_id}"
+    last_batch = cache.get(cache_key)
+    now = time.time()
+    if last_batch and (now - last_batch) < 2.0:
+        return JsonResponse({'error': 'Too many requests. Slow down.'}, status=429)
+    cache.set(cache_key, now, timeout=5)
+
+    try:
+        teacher = get_school_object_or_403(Teacher, request, user=request.user)
+    except (PermissionDenied, Http404):
+        return JsonResponse({'error': 'No teacher profile'}, status=403)
+
+    school = get_request_school(request)
+
+    try:
+        assignment = SubjectAssignment.objects.get(id=assignment_id, school=school, teacher_profile=teacher)
+    except SubjectAssignment.DoesNotExist:
+        return JsonResponse({'error': 'Assignment not found'}, status=404)
+
+    try:
+        exam = Exam.objects.get(id=exam_id, school=school, status='active')
+    except Exam.DoesNotExist:
+        return JsonResponse({'error': 'Exam not found'}, status=404)
+
+    # Check submission status
+    submission = MarkSubmission.objects.filter(
+        school=school, teacher=teacher, subject=assignment.subject,
+        class_name=assignment.class_name, stream=assignment.stream,
+        exam_name=exam.name, term=exam.term, year=exam.year,
+        school_section=assignment.school_section,
+    ).first()
+    if submission and submission.status in ('submitted', 'approved', 'published'):
+        return JsonResponse({'error': 'Sheet is locked'}, status=403)
+
+    # Pre-fetch grading scale once
+    from .grading_engine import resolve_scale_fast
+    subject_id = assignment.subject.id if assignment.subject else None
+    grading_scale = resolve_scale_fast(
+        school.pk, assignment.school_section, assignment.sub_section,
+        subject_id=subject_id,
+    )
+    from ..security.integrity import compute_mark_checksum
+
+    saved_count = 0
+    with transaction.atomic():
+        # Fetch all existing marks for this subject/exam in ONE query
+        existing_marks = {
+            m.student_id: m for m in Mark.all_objects.filter(
+                subject=assignment.subject,
+                term=exam.term,
+                exam_type=exam.name,
+                year=exam.year,
+                school=school,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
+            )
+        }
+
+        # Prefetch student objects for new marks (avoids N+1 in the loop)
+        student_ids = [item.get('student_id') for item in marks_data if item.get('student_id')]
+        students_map = {
+            s.id: s for s in Student.objects.filter(id__in=student_ids, school=school)
+        }
+
+        marks_to_create = []
+        marks_to_update = []
+        marks_to_delete = []
+
+        for item in marks_data:
+            student_id = item.get('student_id')
+            score_value = str(item.get('score', '')).strip()
+            maximum_marks = item.get('maximum_marks', maximum_marks_default)
+
+            if not student_id:
+                continue
+
+            try:
+                maximum_marks = int(maximum_marks)
+            except (ValueError, TypeError):
+                maximum_marks = 100
+
+            existing = existing_marks.get(int(student_id) if str(student_id).isdigit() else student_id)
+
+            # Clear mark
+            if existing and score_value == '':
+                marks_to_delete.append(existing.pk)
+                continue
+
+            if score_value.upper() == 'AB':
+                if existing:
+                    existing.raw_score = None
+                    existing.maximum_marks = maximum_marks
+                    existing.score = 0
+                    existing.is_absent = True
+                    existing.performance_level = 'AB'
+                    existing.points = 0
+                    existing.integrity_checksum = compute_mark_checksum(existing)
+                    marks_to_update.append(existing)
+                else:
+                    student = students_map.get(int(student_id) if str(student_id).isdigit() else student_id)
+                    if not student:
+                        continue
+                    new_mark = Mark(
+                        school=school, student=student,
+                        subject=assignment.subject,
+                        term=exam.term, exam_type=exam.name, year=exam.year,
+                        school_section=assignment.school_section,
+                        sub_section=assignment.sub_section,
+                        raw_score=None, maximum_marks=maximum_marks,
+                        score=0, is_absent=True,
+                        performance_level='AB', points=0,
+                    )
+                    new_mark.integrity_checksum = compute_mark_checksum(new_mark)
+                    marks_to_create.append(new_mark)
+                saved_count += 1
+                continue
+
+            # Numeric score
+            try:
+                raw_score = int(score_value)
+            except ValueError:
+                continue
+
+            if raw_score < 0 or raw_score > maximum_marks:
+                continue
+
+            score = round((raw_score / maximum_marks) * 100)
+
+            if grading_scale:
+                perf_level, perf_points = get_subject_level_fast(score, grading_scale)
+            else:
+                perf_level, perf_points = '-', 0
+
+            if existing:
+                existing.raw_score = raw_score
+                existing.maximum_marks = maximum_marks
+                existing.score = score
+                existing.is_absent = False
+                existing.performance_level = perf_level
+                existing.points = perf_points
+                existing.integrity_checksum = compute_mark_checksum(existing)
+                marks_to_update.append(existing)
+            else:
+                student = students_map.get(int(student_id) if str(student_id).isdigit() else student_id)
+                if not student:
+                    continue
+                new_mark = Mark(
+                    school=school, student=student,
+                    subject=assignment.subject,
+                    term=exam.term, exam_type=exam.name, year=exam.year,
+                    school_section=assignment.school_section,
+                    sub_section=assignment.sub_section,
+                    raw_score=raw_score, maximum_marks=maximum_marks,
+                    score=score, is_absent=False,
+                    performance_level=perf_level, points=perf_points,
+                )
+                new_mark.integrity_checksum = compute_mark_checksum(new_mark)
+                marks_to_create.append(new_mark)
+            saved_count += 1
+
+        if marks_to_delete:
+            Mark.all_objects.filter(pk__in=marks_to_delete).delete()
+        if marks_to_create:
+            Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
+        if marks_to_update:
+            Mark.all_objects.bulk_update(
+                marks_to_update,
+                ['raw_score', 'maximum_marks', 'score', 'is_absent',
+                 'performance_level', 'points', 'integrity_checksum'],
+                batch_size=250,
+            )
+
+    return JsonResponse({'ok': True, 'saved': saved_count})
 
 
 @login_required(login_url='login')

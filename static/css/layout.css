@@ -1080,6 +1080,90 @@ body.sidebar-collapsed .main-content {
     color: var(--en-danger);
 }
 
+/* ── Mobile Menu Grid Cards (Zeraki-style) ──────────────── */
+.mm-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 0 2px;
+}
+
+.mm-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 8px;
+    border-radius: var(--radius-xl, 16px);
+    background: #ffffff;
+    border: 1px solid var(--en-border-light, #f1f5f9);
+    text-decoration: none;
+    color: var(--en-text, #1e293b);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.mm-card:active {
+    transform: scale(0.95);
+}
+
+.mm-card-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: all 0.15s ease;
+}
+
+.mm-card-icon.green  { background: #ecfdf5; color: #16a34a; }
+.mm-card-icon.blue   { background: #eff6ff; color: #2563eb; }
+.mm-card-icon.purple { background: #f5f3ff; color: #7c3aed; }
+.mm-card-icon.orange { background: #fff7ed; color: #ea580c; }
+.mm-card-icon.teal   { background: #f0fdfa; color: #0d9488; }
+.mm-card-icon.rose   { background: #fff1f2; color: #e11d48; }
+
+.mm-card:active .mm-card-icon {
+    transform: scale(0.9);
+}
+
+.mm-card-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.2;
+    color: var(--en-text, #1e293b);
+}
+
+.mm-signout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius-lg, 12px);
+    background: var(--en-danger-bg, #fef2f2);
+    color: var(--en-danger, #dc2626);
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    font-family: inherit;
+}
+
+.mm-signout:active {
+    transform: scale(0.97);
+    background: var(--en-danger, #dc2626);
+    color: #fff;
+}
+
 /* ── Mobile Top Bar ─────────────────────────────────────────── */
 .mobile-topbar {
     display: none !important; /* Replaced by global header */
@@ -1763,6 +1847,9 @@ body.sidebar-collapsed .main-content {
         padding-top: calc(12px + env(safe-area-inset-top, 0px));
         background: #ffffff;
         border-bottom: 0.5px solid rgba(0,0,0,0.08);
+        position: sticky;
+        top: 0;
+        z-index: 1100;
     }
 
     .mg-header-left {
@@ -1836,15 +1923,21 @@ body.sidebar-collapsed .main-content {
     .mg-dropdown {
         display: none;
         position: absolute;
-        top: calc(100% + 8px);
+        top: calc(100% + 42px);
         right: 0;
         width: 220px;
         background: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-        border: 0.5px solid rgba(0,0,0,0.08);
-        z-index: 1000;
+        border-radius: 16px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.18), 0 0 0 0.5px rgba(0,0,0,0.06);
+        border: none;
+        z-index: 9999;
         overflow: hidden;
+        animation: mgDropIn 0.2s ease;
+    }
+
+    @keyframes mgDropIn {
+        from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     .mg-dropdown.open {
@@ -1855,18 +1948,18 @@ body.sidebar-collapsed .main-content {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 14px 16px;
-        border-bottom: 1px solid rgba(0,0,0,0.06);
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
     }
 
     .mg-dropdown-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
         background: linear-gradient(145deg, #60A5FA 0%, #2563EB 50%, #1E40AF 100%);
         color: #fff;
         font-weight: 700;
-        font-size: 0.8125rem;
+        font-size: 0.875rem;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1885,37 +1978,47 @@ body.sidebar-collapsed .main-content {
     }
 
     .mg-dropdown-divider {
-        height: 1px;
-        background: rgba(0,0,0,0.06);
+        height: 0;
+        display: none;
     }
 
     .mg-dropdown-item {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 12px 16px;
+        gap: 12px;
+        padding: 14px 16px;
         font-size: 14px;
-        font-weight: 500;
-        color: #0f172a;
+        font-weight: 600;
+        color: #1e293b;
         text-decoration: none;
-        transition: background 0.15s ease;
+        transition: background 0.12s ease;
     }
 
     .mg-dropdown-item:active {
-        background: #f2f2f7;
+        background: #f1f5f9;
     }
 
     .mg-dropdown-item i {
-        font-size: 18px;
-        color: #64748b;
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        color: #475569;
     }
 
     .mg-logout {
-        color: #ef4444;
+        color: #ef4444 !important;
+        border-top: 1px solid #f1f5f9;
+        margin-top: 4px;
     }
 
     .mg-logout i {
-        color: #ef4444;
+        background: #fef2f2 !important;
+        color: #ef4444 !important;
     }
 
     .main-content {
@@ -1926,6 +2029,12 @@ body.sidebar-collapsed .main-content {
     /* On mobile, both .dm-subnav and .mobile-global-header are in-flow (not fixed),
        so .app-content doesn't need the desktop margin-top that accounts for them.
        The in-flow elements naturally push .app-content down. */
+    .dm-subnav {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+    }
     .app-content {
         margin-top: 0;
     }

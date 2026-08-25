@@ -53,11 +53,58 @@
   .tlp-table .col-username{font-size:10pt;word-break:break-all;white-space:normal;max-width:180px}
 
   @media(max-width:640px){.clp-page{padding:16px 16px 40px}}
+
+  @media(max-width:768px){
+    .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
+    .app-content{margin-top:0!important}
+    .clp-page{padding:0 0 96px!important;max-width:100%}
+
+    .clp-actions-top{position:sticky;top:0;z-index:10;padding:12px 16px;background:rgba(245,247,246,0.92);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-bottom:0.5px solid rgba(0,0,0,0.06);flex-direction:row;gap:8px;margin:0}
+    .clp-top-action{flex:1;height:44px;border-radius:12px;font-size:14px}
+    .clp-top-action.print{background:#fff;color:#4CAF50;border:1.5px solid #4CAF50}
+    .clp-top-action.pdf{background:linear-gradient(135deg,#4CAF50,#2E7D32);border:none;color:#fff;box-shadow:0 4px 14px rgba(76,175,80,0.3)}
+    .clp-top-action.pdf:active{transform:scale(0.97)}
+
+    .clp-sheet-card{border:none;border-radius:0;box-shadow:none;margin:0;background:#F5F7F6}
+    .sheet-heading{display:none}
+    .sheet-accent-bar{display:none}
+    .clp-table-wrap{display:none}
+
+    .tl-mobile-header{padding:20px 16px 16px;text-align:center}
+    .tl-mobile-header .tl-logo{width:64px;height:64px;border-radius:16px;object-fit:contain;border:2px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.1);margin:0 auto 12px;display:block}
+    .tl-mobile-header .tl-logo-placeholder{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#0f5a35,#1a7d47);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;margin:0 auto 12px;box-shadow:0 4px 16px rgba(0,0,0,0.1)}
+    .tl-mobile-header h2{font-size:18px;font-weight:800;color:#1C1C1E;margin:0;letter-spacing:-0.02em}
+    .tl-mobile-header .tl-sub{font-size:12px;color:#64748b;font-weight:600;margin:4px 0 0;text-transform:uppercase;letter-spacing:0.04em}
+    .tl-mobile-header .tl-count{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#199E41;background:rgba(36,229,94,0.1);padding:5px 10px;border-radius:8px;margin-top:10px}
+
+    .tl-card-list{padding:0 16px}
+    .tl-teacher-card{background:#fff;border-radius:14px;border:1px solid #F1F5F9;box-shadow:0 2px 12px rgba(15,23,42,0.04);margin-bottom:10px;overflow:hidden;transition:transform 0.15s}
+    .tl-teacher-card:active{transform:scale(0.98)}
+    .tl-teacher-top{display:flex;align-items:center;gap:12px;padding:14px 14px 10px}
+    .tl-avatar{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0;text-transform:uppercase}
+    .tl-avatar.green{background:linear-gradient(135deg,#4CAF50,#2E7D32)}
+    .tl-avatar.blue{background:linear-gradient(135deg,#3B82F6,#1D4ED8)}
+    .tl-avatar.purple{background:linear-gradient(135deg,#8B5CF6,#6D28D9)}
+    .tl-avatar.orange{background:linear-gradient(135deg,#F97316,#EA580C)}
+    .tl-avatar.teal{background:linear-gradient(135deg,#14B8A6,#0D9488)}
+    .tl-info{flex:1;min-width:0}
+    .tl-name{font-size:14px;font-weight:700;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tl-role{font-size:11px;font-weight:600;color:#64748b;margin-top:1px}
+    .tl-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.03em}
+    .tl-badge.admin{background:#FEF3C7;color:#92400E}
+    .tl-badge.teacher{background:#DBEAFE;color:#1E40AF}
+    .tl-badge.hod{background:#E0E7FF;color:#3730A3}
+    .tl-details{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:0 14px 14px}
+    .tl-detail{display:flex;flex-direction:column;gap:1px}
+    .tl-detail-label{font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em}
+    .tl-detail-value{font-size:12px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tl-detail.full{grid-column:1/-1}
+  }
   @media print{
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
     html{overflow:visible!important}
     body{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important}
-    .sub-nav-bar,.sidebar,.global-header,.bottom-nav,.clp-actions-top{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+    .sub-nav-bar,.sidebar,.global-header,.bottom-nav,.clp-actions-top,.tl-mobile-view{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
     .clp-page{padding:0!important;margin:0!important;max-width:none!important}
     .clp-sheet-card{border:none!important;border-radius:0!important;box-shadow:none!important}
     .clp-sheet-card .sheet-heading{border-radius:0!important;border:none!important;border-bottom:3px solid #4CAF50!important;padding:12pt 0 10pt 130px!important;min-height:100px!important}
@@ -139,6 +186,87 @@
       </table>
     </div>
   </div>
+
+  <div class="tl-mobile-view" style="display:none;">
+    <div class="tl-mobile-header">
+      {% if school.logo %}
+        <img class="tl-logo" src="{{ school.logo.url }}" alt="{{ school.name }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="tl-logo-placeholder" style="display:none;">{{ school.name|truncatechars:1 }}</div>
+      {% else %}
+        <div class="tl-logo-placeholder">{{ school.name|truncatechars:1 }}</div>
+      {% endif %}
+      <h2>{{ school.name }}</h2>
+      <p class="tl-sub">Teachers List | {% now "Y" %}</p>
+      <span class="tl-count"><i class="ph ph-users" style="font-size:12px;"></i> {{ teachers|length }} Teachers</span>
+    </div>
+    <div class="tl-card-list">
+      {% for teacher in teachers %}
+      <div class="tl-teacher-card">
+        <div class="tl-teacher-top">
+          <div class="tl-avatar {% cycle 'green' 'blue' 'purple' 'orange' 'teal' %}">{{ teacher.user.get_full_name|default:teacher.user.username|truncatechars:2 }}</div>
+          <div class="tl-info">
+            <div class="tl-name">{{ teacher.user.get_full_name|default:teacher.user.username }}</div>
+            <div class="tl-role">{{ teacher.title|default:"" }}{% if teacher.title %} · {% endif %}{{ teacher.assigned_task|default:"Teacher" }}</div>
+          </div>
+          {% if teacher.assigned_task == 'Admin' or teacher.assigned_task == 'HOD' %}
+          <span class="tl-badge {% if teacher.assigned_task == 'Admin' %}admin{% elif teacher.assigned_task == 'HOD' %}hod{% else %}teacher{% endif %}">{{ teacher.assigned_task }}</span>
+          {% endif %}
+        </div>
+        <div class="tl-details">
+          {% if teacher.phone_number %}
+          <div class="tl-detail">
+            <span class="tl-detail-label">Phone</span>
+            <span class="tl-detail-value">{{ teacher.phone_number }}</span>
+          </div>
+          {% endif %}
+          {% if teacher.gender %}
+          <div class="tl-detail">
+            <span class="tl-detail-label">Gender</span>
+            <span class="tl-detail-value">{{ teacher.gender }}</span>
+          </div>
+          {% endif %}
+          {% if teacher.tsc_number %}
+          <div class="tl-detail">
+            <span class="tl-detail-label">TSC No</span>
+            <span class="tl-detail-value">{{ teacher.tsc_number }}</span>
+          </div>
+          {% endif %}
+          {% if teacher.section_label %}
+          <div class="tl-detail">
+            <span class="tl-detail-label">Section</span>
+            <span class="tl-detail-value">{{ teacher.section_label }}</span>
+          </div>
+          {% endif %}
+          <div class="tl-detail full">
+            <span class="tl-detail-label">Username</span>
+            <span class="tl-detail-value">{{ teacher.user.username }}</span>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div style="text-align:center;padding:40px 20px;color:#64748b;font-size:14px;font-weight:600;">No teachers found.</div>
+      {% endfor %}
+    </div>
+  </div>
+
   <div class="print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM &copy;2026</div>
 </div>
+<script>
+(function(){
+  function toggleView(){
+    var mobile=document.querySelector('.tl-mobile-view');
+    var desktop=document.querySelector('.clp-sheet-card');
+    if(!mobile||!desktop) return;
+    if(window.innerWidth<=768){
+      mobile.style.display='block';
+      desktop.style.display='none';
+    }else{
+      mobile.style.display='none';
+      desktop.style.display='block';
+    }
+  }
+  toggleView();
+  window.addEventListener('resize',toggleView);
+})();
+</script>
 {% endblock %}

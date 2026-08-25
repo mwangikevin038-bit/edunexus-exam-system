@@ -754,13 +754,78 @@
        RESPONSIVE
        ═══════════════════════════════════════════════════════════ */
     @media (max-width: 768px) {
-        .rc-topbar { flex-direction: column; gap: 16px; align-items: stretch; padding: 16px; }
-        .rc-topbar-right { justify-content: stretch; }
-        .rc-topbar-btn { flex: 1; justify-content: center; }
-        .rc-top-grid { flex-direction: column; gap: 16px; }
-        .rc-chart-canvas-wrap { height: 250px; }
-        .rc-action-buttons { flex-direction: column; }
-        .rc-action-btn { flex: 1; justify-content: center; }
+        .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important;overflow-x:hidden}
+        .app-content{margin-top:0!important;overflow-x:hidden}
+        .container-fluid{max-width:100%!important;padding:0!important;margin:0!important;overflow-x:hidden}
+        html,body{overflow-x:hidden}
+        .rc-topbar{flex-direction:column;gap:16px;align-items:stretch;padding:16px}
+        .rc-topbar-right{justify-content:stretch}
+        .rc-topbar-btn{flex:1;justify-content:center}
+        .rc-top-grid{flex-direction:column;gap:16px}
+        .rc-chart-canvas-wrap{height:250px}
+        .rc-action-buttons{flex-direction:column;padding:0 12px;gap:8px;margin-bottom:12px}
+        .rc-action-btn{flex:1;justify-content:center;height:48px;border-radius:12px;font-size:15px}
+        .rc-action-btn-green{background:linear-gradient(135deg,#4CAF50,#2E7D32)!important;box-shadow:0 4px 14px rgba(76,175,80,0.3)!important}
+        .rc-action-btn-green:active{transform:scale(0.97)}
+        .rc-action-btn-outline{background:#0f172a!important;color:#fff!important}
+
+        .rc-context-card{margin:0 12px 12px!important;border-radius:14px!important;border:1px solid #E2E8F0!important;box-shadow:0 2px 12px rgba(15,23,42,0.06)!important}
+        .rc-context-header{padding:16px!important}
+        .rc-context-title{font-size:16px!important}
+        .rc-context-subtitle{font-size:13px!important}
+        .rc-context-summary{padding:12px 16px!important}
+        .rc-context-detail-label{font-size:14px!important}
+        .rc-context-form{padding:0 16px 16px!important}
+        .rc-form-row{grid-template-columns:1fr!important;gap:12px!important}
+        .rc-form-select{height:48px;font-size:15px;border-radius:12px}
+        .rc-form-actions{justify-content:stretch}
+        .rc-form-btn{width:100%;justify-content:center;height:48px;border-radius:12px;font-size:15px;background:linear-gradient(135deg,#4CAF50,#2E7D32)!important;box-shadow:0 4px 14px rgba(76,175,80,0.3)!important}
+
+        #reportCardsContainer{
+            padding:0 0 96px 0;
+            overflow-x:hidden;
+        }
+        .rc-card-scroll{
+            overflow-x:auto;
+            -webkit-overflow-scrolling:touch;
+            padding:0 0 4px 0;
+            margin:0 0 16px 0;
+            scroll-behavior:smooth;
+        }
+        .rc-card-scroll::after{
+            content:'← Swipe to see full report card →';
+            display:block;
+            text-align:center;
+            font-size:11px;
+            color:#94A3B8;
+            font-family:'Inter',sans-serif;
+            font-weight:600;
+            padding:8px 0 0;
+            letter-spacing:0.02em;
+        }
+        #reportCardsContainer .report-card{
+            width:7.4in!important;
+            min-width:7.4in!important;
+            max-width:none!important;
+            margin:0 12px!important;
+            border-radius:14px!important;
+            box-shadow:0 2px 16px rgba(15,23,42,0.08)!important;
+            border:1px solid #E2E8F0!important;
+            overflow:visible;
+        }
+        .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+        .rc-table{min-width:480px}
+        .rc-top-grid{flex-direction:column!important;gap:16px!important}
+        .rc-student-block{min-width:0!important}
+        .rc-chart-block{min-width:0!important}
+        .rc-stats{grid-template-columns:repeat(3,1fr)!important;gap:6px!important}
+        .rc-stat{padding:10px 6px!important}
+        .rc-stat-label{font-size:7pt!important}
+        .rc-stat-value{font-size:13pt!important}
+        .rc-remarks-grid{grid-template-columns:1fr!important;gap:10px!important}
+        .footer-dates{grid-template-columns:1fr!important;gap:10px!important}
+        .rc-descriptors-table{font-size:8pt}
+        .rc-descriptors-table th,.rc-descriptors-table td{padding:4px 6px!important;font-size:7.5pt!important}
     }
 
     @media (min-width: 769px) {
@@ -816,6 +881,8 @@
             max-width: none !important; width: 100% !important;
         }
         #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        .rc-card-scroll { overflow: visible !important; margin: 0 !important; padding: 0 !important; }
+        .rc-card-scroll::after { display: none !important; }
 
         /* ═══════════════════════════════════════════════════════
            GLOBAL PRINT CONTAINER — MIRROR BROWSER VIEW
@@ -1103,7 +1170,9 @@
 
     <div id="reportCardsContainer">
         {% for student_data in student_marks_list %}
+        <div class="rc-card-scroll">
         {% include "students/report_card_content.html" %}
+        </div>
         {% endfor %}
     </div>
 </div>

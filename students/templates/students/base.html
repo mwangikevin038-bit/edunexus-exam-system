@@ -180,6 +180,7 @@
     </header>
     {% endif %}
 
+    {% if user.is_authenticated %}
     <!-- GLOBAL LOADER -->
     <div class="global-loader-overlay" id="globalLoader">
         <div class="loader-bars">
@@ -288,6 +289,8 @@
     <!-- SUB-NAVIGATION BAR (rendered outside app-content for full-width flush positioning) -->
     {% block sub_tabs %}{% endblock %}
 
+    {% endif %}{# end user.is_authenticated #}
+
     <!-- MAIN CONTENT -->
     <div class="app-content">
         <!-- PAGE CONTENT -->
@@ -296,6 +299,7 @@
         </main>
     </div>
 
+    {% if user.is_authenticated %}
     <!-- BOTTOM NAV BAR (Mobile) -->
     <nav class="bottom-nav" id="bottomNav" aria-label="Main navigation">
         {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
@@ -336,18 +340,18 @@
                 <span>Menu</span>
             </button>
         {% else %}
-            {# ── TEACHER: Home · Lists · Capture · Results · Menu ── #}
+            {# ── TEACHER: Dashboard · Students · Capture · Results · Menu ── #}
             <a class="bottom-nav-item {% if request.resolver_match.url_name == 'dashboard_alt' or request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
                href="{% url 'dashboard_alt' %}"
                aria-label="Dashboard">
-                <i class="ph ph-user-circle"></i>
-                <span>Home</span>
+                <i class="ph ph-squares-four"></i>
+                <span>Dashboard</span>
             </a>
-            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'learner_profile' %}active{% endif %}"
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'teacher_search_student' %}active{% endif %}"
                href="{% url 'class_lists' %}"
-               aria-label="Learner Lists">
-                <i class="ph ph-users"></i>
-                <span>Lists</span>
+               aria-label="Students">
+                <i class="ph ph-student"></i>
+                <span>Students</span>
             </a>
             {% with ws=request.session.workspace_section sec=request.session.school_section teacher_sec=request.user.teacher_profile.school_section %}
             {% if ws == 'LOWER_PRIMARY' or ws == 'PRIMARY' or sec == 'PRIMARY' or teacher_sec == 'PRIMARY' %}
@@ -370,14 +374,14 @@
                 </a>
             {% endif %}
             {% endwith %}
-            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' %}active{% endif %}"
-               href="{% url 'results_list' %}"
-               aria-label="Published Results">
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' or request.resolver_match.url_name == 'teacher_class_comments' %}active{% endif %}"
+               href="{% url 'merit_list' %}"
+               aria-label="Results">
                 <i class="ph ph-chart-bar"></i>
                 <span>Results</span>
             </a>
             <button type="button"
-                    class="bottom-nav-item {% if request.resolver_match.url_name == 'home_alt' or request.resolver_match.url_name == 'password_change' %}active{% endif %}"
+                    class="bottom-nav-item"
                     id="mobileMenuBtn"
                     aria-label="Open menu"
                     aria-expanded="false"
@@ -402,84 +406,71 @@
             <div class="mobile-menu-body">
                 {% if request.user.is_staff or request.user.is_superuser or request.user.groups.all.0.name == "Main School Admin" or request.user.school_admin_profile %}
                     <div class="mobile-menu-section">
-                        <div class="mobile-menu-section-label">Navigation</div>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'manage_faculty_matrix' %}active{% endif %}" href="{% url 'manage_faculty_matrix' %}">
-                            <i class="ph ph-chalkboard-teacher"></i> Teachers
-                        </a>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'merit_list' %}active{% endif %}" href="{% url 'printouts_hub' %}">
-                            <i class="ph ph-printer"></i> Printouts
-                        </a>
-                    </div>
-                    <div class="mobile-menu-section">
-                        <div class="mobile-menu-section-label">Reports</div>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'report_card_select' %}active{% endif %}" href="{% url 'report_card_select' %}">
-                            <i class="ph ph-certificate"></i> Report Cards
-                        </a>
+                        <div class="mobile-menu-section-label">Menu Items</div>
+                        <div class="mm-grid">
+                            <a class="mm-card" href="{% url 'admin_add_student' %}">
+                                <div class="mm-card-icon blue"><i class="ph ph-users-three"></i></div>
+                                <span class="mm-card-label">Students</span>
+                            </a>
+                            <a class="mm-card" href="{% url 'manage_faculty_matrix' %}">
+                                <div class="mm-card-icon green"><i class="ph ph-chalkboard-teacher"></i></div>
+                                <span class="mm-card-label">Teachers</span>
+                            </a>
+                            <a class="mm-card" href="{% url 'manage_classes' %}">
+                                <div class="mm-card-icon purple"><i class="ph ph-buildings"></i></div>
+                                <span class="mm-card-label">Classes</span>
+                            </a>
+                            <a class="mm-card" href="{% url 'manage_exams' %}">
+                                <div class="mm-card-icon orange"><i class="ph ph-clipboard-text"></i></div>
+                                <span class="mm-card-label">Exams</span>
+                            </a>
+                            <a class="mm-card" href="{% url 'printouts_hub' %}">
+                                <div class="mm-card-icon teal"><i class="ph ph-printer"></i></div>
+                                <span class="mm-card-label">Printouts</span>
+                            </a>
+                        </div>
                     </div>
                     <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">Settings</div>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'grading_configuration' %}active{% endif %}" href="{% url 'grading_configuration' %}">
-                            <i class="ph ph-sliders"></i> Grading Config
-                        </a>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'school_settings' %}active{% endif %}" href="{% url 'school_settings' %}">
-                            <i class="ph ph-gear-six"></i> School Settings
-                        </a>
+                        <div class="mm-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <a class="mm-card" href="{% url 'school_settings' %}">
+                                <div class="mm-card-icon rose"><i class="ph ph-gear-six"></i></div>
+                                <span class="mm-card-label">Settings</span>
+                            </a>
+                        </div>
                     </div>
                 {% else %}
                     <div class="mobile-menu-section">
-                        <div class="mobile-menu-section-label">My Account</div>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'home_alt' %}active{% endif %}" href="{% url 'home_alt' %}">
-                            <i class="ph ph-identification-badge"></i> Faculty Profile
-                        </a>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'password_change' %}active{% endif %}" href="{% url 'password_change' %}">
-                            <i class="ph ph-shield-check"></i> Change Password
-                        </a>
+                        <div class="mobile-menu-section-label">Quick Links</div>
+                        <div class="mm-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <a class="mm-card" href="{% url 'home_alt' %}">
+                                <div class="mm-card-icon blue"><i class="ph ph-identification-badge"></i></div>
+                                <span class="mm-card-label">Faculty Profile</span>
+                            </a>
+                            <a class="mm-card" href="{% url 'password_change' %}">
+                                <div class="mm-card-icon orange"><i class="ph ph-shield-check"></i></div>
+                                <span class="mm-card-label">Change Password</span>
+                            </a>
+                            {% if "Class Teacher" in request.user.teacher_profile.assigned_task %}
+                            <a class="mm-card" href="{% url 'report_card_select' %}">
+                                <div class="mm-card-icon green"><i class="ph ph-certificate"></i></div>
+                                <span class="mm-card-label">Report Cards</span>
+                            </a>
+                            {% endif %}
+                        </div>
                     </div>
-                    {% if "Class Teacher" in request.user.teacher_profile.assigned_task %}
-                    <div class="mobile-menu-section">
-                        <div class="mobile-menu-section-label">Class Teacher</div>
-                        <a class="mobile-menu-link {% if request.resolver_match.url_name == 'report_card_select' %}active{% endif %}" href="{% url 'report_card_select' %}">
-                            <i class="ph ph-certificate"></i> Report Cards
-                        </a>
-                    </div>
-                    {% endif %}
-                {% endif %}
-
-                {% if request.session.school_section == 'BOTH' %}
-                <div class="mobile-menu-section">
-                    <div class="mobile-menu-section-label">Workspace</div>
-                    <form method="post" action="{% url 'switch_workspace' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="section" value="LOWER_PRIMARY">
-                        <button type="submit" class="mobile-menu-link" style="width:100%; border:none; background:transparent; text-align:left;">
-                            <i class="ph ph-pencil-simple"></i> Lower Primary
-                        </button>
-                    </form>
-                    <form method="post" action="{% url 'switch_workspace' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="section" value="PRIMARY">
-                        <button type="submit" class="mobile-menu-link" style="width:100%; border:none; background:transparent; text-align:left;">
-                            <i class="ph ph-book"></i> Upper Primary
-                        </button>
-                    </form>
-                    <form method="post" action="{% url 'switch_workspace' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="section" value="JSS">
-                        <button type="submit" class="mobile-menu-link" style="width:100%; border:none; background:transparent; text-align:left;">
-                            <i class="ph ph-graduation-cap"></i> JSS
-                        </button>
-                    </form>
-                </div>
                 {% endif %}
 
                 <div class="mobile-menu-section">
-                    <a class="mobile-menu-link mobile-menu-link-danger" href="{% url 'logout' %}">
+                    <button class="mm-signout" onclick="window.location.href='{% url 'logout' %}'">
                         <i class="ph ph-sign-out"></i> Sign Out
-                    </a>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+
+    {% endif %}{# end user.is_authenticated #}
 
     <!-- SCRIPTS -->
     <script>

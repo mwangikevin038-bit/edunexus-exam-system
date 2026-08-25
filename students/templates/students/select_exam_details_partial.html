@@ -5,15 +5,14 @@
     @keyframes capIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
     /* Message banners (assessment list) */
-    .cap-alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;margin-bottom:16px;font-size:.8125rem;font-weight:600;line-height:1.4}
-    .cap-alert i{font-size:16px;margin-top:1px;flex-shrink:0}
-    .cap-alert-success{background:#f0fdf4;color:#15803d}
-    .cap-alert-info{background:#eff6ff;color:#1d4ed8}
-    .cap-alert-danger{background:#fef2f2;color:#dc2626}
-    .cap-alert-warning{background:#fffbeb;color:#92400e}
+    .cap-alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:var(--cp-radius,16px);margin-bottom:16px;font-size:.8125rem;font-weight:600;line-height:1.4;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .cap-alert i{font-size:15px;margin-top:1px;flex-shrink:0}
+    .cap-alert-success{background:rgba(240,253,244,0.7);border:0.5px solid rgba(187,247,208,0.6);color:#15803d}
+    .cap-alert-info{background:rgba(239,246,255,0.7);border:0.5px solid rgba(191,219,254,0.6);color:#1d4ed8}
+    .cap-alert-danger{background:rgba(254,242,242,0.7);border:0.5px solid rgba(254,202,202,0.6);color:#dc2626}
+    .cap-alert-warning{background:rgba(255,251,235,0.7);border:0.5px solid rgba(253,230,138,0.6);color:#92400e}
 
     /* Entry-view extras not in the static CSS */
-    .en-body{padding-bottom:96px}
     .en-meta-pills--inline{margin-top:12px;margin-bottom:14px}
     .en-score.is-invalid{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.08);background:#fef2f2}
     .en-submit-btn[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none}
@@ -133,20 +132,38 @@
                     <input type="hidden" name="assignment_id" value="{{ selected_assignment.id }}">
                     <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
 
-                    <div class="en-meta-pills en-meta-pills--inline">
-                        <span class="en-meta-pill">
-                            <i class="ph ph-squares-four"></i>
-                            <span>Total:</span>
-                            <div class="en-meta-pill-input">
+                    {# ── Total Marks Gate ────────────────────────────── #}
+                    <div class="en-total-gate" id="totalGate">
+                        <div class="en-total-gate-card" id="totalGateCard">
+                            <div class="en-total-gate-header">
+                                <div class="en-total-gate-icon"><i class="ph ph-target"></i></div>
+                                <div class="en-total-gate-info">
+                                    <div class="en-total-gate-title">Set Total Marks</div>
+                                    <div class="en-total-gate-desc">How many marks is this assessment worth? Confirm before entering scores.</div>
+                                </div>
+                            </div>
+                            <div class="en-total-gate-input-row">
                                 <input type="number" name="maximum_marks" id="maximumMarks"
-                                       class="js-maximum-marks"
+                                       class="js-maximum-marks en-total-gate-input"
                                        value="{{ current_maximum_marks|default:100 }}"
                                        min="1" max="500"
-                                       {% if is_locked or is_submitted %}readonly{% endif %}
-                                       onchange="recalculateMaxMarks(this)">
-                                <span>pts</span>
+                                       inputmode="numeric"
+                                       {% if is_locked or is_submitted %}readonly{% endif %}>
+                                <span class="en-total-gate-unit">marks</span>
                             </div>
-                        </span>
+                            {% if not is_locked and not is_submitted %}
+                            <button type="button" class="en-total-gate-btn" id="totalGateBtn">
+                                <i class="ph ph-check-circle"></i> Confirm &amp; Start Entering
+                            </button>
+                            {% endif %}
+                        </div>
+                        <div class="en-total-gate-badge" id="totalGateBadge" style="display:none;">
+                            <i class="ph ph-check-circle"></i>
+                            <span>Total: <strong id="totalGateBadgeValue">{{ current_maximum_marks|default:100 }}</strong> marks</span>
+                            {% if not is_locked and not is_submitted %}
+                            <button type="button" class="en-total-gate-badge-edit" id="totalGateEdit">Change</button>
+                            {% endif %}
+                        </div>
                     </div>
 
                     {# ── Learner Scores Section ──────────────────────── #}
@@ -231,7 +248,7 @@
                     <div class="cp-group">
                         <div class="cp-group-head">
                             <div class="cp-group-left">
-                                <div class="cp-group-icon"><i class="ph ph-chalkboard-teacher"></i></div>
+                                <div class="cp-group-icon">{{ group.grouper|truncatechars:2 }}</div>
                                 <div class="cp-group-name">{{ group.grouper }}</div>
                             </div>
                             <span class="cp-group-count">{{ group.list|length }}</span>
@@ -318,11 +335,12 @@
         return _csrf;
     }
 
-    // Single in-flight fetch per student — coalesce rapid keystrokes.
-    // 1500ms debounce is the sweet spot for typing speed vs. server load.
-    var DEBOUNCE_MS = 1500;
-    var saveTimers = {};
-    var inflightByStudent = {};
+    // ── Batch auto-save: collect changes, flush every 3s as a single request ──
+    // Reduces DB round-trips from N individual transactions to 1 bulk transaction.
+    var BATCH_INTERVAL_MS = 3000;
+    var pendingChanges = {};
+    var batchFlushTimer = null;
+    var batchInflight = false;
 
     function showToast(msg, type) {
         var existing = document.querySelector('.en-toast');
@@ -340,23 +358,14 @@
         setTimeout(function(){ if (t.parentNode) t.remove(); }, 2500);
     }
 
-    function flushPendingSaves() {
-        var promises = [];
-        Object.keys(saveTimers).forEach(function(sid) {
-            clearTimeout(saveTimers[sid]);
-            var row = document.querySelector('.en-student[data-student-id="' + sid + '"]');
-            var input = row && row.querySelector('.js-score');
-            if (input) promises.push(sendSave(input, true));
-        });
-        saveTimers = {};
-        return Promise.all(promises);
-    }
-
     function postJSON(url, payload) {
+        var isFormData = typeof FormData !== 'undefined' && payload instanceof FormData;
+        var headers = {'X-CSRFToken': getCsrfToken()};
+        if (!isFormData) headers['Content-Type'] = 'application/json';
         return fetch(url, {
             method: 'POST',
-            headers: {'X-CSRFToken': getCsrfToken()},
-            body: payload,
+            headers: headers,
+            body: isFormData ? payload : JSON.stringify(payload),
         }).then(function(r) {
             var ct = r.headers.get('content-type') || '';
             if (ct.indexOf('application/json') === -1) {
@@ -368,39 +377,111 @@
         });
     }
 
-    function sendSave(input) {
-        var row = input.closest('.en-student');
-        if (!row || input.readOnly) return Promise.resolve();
-        var studentId = row.getAttribute('data-student-id');
+    function startBatchTimer() {
+        if (batchFlushTimer) return;
+        batchFlushTimer = setInterval(flushBatch, BATCH_INTERVAL_MS);
+    }
+
+    function stopBatchTimer() {
+        if (batchFlushTimer) { clearInterval(batchFlushTimer); batchFlushTimer = null; }
+    }
+
+    function flushBatch() {
+        var keys = Object.keys(pendingChanges);
+        if (!keys.length) { stopBatchTimer(); return; }
+        if (batchInflight) return; // skip — previous request still in flight
+
+        batchInflight = true;
+        var marks = [];
+        keys.forEach(function(sid) {
+            marks.push({student_id: sid, score: pendingChanges[sid]});
+        });
+        pendingChanges = {};
+
         var assignmentId = document.querySelector('input[name="assignment_id"]');
         var examId = document.querySelector('input[name="exam_id"]');
-        if (!studentId || !assignmentId || !examId) return Promise.resolve();
-
-        if (inflightByStudent[studentId]) return inflightByStudent[studentId];
-
-        var fd = new FormData();
-        fd.append('student_id', studentId);
-        fd.append('assignment_id', assignmentId.value);
-        fd.append('exam_id', examId.value);
-        fd.append('score', input.value.trim());
         var maxEl = document.getElementById('maximumMarks');
-        fd.append('maximum_marks', maxEl ? (maxEl.value || '100') : '100');
+        if (!assignmentId || !examId) { batchInflight = false; stopBatchTimer(); return; }
 
-        var p = postJSON('{% url "save_mark" %}', fd);
-        inflightByStudent[studentId] = p;
-        p.finally(function() { delete inflightByStudent[studentId]; });
+        var payload = {
+            marks: marks,
+            assignment_id: assignmentId.value,
+            exam_id: examId.value,
+            maximum_marks: maxEl ? parseInt(maxEl.value || '100', 10) : 100
+        };
 
-        p.then(function(data) {
+        postJSON('{% url "batch_save_marks" %}', payload).then(function(data) {
+            batchInflight = false;
             if (data.ok) {
-                row.classList.add('saved-flash');
-                setTimeout(function(){ row.classList.remove('saved-flash'); }, 800);
-                var draftKey = 'offline_mark_' + studentId + '_' + examId.value;
-                try { localStorage.removeItem(draftKey); } catch(ignored) {}
+                marks.forEach(function(m) {
+                    var row = document.querySelector('.en-student[data-student-id="' + m.student_id + '"]');
+                    if (row) {
+                        row.classList.add('saved-flash');
+                        setTimeout(function(){ row.classList.remove('saved-flash'); }, 800);
+                    }
+                    var examIdEl = document.querySelector('input[name="exam_id"]');
+                    var draftKey = 'offline_mark_' + m.student_id + '_' + (examIdEl ? examIdEl.value : '');
+                    try { localStorage.removeItem(draftKey); } catch(ignored) {}
+                });
+                // Flush again if new changes arrived during the request
+                if (Object.keys(pendingChanges).length) flushBatch();
+                else stopBatchTimer();
             } else if (data.error) {
-                showToast('Save failed: ' + data.error, 'error');
+                showToast('Auto-save failed: ' + data.error, 'error');
+                stopBatchTimer();
             }
-        }).catch(function() { showToast('Network error — score not saved', 'error'); });
-        return p;
+        }).catch(function() {
+            batchInflight = false;
+            showToast('Network error — scores not saved', 'error');
+            stopBatchTimer();
+        });
+    }
+
+    function flushPendingSaves() {
+        // Flush all pending changes synchronously. Returns a Promise that resolves
+        // when the batch request completes (or immediately if nothing pending).
+        var keys = Object.keys(pendingChanges);
+        if (!keys.length) return Promise.resolve();
+        if (batchInflight) {
+            // Previous request still running — wait for it, then re-flush
+            return new Promise(function(resolve) {
+                var waited = 0;
+                var check = setInterval(function() {
+                    waited += 100;
+                    if (!batchInflight || waited >= 3000) {
+                        clearInterval(check);
+                        // Re-flush any new changes that arrived while we waited
+                        if (Object.keys(pendingChanges).length) {
+                            flushBatch();
+                            // Wait again for this new batch
+                            var waited2 = 0;
+                            var check2 = setInterval(function() {
+                                waited2 += 100;
+                                if (!batchInflight || waited2 >= 2000) { clearInterval(check2); resolve(); }
+                            }, 100);
+                        } else {
+                            resolve();
+                        }
+                    }
+                }, 100);
+            });
+        }
+        return new Promise(function(resolve) {
+            flushBatch();
+            var waited = 0;
+            var check = setInterval(function() {
+                waited += 100;
+                if (!batchInflight || waited >= 2000) { clearInterval(check); resolve(); }
+            }, 100);
+        });
+    }
+
+    function queueSave(input) {
+        var row = input.closest('.en-student');
+        if (!row) return;
+        var studentId = row.getAttribute('data-student-id');
+        pendingChanges[studentId] = input.value.trim();
+        startBatchTimer();
     }
 
     function sendDelete(input) {
@@ -411,7 +492,8 @@
         var examId = document.querySelector('input[name="exam_id"]');
         if (!studentId || !assignmentId || !examId) return;
 
-        if (saveTimers[studentId]) { clearTimeout(saveTimers[studentId]); delete saveTimers[studentId]; }
+        // Remove from pending batch — don't auto-save an empty value
+        delete pendingChanges[studentId];
 
         var fd = new FormData();
         fd.append('student_id', studentId);
@@ -454,9 +536,12 @@
         }
         var totalStudents = inputs.length;
         var submitBar = document.getElementById('enInlineSubmit');
+        var body = document.querySelector('.en-body');
         if (submitBar) {
-            if (scored >= totalStudents && totalStudents > 0) submitBar.classList.add('is-visible');
+            var allScored = scored >= totalStudents && totalStudents > 0;
+            if (allScored) submitBar.classList.add('is-visible');
             else submitBar.classList.remove('is-visible');
+            if (body) body.classList.toggle('has-submit-bar', allScored);
         }
     }
 
@@ -537,11 +622,8 @@
         var row = input.closest('.en-student');
         if (!row) return;
         var studentId = row.getAttribute('data-student-id');
-        if (saveTimers[studentId]) clearTimeout(saveTimers[studentId]);
-        saveTimers[studentId] = setTimeout(function() {
-            delete saveTimers[studentId];
-            sendSave(input);
-        }, DEBOUNCE_MS);
+        pendingChanges[studentId] = input.value.trim();
+        startBatchTimer();
     }
 
     // ─── Single delegated event handler (no per-input bindings) ────────────
@@ -657,15 +739,12 @@
 
                 form.setAttribute('data-submitting', 'true');
 
-                // Flush any pending debounced auto-saves, then let HTMX submit the form.
-                // HTMX handles disabled state (hx-disabled-elt) and indicator swap automatically.
-                if (Object.keys(saveTimers).length) {
-                    flushPendingSaves().finally(function() {
-                        htmx.trigger(form, 'submit');
-                    });
-                } else {
-                    htmx.trigger(form, 'submit');
-                }
+                // Stop batch auto-save — bulk submit handles everything atomically
+                stopBatchTimer();
+                pendingChanges = {};
+
+                // Bulk submit sends ALL scores from the form in one request.
+                htmx.trigger(form, 'submit');
             });
         }
 
@@ -747,15 +826,69 @@
         window.addEventListener('online', reflushOfflineDrafts);
     }
 
+    // ─── Total Marks Gate ───────────────────────────────────────
+    function initTotalGate() {
+        var gateCard = document.getElementById('totalGateCard');
+        var gateBadge = document.getElementById('totalGateBadge');
+        var gateBtn = document.getElementById('totalGateBtn');
+        var gateEdit = document.getElementById('totalGateEdit');
+        var gateBadgeVal = document.getElementById('totalGateBadgeValue');
+        var maxInput = document.getElementById('maximumMarks');
+        var students = document.getElementById('studentsContainer');
+        if (!gateCard || !students) return;
+
+        var submitBar = document.getElementById('enInlineSubmit');
+        var isLocked = submitBar && submitBar.getAttribute('data-locked') === '1';
+        var isSubmitted = submitBar && submitBar.getAttribute('data-submitted') === '1';
+        if (isLocked || isSubmitted) {
+            gateCard.style.display = 'none';
+            gateBadge.style.display = 'inline-flex';
+            if (gateBadgeVal) gateBadgeVal.textContent = maxInput ? maxInput.value : '100';
+            return;
+        }
+
+        students.classList.add('is-gated');
+
+        if (gateBtn) {
+            gateBtn.addEventListener('click', function() {
+                var val = maxInput.value.trim();
+                if (!val || parseInt(val, 10) < 1) {
+                    maxInput.classList.add('input-error');
+                    maxInput.focus();
+                    setTimeout(function() { maxInput.classList.remove('input-error'); }, 1500);
+                    return;
+                }
+                gateCard.style.display = 'none';
+                gateBadge.style.display = 'inline-flex';
+                if (gateBadgeVal) gateBadgeVal.textContent = val;
+                students.classList.remove('is-gated');
+                var sc = document.querySelectorAll('.js-score');
+                for (var i = 0; i < sc.length; i++) calcScore(sc[i], true);
+            });
+        }
+
+        if (gateEdit) {
+            gateEdit.addEventListener('click', function() {
+                gateBadge.style.display = 'none';
+                gateCard.style.display = 'block';
+                students.classList.add('is-gated');
+                maxInput.focus();
+                maxInput.select();
+            });
+        }
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initMarkEntry);
+        document.addEventListener('DOMContentLoaded', function() { initMarkEntry(); initTotalGate(); });
     } else {
         initMarkEntry();
+        initTotalGate();
     }
 
     document.body.addEventListener('htmx:afterSwap', function(e) {
         if (e.detail.target && e.detail.target.id === 'examContent') {
             initMarkEntry();
+            initTotalGate();
         }
     });
 

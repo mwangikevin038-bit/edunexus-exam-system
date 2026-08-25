@@ -1315,36 +1315,44 @@ def teacher_classes(request, teacher_id):
         stream = a.stream
         section_key = 'JSS' if class_name in ('Grade 7', 'Grade 8', 'Grade 9') else 'PRIMARY'
 
-        # Find marks for this subject/class/stream, ordered by most recent exam
-        mark_qs = Mark.all_objects.filter(
+        # Base filter for this class/stream
+        base_filter = dict(
             school=school,
             student__class_name=class_name,
             student__stream=stream,
             student__is_active=True,
-            subject=a.subject,
-        ).order_by('-year', '-term', '-exam_type')
+        )
 
-        # Get the latest exam_type/term/year combo that has actual marks
-        latest_combo = mark_qs.values('term', 'year', 'exam_type').distinct()[:1]
-        if latest_combo.exists():
-            combo = latest_combo.first()
-            mark_qs = mark_qs.filter(
-                term=combo['term'], year=combo['year'], exam_type=combo['exam_type']
+        # Find the most recent mark to determine which exam to show
+        latest_mark = Mark.all_objects.filter(
+            subject=a.subject, **base_filter
+        ).order_by('-year', '-id').first()
+
+        # Fallback: try without subject filter in case subject FK differs
+        if not latest_mark:
+            latest_mark = Mark.all_objects.filter(**base_filter).order_by('-year', '-id').first()
+
+        if latest_mark:
+            exam_term = latest_mark.term
+            exam_year = latest_mark.year
+            exam_label = (latest_mark.exam_type or '').upper()
+            mark_qs = Mark.all_objects.filter(
+                subject=a.subject, **base_filter,
+                term=exam_term, year=exam_year, exam_type=latest_mark.exam_type,
             )
-            exam_label = combo['exam_type'].upper()
-            exam_year = combo['year']
-            exam_term = combo['term']
+            # Fallback: if subject filter yields nothing, try without
+            if not mark_qs.exists():
+                mark_qs = Mark.all_objects.filter(
+                    **base_filter,
+                    term=exam_term, year=exam_year, exam_type=latest_mark.exam_type,
+                )
         else:
-            # No marks yet — fall back to active exam label
+            # No marks — fall back to active exam label
+            exam_term = ''
+            exam_year = ''
             fallback = active_exams.get(section_key)
-            if fallback:
-                exam_label = fallback.name.upper()
-                exam_year = fallback.year
-                exam_term = fallback.term
-            else:
-                exam_label = '—'
-                exam_year = ''
-                exam_term = ''
+            exam_label = fallback.name.upper() if fallback else '—'
+            mark_qs = Mark.all_objects.none()
 
         stats = mark_qs.aggregate(
             mean_score=Avg('score'),

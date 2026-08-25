@@ -90,6 +90,7 @@ from .exams import (  # noqa: F401
     select_exam_primary,
     clear_mark,
     save_mark,
+    batch_save_marks,
     update_maximum_marks,
     return_mark_sheet,
     manage_exams,

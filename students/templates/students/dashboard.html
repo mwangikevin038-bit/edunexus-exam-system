@@ -1,6 +1,5 @@
-{% extends 'students/base.html' %}
+﻿{% extends 'students/base.html' %}
 {% load static %}
-
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/dashboard-mobile.css' %}">
 {% endblock %}
@@ -10,7 +9,7 @@
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
       <a href="{% url 'dashboard_alt' %}" class="sub-nav-link active">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         Overview
       </a>
     </li>
@@ -48,7 +47,7 @@
 
     .dashboard-welcome-banner{position:relative;height:110px;border-radius:14px;overflow:hidden;background:url('/static/images/bookshelf-bg.jpg') center/cover no-repeat;display:flex;align-items:center;padding:0 24px}
     .banner-overlay{position:absolute;inset:0;background:rgba(15,23,42,.75)}
-    .banner-content{position:relative;z-2;display:flex;align-items:center;gap:16px;width:100%}
+    .banner-content{position:relative;z-index:2;display:flex;align-items:center;gap:16px;width:100%}
     .banner-avatar-wrapper{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
     .banner-avatar-img{width:100%;height:100%;object-fit:cover}
     .banner-avatar-wrapper i{font-size:36px;color:#fff}
@@ -316,13 +315,11 @@
     </footer>
 </div>
 
-<!-- ═══ iOS 17 MOBILE DASHBOARD ═══ -->
+<!-- iOS 17 MOBILE DASHBOARD -->
 <div class="dash-ios" id="dashIos">
-    <!-- HEADER — mobile global header with controls -->
     <header class="dash-header">
         <div class="dash-greeting">
-            <div class="dash-greeting-main">Welcome back, {{ request.user.first_name|default:"Teacher" }}</div>
-            <div class="dash-greeting-sub">{% if teacher %}{{ teacher.get_full_title }}{% endif %} · {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</div>
+            <div class="dash-greeting-main">{% if request.school %}{{ request.school.name }}{% else %}EduNexus{% endif %}</div>
         </div>
         <div class="dash-header-controls">
             {% if request.user.teacher_profile %}
@@ -330,8 +327,9 @@
                 <i class="ph ph-magnifying-glass"></i>
             </a>
             {% endif %}
-            <button class="admin-icon-btn" type="button" aria-label="Messages">
-                <i class="ph ph-envelope"></i>
+            <button class="admin-icon-btn" type="button" aria-label="Notifications">
+                <i class="ph ph-bell"></i>
+                <span class="notif-dot"></span>
             </button>
             <div class="admin-user-menu" id="dashUserMenu">
                 <div class="dash-avatar-btn">{{ request.user.first_name|first|default:"U" }}</div>
@@ -344,33 +342,25 @@
                         </div>
                     </div>
                     <div class="admin-dropdown-divider"></div>
-                    <a href="{% url 'home_alt' %}" class="admin-dropdown-item">
-                        <i class="ph ph-user"></i> Profile
-                    </a>
-                    <a href="{% url 'password_change' %}" class="admin-dropdown-item">
-                        <i class="ph ph-shield-check"></i> Change Password
-                    </a>
-                    <a href="{% url 'logout' %}" class="admin-dropdown-item admin-logout">
-                        <i class="ph ph-sign-out"></i> Logout
-                    </a>
+                    <a href="{% url 'home_alt' %}" class="admin-dropdown-item"><i class="ph ph-user"></i> Profile</a>
+                    <a href="{% url 'password_change' %}" class="admin-dropdown-item"><i class="ph ph-shield-check"></i> Change Password</a>
+                    <a href="{% url 'logout' %}" class="admin-dropdown-item admin-logout"><i class="ph ph-sign-out"></i> Logout</a>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- MOBILE SUB-NAV -->
     <nav class="sub-nav-bar dm-subnav">
       <ul class="sub-nav-list">
         <li class="sub-nav-item">
           <a href="{% url 'dashboard_alt' %}" class="sub-nav-link active">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
             Overview
           </a>
         </li>
       </ul>
     </nav>
 
-    <!-- SCROLLABLE BODY -->
     <main class="dash-body">
 
         <!-- WELCOME BANNER -->
@@ -378,7 +368,7 @@
             <div class="dm-welcome-avatar">{{ request.user.first_name|first|default:"T" }}</div>
             <div class="dm-welcome-text">
                 <div class="dm-welcome-name">Welcome, {{ request.user.first_name|default:"Teacher" }}</div>
-                <div class="dm-welcome-sub">{% if teacher %}{{ teacher.get_full_title }}{% endif %} · {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</div>
+                <div class="dm-welcome-sub">{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</div>
             </div>
         </div>
 
@@ -410,7 +400,7 @@
                     <i class="ph ph-books"></i>
                 </div>
                 <div class="dash-stat-info">
-                    <div class="dash-stat-number">{{ assignment_count }}</div>
+                    <div class="dash-stat-number" data-count="{{ assignment_count }}">{{ assignment_count }}</div>
                     <div class="dash-stat-label">Allocations</div>
                 </div>
                 <i class="ph ph-arrow-right dash-stat-arrow"></i>
@@ -420,7 +410,7 @@
                     <i class="ph ph-clipboard-text"></i>
                 </div>
                 <div class="dash-stat-info">
-                    <div class="dash-stat-number">{{ active_exam_count }}</div>
+                    <div class="dash-stat-number" data-count="{{ active_exam_count }}">{{ active_exam_count }}</div>
                     <div class="dash-stat-label">Active Exams</div>
                 </div>
                 <i class="ph ph-arrow-right dash-stat-arrow"></i>
@@ -430,7 +420,7 @@
                     <i class="ph ph-paper-plane-tilt"></i>
                 </div>
                 <div class="dash-stat-info">
-                    <div class="dash-stat-number">{{ submitted_count }}</div>
+                    <div class="dash-stat-number" data-count="{{ submitted_count }}">{{ submitted_count }}</div>
                     <div class="dash-stat-label">Submitted</div>
                 </div>
                 <i class="ph ph-arrow-right dash-stat-arrow"></i>
@@ -440,8 +430,18 @@
                     <i class="ph ph-arrow-u-up-left"></i>
                 </div>
                 <div class="dash-stat-info">
-                    <div class="dash-stat-number">{{ returned_count }}</div>
+                    <div class="dash-stat-number" data-count="{{ returned_count }}">{{ returned_count }}</div>
                     <div class="dash-stat-label">Returned</div>
+                </div>
+                <i class="ph ph-arrow-right dash-stat-arrow"></i>
+            </a>
+            <a class="dash-stat-card" href="{% url 'results_list' %}">
+                <div class="dash-stat-icon-wrap purple">
+                    <i class="ph ph-chart-line-up"></i>
+                </div>
+                <div class="dash-stat-info">
+                    <div class="dash-stat-number" data-count="{{ published_count }}">{{ published_count }}</div>
+                    <div class="dash-stat-label">Published</div>
                 </div>
                 <i class="ph ph-arrow-right dash-stat-arrow"></i>
             </a>
@@ -473,44 +473,7 @@
             </div>
         </section>
 
-        <!-- MY CLASSES -->
-        {% if assignments %}
-        <section aria-label="My Classes">
-            <div class="dash-section-head">
-                <h2 class="dash-section-title">My Classes</h2>
-            </div>
-            <div class="dash-classes">
-                {% for assignment in assignments %}
-                    <div class="dash-class">
-                        <div class="dash-class-top">
-                            <div class="dash-class-left">
-                                <div class="dash-class-icon">
-                                    <i class="ph ph-book-open"></i>
-                                </div>
-                                <div>
-                                    <div class="dash-class-name">{{ assignment.subject.name }}</div>
-                                    <div class="dash-class-meta">{{ assignment.class_name }} {{ assignment.stream }}</div>
-                                </div>
-                            </div>
-                            <span class="dash-class-badge">Active</span>
-                        </div>
-                        <div class="dash-class-progress">
-                            <div class="dash-progress-bar">
-                                <div class="dash-progress-fill" style="width: {{ assignment.progress_pct }}%"></div>
-                            </div>
-                            <div class="dash-class-stats">
-                                <span class="dash-class-stat"><strong>{{ assignment.marks_entered }}</strong> / {{ assignment.total_students }} entered</span>
-                                <a class="dash-class-capture"
-                                   href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
-                                    Capture <i class="ph ph-arrow-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </section>
-        {% endif %}
+
 
         <!-- ACADEMIC PERFORMANCE -->
         {% if grade_performance_cards %}
@@ -569,6 +532,12 @@
                 {% endfor %}
             </div>
         </section>
+        {% else %}
+        <div class="dash-empty">
+            <div class="dash-empty-icon"><i class="ph ph-chart-line-up"></i></div>
+            <div class="dash-empty-title">No Performance Data</div>
+            <div class="dash-empty-desc">Publish exam results to see grade performance cards here.</div>
+        </div>
         {% endif %}
 
         <!-- PUBLISHED RESULTS -->
@@ -595,6 +564,12 @@
                 {% endfor %}
             </div>
         </section>
+        {% else %}
+        <div class="dash-empty">
+            <div class="dash-empty-icon"><i class="ph ph-trophy"></i></div>
+            <div class="dash-empty-title">No Published Results</div>
+            <div class="dash-empty-desc">Results will appear here once published by your admin.</div>
+        </div>
         {% endif %}
 
         <!-- CLASS TEACHER SCOPE -->
@@ -613,7 +588,6 @@
 
 {% block extra_js %}
 <script>
-// Dash user dropdown toggle
 (function(){
     var menu = document.getElementById('dashUserMenu');
     var dropdown = document.getElementById('dashDropdown');
@@ -656,7 +630,7 @@
             var sd = new Date(te.start);
             var ed = new Date(te.end);
             events.push({
-                label: te.term + ' ' + te.year + ' (' + sd.getDate()+' '+MONTHS[sd.getMonth()]+' – '+ed.getDate()+' '+MONTHS[ed.getMonth()]+')',
+                label: te.term + ' ' + te.year + ' (' + sd.getDate()+' '+MONTHS[sd.getMonth()]+' \u2013 '+ed.getDate()+' '+MONTHS[ed.getMonth()]+')',
                 start: sd,
                 end: ed,
                 status: (now >= sd && now <= ed) ? 'active' : (now < sd ? 'upcoming' : 'past')
@@ -692,7 +666,7 @@
         if(view==='week'){
             ref.setDate(now.getDate() + offset*7);
             var ws = startOfWeek(ref), we = endOfWeek(ref);
-            mainEl.textContent = ws.getDate()+' '+MONTHS[ws.getMonth()]+' –';
+            mainEl.textContent = ws.getDate()+' '+MONTHS[ws.getMonth()]+' \u2013';
             subEl.textContent = we.getDate()+' '+MONTHS[we.getMonth()]+' '+we.getFullYear();
         } else if(view==='day'){
             ref.setDate(now.getDate() + offset);
@@ -705,7 +679,7 @@
         } else {
             ref.setDate(now.getDate() + offset*7);
             var ws2 = startOfWeek(ref), we2 = endOfWeek(ref);
-            mainEl.textContent = ws2.getDate()+' '+MONTHS[ws2.getMonth()]+' –';
+            mainEl.textContent = ws2.getDate()+' '+MONTHS[ws2.getMonth()]+' \u2013';
             subEl.textContent = we2.getDate()+' '+MONTHS[we2.getMonth()]+' '+we2.getFullYear();
         }
         renderEvents();
@@ -720,6 +694,23 @@
     };
 
     render();
+})();
+
+(function(){
+    var counters = document.querySelectorAll('.dash-stat-number[data-count]');
+    counters.forEach(function(el){
+        var target = parseInt(el.getAttribute('data-count'), 10);
+        if(isNaN(target) || target === 0) return;
+        var duration = 600;
+        var start = performance.now();
+        function step(now){
+            var progress = Math.min((now - start) / duration, 1);
+            var ease = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(target * ease);
+            if(progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    });
 })();
 </script>
 {% endblock %}
