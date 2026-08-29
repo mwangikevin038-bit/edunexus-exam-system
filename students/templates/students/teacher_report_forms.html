@@ -2,6 +2,9 @@
 {% load static %}
 
 {% block sub_tabs %}
+<style>
+  @media(max-width:768px){.app-content{background:transparent!important}}
+</style>
 <nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
@@ -68,6 +71,92 @@
   .rf-spinner-bar:nth-child(5){height:28px;animation-delay:0.6s}
   @keyframes rf-bar{0%,100%{transform:scaleY(0.4);opacity:0.5}50%{transform:scaleY(1);opacity:1}}
   .rf-footer{text-align:center;padding:20px 32px;color:#9ca3af;font-size:12px;margin-top:20px}
+
+  @media(max-width:768px){
+    body{background:#E8F5E9!important}
+    .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important;background:linear-gradient(180deg,#C8E6C9 0%,#E8F5E9 120px,#f5f5f5 100%)!important;min-height:100vh!important}
+    .app-content{margin-top:0!important;background:linear-gradient(180deg,#C8E6C9 0%,#E8F5E9 120px,#f5f5f5 100%)!important;min-height:100vh!important}
+    .rf-page{max-width:100%!important;padding:0 16px 100px!important;margin:0!important;background:transparent!important}
+
+    .rf-card{border:none!important;border-radius:20px!important;background:#fff!important;box-shadow:0 4px 24px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.04)!important;margin-top:12px!important;overflow:visible!important}
+
+    .rf-card-header{
+      padding:20px 20px 8px!important;border-bottom:none!important;
+      background:transparent!important;position:relative!important;
+    }
+    .rf-card-header h2{
+      font-size:22px!important;font-weight:800!important;color:#1B5E20!important;margin:0!important;
+      display:flex!important;align-items:center!important;gap:12px!important;
+    }
+    .rf-card-header h2::before{
+      content:'';display:inline-flex;align-items:center;justify-content:center;
+      width:40px;height:40px;border-radius:12px;flex-shrink:0;
+      background:linear-gradient(135deg,#66BB6A,#43A047);
+      box-shadow:0 4px 12px rgba(76,175,80,0.35);
+      mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpolyline points='14 2 14 8 20 8'/%3E%3Cline x1='16' y1='13' x2='8' y2='13'/%3E%3Cline x1='16' y1='17' x2='8' y2='17'/%3E%3C/svg%3E") center/55% no-repeat;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpolyline points='14 2 14 8 20 8'/%3E%3Cline x1='16' y1='13' x2='8' y2='13'/%3E%3Cline x1='16' y1='17' x2='8' y2='17'/%3E%3C/svg%3E") center/55% no-repeat;
+    }
+    .rf-toggle{
+      width:36px!important;height:36px!important;border-radius:10px!important;border:none!important;
+      background:#E8F5E9!important;display:flex!important;align-items:center!important;justify-content:center!important;
+      transition:transform .3s cubic-bezier(0.34,1.56,0.64,1)!important;
+    }
+    .rf-toggle:active{transform:scale(.9)!important}
+    .rf-toggle svg{width:18px!important;height:18px!important;stroke:#2E7D32!important;stroke-width:2.5!important}
+    .rf-subtitle{
+      padding:4px 20px 16px!important;font-size:13px!important;color:#66BB6A!important;
+      font-weight:500!important;
+    }
+
+    .rf-card-body{
+      padding:4px 20px 24px!important;background:transparent!important;
+      border-bottom:none!important;
+    }
+    .rf-filters{grid-template-columns:1fr!important;gap:16px!important}
+    .rf-field{
+      background:#f9fafb;border-radius:14px;padding:14px 16px;
+      border:1.5px solid #E5E7EB;transition:border-color .2s,box-shadow .2s;
+    }
+    .rf-field:focus-within{border-color:#66BB6A;box-shadow:0 0 0 3px rgba(102,187,106,0.15)}
+    .rf-field label{
+      display:block!important;font-size:10px!important;text-transform:uppercase!important;letter-spacing:.8px!important;
+      color:#9E9E9E!important;font-weight:700!important;margin-bottom:8px!important;
+    }
+    .rf-field label .req{color:#ef4444}
+    .rf-field select{
+      width:100%!important;height:24px!important;font-size:16px!important;font-weight:600!important;
+      border:none!important;padding:0!important;
+      background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 0 center!important;
+      appearance:none!important;-webkit-appearance:none!important;
+      color:#212121!important;
+    }
+    .rf-field select:focus{outline:none!important;box-shadow:none!important;border:none!important}
+    .rf-field.rf-field-hidden{display:none!important}
+
+    .rf-btn-row{justify-content:stretch!important;margin-top:8px!important}
+    .rf-fetch-btn{
+      width:100%!important;justify-content:center!important;height:54px!important;border-radius:16px!important;
+      font-size:16px!important;font-weight:800!important;letter-spacing:.3px!important;
+      background:linear-gradient(135deg,#43A047 0%,#2E7D32 100%)!important;
+      color:#fff!important;border:none!important;
+      box-shadow:0 6px 20px rgba(46,125,50,0.4)!important;
+      cursor:pointer!important;
+      transition:transform .2s cubic-bezier(0.34,1.56,0.64,1),box-shadow .2s!important;
+    }
+    .rf-fetch-btn:active{transform:scale(.97)!important;box-shadow:0 3px 10px rgba(46,125,50,0.3)!important}
+
+    .rf-loading{padding:60px 20px}
+    .rf-loading-text{font-size:18px!important;color:#2E7D32!important}
+
+    .rf-summary{
+      margin:0 0 12px!important;padding:16px 20px!important;border-radius:16px!important;
+      background:linear-gradient(135deg,rgba(76,175,80,0.12),rgba(76,175,80,0.06))!important;
+      border:1px solid rgba(76,175,80,0.2)!important;
+    }
+    .rf-summary-grade{font-size:16px!important;font-weight:800!important;color:#2E7D32!important}
+    .rf-summary-exam{font-size:12px!important;font-weight:600!important;color:#4B5563!important}
+
+    .rf-footer{padding:24px 16px 100px!important;color:#9E9E9E!important;font-size:12px!important}
+  }
 </style>
 
 <div class="rf-page">

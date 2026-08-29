@@ -965,12 +965,12 @@ body.sidebar-collapsed .main-content {
     left: 0;
     right: 0;
     bottom: 0;
-    max-height: min(78vh, 640px);
-    background: var(--en-bg-elevated);
-    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
-    box-shadow: var(--shadow-xl);
+    max-height: min(80vh, 660px);
+    background: #ffffff;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.12), 0 -2px 16px rgba(0,0,0,0.06);
     transform: translateY(100%);
-    transition: transform var(--duration-slow) var(--ease-out);
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
     display: flex;
     flex-direction: column;
     padding-bottom: calc(var(--bottomnav-height) + env(safe-area-inset-bottom, 0px));
@@ -983,9 +983,9 @@ body.sidebar-collapsed .main-content {
 .mobile-menu-handle {
     width: 40px;
     height: 4px;
-    border-radius: var(--radius-full);
-    background: var(--en-surface-hover);
-    margin: var(--space-3) auto var(--space-2);
+    border-radius: 100px;
+    background: #d1d5db;
+    margin: 12px auto 8px;
     flex-shrink: 0;
 }
 
@@ -993,32 +993,39 @@ body.sidebar-collapsed .main-content {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
-    padding: 0 var(--space-5) var(--space-4);
-    border-bottom: 1px solid var(--en-border-light);
+    gap: 12px;
+    padding: 0 20px 16px;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .mobile-menu-title {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-extrabold);
-    color: var(--en-text);
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.02em;
 }
 
 .mobile-menu-close {
     width: 36px;
     height: 36px;
-    border-radius: var(--radius-full);
-    background: var(--en-surface);
-    color: var(--en-text-secondary);
+    border-radius: 50%;
+    background: #f3f4f6;
+    color: #6b7280;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 16px;
+    transition: all 0.15s ease;
+}
+
+.mobile-menu-close:active {
+    transform: scale(0.9);
+    background: #e5e7eb;
 }
 
 .mobile-menu-body {
     overflow-y: auto;
-    padding: var(--space-4) var(--space-4) var(--space-2);
+    padding: 16px 16px 8px;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -1027,12 +1034,12 @@ body.sidebar-collapsed .main-content {
 }
 
 .mobile-menu-section-label {
-    font-size: 10px;
-    font-weight: var(--weight-bold);
+    font-size: 11px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--en-text-muted);
-    padding: 0 var(--space-2) var(--space-2);
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    padding: 0 8px 10px;
 }
 
 .mobile-menu-link {
@@ -1080,7 +1087,7 @@ body.sidebar-collapsed .main-content {
     color: var(--en-danger);
 }
 
-/* ── Mobile Menu Grid Cards (Zeraki-style) ──────────────── */
+/* ── Mobile Menu Grid Cards (Premium iOS 17) ────────────── */
 .mm-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1094,49 +1101,51 @@ body.sidebar-collapsed .main-content {
     align-items: center;
     gap: 10px;
     padding: 18px 8px;
-    border-radius: var(--radius-xl, 16px);
+    border-radius: 16px;
     background: #ffffff;
-    border: 1px solid var(--en-border-light, #f1f5f9);
+    border: 1px solid #f1f5f9;
     text-decoration: none;
-    color: var(--en-text, #1e293b);
+    color: #1e293b;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     -webkit-tap-highlight-color: transparent;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.02);
 }
 
 .mm-card:active {
-    transform: scale(0.95);
+    transform: scale(0.94);
+    box-shadow: 0 0.5px 1px rgba(0,0,0,0.04);
 }
 
 .mm-card-icon {
-    width: 50px;
-    height: 50px;
+    width: 52px;
+    height: 52px;
     border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 22px;
-    transition: all 0.15s ease;
+    transition: all 0.2s ease;
 }
 
-.mm-card-icon.green  { background: #ecfdf5; color: #16a34a; }
-.mm-card-icon.blue   { background: #eff6ff; color: #2563eb; }
-.mm-card-icon.purple { background: #f5f3ff; color: #7c3aed; }
-.mm-card-icon.orange { background: #fff7ed; color: #ea580c; }
-.mm-card-icon.teal   { background: #f0fdfa; color: #0d9488; }
-.mm-card-icon.rose   { background: #fff1f2; color: #e11d48; }
+.mm-card-icon.green  { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #16a34a; }
+.mm-card-icon.blue   { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #2563eb; }
+.mm-card-icon.purple { background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #7c3aed; }
+.mm-card-icon.orange { background: linear-gradient(135deg, #ffedd5, #fed7aa); color: #ea580c; }
+.mm-card-icon.teal   { background: linear-gradient(135deg, #ccfbf1, #99f6e4); color: #0d9488; }
+.mm-card-icon.rose   { background: linear-gradient(135deg, #ffe4e6, #fecdd3); color: #e11d48; }
 
 .mm-card:active .mm-card-icon {
     transform: scale(0.9);
 }
 
 .mm-card-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     text-align: center;
     line-height: 1.2;
-    color: var(--en-text, #1e293b);
+    color: #374151;
+    letter-spacing: -0.01em;
 }
 
 .mm-signout {
@@ -1145,23 +1154,24 @@ body.sidebar-collapsed .main-content {
     justify-content: center;
     gap: 8px;
     width: 100%;
-    padding: 14px;
-    border-radius: var(--radius-lg, 12px);
-    background: var(--en-danger-bg, #fef2f2);
-    color: var(--en-danger, #dc2626);
-    border: none;
+    padding: 16px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    color: #dc2626;
+    border: 1px solid #fecaca;
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     -webkit-tap-highlight-color: transparent;
     font-family: inherit;
 }
 
 .mm-signout:active {
     transform: scale(0.97);
-    background: var(--en-danger, #dc2626);
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
     color: #fff;
+    border-color: #dc2626;
 }
 
 /* ── Mobile Top Bar ─────────────────────────────────────────── */

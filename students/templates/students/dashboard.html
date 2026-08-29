@@ -176,22 +176,6 @@
                 </a>
             </div>
 
-            <!-- Hero CTA -->
-            {% if section == 'JSS' %}
-                <a class="td-hero" href="{% url 'select_exam' %}">
-            {% else %}
-                <a class="td-hero" href="{% url 'select_exam_primary' %}">
-            {% endif %}
-                <div class="td-hero-left">
-                    <div class="td-hero-icon"><i class="ph ph-pencil-simple"></i></div>
-                    <div class="td-hero-text">
-                        <h3>Score Capture</h3>
-                        <p>Enter marks for your classes</p>
-                    </div>
-                </div>
-                <div class="td-hero-arrow"><i class="ph ph-arrow-right"></i></div>
-            </a>
-
         </div>
 
         <!-- RIGHT COLUMN (40%) - Calendar -->
@@ -371,26 +355,6 @@
                 <div class="dm-welcome-sub">{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</div>
             </div>
         </div>
-
-        <!-- HERO: Score Capture -->
-        {% if section == 'JSS' %}
-            <a class="dash-hero" href="{% url 'select_exam' %}">
-        {% else %}
-            <a class="dash-hero" href="{% url 'select_exam_primary' %}">
-        {% endif %}
-            <div class="dash-hero-left">
-                <div class="dash-hero-icon">
-                    <i class="ph ph-pencil-simple"></i>
-                </div>
-                <div class="dash-hero-text">
-                    <h3>Score Capture</h3>
-                    <p>Enter marks for your classes</p>
-                </div>
-            </div>
-            <div class="dash-hero-arrow">
-                <i class="ph ph-arrow-right"></i>
-            </div>
-        </a>
 
         <!-- STAT CARDS -->
         <div class="dash-section-label">Overview</div>

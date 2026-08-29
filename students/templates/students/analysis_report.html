@@ -270,20 +270,22 @@
   /* Print styles */
   @media print{
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-    html{overflow:visible!important}
-    body{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important}
-    .sub-nav-bar,.sidebar,.global-header,.bottom-nav,.ar-toolbar,.ar-card,.ar-empty{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+    html,body,.app-content,.main-content{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important;background-image:none!important}
+    .sub-nav-bar,.sidebar,.global-header,.mobile-global-header,.bottom-nav,.ar-toolbar,.ar-card,.ar-empty{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
     .print-watermark{display:block!important;position:fixed!important;bottom:0.25in!important;left:0!important;right:0!important;text-align:center!important;font-family:'Times New Roman',Times,serif!important;font-size:9pt!important;font-weight:700!important;color:#475569!important;text-transform:uppercase!important;letter-spacing:0.5pt!important}
     .ar-report{position:static!important;width:100%!important;display:block!important}
     .ar-report,.ar-report *{visibility:visible!important}
     .ar-school-hdr{padding:4mm 0 2mm;align-items:center}
-    .ar-table-wrap{padding:0 16px}
-    .statistics-table-wrapper.cgs .target-data-table{font-size:11px}
-    .statistics-table-wrapper.cgs .target-data-table th{padding:4px 4px;font-size:11px;font-weight:800;background:#E9ECF0;color:#1E293B}
-    .statistics-table-wrapper.cgs .target-data-table td{padding:3px 4px;font-size:11px}
-    .ar-charts-row{padding:0 16px}
-    .ar-pot-section{padding:0 16px}
-    .ar-summary-cards{padding:12px 20px}
+    .ar-table-wrap{padding:0 32px}
+    .statistics-table-wrapper .target-data-table{font-size:13px}
+    .statistics-table-wrapper .target-data-table th{padding:10px 14px;font-size:13px;font-weight:700;color:#374151;background:transparent;border-bottom:1px solid #d1d5db}
+    .statistics-table-wrapper .target-data-table td{padding:5px 14px;font-size:13px;border-bottom:1px solid #e5e7eb;color:#111827;white-space:nowrap;font-weight:600}
+    .statistics-table-wrapper.cgs .target-data-table{font-size:13px}
+    .statistics-table-wrapper.cgs .target-data-table th{padding:8px 6px;font-size:13px}
+    .statistics-table-wrapper.cgs .target-data-table td{padding:6px 6px;font-size:13px}
+    .ar-charts-row{padding:0 32px}
+    .ar-pot-section{padding:0 32px}
+    .ar-summary-cards{padding:12px 32px}
     .ar-summary-chart canvas{max-width:100%!important;height:auto!important}
     .ar-pot-wrap canvas{max-width:100%!important;height:auto!important}
     .target-data-table{page-break-inside:avoid}

@@ -421,7 +421,7 @@
         height: calc(100dvh - var(--bottomnav-height, 72px)) !important;
         min-height: 0 !important;
         max-height: none !important;
-        background: #F3F4F6 !important;
+        background: linear-gradient(180deg, #C8E6C9 0%, #E8F5E9 40%, #f5f5f5 100%) !important;
         overflow: hidden !important;
         z-index: auto !important;
     }
@@ -430,6 +430,10 @@
         background: transparent !important;
         padding: 16px 20px 12px !important;
         padding-top: calc(16px + env(safe-area-inset-top, 0px)) !important;
+    }
+
+    body, .app-content, .main-content {
+        background: transparent !important;
     }
 
     .cp-title {
@@ -447,7 +451,7 @@
 
     .cp-body {
         padding: 8px 16px 120px !important;
-        background: #F3F4F6 !important;
+        background: transparent !important;
     }
 
     /* ── Group cards — premium flat white ─────────────────── */

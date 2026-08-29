@@ -427,12 +427,24 @@
                 if (Object.keys(pendingChanges).length) flushBatch();
                 else stopBatchTimer();
             } else if (data.error) {
-                showToast('Auto-save failed: ' + data.error, 'error');
+                // Re-queue failed marks so they are not lost
+                marks.forEach(function(m) {
+                    if (!(m.student_id in pendingChanges)) {
+                        pendingChanges[m.student_id] = m.score;
+                    }
+                });
+                showToast('Auto-save failed: ' + data.error + '. Changes preserved.', 'error');
                 stopBatchTimer();
             }
         }).catch(function() {
             batchInflight = false;
-            showToast('Network error — scores not saved', 'error');
+            // Re-queue failed marks so they are not lost
+            marks.forEach(function(m) {
+                if (!(m.student_id in pendingChanges)) {
+                    pendingChanges[m.student_id] = m.score;
+                }
+            });
+            showToast('Network error — scores preserved, will retry.', 'error');
             stopBatchTimer();
         });
     }
@@ -616,14 +628,6 @@
         else clearBadges(row);
         updateProgress();
         if (!skipSave) queueSave(input);
-    }
-
-    function queueSave(input) {
-        var row = input.closest('.en-student');
-        if (!row) return;
-        var studentId = row.getAttribute('data-student-id');
-        pendingChanges[studentId] = input.value.trim();
-        startBatchTimer();
     }
 
     // ─── Single delegated event handler (no per-input bindings) ────────────

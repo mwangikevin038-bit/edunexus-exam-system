@@ -442,7 +442,7 @@
                 {% else %}
                     <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">Quick Links</div>
-                        <div class="mm-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <div class="mm-grid" style="grid-template-columns: repeat(2, 1fr);">
                             <a class="mm-card" href="{% url 'home_alt' %}">
                                 <div class="mm-card-icon blue"><i class="ph ph-identification-badge"></i></div>
                                 <span class="mm-card-label">Faculty Profile</span>
@@ -451,12 +451,6 @@
                                 <div class="mm-card-icon orange"><i class="ph ph-shield-check"></i></div>
                                 <span class="mm-card-label">Change Password</span>
                             </a>
-                            {% if "Class Teacher" in request.user.teacher_profile.assigned_task %}
-                            <a class="mm-card" href="{% url 'report_card_select' %}">
-                                <div class="mm-card-icon green"><i class="ph ph-certificate"></i></div>
-                                <span class="mm-card-label">Report Cards</span>
-                            </a>
-                            {% endif %}
                         </div>
                     </div>
                 {% endif %}

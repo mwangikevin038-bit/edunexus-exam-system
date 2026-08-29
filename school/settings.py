@@ -144,15 +144,33 @@ DATA_INTEGRITY_KEY = os.environ.get('DATA_INTEGRITY_KEY', SECRET_KEY)
 
 # ==============================================================================
 # RATE LIMITING (django cache backend)
+# -----------------------------------------------------------------------------
+# LocMemCache is per-process and breaks rate limiting with multiple Gunicorn
+# workers.  Production MUST use a shared backend (Redis recommended).
+# Set EDUNEXUS_REDIS_URL=redis://127.0.0.1:6379/0 to enable.
 # ==============================================================================
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-    },
-    'csv_upload': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-    },
-}
+_REDIS_URL = os.environ.get('EDUNEXUS_REDIS_URL', '')
+
+if not DEBUG and _REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': _REDIS_URL,
+        },
+        'csv_upload': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': _REDIS_URL,
+        },
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        },
+        'csv_upload': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        },
+    }
 RATELIMIT_DISABLE = os.environ.get('RATELIMIT_DISABLE', 'False') == 'True'
 
 # ==============================================================================

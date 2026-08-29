@@ -2,6 +2,11 @@
 {% load static %}
 
 {% block sub_tabs %}
+<style>
+  @media(max-width:768px){
+    .app-content{background:transparent!important}
+  }
+</style>
 <nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
@@ -488,265 +493,67 @@
        MOBILE — iOS 17 Premium
        ════════════════════════════════════════════════════════════ */
     @media (max-width: 768px) {
-        .main-content {
-            padding: 0 !important;
-            max-width: 100% !important;
-            margin-left: 0 !important;
-        }
-
-        .analysis-page {
-            padding: 12px 16px !important;
-            padding-top: 12px !important;
-        }
-
-        .analysis-header {
-            flex-direction: column !important;
-            gap: 12px !important;
-            margin-bottom: 16px !important;
-        }
-
-        .analysis-header-left h1 {
-            font-size: 22px !important;
-            letter-spacing: -0.02em !important;
-        }
-
-        .analysis-header-left p {
-            font-size: 13px !important;
-        }
-
-        .analysis-header-right {
-            width: 100% !important;
-            flex-direction: column !important;
-            gap: 8px !important;
-        }
-
-        .custom-dropdown {
-            min-width: 0 !important;
-            width: 100% !important;
-        }
-
-        .custom-dropdown-btn {
-            height: 46px !important;
-            border-radius: 12px !important;
-            font-size: 15px !important;
-        }
-
-        .analysis-select {
-            height: 46px !important;
-            width: 100% !important;
-            min-width: 0 !important;
-            border-radius: 12px !important;
-            font-size: 15px !important;
-        }
-
-        .analysis-summary-card {
-            flex-direction: column !important;
-            gap: 16px !important;
-            padding: 20px !important;
-            border-radius: 16px !important;
-            border: none !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
-            margin-bottom: 16px !important;
-        }
-
-        .analysis-summary-card .count {
-            font-size: 28px !important;
-        }
-
-        .analysis-downloads-btn {
-            width: 100% !important;
-            justify-content: center !important;
-            height: 44px !important;
-            border-radius: 12px !important;
-            font-size: 14px !important;
-        }
-
-        .analysis-tabs {
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-            margin-bottom: 16px !important;
-        }
-
-        .analysis-tab {
-            padding: 10px 16px !important;
-            font-size: 13px !important;
-            white-space: nowrap !important;
-        }
-
-        .analysis-row {
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
-            margin-bottom: 16px !important;
-        }
-
-        .mean-grade-box {
-            padding: 16px !important;
-            border-radius: 14px !important;
-            margin-bottom: 16px !important;
-        }
-
-        .mean-grade-box .mg-value {
-            font-size: 20px !important;
-        }
-
-        .mean-grade-box .mg-exam {
-            float: none !important;
-            display: block !important;
-            font-size: 11px !important;
-            margin-top: 4px !important;
-        }
-
-        .compare-section {
-            margin-bottom: 16px !important;
-        }
-
-        .compare-radio-group {
-            flex-direction: column !important;
-            gap: 8px !important;
-        }
-
-        .compare-radio {
-            padding: 14px 16px !important;
-            border-radius: 12px !important;
-            font-size: 14px !important;
-            border: 1.5px solid #e2e8f0 !important;
-        }
-
-        .comparison-exam-label {
-            font-size: 13px !important;
-        }
-
-        .chart-container {
-            border-radius: 16px !important;
-            border: none !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
-            padding: 16px !important;
-        }
-
-        .chart-container canvas {
-            max-height: 240px !important;
-        }
-
-        .summary-cards-container {
-            flex-direction: column !important;
-            gap: 10px !important;
-            max-width: none !important;
-            margin-bottom: 16px !important;
-        }
-
-        .metric-card {
-            flex-direction: row !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            padding: 14px 16px !important;
-            border-radius: 14px !important;
-            border: none !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
-        }
-
-        .metric-number {
-            font-size: 20px !important;
-        }
-
-        .metric-trend svg {
-            width: 16px !important;
-            height: 16px !important;
-        }
-
-        .subject-perf-section {
-            margin-bottom: 24px !important;
-        }
-
-        .subject-perf-section h2 {
-            font-size: 17px !important;
-            margin-bottom: 12px !important;
-        }
-
-        .table-container {
-            border-radius: 14px !important;
-            border: none !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
-        }
-
-        .performance-table {
-            font-size: 13px !important;
-        }
-
-        .performance-table th {
-            padding: 10px 12px !important;
-            font-size: 11px !important;
-            white-space: nowrap !important;
-        }
-
-        .performance-table td {
-            padding: 10px 12px !important;
-            font-size: 13px !important;
-            white-space: nowrap !important;
-        }
-
-        .perf-over-time {
-            margin-bottom: 24px !important;
-        }
-
-        .perf-over-time h2 {
-            font-size: 17px !important;
-        }
-
-        .perf-over-time canvas {
-            max-height: 240px !important;
-        }
-
-        .grade-breakdown {
-            margin-bottom: 24px !important;
-        }
-
-        .grade-breakdown h2 {
-            font-size: 17px !important;
-        }
-
-        .grade-breakdown-select {
-            width: 100% !important;
-            height: 44px !important;
-            border-radius: 12px !important;
-            font-size: 14px !important;
-        }
-
-        .breakdown-table-wrap {
-            border-radius: 14px !important;
-            border: none !important;
-        }
-
-        .breakdown-table th {
-            padding: 10px 10px !important;
-            font-size: 10px !important;
-        }
-
-        .breakdown-table td {
-            padding: 10px 10px !important;
-            font-size: 12px !important;
-        }
-
-        .analysis-page {
-            padding-bottom: 80px !important;
-        }
-
-        .chart-container {
-            height: 300px !important;
-            position: relative !important;
-        }
-
-        .chart-container canvas {
-            max-height: 280px !important;
-        }
-
-        .perf-over-time {
-            position: relative !important;
-            height: 320px !important;
-        }
-
-        .perf-over-time canvas {
-            max-height: 300px !important;
-        }
+        body{background:linear-gradient(180deg,#C8E6C9 0%,#E8F5E9 40%,#f5f5f5 100%)!important;min-height:100dvh}
+        .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;background:transparent!important}
+        .app-content{background:transparent!important;padding:0!important;min-height:100dvh}
+        .app-header,.global-header,.mobile-global-header,.sidebar,.cp-mobile-header{display:none!important}
+        .analysis-page{padding:12px 12px 80px!important;padding-top:12px!important;background:transparent!important;min-height:100dvh}
+        .analysis-shell{max-width:100%!important}
+        .analysis-header{flex-direction:column!important;gap:12px!important;margin-bottom:16px!important}
+        .analysis-header-left h1{font-size:1.25rem!important;font-weight:800!important;color:#1b5e20!important;letter-spacing:-0.02em!important}
+        .analysis-header-left p{font-size:.8rem!important;color:#64748b!important}
+        .analysis-header-right{width:100%!important;flex-direction:column!important;gap:8px!important}
+        .custom-dropdown{min-width:0!important;width:100%!important}
+        .custom-dropdown-btn{height:48px!important;border-radius:14px!important;font-size:.9rem!important;background:rgba(255,255,255,0.85)!important;backdrop-filter:blur(12px)!important;border:1.5px solid rgba(255,255,255,0.6)!important;box-shadow:0 2px 12px -2px rgba(0,0,0,0.06)!important}
+        .analysis-select{height:48px!important;width:100%!important;min-width:0!important;border-radius:14px!important;font-size:.9rem!important;background:rgba(255,255,255,0.85)!important;backdrop-filter:blur(12px)!important;border:1.5px solid rgba(255,255,255,0.6)!important;box-shadow:0 2px 12px -2px rgba(0,0,0,0.06)!important}
+        .analysis-select:focus,.custom-dropdown-btn:focus{border-color:#4CAF50!important;box-shadow:0 0 0 3px rgba(76,175,80,0.12)!important}
+        .analysis-summary-card{flex-direction:column!important;gap:16px!important;padding:20px!important;border-radius:18px!important;border:none!important;background:rgba(255,255,255,0.85)!important;backdrop-filter:blur(12px)!important;box-shadow:0 4px 20px -4px rgba(0,0,0,0.08)!important;margin-bottom:16px!important}
+        .analysis-summary-card .label{font-size:.8rem!important;color:#64748b!important}
+        .analysis-summary-card .count{font-size:2rem!important;font-weight:800!important;color:#1b5e20!important}
+        .analysis-summary-card .sub{font-size:.75rem!important;color:#94a3b8!important}
+        .analysis-downloads-btn{width:100%!important;justify-content:center!important;height:48px!important;border-radius:14px!important;font-size:.9rem!important;background:linear-gradient(135deg,#4CAF50,#43A047)!important;box-shadow:0 6px 20px rgba(76,175,80,0.3)!important}
+        .analysis-downloads-btn:active{transform:scale(0.97)!important}
+        .analysis-tabs{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;margin-bottom:16px!important;border-bottom:2px solid rgba(0,0,0,0.06)!important}
+        .analysis-tab{padding:10px 16px!important;font-size:.8rem!important;white-space:nowrap!important;border-bottom:2px solid transparent!important;margin-bottom:-2px!important}
+        .analysis-tab.active{color:#1b5e20!important;border-bottom-color:#4CAF50!important}
+        .analysis-row{grid-template-columns:1fr!important;gap:16px!important;margin-bottom:16px!important}
+        .mean-grade-box{padding:18px!important;border-radius:16px!important;margin-bottom:16px!important;background:linear-gradient(135deg,#fef3c7,#fde68a)!important;border:none!important}
+        .mean-grade-box .mg-label{font-size:.8rem!important;color:#92400e!important}
+        .mean-grade-box .mg-value{font-size:1.25rem!important;font-weight:800!important;color:#1e293b!important}
+        .mean-grade-box .mg-exam{float:none!important;display:block!important;font-size:.7rem!important;margin-top:4px!important;color:#92400e!important}
+        .compare-section{margin-bottom:16px!important}
+        .compare-label{font-size:.85rem!important;font-weight:700!important;color:#1e293b!important}
+        .compare-radio-group{flex-direction:column!important;gap:8px!important}
+        .compare-radio{padding:14px 16px!important;border-radius:14px!important;font-size:.85rem!important;border:1.5px solid rgba(0,0,0,0.08)!important;background:rgba(255,255,255,0.85)!important;backdrop-filter:blur(8px)!important}
+        .compare-radio.selected{border-color:#4CAF50!important;background:rgba(76,175,80,0.08)!important}
+        .comparison-exam-label{font-size:.8rem!important;font-weight:700!important;color:#1e293b!important}
+        .chart-container{border-radius:18px!important;border:none!important;background:rgba(255,255,255,0.85)!important;backdrop-filter:blur(12px)!important;box-shadow:0 4px 20px -4px rgba(0,0,0,0.08)!important;padding:16px!important;height:300px!important;position:relative!important}
+        .chart-container canvas{max-height:280px!important}
+        .summary-cards-container{flex-direction:column!important;gap:10px!important;max-width:none!important;margin-bottom:16px!important}
+        .metric-card{flex-direction:row!important;align-items:center!important;justify-content:space-between!important;padding:16px!important;border-radius:16px!important;border:none!important;background:rgba(255,255,255,0.85)!important;backdrop-filter:blur(12px)!important;box-shadow:0 4px 20px -4px rgba(0,0,0,0.08)!important}
+        .metric-title{font-size:.8rem!important;color:#64748b!important}
+        .metric-number{font-size:1.25rem!important;font-weight:800!important;color:#1e293b!important}
+        .metric-trend svg{width:16px!important;height:16px!important}
+        .subject-perf-section{margin-bottom:24px!important}
+        .subject-perf-section h2{font-size:1rem!important;font-weight:800!important;color:#1e293b!important;margin-bottom:12px!important}
+        .table-container{border-radius:16px!important;border:none!important;background:rgba(255,255,255,0.85)!important;backdrop-filter:blur(12px)!important;box-shadow:0 4px 20px -4px rgba(0,0,0,0.08)!important}
+        .performance-table{font-size:.8rem!important}
+        .performance-table th{padding:10px 12px!important;font-size:.7rem!important;white-space:nowrap!important;color:#64748b!important;background:#f9fafb!important}
+        .performance-table td{padding:10px 12px!important;font-size:.8rem!important;white-space:nowrap!important}
+        .perf-over-time{margin-bottom:24px!important;position:relative!important;height:320px!important}
+        .perf-over-time h2{font-size:1rem!important;font-weight:800!important;color:#1e293b!important}
+        .perf-over-time canvas{max-height:300px!important}
+        .grade-breakdown{margin-bottom:24px!important}
+        .grade-breakdown h2{font-size:1rem!important;font-weight:800!important;color:#1e293b!important}
+        .grade-breakdown-select{width:100%!important;height:48px!important;border-radius:14px!important;font-size:.85rem!important;background:rgba(255,255,255,0.85)!important;backdrop-filter:blur(12px)!important;border:1.5px solid rgba(0,0,0,0.08)!important}
+        .breakdown-table-wrap{border-radius:16px!important;border:none!important;overflow:hidden!important}
+        .breakdown-table th{padding:10px!important;font-size:.65rem!important;color:#64748b!important;background:#f9fafb!important}
+        .breakdown-table td{padding:10px!important;font-size:.75rem!important;background:rgba(255,255,255,0.9)!important}
+        .breakdown-table tbody tr:nth-child(even) td{background:#f9fafb!important}
+        .dropdown-group-label{padding:10px 16px 4px!important;font-size:.75rem!important;color:#6b7280!important}
+        .dropdown-item{padding:10px 16px!important;font-size:.85rem!important}
+        .dropdown-item:hover{background-color:rgba(76,175,80,0.08)!important}
+        .dropdown-item.selected{background-color:rgba(76,175,80,0.12)!important}
     }
 </style>
 
@@ -1078,7 +885,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Stream Mean Chart
-    var smLabels = streams.map(function(s) { return s; });
+    var smLabels = streams.map(function(s) { return gradeName + ' ' + s; });
     var smData = streams.map(function(s) { return streamStats[s] ? streamStats[s].mean_points : 0; });
     var smCtx = document.getElementById('streamMeanChart');
     if (smCtx) {
@@ -1186,7 +993,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var potDatasets = streams.map(function(s, i) {
             var color = potColors[i % potColors.length];
             return {
-                label: s,
+                label: gradeName + ' ' + s,
                 data: potStreamsData[s] || [],
                 fill: false,
                 borderColor: color,

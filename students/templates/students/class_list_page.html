@@ -45,7 +45,7 @@
   .cls-act-btn:hover { background: var(--cls-green-dark); }
   .cls-act-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; }
 
-  /* Premium school header — oraimo green */
+  /* Premium school header */
   .cls-school-header {
     display: flex; align-items: center; gap: 14px;
     padding-bottom: 12px; margin-bottom: 24px;
@@ -124,31 +124,70 @@
 
   @media(max-width:768px){
     .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
-    .app-content{margin-top:0!important}
-    .cls-page{padding:12px 12px 80px!important;max-width:100%!important}
-    .cls-top-bar{flex-direction:row!important;align-items:center!important;gap:10px!important;margin-bottom:12px!important;padding-bottom:12px!important}
+    .cls-page{padding:12px 12px 100px!important;max-width:100%!important}
+
+    .cls-top-bar{
+      background:rgba(255,255,255,0.72);backdrop-filter:blur(24px) saturate(200%);-webkit-backdrop-filter:blur(24px) saturate(200%);
+      margin:0 -12px 12px!important;padding:14px 16px!important;border-bottom:1px solid rgba(0,0,0,0.05)!important;
+      position:sticky;top:0;z-index:10;
+    }
     .cls-top-bar h2{font-size:17px!important}
-    .cls-close-btn{padding:8px 14px!important;font-size:12px!important;border-radius:10px!important}
-    .cls-actions-bar{flex-direction:column!important;gap:8px!important;margin-bottom:16px!important}
-    .cls-act-btn{width:100%!important;justify-content:center!important;padding:14px!important;border-radius:12px!important;font-size:14px!important}
-    .cls-school-header{flex-direction:column!important;align-items:center!important;gap:8px!important;padding-bottom:12px!important;margin-bottom:16px!important;border-bottom-width:2px!important}
+    .cls-close-btn{
+      padding:8px 14px!important;font-size:12px!important;border-radius:10px!important;
+      border:1.5px solid rgba(0,0,0,0.08)!important;
+    }
+
+    .cls-actions-bar{flex-direction:row!important;gap:10px!important;margin-bottom:16px!important}
+    .cls-act-btn{
+      flex:1!important;justify-content:center!important;padding:14px!important;border-radius:12px!important;font-size:14px!important;
+      transition:transform .2s cubic-bezier(0.34,1.56,0.64,1)!important;
+    }
+    .cls-act-btn:active{transform:scale(.96)!important}
+    .cls-act-btn svg{width:16px!important;height:16px!important}
+
+    .cls-school-header{
+      background:#fff;border-radius:16px;padding:20px!important;margin-bottom:16px!important;
+      box-shadow:0 2px 16px rgba(0,0,0,0.06)!important;border:none!important;
+      flex-direction:column!important;align-items:center!important;gap:10px!important;
+    }
     .cls-school-header::after{display:none!important}
-    .cls-school-header .school-logo{width:80px!important;height:80px!important;order:0!important}
+    .cls-school-header .school-logo{width:80px!important;height:80px!important;order:0!important;border-radius:12px!important}
     .cls-school-header .school-info{text-align:center!important}
     .cls-school-header .school-name{font-size:14pt!important}
     .cls-school-header .school-addr{font-size:10pt!important}
     .cls-school-header .school-contact{font-size:9pt!important}
     .cls-school-header .school-spacer{display:none!important}
-    .cls-class-label{flex-wrap:wrap!important;gap:8px!important;font-size:12pt!important;margin-bottom:10px!important}
-    .cls-class-label .cls-badge{font-size:10pt!important;padding:3px 10px!important;border-radius:6px!important}
-    .cls-student-table-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;border-radius:10px!important;border:1px solid #e5e7eb!important;margin-bottom:12px!important}
+
+    .cls-class-label{
+      flex-wrap:wrap!important;gap:8px!important;font-size:12pt!important;margin-bottom:10px!important;
+    }
+    .cls-class-label .cls-badge{
+      font-size:10pt!important;padding:4px 12px!important;border-radius:8px!important;
+      box-shadow:0 2px 8px rgba(76,175,80,0.25)!important;
+    }
+
+    .cls-student-table-wrap{
+      border-radius:16px!important;overflow:hidden!important;
+      border:1px solid rgba(0,0,0,0.06)!important;margin-bottom:12px!important;
+      box-shadow:0 2px 12px rgba(0,0,0,0.05)!important;
+    }
     .cls-student-table{min-width:650px!important;font-size:11pt!important;border:none!important;border-radius:0!important}
-    .cls-student-table thead th{padding:9px 10px!important;font-size:10pt!important}
-    .cls-student-table tbody td{padding:8px 10px!important;font-size:10pt!important}
+    .cls-student-table thead th{padding:10px 12px!important;font-size:10pt!important}
+    .cls-student-table tbody td{padding:9px 12px!important;font-size:10pt!important}
     .col-num{width:36px!important}
     .col-adm{width:80px!important}
     .col-gender{width:60px!important}
-    .cls-summary{flex-wrap:wrap!important;gap:12px!important;font-size:11pt!important;margin-top:10px!important}
+
+    .cls-summary{
+      flex-wrap:wrap!important;gap:8px!important;font-size:11pt!important;margin-top:10px!important;
+      justify-content:center!important;
+    }
+    .cls-summary>div{
+      background:#fff;border-radius:10px;padding:8px 16px;
+      border:1px solid rgba(0,0,0,0.05);
+      box-shadow:0 1px 4px rgba(0,0,0,0.04);
+    }
+    .cls-summary span{color:var(--cls-green-dark)!important}
   }
 
   @media print {
@@ -157,7 +196,7 @@
     html { margin: 0 !important; padding: 0 !important; }
     body { margin: 0 !important; padding: 0 !important; overflow: visible !important; width: 100% !important; }
 
-    .global-header, .sidebar, .sidebar-overlay, .sidebar-toggle,
+    .global-header, .mobile-global-header, .sidebar, .sidebar-overlay, .sidebar-toggle,
     .bottom-nav, .mobile-nav, #sidebarOverlay { display: none !important; }
 
     .main-content {

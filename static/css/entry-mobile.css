@@ -864,9 +864,27 @@
     .topbar-dropdown { display: none !important; }
 
     .bottom-nav { z-index: 900 !important; }
-    .main-content { padding: 0 !important; margin: 0 !important; overflow: visible !important; }
-    .app-content { overflow: visible !important; }
-    .en-body { overflow-y: auto !important; }
+    .main-content { padding: 0 !important; margin: 0 !important; overflow: visible !important; background: transparent !important; }
+    .app-content { overflow: visible !important; background: transparent !important; }
+    body { background: transparent !important; }
+    .en-shell {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        height: calc(100dvh - var(--bottomnav-height, 72px)) !important;
+        background: linear-gradient(180deg, #C8E6C9 0%, #E8F5E9 40%, #f5f5f5 100%) !important;
+        overflow: hidden !important;
+        z-index: auto !important;
+    }
+    .en-header {
+        background: transparent !important;
+    }
+    .en-body {
+        overflow-y: auto !important;
+        background: transparent !important;
+    }
 
     .en-student {
         display: flex;

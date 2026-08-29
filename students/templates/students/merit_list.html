@@ -135,13 +135,63 @@
 
   @media print{
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-    html{overflow:visible!important}
-    body{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important}
-    .sub-nav-bar,.sidebar,.global-header,.bottom-nav,.ml-card-header,.ml-filters,.ml-actions,.broadsheet-actions-toolbar,.ml-footer{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
-    .print-watermark{display:block!important;position:fixed!important;bottom:0.25in!important;left:0!important;right:0!important;text-align:center!important;font-family:'Times New Roman',Times,serif!important;font-size:9pt!important;font-weight:700!important;color:#475569!important;text-transform:uppercase!important;letter-spacing:0.5pt!important}
+    html,body{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important;background-image:none!important}
+    .sub-nav-bar,.sidebar,.global-header,.mobile-global-header,.bottom-nav,.ml-card-header,.ml-filters,.ml-actions,.broadsheet-actions-toolbar,.ml-footer{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+    .print-watermark{display:none!important}
     .ml-page{background:#fff!important;padding:0!important;margin:0!important}
     .ml-card{border:none!important;border-radius:0!important;box-shadow:none!important}
-    @page{size:A4 portrait;margin:0.5in}
+    .query-summary-banner{display:none!important}
+    .broadsheet-document{width:100%!important;border:none!important;box-shadow:none!important;border-radius:0!important;margin:0!important;padding:0!important;background:#fff!important}
+    .broadsheet-card{overflow:visible!important}
+    .table-analysis,.table-analysis th,.table-analysis td{font-family:"Times New Roman",Times,serif!important}
+    .table-analysis{width:100%!important;min-width:0!important;border-collapse:collapse!important;table-layout:fixed!important}
+    .table-analysis th,.table-analysis td{padding:3px 4px!important;border:1px solid #000!important;white-space:nowrap!important;overflow:hidden!important;color:#000!important;font-size:12pt!important;line-height:1.3!important}
+    .table-analysis th{font-weight:800!important;background:#e2e6ea!important;color:#000!important}
+    .table-analysis .col-adm,.table-analysis th.col-adm,.table-analysis td.col-adm{width:0.55in!important;font-size:12pt!important;font-weight:800!important;text-align:center!important}
+    .table-analysis .col-name,.table-analysis th.col-name,.table-analysis td.col-name{width:1.5in!important;font-size:12pt!important;font-weight:400!important;text-align:left!important;padding-left:5px!important}
+    .table-analysis th.col-name{font-weight:800!important}
+    .table-analysis tbody tr td{background:#fff!important}
+    .table-analysis tbody tr td.tps-col{background:#9AD725!important;color:#000!important;font-weight:700!important}
+    .table-analysis tbody tr td.total-col{background:#9AD725!important;color:#000!important;font-weight:800!important}
+    .table-analysis tbody tr td.plv-col{background:#F4C400!important;color:#000!important;font-weight:800!important}
+    .table-analysis tbody tr td.lv-col{background:#EDF4FC!important;color:#305CDE!important;font-weight:700!important}
+    .tps-col,.total-col,.plv-col{background-color:#9AD725!important;border:1px solid #000!important}
+    .plv-col{background-color:#F4C400!important}
+    .subj-header,.sub-hdr-mk,.sub-hdr-lv{background:#fff!important;border:1px solid #000!important}
+    .table-analysis tr{page-break-inside:avoid!important;break-inside:avoid!important}
+    .table-analysis thead{display:table-header-group!important}
+    .bs-header-block{display:block!important;padding:8px 12px!important;border-bottom:2pt solid var(--section-accent,#305CDE)!important;margin-bottom:4px!important}
+    .bs-header-main{display:table!important;width:100%!important;table-layout:fixed!important;gap:0!important;align-items:center!important}
+    .bs-header-main>div:first-child{display:table-cell!important;vertical-align:middle!important;width:auto!important}
+    .bs-header-main>span:last-child{display:table-cell!important;vertical-align:middle!important;text-align:right!important;white-space:nowrap!important;padding-left:12px!important}
+    .bs-header-logo-wrap{display:table-cell!important;vertical-align:middle!important;width:0.6in!important;padding-right:10px!important}
+    .bs-logo-frame{width:0.6in!important;height:0.6in!important}
+    .bs-header-logo-wrap img{max-width:0.6in!important;max-height:0.6in!important}
+    @page{
+      size:A4 landscape;
+      margin:8mm 10mm 18mm 10mm;
+      @bottom-center{
+        content:"GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
+        font-family:"Times New Roman",Times,serif;
+        font-size:8pt;
+        font-weight:700;
+        color:#64748b;
+        text-transform:uppercase;
+        letter-spacing:0.5pt;
+        border-top:0.5pt solid #cbd5e1;
+        width:70%;
+        padding-top:4pt;
+      }
+      @bottom-right{
+        content:"Page " counter(page) " of " counter(pages);
+        font-family:"Times New Roman",Times,serif;
+        font-size:8pt;
+        font-weight:700;
+        color:#64748b;
+        width:28%;
+        white-space:nowrap;
+      }
+    }
   }
 </style>
 
@@ -250,7 +300,6 @@
   <div class="ml-footer">
     &copy; 2026 <a href="#">EduNexus</a>. All Rights Reserved.
   </div>
-  <div class="print-watermark">GENERATED FROM EDUNEXUS EXAM SYSTEM &copy;2026</div>
 </div>
 
 <script>

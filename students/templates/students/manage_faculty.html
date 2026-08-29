@@ -1869,9 +1869,8 @@
 
   @media print {
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-    html{overflow:visible!important}
-    body{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important}
-    .sub-nav-bar,.sidebar,.global-header,.bottom-nav,.teachers-header-bar,.list-view-controls,.btn-print-list,.btn-download-list,.btn-close-list{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+    html,body,.app-content,.main-content{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important;background-image:none!important}
+    .sub-nav-bar,.sidebar,.global-header,.mobile-global-header,.bottom-nav,.teachers-header-bar,.list-view-controls,.btn-print-list,.btn-download-list,.btn-close-list{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
     .a4-paper{
       position:static!important;
       width:100%!important;
@@ -1886,8 +1885,8 @@
     .a4-paper *{visibility:visible!important}
     .print-watermark{display:block!important;position:fixed!important;bottom:0.25in!important;left:0!important;right:0!important;text-align:center!important;font-family:'Times New Roman',Times,serif!important;font-size:9pt!important;font-weight:700!important;color:#475569!important;text-transform:uppercase!important;letter-spacing:0.5pt!important}
     .a4-header{padding:8mm 0 4mm!important;text-align:center!important}
-    .a4-header h2{font-family:"Times New Roman",Times,serif!important;font-size:18pt!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:0.08em!important;margin:0 0 2mm!important}
-    .a4-header p{font-size:10pt!important;color:#64748b!important;margin:0!important}
+    .a4-header h2{font-family:"Times New Roman",Times,serif!important;font-size:18px!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:0.08em!important;margin:0 0 2mm!important}
+    .a4-header p{font-size:11px!important;color:#64748b!important;margin:0!important}
     .a4-body{padding:0 4mm!important}
     @page{size:A4 portrait;margin:0.5in}
   }
