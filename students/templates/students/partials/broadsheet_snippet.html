@@ -58,7 +58,7 @@
                     <th rowspan="2" class="col-name" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:left !important; padding-left:6px !important; font-size:9pt;">STUDENT NAME</th>
                     <th rowspan="2" class="col-strm" style="background:#ffffff; color:#000000; font-weight:800; border:1px solid #000000; text-align:center; font-size:9pt;">STRM</th>
                     {% for code, short in published_subjects %}
-                        <th colspan="2" class="subj-header" style="background:#ffffff !important; color:#000000 !important; border:1px solid #000000 !important; font-size:9pt;">{{ short }}</th>
+                        <th colspan="2" class="subj-header" style="background:#e2e8f0 !important; color:#000000 !important; border:1px solid #000000 !important; font-size:9pt;">{{ short }}</th>
                     {% endfor %}
                     <th rowspan="2" class="tps-col col-tps" style="font-weight:700; border:1px solid #000000; background:#9AD725 !important; color:#000000 !important; font-size:9pt;">TPS</th>
                     <th rowspan="2" class="total-col col-total" style="font-weight:800; border:1px solid #000000; background:#9AD725 !important; color:#000000 !important; font-size:9pt;">TTL<br>MRK</th>
@@ -91,32 +91,33 @@
         </table>
 
         <!-- Class Grade Summary (Subject Performance Analysis) — inside card for unified print -->
-        <div class="analysis-page-container" style="margin-top: 35px; padding-top: 20px;">
+        <div class="analysis-page-container" style="margin-top: 10px; padding-top: 6px;">
             <div style="width: 100%; background: var(--section-accent, #2b5ce7); color: #ffffff; text-align: center; padding: 4px 12px; margin: 0 0 10px 0; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 0; box-sizing: border-box;">
                 Class Grade Summary
             </div>
             <table class="summary-table" style="width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Times New Roman', Times, serif; border: none;">
                 <thead>
                     <tr>
-                        <th style="text-align: left; padding-left: 6px; font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">SUBJECT</th>
+                        <th style="text-align: left; padding-left: 6px; font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">SUBJECT</th>
                         {% for lvl in ordered_levels %}
-                            <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">{{ lvl }}</th>
+                            <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">{{ lvl }}</th>
                         {% endfor %}
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">ENTRIES</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN MARKS</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN POINTS</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800; text-align: left; padding-left: 6px;">PERFORMANCE LEVEL</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800; text-align: left; padding-left: 6px;">TEACHERS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">ENTRIES</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">MEAN MARKS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">MEAN POINTS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800; text-align: left; padding-left: 6px;">PERFORMANCE LEVEL</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800; text-align: left; padding-left: 6px;">TEACHERS</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in analysis_rows %}
                     {% if forloop.counter0|divisibleby:2 %}
                     <tr style="background: #ffffff;">
+                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt; background: #ffffff;">{{ item.short }}</td>
                     {% else %}
                     <tr style="background: #e2e8f0;">
+                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt; background: #e2e8f0;">{{ item.short }}</td>
                     {% endif %}
-                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt;">{{ item.short }}</td>
 
                         {% for lvl in ordered_levels %}
                             <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">
@@ -148,31 +149,32 @@
         </div>
 
         <!-- Grade Breakdown: Performance Across Streams -->
-        <div class="analysis-page-container" style="margin-top: 25px; padding-top: 20px;">
+        <div class="analysis-page-container" style="margin-top: 10px; padding-top: 6px;">
             <div style="width: 100%; background: var(--section-accent, #2b5ce7); color: #ffffff; text-align: center; padding: 4px 12px; margin: 0 0 10px 0; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 0; box-sizing: border-box;">
                 Grade Breakdown – {{ selected_grade }}
             </div>
             <table class="summary-table" style="width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Times New Roman', Times, serif; border: none;">
                 <thead>
                     <tr>
-                        <th style="text-align: left; padding-left: 6px; font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">FORM</th>
+                        <th style="text-align: left; padding-left: 6px; font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">FORM</th>
                         {% for lvl in ordered_levels %}
-                            <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">{{ lvl }}</th>
+                            <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">{{ lvl }}</th>
                         {% endfor %}
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">ENTRIES</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN MARKS</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN POINTS</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800; text-align: left; padding-left: 6px;">PERFORMANCE LEVEL</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">ENTRIES</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">MEAN MARKS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">MEAN POINTS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800; text-align: left; padding-left: 6px;">PERFORMANCE LEVEL</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in grade_breakdown_rows %}
                     {% if forloop.counter0|divisibleby:2 %}
                     <tr style="background: #ffffff;">
+                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt; background: #ffffff;">{{ item.label }}</td>
                     {% else %}
                     <tr style="background: #e2e8f0;">
+                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt; background: #e2e8f0;">{{ item.label }}</td>
                     {% endif %}
-                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt;">{{ item.label }}</td>
                         {% for lvl in ordered_levels %}
                             <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">
                                 {% if lvl == 'EE1' %}{{ item.dist.EE1 }}
@@ -201,31 +203,32 @@
         </div>
 
         <!-- Gender Summary: Boys vs Girls in Current Stream -->
-        <div class="analysis-page-container" style="margin-top: 25px; padding-top: 20px;">
+        <div class="analysis-page-container" style="margin-top: 10px; padding-top: 6px;">
             <div style="width: 100%; background: var(--section-accent, #2b5ce7); color: #ffffff; text-align: center; padding: 4px 12px; margin: 0 0 10px 0; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 0; box-sizing: border-box;">
                 Gender Summary – {{ selected_stream }}
             </div>
             <table class="summary-table" style="width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Times New Roman', Times, serif; border: none;">
                 <thead>
                     <tr>
-                        <th style="text-align: left; padding-left: 6px; font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">GENDER</th>
+                        <th style="text-align: left; padding-left: 6px; font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">GENDER</th>
                         {% for lvl in ordered_levels %}
-                            <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">{{ lvl }}</th>
+                            <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">{{ lvl }}</th>
                         {% endfor %}
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">ENTRIES</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN MARKS</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800;">MEAN POINTS</th>
-                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e5e7eb; font-weight: 800; text-align: left; padding-left: 6px;">PERFORMANCE LEVEL</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">ENTRIES</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">MEAN MARKS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800;">MEAN POINTS</th>
+                        <th style="font-size: 9pt; border: 1px solid #000000; background: #e2e8f0; font-weight: 800; text-align: left; padding-left: 6px;">PERFORMANCE LEVEL</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in gender_rows %}
                     {% if forloop.counter0|divisibleby:2 %}
                     <tr style="background: #ffffff;">
+                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt; background: #ffffff;">{{ item.label }}</td>
                     {% else %}
                     <tr style="background: #e2e8f0;">
+                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt; background: #e2e8f0;">{{ item.label }}</td>
                     {% endif %}
-                        <td style="text-align: left; padding-left: 6px; font-weight: 800; border: 1px solid #000000; font-size: 9pt;">{{ item.label }}</td>
                         {% for lvl in ordered_levels %}
                             <td style="border: 1px solid #000000; text-align: center; font-size: 9pt; font-weight: 700;">
                                 {% if lvl == 'EE1' %}{{ item.dist.EE1 }}

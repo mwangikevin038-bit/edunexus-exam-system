@@ -26,6 +26,7 @@
     border: none;
     padding: 0;
     margin-top: 0;
+    min-width: 820px;
 }
 
 /* ── Main Analysis Table (SCREEN) ────────────────────────── */
@@ -75,18 +76,18 @@
 .col-strm  { width: 28px; }
 .col-tps   { width: 30px; }
 .col-total { width: 36px; }
-.col-plv   { width: 30px; }
+.col-plv   { width: 33px; }
 .col-mk    { width: 26px; }
-.col-lv    { width: 28px; }
+.col-lv    { width: 32px; }
 
 .table-analysis th.col-adm  { font-weight: 800 !important; }
 .table-analysis th.col-name { font-weight: 800 !important; }
 .table-analysis td.col-name { font-weight: 400 !important; font-size: 10pt !important; }
 
 /* ── Subject Headers ─────────────────────────────────────── */
-.subj-header { background: #ffffff !important; color: #000000 !important; font-weight: 700 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
-.sub-hdr-mk  { background: #ffffff !important; color: #000000 !important; font-weight: 600 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
-.sub-hdr-lv  { background: #ffffff !important; color: #000000 !important; font-weight: 600 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
+.subj-header { background: #e2e8f0 !important; color: #000000 !important; font-weight: 700 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
+.sub-hdr-mk  { background: #e2e8f0 !important; color: #000000 !important; font-weight: 600 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
+.sub-hdr-lv  { background: #e2e8f0 !important; color: #000000 !important; font-weight: 600 !important; font-size: 9pt !important; border: 1px solid #000000 !important; }
 
 /* ── Aggregate Columns ───────────────────────────────────── */
 .tps-col   { background-color: #9AD725 !important; font-weight: 700; color: #1e293b !important; border: 1px solid #000000 !important; font-size: 9pt !important; }
@@ -535,26 +536,26 @@
     .subj-header,
     .sub-hdr-mk,
     .sub-hdr-lv {
-        background: #ffffff !important;
+        background: #e2e8f0 !important;
         border: 1px solid #000000 !important;
     }
 
     /* ── Column Widths (A4 landscape: 277mm usable) ────────── */
-    .col-adm   { width: 0.55in !important; }
-    .col-name  { width: 1.5in !important; }
-    .col-strm  { width: 0.25in !important; }
-    .col-mk    { width: 0.18in !important; }
-    .col-lv    { width: 0.18in !important; }
-    .col-tps   { width: 0.25in !important; }
-    .col-total { width: 0.3in !important; }
-    .col-plv   { width: 0.25in !important; }
+    .col-adm   { width: 40px !important; border: 1px solid #000000 !important; position: static !important; z-index: auto !important; }
+    .col-name  { width: 150px !important; text-align: left !important; padding-left: 6px !important; white-space: nowrap !important; border: 1px solid #000000 !important; position: static !important; z-index: auto !important; }
+    .col-strm  { width: 28px !important; }
+    .col-mk    { width: 26px !important; }
+    .col-lv    { width: 32px !important; }
+    .col-tps   { width: 30px !important; }
+    .col-total { width: 36px !important; }
+    .col-plv   { width: 33px !important; }
 
     /* ── Flexbox → Table fallback (WeasyPrint safe) ──────── */
     .bs-header-block {
         display: block !important;
-        padding: 8px 12px !important;
-        border-bottom: 2pt solid var(--section-accent, #305CDE) !important;
-        margin-bottom: 4px !important;
+        padding: 6px 16px 4px 16px !important;
+        border-bottom: 3pt solid var(--section-accent, #305CDE) !important;
+        margin-bottom: 6px !important;
     }
     .bs-header-main {
         display: flex !important;
@@ -572,25 +573,39 @@
         text-align: right !important;
         white-space: nowrap !important;
         padding-left: 12px !important;
+        font-size: 1rem !important;
+        padding: 12px 24px !important;
     }
     .bs-header-logo-wrap {
         display: flex !important;
         align-items: center !important;
-        width: 0.8in !important;
-        padding-right: 10px !important;
+        width: 1in !important;
+        padding-right: 12px !important;
     }
     .bs-logo-frame {
-        width: 0.8in !important;
-        height: 0.8in !important;
+        width: 1in !important;
+        height: 1in !important;
     }
     .bs-header-logo-wrap img {
-        max-width: 0.8in !important;
-        max-height: 0.8in !important;
+        max-width: 1in !important;
+        max-height: 1in !important;
     }
     .bs-logo-placeholder {
-        width: 0.8in !important;
-        height: 0.8in !important;
+        width: 1in !important;
+        height: 1in !important;
         font-size: 6pt !important;
+    }
+
+    /* Premium heading text overrides (override inline styles) */
+    .bs-header-main h2 {
+        font-size: 2rem !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.02em !important;
+    }
+    .bs-header-main p {
+        font-size: 0.95rem !important;
+        letter-spacing: 0.08em !important;
+        margin-top: 2px !important;
     }
 
     /* ── Page Break Control ──────────────────────────────── */
@@ -600,7 +615,7 @@
         page-break-after: auto !important;
     }
     .table-analysis thead {
-        display: table-header-group !important;
+        display: table-row-group !important;
     }
     .table-analysis tfoot {
         display: table-footer-group !important;
@@ -608,40 +623,115 @@
 
     /* ── Summary Sections ────────────────────────────────── */
     .analysis-page-container {
-        margin-top: 10px !important;
-        padding: 0 !important;
-        background: transparent !important;
-        border: none !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+        break-before: auto !important;
         page-break-before: auto !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin-top: 8px !important;
+        padding: 6px 12px !important;
+        background: #ffffff !important;
+        border: none !important;
+        overflow: visible !important;
+    }
+    .analysis-page-container:first-of-type {
+        break-before: page !important;
+        page-break-before: always !important;
+        margin-top: 0 !important;
     }
 
+    /* Section title bars (Class Grade Summary, Grade Breakdown, Gender Summary) */
     .analysis-page-container > div[style*="background: var(--section-accent"],
     .analysis-section-title {
-        padding: 3px 8px !important;
+        padding: 2px 8px !important;
         margin: 0 0 4px !important;
         border-radius: 0 !important;
+        font-family: "Times New Roman", Times, serif !important;
         font-size: 12pt !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        color: #ffffff !important;
     }
 
+    /* Summary tables — match main broadsheet table typography */
+    .summary-table,
+    .summary-table th,
+    .summary-table td {
+        font-family: "Times New Roman", Times, serif !important;
+        font-size: 12pt !important;
+    }
     .summary-table {
         width: 100% !important;
         border-collapse: collapse !important;
+        border: 1px solid #000000 !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
     }
-    .summary-table th,
+    .summary-table th {
+        background: #e2e8f0 !important;
+        color: #000000 !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        border: 1px solid #000000 !important;
+        padding: 2px 4px !important;
+        white-space: nowrap !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .summary-table tbody tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    .summary-table tbody tr:nth-child(odd) td {
+        background: #ffffff !important;
+    }
+    .summary-table tbody tr:nth-child(even) td {
+        background: #e2e8f0 !important;
+    }
     .summary-table td {
         border: 1px solid #000000 !important;
-        padding: 3px 4px !important;
+        text-align: center !important;
+        padding: 2px 4px !important;
+        color: #000000 !important;
+        font-weight: 600 !important;
+        font-family: "Times New Roman", Times, serif !important;
+        font-size: 12pt !important;
+        white-space: nowrap !important;
+    }
+    .summary-table tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    .summary-table td.sub-lbl {
+        text-align: left !important;
+        font-weight: 800 !important;
+        padding-left: 10px !important;
         color: #000000 !important;
     }
-    .summary-table th {
-        background: #e2e6ea !important;
+    .summary-table td.teacher-col {
+        text-align: left !important;
+        font-weight: 600 !important;
+        padding-left: 8px !important;
+        color: #374151 !important;
+        white-space: nowrap !important;
+    }
+    .summary-table th:first-child,
+    .summary-table td:first-child {
+        position: static !important;
+        z-index: auto !important;
+        border: 1px solid #000000 !important;
+        text-align: left !important;
+        padding-left: 6px !important;
+        white-space: nowrap !important;
+    }
+    .summary-table th:first-child {
+        background: #e2e8f0 !important;
+    }
+    .summary-table td:first-child {
         font-weight: 800 !important;
-        color: #000000 !important;
     }
 }

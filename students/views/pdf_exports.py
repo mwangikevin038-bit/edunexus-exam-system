@@ -590,8 +590,6 @@ def download_broadsheet_pdf(request):
     print-color-adjust: exact !important;
   }
 
-  @page { size: A4 landscape; margin: 0.15in 0.15in; }
-
   /* Hide all screen-only chrome */
   .sidebar,
   .sidebar-overlay,
