@@ -88,19 +88,19 @@
   .ar-summary-means-row{display:flex;gap:28px;margin-bottom:12px}
   .ar-summary-mean{display:flex;flex-direction:column}
   .ar-summary-mean-label{font-size:13px;color:#64748b;font-weight:600;margin-bottom:2px}
-  .ar-summary-mean-value{font-size:32px;font-weight:800;color:#16a34a;line-height:1.1}
+  .ar-summary-mean-value{font-size:36px;font-weight:900;color:#16a34a;line-height:1.1}
   .ar-summary-mean-change{font-size:13px;font-weight:700;margin-top:2px}
   .ar-summary-mean-change.up{color:#f97316}
   .ar-summary-mean-change.down{color:#f97316}
   .ar-summary-mean-change.neutral{color:#94a3b8}
-  .ar-summary-plv{margin-top:12px}
+  .ar-summary-plv{border-left:2px solid #e2e8f0;padding-left:16px;margin-left:8px}
   .ar-summary-plv-label{font-size:13px;color:#64748b;font-weight:600;margin-bottom:2px}
   .ar-summary-plv-value{font-size:22px;font-weight:800;color:#0f172a;line-height:1.2}
   .ar-summary-chart{display:flex;flex-direction:column;align-items:center}
   .ar-summary-chart canvas{width:100%!important;max-height:220px}
   .ar-summary-right{display:flex;flex-direction:column;align-items:flex-end;text-align:right}
   .ar-summary-students-label{font-size:13px;color:#64748b;font-weight:600;margin-bottom:4px}
-  .ar-summary-students-value{font-size:48px;font-weight:800;color:#0f172a;line-height:1}
+  .ar-summary-students-value{font-size:56px;font-weight:900;color:#0f172a;line-height:1}
   .ar-summary-students-sub{font-size:20px;color:#94a3b8;font-weight:500;margin-top:4px}
   .ar-scard-change.neutral{color:#94a3b8}
 
@@ -140,16 +140,25 @@
   .statistics-table-wrapper .col-points,.statistics-table-wrapper .col-change,.statistics-table-wrapper .col-trend{text-align:center}
   .statistics-table-wrapper .col-performance{text-align:left}
   .statistics-table-wrapper .cell-center{text-align:center}
-  .statistics-table-wrapper .target-data-table .trend-positive,
-  .statistics-table-wrapper .target-data-table .trend-negative,
-  .statistics-table-wrapper .target-data-table .trend-zero{
-    display:inline-block;vertical-align:middle;line-height:0;
-  }
-  .statistics-table-wrapper .target-data-table .trend-positive svg,
-  .statistics-table-wrapper .target-data-table .trend-negative svg,
-  .statistics-table-wrapper .target-data-table .trend-zero svg{
-    width:18px;height:18px;
-  }
+    .statistics-table-wrapper .target-data-table .trend-positive,
+    .statistics-table-wrapper .target-data-table .trend-negative,
+    .statistics-table-wrapper .target-data-table .trend-zero{
+      display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:0!important;
+    }
+    .statistics-table-wrapper .target-data-table .trend-positive svg,
+    .statistics-table-wrapper .target-data-table .trend-negative svg,
+    .statistics-table-wrapper .target-data-table .trend-zero svg{
+      width:14px!important;height:14px!important;
+    }
+
+    .ar-table .trend-positive,.ar-table .trend-negative,.ar-table .trend-zero{
+      display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:0!important;
+    }
+    .ar-table .trend-positive svg,.ar-table .trend-negative svg,.ar-table .trend-zero svg{
+      width:14px!important;height:14px!important;
+    }
+    .cell-center{text-align:center!important}
+    .col-trend{text-align:center!important}
 
   /* Gender badge */
   .ar-gender-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase}
@@ -267,35 +276,106 @@
     .ar-empty svg{width:40px!important;height:40px!important}
   }
 
-  /* Print styles */
+  /* Print styles — matching class list print */
   @media print{
-    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;font-family:"Times New Roman",Times,serif!important;font-size:11pt!important}
     html,body,.app-content,.main-content{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important;background-image:none!important}
-    .sub-nav-bar,.sidebar,.global-header,.mobile-global-header,.bottom-nav,.ar-toolbar,.ar-card,.ar-empty{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
-    .print-watermark{display:block!important;position:fixed!important;bottom:0.25in!important;left:0!important;right:0!important;text-align:center!important;font-family:'Times New Roman',Times,serif!important;font-size:9pt!important;font-weight:700!important;color:#475569!important;text-transform:uppercase!important;letter-spacing:0.5pt!important}
-    .ar-report{position:static!important;width:100%!important;display:block!important}
-    .ar-report,.ar-report *{visibility:visible!important}
-    .ar-school-hdr{padding:4mm 0 2mm;align-items:center}
-    .ar-table-wrap{padding:0 32px}
-    .statistics-table-wrapper .target-data-table{font-size:13px}
-    .statistics-table-wrapper .target-data-table th{padding:10px 14px;font-size:13px;font-weight:700;color:#374151;background:transparent;border-bottom:1px solid #d1d5db}
-    .statistics-table-wrapper .target-data-table td{padding:5px 14px;font-size:13px;border-bottom:1px solid #e5e7eb;color:#111827;white-space:nowrap;font-weight:600}
-    .statistics-table-wrapper.cgs .target-data-table{font-size:13px}
-    .statistics-table-wrapper.cgs .target-data-table th{padding:8px 6px;font-size:13px}
-    .statistics-table-wrapper.cgs .target-data-table td{padding:6px 6px;font-size:13px}
-    .ar-charts-row{padding:0 32px}
-    .ar-pot-section{padding:0 32px}
-    .ar-summary-cards{padding:12px 32px}
-    .ar-summary-chart canvas{max-width:100%!important;height:auto!important}
-    .ar-pot-wrap canvas{max-width:100%!important;height:auto!important}
-    .target-data-table{page-break-inside:avoid}
-    .ar-accent-bar,.ar-exam-banner,.ar-summary-row,.ar-summary-cards{page-break-inside:avoid}
-    .ar-accent-bar{height:6px;background:linear-gradient(90deg,#1e40af 0%,#2563EB 40%,#3b82f6 100%)}
-    .ar-section-title{font-weight:800;border-bottom:2px solid #e2e8f0}
-    .ar-subject-banner{font-weight:800;background:#e5e7eb}
-    .ar-table th{font-weight:800;background:#f8fafc}
-    .ar-chart-box{border:1px solid #e5e7eb;border-radius:10px}
-    @page{size:landscape;margin:12mm 15mm 20mm 15mm}
+    .sub-nav-bar,.sidebar,.global-header,.mobile-global-header,.bottom-nav,.ar-toolbar,.ar-card,.ar-empty,.print-watermark{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+    .ar-wrap{padding:0!important;margin:0!important;max-width:none!important;background:#fff!important}
+    .ar-report{position:static!important;width:100%!important;display:block!important;border:none!important;box-shadow:none!important;border-radius:0!important;background:#fff!important;overflow:visible!important}
+    .ar-report,.ar-report *{visibility:visible!important;font-family:"Times New Roman",Times,serif!important;font-size:11pt!important}
+
+    .ar-accent-bar{display:none!important}
+    .ar-school-hdr{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:0!important;border:none!important;border-bottom:2px solid!important;padding:10px 0 8px 100px!important;min-height:auto!important;background:#fff!important}
+    .ar-school-logo{position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:80px!important;height:80px!important;object-fit:contain!important;display:block!important;border-radius:6px!important}
+    .ar-school-info{text-align:center!important}
+    .ar-school-name{font-family:"Times New Roman",Times,serif!important;font-size:24px!important;font-weight:900!important;text-transform:uppercase!important;color:#0f1727!important;margin:0!important;line-height:1.1!important;letter-spacing:0.08em!important}
+    .ar-school-motto{font-family:"Times New Roman",Times,serif!important;font-size:10pt!important;color:#374151!important;margin:3px 0 0!important;font-weight:600!important;letter-spacing:0.1em!important;text-transform:uppercase!important}
+    .ar-school-addr{font-size:10pt!important;color:#374151!important;font-weight:600!important;margin:2px 0 0!important;font-family:"Times New Roman",Times,serif!important}
+    .ar-school-contact{font-size:10pt!important;color:#374151!important;font-weight:500!important;margin:1px 0 0!important;font-family:"Times New Roman",Times,serif!important}
+    .ar-school-spacer{display:none!important}
+
+    .ar-exam-banner{margin:0 24px!important;padding:12px 20px!important;font-size:12pt!important;color:#fff!important;border-radius:0!important;font-weight:700!important;letter-spacing:0.04em!important}
+    .ar-summary-row{display:grid!important;grid-template-columns:1fr 2.5fr 1fr!important;padding:20px 28px!important;gap:0!important;align-items:center!important;page-break-inside:avoid!important;border-bottom:2px solid #e2e8f0!important;background:#f8fafc!important}
+    .ar-summary-left{display:flex!important;flex-direction:column!important;justify-content:center!important}
+    .ar-summary-means-row{display:flex!important;gap:20px!important;align-items:flex-end!important}
+    .ar-summary-mean{display:flex!important;flex-direction:column!important}
+    .ar-summary-plv{display:flex!important;flex-direction:column!important;border-left:2px solid #cbd5e1!important;padding-left:16px!important;margin-left:8px!important}
+    .ar-summary-mean-label{font-size:9pt!important;color:#475569!important;font-weight:700!important;margin-bottom:2px!important;text-transform:uppercase!important;letter-spacing:0.05em!important}
+    .ar-summary-mean-value{font-size:18pt!important;font-weight:900!important;color:#16a34a!important;line-height:1.1!important}
+    .ar-summary-mean-change{font-size:9pt!important;font-weight:700!important;margin-top:2px!important}
+    .ar-summary-plv-label{font-size:9pt!important;color:#475569!important;font-weight:700!important;margin-bottom:2px!important;text-transform:uppercase!important;letter-spacing:0.05em!important}
+    .ar-summary-plv-value{font-size:13pt!important;font-weight:900!important;color:#0f172a!important;line-height:1.1!important}
+    .ar-summary-chart{display:flex!important;align-items:center!important;justify-content:center!important;padding:8px 16px!important}
+    .ar-summary-chart canvas{width:100%!important;height:120px!important}
+    .ar-summary-right{display:flex!important;flex-direction:column!important;align-items:flex-end!important;text-align:right!important;padding-right:8px!important}
+    .ar-summary-students-label{font-size:9pt!important;color:#475569!important;font-weight:700!important;margin-bottom:4px!important;text-transform:uppercase!important;letter-spacing:0.05em!important}
+    .ar-summary-students-value{font-size:36pt!important;font-weight:900!important;color:#0f172a!important;line-height:1!important}
+    .ar-summary-students-sub{font-size:9pt!important;color:#94a3b8!important;font-weight:500!important;margin-top:4px!important}
+    .ar-section-title{font-size:11pt!important;font-weight:900!important;margin:16px 0 8px!important;padding-bottom:4px!important;border-bottom:1.5px solid #e2e8f0!important}
+    .ar-subject-banner{margin:0 24px 8px!important;padding:5px 14px!important;font-size:11pt!important;background:#e5e7eb!important;border-radius:0!important;font-weight:900!important}
+
+    .ar-table-wrap{padding:0 24px!important;margin-bottom:12px!important}
+    .ar-table{width:100%!important;border-collapse:collapse!important;font-size:11pt!important;border:1px solid #000!important;table-layout:auto!important}
+    .ar-table th{background:#e2e6ea!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:4px 6px!important;border:1px solid #000!important;text-transform:uppercase!important;white-space:nowrap!important}
+    .ar-table td{padding:3px 6px!important;border:1px solid #000!important;color:#000!important;font-size:11pt!important;white-space:nowrap!important}
+    .ar-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
+    .ar-table .col-trend{text-align:center!important}
+
+    .statistics-table-wrapper{margin:0 24px 10px!important;overflow:visible!important}
+    .statistics-table-wrapper .target-data-table{width:100%!important;border-collapse:collapse!important;font-size:11pt!important;border:1.5px solid #000!important;table-layout:auto!important}
+    .statistics-table-wrapper .target-data-table th{background:#e2e6ea!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:3px 4px!important;border:1px solid #000!important;text-transform:uppercase!important;white-space:nowrap!important}
+    .statistics-table-wrapper .target-data-table td{padding:2px 4px!important;border:1px solid #000!important;color:#000!important;font-size:11pt!important;white-space:nowrap!important}
+    .statistics-table-wrapper .target-data-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
+    .statistics-table-wrapper .subject-statistics-title-bar{background:#e5e7eb!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:5px 14px!important;border-radius:0!important}
+
+    .statistics-table-wrapper.cgs .target-data-table th{padding:3px 4px!important;font-size:11pt!important;white-space:nowrap!important}
+    .statistics-table-wrapper.cgs .target-data-table td{padding:2px 4px!important;font-size:11pt!important;white-space:nowrap!important}
+    .statistics-table-wrapper.cgs .target-data-table .col-name{min-width:0!important;white-space:nowrap!important}
+
+    .ar-charts-row{padding:0 24px!important;margin-bottom:16px!important}
+    .ar-chart-box{border:1px solid #e5e7eb!important;border-radius:0!important}
+    .ar-chart-title{background:#e5e7eb!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:5px 14px!important;margin:0!important;border-radius:0!important}
+    .ar-pot-section{padding:0 24px!important}
+    .ar-loading,.ar-loading *{font-family:"Times New Roman",Times,serif!important;font-size:11pt!important;color:#000!important}
+    .ar-loading .spinner{border:3px solid #e2e8f0!important;border-top-color:#0891b2!important}
+
+    @page{
+      size:A4 portrait;
+      margin:8mm 10mm 20mm 10mm;
+      @bottom-center{
+        content:"GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
+        font-family:"Times New Roman",Times,serif;
+        font-size:8pt;
+        font-weight:700;
+        color:#64748b;
+        text-transform:uppercase;
+        letter-spacing:0.5pt;
+        border-top:0.5pt solid #cbd5e1;
+        width:70%;
+        padding-top:4pt;
+      }
+      @bottom-right{
+        content:"Page " counter(page) " of " counter(pages);
+        font-family:"Times New Roman",Times,serif;
+        font-size:8pt;
+        font-weight:700;
+        color:#64748b;
+        width:28%;
+        white-space:nowrap;
+      }
+    }
+  }
+      @bottom-right{
+        content:"Page " counter(page) " of " counter(pages);
+        font-family:"Times New Roman",Times,serif;
+        font-size:8pt;
+        font-weight:700;
+        color:#64748b;
+        width:28%;
+        white-space:nowrap;
+      }
+    }
   }
 </style>
 
@@ -383,6 +463,23 @@
       cardBody=document.getElementById('arCardBody'),
       getBtn=document.getElementById('arGetBtn'),
       reportDiv=document.getElementById('arReport');
+
+  var SECTION_COLORS={% autoescape off %}{{ section_colors_json }}{% endautoescape %};
+
+  function getSectionForGrade(gradeName){
+    if(!gradeName)return null;
+    var num=parseInt(gradeName.replace(/\D/g,''),10);
+    if(isNaN(num))return null;
+    if(num<=3)return 'LOWER_PRIMARY';
+    if(num<=6)return 'PRIMARY';
+    return 'JSS';
+  }
+
+  function getAccentColor(gradeName){
+    var section=getSectionForGrade(gradeName);
+    if(section&&SECTION_COLORS[section])return SECTION_COLORS[section];
+    return '#0f1727';
+  }
 
   function fetchJSON(url){
     return fetch(url).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()});
@@ -530,9 +627,9 @@
 
   function esc(s){return s?s.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
 
-  var _svgUp='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
-  var _svgDown='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
-  var _svgRight='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
+  var _svgUp='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
+  var _svgDown='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
+  var _svgRight='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
   function trendIcon(val){
     var v=parseFloat(val);
     if(v>0) return '<span style="font-weight:700">'+_svgUp+' +'+v.toFixed(4)+'</span>';
@@ -541,8 +638,13 @@
   }
 
   function plvBadge(plv,labels){
-    var label=labels[plv]||plv||'-';
-    return '<span title="'+esc(plv)+'">'+esc(label)+'</span>';
+    var full=labels[plv]||plv||'-';
+    var short=full;
+    if(/exceeding/i.test(full))short='EE';
+    else if(/meeting/i.test(full))short='ME';
+    else if(/approaching/i.test(full))short='AE';
+    else if(/below/i.test(full))short='BE';
+    return '<span title="'+esc(full)+'">'+esc(short)+'</span>';
   }
 
   function rankBadge(r){
@@ -558,6 +660,21 @@
 
   function streamLabel(gradeName,stream){return gradeName+' '+stream}
 
+  function shortName(n){
+    if(!n)return'';
+    var s=n.trim();
+    if(s==='Christian Religious Education')return'CRE';
+    if(s==='Islamic Religious Education')return'IRE';
+    if(s==='Science and Technology')return'Sci&Tech';
+    if(s==='Agriculture and Nutrition')return'Agri&Nut';
+    if(s==='Social Studies')return'Social Studies';
+    if(s==='Creative Arts')return'Creative Arts';
+    if(s==='Mathematics')return'Maths';
+    if(s==='English')return'English';
+    if(s==='Kiswahili')return'Kiswahili';
+    return s;
+  }
+
   function breakdownTable(rows,totalRow,levels,labels,showTeacher,subjectTeachers){
     var h='<div class="statistics-table-wrapper cgs"><table class="target-data-table"><thead><tr>';
     h+='<th class="col-name">Form</th>';
@@ -565,9 +682,7 @@
     h+='<th class="cell-center">X</th><th class="cell-center">Y</th><th class="cell-center">Entries</th>';
     h+='<th class="cell-center">Mean<br>Marks</th><th class="cell-center">MM<br>Dev</th>';
     h+='<th class="cell-center">Mean<br>Points</th><th class="cell-center">MP<br>Dev</th>';
-    h+='<th class="cell-center">Performance<br>Level</th>';
-    if(showTeacher) h+='<th>Class<br>Teacher</th>';
-    else if(subjectTeachers) h+='<th>Subject<br>Teacher</th>';
+    h+='<th class="cell-center">Perf<br>Level</th>';
     h+='</tr></thead><tbody>';
 
     var bestIdx=-1,bestMean=-Infinity;
@@ -578,7 +693,7 @@
     for(var r=0;r<rows.length;r++){
       var row=rows[r];
       var rowCls=r===bestIdx?' style="background:#dcfce7;font-weight:700"':'';
-      h+='<tr'+rowCls+'><td class="col-name">'+esc(row.form)+'</td>';
+      h+='<tr'+rowCls+'><td class="col-name">'+esc(shortName(row.form))+'</td>';
       for(var i=0;i<levels.length;i++) h+='<td class="cell-center">'+(row[levels[i]]||0)+'</td>';
       h+='<td class="cell-center">'+(row.X||0)+'</td>';
       h+='<td class="cell-center">'+(row.Y||0)+'</td>';
@@ -588,12 +703,11 @@
       h+='<td class="cell-center">'+(row.mean_points||0)+'</td>';
       h+='<td class="cell-center">'+(row.mp_dev||0)+'</td>';
       h+='<td class="cell-center">'+plvBadge(row.performance_level,labels)+'</td>';
-      if(showTeacher||subjectTeachers) h+='<td>'+esc(row.teacher||'-')+'</td>';
       h+='</tr>';
     }
 
     if(totalRow){
-      h+='<tr class="total-row"><td class="col-name">'+esc(totalRow.form||'Total')+'</td>';
+      h+='<tr class="total-row"><td class="col-name">'+esc(shortName(totalRow.form||'Total'))+'</td>';
       for(var i=0;i<levels.length;i++) h+='<td class="cell-center">'+(totalRow[levels[i]]||0)+'</td>';
       h+='<td class="cell-center">'+(totalRow.X||0)+'</td>';
       h+='<td class="cell-center">'+(totalRow.Y||0)+'</td>';
@@ -603,7 +717,6 @@
       h+='<td class="cell-center">'+(totalRow.mean_points||0)+'</td>';
       h+='<td class="cell-center">'+(totalRow.mp_dev||0)+'</td>';
       h+='<td class="cell-center">'+plvBadge(totalRow.performance_level,labels)+'</td>';
-      if(showTeacher||subjectTeachers) h+='<td>'+esc(totalRow.teacher||'-')+'</td>';
       h+='</tr>';
     }
     h+='</tbody></table></div>';
@@ -614,16 +727,17 @@
     var labels=d.plv_labels||{};
     var levels=d.ordered_levels||[];
     var html='';
+    var accentColor=getAccentColor(d.grade_name);
 
     // ── School header (matching score sheet style) ──────────────────
-    html+='<div class="ar-accent-bar"></div>';
-    html+='<div class="ar-school-hdr">';
+    html+='<div class="ar-accent-bar" style="background:'+accentColor+'!important"></div>';
+    html+='<div class="ar-school-hdr" style="border-bottom-color:'+accentColor+'!important">';
     if(d.school.logo){
       html+='<img src="'+esc(d.school.logo)+'" alt="Logo" class="ar-school-logo">';
     }
     html+='<div class="ar-school-info">';
-    html+='<div class="ar-school-name">'+esc(d.school.name)+'</div>';
-    if(d.school.motto) html+='<div class="ar-school-motto">'+esc(d.school.motto)+'</div>';
+    html+='<div class="ar-school-name" style="color:'+accentColor+'!important">'+esc(d.school.name)+'</div>';
+    if(d.school.motto) html+='<div class="ar-school-motto" style="color:'+accentColor+'!important">'+esc(d.school.motto)+'</div>';
     if(d.school.address) html+='<div class="ar-school-addr">Address: '+esc(d.school.address)+'</div>';
     if(d.school.phone||d.school.email){
       html+='<div class="ar-school-contact">';
@@ -638,11 +752,11 @@
 
     // ── Exam banner ─────────────────────────────────────────────────
     var bannerStream=(d.stream_filter)?' '+esc(d.stream_filter):'';
-    html+='<div class="ar-exam-banner">'+esc(d.grade_name)+bannerStream+' &ndash; '+esc(d.exam.name)+' &ndash; ('+esc(d.exam.year)+' '+esc(d.exam.term)+') &ndash; REPORT</div>';
+    html+='<div class="ar-exam-banner" style="background:'+accentColor+'!important">'+esc(d.grade_name)+bannerStream+' &ndash; '+esc(d.exam.name)+' &ndash; ('+esc(d.exam.year)+' '+esc(d.exam.term)+') &ndash; REPORT</div>';
 
     // ── Summary row: means | chart | students ───────────────────────
     html+='<div class="ar-summary-row">';
-    // Left: Mean Points + Mean Marks side by side, then Performance Level below
+    // Left: Mean Points + Mean Marks + Performance Level all inline
     html+='<div class="ar-summary-left">';
     html+='<div class="ar-summary-means-row">';
     html+='<div class="ar-summary-mean"><div class="ar-summary-mean-label">Mean Points</div>';
@@ -651,17 +765,17 @@
     html+='<div class="ar-summary-mean"><div class="ar-summary-mean-label">Mean Marks</div>';
     html+='<div class="ar-summary-mean-value">'+Number(d.overall_mean_marks).toFixed(1)+'%</div>';
     html+='<div class="ar-summary-mean-change '+(d.mm_change>0?'up':d.mm_change<0?'down':'neutral')+'">'+trendIcon(Number(d.mm_change).toFixed(1))+'</div></div>';
+    html+='<div class="ar-summary-plv"><div class="ar-summary-plv-label">Performance Level</div>';
+    html+='<div class="ar-summary-plv-value">'+plvBadge(d.overall_plv,labels)+'</div></div>';
     html+='</div>';
-    html+='<div class="ar-summary-plv"><div class="ar-summary-plv-label">Performance level</div>';
-    html+='<div class="ar-summary-plv-value">'+esc(d.overall_plv_label)+'</div></div>';
     html+='</div>';
     // Center: chart
     html+='<div class="ar-summary-chart"><canvas id="arSummaryChart"></canvas></div>';
     // Right: Students who sat
     html+='<div class="ar-summary-right">';
-    html+='<div class="ar-summary-students-label">Students who sat for the exam</div>';
+    html+='<div class="ar-summary-students-label">Students who sat</div>';
     html+='<div class="ar-summary-students-value">'+d.students_who_sat+'</div>';
-    html+='<div class="ar-summary-students-sub">Students</div>';
+    html+='<div class="ar-summary-students-sub">for the exam</div>';
     html+='</div>';
     html+='</div>';
     html+='</div>';
@@ -680,9 +794,9 @@
       var sr=d.subject_rows[i];
       var chg=sr.change||0;
       var chgVal=(chg>0?'+':'')+chg.toFixed(4);
-      var svgUp='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
-      var svgDown='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
-      var svgRight='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
+      var svgUp='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
+      var svgDown='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
+      var svgRight='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
       var trendArrow=chg>0?svgUp:(chg<0?svgDown:svgRight);
       var trendCls=chg>0?'trend-positive':(chg<0?'trend-negative':'trend-zero');
       html+='<tr>';
@@ -704,7 +818,7 @@
     html+='<th class="cell-center">X</th><th class="cell-center">Y</th><th class="cell-center">Entries</th>';
     html+='<th class="cell-center">Mean<br>Marks</th><th class="cell-center">MM<br>Dev</th>';
     html+='<th class="cell-center">Mean<br>Points</th><th class="cell-center">MP<br>Dev</th>';
-    html+='<th class="cell-center">Performance<br>Level</th><th>Teacher</th>';
+    html+='<th class="cell-center">Perf<br>Level</th>';
     html+='</tr></thead><tbody>';
     // Total row first
     var tr=d.total_row||{};
@@ -718,13 +832,12 @@
     html+='<td class="cell-center">'+(tr.mean_points||0)+'</td>';
     html+='<td class="cell-center">'+trendIcon(tr.mp_dev||0)+'</td>';
     html+='<td class="cell-center">'+plvBadge(tr.performance_level,labels)+'</td>';
-    html+='<td>'+esc(tr.teacher||'-')+'</td>';
     html+='</tr>';
     // Per-subject rows
     for(var ri=0;ri<d.class_grade_summary_rows.length;ri++){
       var sr=d.class_grade_summary_rows[ri];
       html+='<tr>';
-      html+='<td class="col-name">'+esc(sr.name)+'</td>';
+      html+='<td class="col-name">'+esc(shortName(sr.name))+'</td>';
       for(var li=0;li<d.breakdown_levels.length;li++) html+='<td class="cell-center">'+(sr[d.breakdown_levels[li]]||0)+'</td>';
       html+='<td class="cell-center">'+(sr.X||0)+'</td><td class="cell-center">'+(sr.Y||0)+'</td>';
       html+='<td class="cell-center">'+(sr.entries||0)+'</td>';
@@ -733,7 +846,6 @@
       html+='<td class="cell-center">'+(sr.mean_points||0)+'</td>';
       html+='<td class="cell-center">'+trendIcon(sr.mp_dev||0)+'</td>';
       html+='<td class="cell-center">'+plvBadge(sr.performance_level,labels)+'</td>';
-      html+='<td>'+esc(sr.teacher)+'</td>';
       html+='</tr>';
     }
     html+='</tbody></table></div>';
@@ -944,6 +1056,7 @@
   function renderCharts(d){
     var labels=d.plv_labels||{};
     var gradeName=d.grade_name;
+    var accentColor=getAccentColor(d.grade_name);
 
     // Summary chart: Performance of streams (matching target exactly)
     var scCtx=document.getElementById('arSummaryChart');
@@ -954,23 +1067,23 @@
       new Chart(scCtx.getContext('2d'),{
         type:'line',
         data:{labels:scLabels,datasets:[{
-          label:gradeName+' '+d.streams[0],
+          label:'Performance of '+gradeName+' streams',
           data:scData,
-          borderColor:'#66bb6a',
-          backgroundColor:'rgba(102,187,106,0.18)',
+          borderColor:accentColor,
+          backgroundColor:accentColor+'22',
           fill:true,
-          tension:0.15,
-          pointBackgroundColor:'#66bb6a',
+          tension:0.2,
+          pointBackgroundColor:accentColor,
           pointBorderColor:'#ffffff',
           pointBorderWidth:3,
-          pointRadius:7,
-          pointHoverRadius:9,
-          borderWidth:2.5
+          pointRadius:8,
+          pointHoverRadius:10,
+          borderWidth:3
         }]},
         options:{
           responsive:true,
           maintainAspectRatio:false,
-          layout:{padding:{top:10,bottom:0,left:0,right:0}},
+          layout:{padding:{top:12,bottom:4,left:4,right:4}},
           plugins:{
             legend:{
               display:true,
@@ -978,13 +1091,13 @@
               align:'center',
               labels:{
                 usePointStyle:true,
-                boxWidth:10,
-                boxHeight:10,
-                padding:16,
-                font:{size:12,weight:'600',family:'Inter, sans-serif'},
+                boxWidth:12,
+                boxHeight:12,
+                padding:20,
+                font:{size:12,weight:'700',family:'Times New Roman, Times, serif'},
                 color:'#374151',
                 generateLabels:function(chart){
-                  return[{text:'Performance of '+gradeName+' streams',fillStyle:'#66bb6a',strokeStyle:'#66bb6a',lineWidth:0,pointStyle:'rectRounded',hidden:false,datasetIndex:0,index:0}];
+                  return[{text:'Performance of '+gradeName+' streams',fillStyle:accentColor,strokeStyle:accentColor,lineWidth:0,pointStyle:'rectRounded',hidden:false,datasetIndex:0,index:0}];
                 }
               }
             },
@@ -1018,8 +1131,8 @@
               grid:{display:false},
               border:{color:'#d1d5db',width:1},
               ticks:{
-                color:'#6b7280',
-                font:{size:11,weight:'500'},
+                color:'#475569',
+                font:{size:11,weight:'600',family:'Times New Roman, Times, serif'},
                 maxRotation:40,
                 minRotation:40,
                 padding:8
@@ -1031,10 +1144,10 @@
               grid:{color:'#f3f4f6',drawTicks:false},
               border:{display:false},
               ticks:{
-                color:'#9ca3af',
-                font:{size:11},
+                color:'#64748b',
+                font:{size:11,weight:'500'},
                 padding:8,
-                callback:function(v){return v.toFixed(0)}
+                callback:function(v){return v.toFixed(0)+'%'}
               }
             }
           }

@@ -3259,6 +3259,7 @@ def score_sheet(request):
 @school_admin_required
 def analysis_report(request):
     from ..models import Grade
+    import json
 
     school = get_request_school(request)
     if not school:
@@ -3267,8 +3268,15 @@ def analysis_report(request):
 
     grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
 
+    section_colors = {
+        'JSS': '#305CDE',
+        'PRIMARY': '#00674F',
+        'LOWER_PRIMARY': '#B45309'
+    }
+
     ctx = {
         'grades': grades,
+        'section_colors_json': json.dumps(section_colors),
     }
     return render(request, 'students/analysis_report.html', ctx)
 
