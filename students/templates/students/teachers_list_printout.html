@@ -28,19 +28,19 @@
   .clp-top-action.pdf{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
   .clp-top-action.pdf:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
 
-  .sheet-heading{display:flex;align-items:center;justify-content:center;position:relative;padding:28px 140px;min-height:120px;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);border-radius:12px 12px 0 0;border:1px solid #e2e8f0;border-bottom:none;box-shadow:0 2px 8px rgba(0,0,0,0.03)}
-  .sheet-accent-bar{height:4px;background:#4CAF50;border-radius:0;margin-bottom:12px}
+  .sheet-heading{display:flex;align-items:center;justify-content:center;margin-bottom:0;position:relative;padding:28px 140px;min-height:120px;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);border-radius:12px 12px 0 0;border:1px solid #e2e8f0;border-bottom:none;box-shadow:0 2px 8px rgba(0,0,0,0.03)}
+  .sheet-accent-bar{height:4px;background:#4CAF50;border-radius:2px;margin:0 24px 12px}
   .sheet-logo{position:absolute;left:24px;top:50%;transform:translateY(-50%);width:100px;height:100px;object-fit:contain;border-radius:10px;border:2px solid #f1f5f9;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
   .sheet-heading-copy{text-align:center}
-  .sheet-heading-copy h2{font-family:'Times New Roman',Times,serif;font-size:26px;font-weight:900;text-transform:uppercase;color:#1e293b;margin:0;letter-spacing:0.06em;line-height:1.1}
+  .sheet-heading-copy h2{font-family:'Times New Roman',Times,serif;font-size:26px;font-weight:900;text-transform:uppercase;color:#4CAF50;margin:0;letter-spacing:0.06em;line-height:1.1}
   .sheet-heading-copy .sheet-addr{font-size:12px;color:#374151;font-weight:600;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
   .sheet-heading-copy .sheet-contact{font-size:12px;color:#374151;font-weight:500;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
   .sheet-heading-copy .sheet-subtitle{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:12px;color:#64748b;margin:6px 0 0;font-weight:600;letter-spacing:0.04em;text-transform:uppercase}
 
   .clp-sheet-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 4px 20px rgba(0,0,0,0.06),0 1px 4px rgba(0,0,0,0.04);overflow:hidden}
   .clp-sheet-card .sheet-heading{border-radius:12px 12px 0 0;border:none}
-  .clp-sheet-card .clp-table-wrap{margin:0 24px 24px;overflow-x:auto}
-  .clp-sheet-card .clp-table-wrap .tlp-table{border:1.5px solid #111827}
+  .clp-sheet-card .clp-table-wrap{border-radius:0 0 12px 12px;margin:0 24px 24px;overflow:hidden}
+  .clp-sheet-card .clp-table-wrap .tlp-table{border:1.5px solid #111827;border-radius:0 0 11px 11px}
 
   .tlp-table{width:100%;border-collapse:collapse;font-family:"Times New Roman",Times,serif;font-size:12pt}
   .tlp-table th{background:#E9ECF0;color:#1E293B;font-size:11pt;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;padding:5px 8px;text-align:left;border:1.5px solid #111827;line-height:1.2;white-space:nowrap}
@@ -50,7 +50,7 @@
   .tlp-table .col-title{width:45px}
   .tlp-table .col-gender{width:55px;text-align:center}
   .tlp-table .col-phone{white-space:nowrap}
-  .tlp-table .col-username{font-size:10pt;word-break:break-all;white-space:normal;max-width:180px}
+  .tlp-table .col-username{font-size:11pt;white-space:nowrap}
 
   @media(max-width:640px){.clp-page{padding:16px 16px 40px}}
 
@@ -106,24 +106,53 @@
     .sub-nav-bar,.sidebar,.global-header,.mobile-global-header,.bottom-nav,.clp-actions-top,.tl-mobile-view{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
     .print-watermark{display:none!important}
     .clp-page{padding:0!important;margin:0!important;max-width:none!important;background:#fff!important}
-    .clp-sheet-card{background:#fff!important;border:none!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}
+    .clp-sheet-card{background:#fff!important;border:none!important;border-radius:0!important;overflow:visible!important;margin:0!important;box-shadow:none!important}
     .clp-sheet-card .sheet-heading{display:flex!important;align-items:center!important;justify-content:center!important;border-radius:0!important;border:none!important;border-bottom:2px solid #4CAF50!important;padding:8px 0 6px 100px!important;min-height:auto!important;background:#fff!important}
     .clp-sheet-card .sheet-accent-bar{display:none!important}
-    .clp-sheet-card .clp-table-wrap{margin:0 24pt 16pt!important}
+    .clp-sheet-card .clp-table-wrap{display:block!important;margin:8px 24pt 16pt!important;border-radius:0!important;overflow:visible!important}
+    .clp-sheet-card .clp-table-wrap .tlp-table{border:1px solid #000!important;border-radius:0!important}
     .sheet-logo{position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:80px!important;height:80px!important;object-fit:contain!important;display:block!important;border-radius:6px!important}
     .sheet-heading-copy{text-align:center!important}
     .sheet-heading-copy h2{font-family:"Times New Roman",Times,serif!important;font-size:22px!important;font-weight:900!important;text-transform:uppercase!important;color:#4CAF50!important;margin:0!important;line-height:1.1!important;letter-spacing:0.06em!important}
+    .sheet-heading-copy .sheet-subtitle{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;margin:2px 0 0!important;font-weight:600!important;letter-spacing:0.04em!important;text-transform:uppercase!important}
     .sheet-heading-copy .sheet-addr{font-size:11px!important;color:#374151!important;font-weight:600!important;margin:1px 0 0!important;font-family:"Times New Roman",Times,serif!important}
     .sheet-heading-copy .sheet-contact{font-size:11px!important;color:#374151!important;font-weight:500!important;margin:1px 0 0!important;font-family:"Times New Roman",Times,serif!important}
-    .sheet-heading-copy .sheet-subtitle{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;margin:2px 0 0!important;font-weight:600!important;letter-spacing:0.04em!important;text-transform:uppercase!important}
     .tlp-table,.tlp-table *,.tlp-table *::before,.tlp-table *::after{font-family:"Times New Roman",Times,serif!important}
-    .tlp-table{width:100%!important;border-collapse:collapse!important;font-size:12pt!important}
-    .tlp-table th{background:#E9ECF0!important;color:#1E293B!important;font-weight:900!important;font-size:12pt!important;padding:4px 8px!important;border:1.5px solid #111827!important;text-transform:uppercase!important;text-align:left!important;white-space:nowrap!important}
-    .tlp-table td{padding:3px 8px!important;border:1.5px solid #111827!important;color:#0f172a!important;font-weight:400!important;font-size:12pt!important;line-height:1.15!important;vertical-align:middle!important}
+    .tlp-table{width:100%!important;border-collapse:collapse!important;border:1px solid #000!important;font-size:12pt!important}
+    .tlp-table th{background:#e2e6ea!important;color:#000!important;font-size:12pt!important;font-weight:900!important;padding:5px 8px!important;border:1px solid #000!important;text-transform:uppercase!important;text-align:left!important;line-height:1.3!important;white-space:nowrap!important}
+    .tlp-table td{padding:5px 8px!important;border:1px solid #000!important;color:#000!important;font-weight:400!important;font-size:12pt!important;line-height:1.3!important;vertical-align:middle!important}
     .tlp-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
-    .col-username{font-size:12pt!important;word-break:break-all!important;white-space:normal!important;max-width:none!important}
+    .tlp-table .col-num{width:28px!important;text-align:center!important}
+    .tlp-table .col-title{width:40px!important}
+    .tlp-table .col-gender{width:50px!important;text-align:center!important}
+    .tlp-table .col-phone{white-space:nowrap!important}
+    .col-username{font-size:12pt!important;word-break:normal!important;white-space:nowrap!important}
     .tl-detail,.tl-detail *{font-family:"Times New Roman",Times,serif!important;font-size:12pt!important;color:#000!important}
-    @page{size:A4 portrait;margin:12mm 10mm 20mm 10mm}
+    @page{
+      size:A4 portrait;
+      margin:8mm 10mm 20mm 10mm;
+      @bottom-center{
+        content:"GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
+        font-family:"Times New Roman",Times,serif;
+        font-size:8pt;
+        font-weight:700;
+        color:#64748b;
+        text-transform:uppercase;
+        letter-spacing:0.5pt;
+        border-top:0.5pt solid #cbd5e1;
+        width:70%;
+        padding-top:4pt;
+      }
+      @bottom-right{
+        content:"Page " counter(page) " of " counter(pages);
+        font-family:"Times New Roman",Times,serif;
+        font-size:8pt;
+        font-weight:700;
+        color:#64748b;
+        width:28%;
+        white-space:nowrap;
+      }
+    }
   }
 </style>
 
@@ -274,14 +303,6 @@
   }
   toggleView();
   window.addEventListener('resize',toggleView);
-
-  var wm=document.createElement('div');
-  wm.id='printWmFixed';
-  wm.textContent='GENERATED FROM EDUNEXUS EXAM SYSTEM \u00A92026';
-  wm.style.cssText='display:none;position:fixed;bottom:0;left:0;right:0;text-align:center;font-family:"Times New Roman",Times,serif;font-size:9pt;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5pt;z-index:99999;pointer-events:none;background:rgba(255,255,255,0.95);padding:4px 0;';
-  document.body.appendChild(wm);
-  window.addEventListener('beforeprint',function(){wm.style.display='block';});
-  window.addEventListener('afterprint',function(){wm.style.display='none';});
 })();
 </script>
 {% endblock %}

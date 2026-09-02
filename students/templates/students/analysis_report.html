@@ -107,6 +107,7 @@
   /* Section headings */
   .ar-section-title{font-size:16px;font-weight:800;color:#0f172a;margin:28px 0 14px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;font-family:'Inter','Plus Jakarta Sans',sans-serif}
   .ar-subject-banner{background:#e5e7eb;padding:10px 16px;font-size:14px;font-weight:800;color:#111827;letter-spacing:0.3px;margin:0 32px 16px;border-radius:4px}
+  .ar-subject-section+.ar-subject-section{margin-top:28px;padding-top:4px;border-top:2px solid #d1d5db}
 
   /* Tables */
   .ar-table-wrap{overflow-x:auto;padding:0 32px;margin-bottom:16px}
@@ -138,24 +139,16 @@
   .statistics-table-wrapper .target-data-table tr:last-child td{border-bottom:none}
   .statistics-table-wrapper .col-name{text-align:left;min-width:180px}
   .statistics-table-wrapper .col-points,.statistics-table-wrapper .col-change,.statistics-table-wrapper .col-trend{text-align:center}
-  .statistics-table-wrapper .col-performance{text-align:left}
+  .statistics-table-wrapper .col-performance{text-align:center}
   .statistics-table-wrapper .cell-center{text-align:center}
-    .statistics-table-wrapper .target-data-table .trend-positive,
-    .statistics-table-wrapper .target-data-table .trend-negative,
-    .statistics-table-wrapper .target-data-table .trend-zero{
-      display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:0!important;
-    }
     .statistics-table-wrapper .target-data-table .trend-positive svg,
     .statistics-table-wrapper .target-data-table .trend-negative svg,
     .statistics-table-wrapper .target-data-table .trend-zero svg{
-      width:14px!important;height:14px!important;
+      width:22px!important;height:22px!important;display:block!important;margin:0 auto!important;
     }
 
-    .ar-table .trend-positive,.ar-table .trend-negative,.ar-table .trend-zero{
-      display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:0!important;
-    }
     .ar-table .trend-positive svg,.ar-table .trend-negative svg,.ar-table .trend-zero svg{
-      width:14px!important;height:14px!important;
+      width:22px!important;height:22px!important;display:block!important;margin:0 auto!important;
     }
     .cell-center{text-align:center!important}
     .col-trend{text-align:center!important}
@@ -174,12 +167,15 @@
   /* Charts */
   .ar-charts-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 32px;margin-bottom:20px}
   .ar-chart-box{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;min-height:320px}
-  .ar-chart-box canvas{width:100%!important;max-height:280px}
+  .ar-chart-box canvas{width:100%!important;max-height:300px}
   .ar-chart-title{background:#e5e7eb;padding:10px 16px;font-size:14px;font-weight:800;color:#111827;letter-spacing:0.3px;margin:-16px -16px 16px -16px;text-align:left}
 
   /* Performance over time */
-  .ar-pot-section{padding:0 32px;margin-bottom:32px}
-  .ar-pot-section canvas{width:100%!important;height:400px!important}
+  .ar-pot-card{margin:0 32px 32px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);overflow:hidden}
+  .ar-pot-title-bar{background:linear-gradient(135deg,#1e293b 0%,#334155 100%);color:#fff;padding:14px 20px;font-size:15px;font-weight:800;font-family:'Inter','Plus Jakarta Sans',sans-serif;letter-spacing:0.3px;display:flex;align-items:center;gap:8px}
+  .ar-pot-title-icon{font-size:18px}
+  .ar-pot-body{padding:20px 24px 16px}
+  .ar-pot-body canvas{width:100%!important;height:380px!important}
 
   /* Loading */
   .ar-loading{text-align:center;padding:60px 20px;color:#64748b;font-size:14px}
@@ -246,6 +242,7 @@
 
     .ar-section-title{font-size:14px!important;margin:20px 0 10px!important;padding:0 16px!important}
     .ar-subject-banner{margin:0 12px 10px!important;padding:8px 14px!important;font-size:12px!important;border-radius:8px!important}
+    .ar-subject-section+.ar-subject-section{margin-top:20px!important;padding-top:4px!important;border-top:1.5px solid #d1d5db!important}
 
     /* ALL tables: horizontal scroll wrapper */
     .ar-table-wrap{padding:0!important;margin:0 12px 12px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;border-radius:10px!important;border:1px solid #e2e8f0!important}
@@ -268,8 +265,10 @@
     .ar-chart-box canvas{max-height:240px!important}
     .ar-chart-title{font-size:12px!important;padding:10px 14px!important;margin:0!important;border-radius:0!important}
 
-    .ar-pot-section{padding:0 12px!important;margin-bottom:20px!important}
-    .ar-pot-section canvas{height:260px!important}
+    .ar-pot-card{margin:0 12px 20px!important;border-radius:12px!important}
+    .ar-pot-title-bar{padding:12px 14px!important;font-size:13px!important}
+    .ar-pot-body{padding:14px 12px 10px!important}
+    .ar-pot-body canvas{height:240px!important}
 
     .ar-loading{padding:40px 16px!important}
     .ar-empty{padding:40px 16px!important}
@@ -295,8 +294,8 @@
     .ar-school-contact{font-size:10pt!important;color:#374151!important;font-weight:500!important;margin:1px 0 0!important;font-family:"Times New Roman",Times,serif!important}
     .ar-school-spacer{display:none!important}
 
-    .ar-exam-banner{margin:0 24px!important;padding:12px 20px!important;font-size:12pt!important;color:#fff!important;border-radius:0!important;font-weight:700!important;letter-spacing:0.04em!important}
-    .ar-summary-row{display:grid!important;grid-template-columns:1fr 2.5fr 1fr!important;padding:20px 28px!important;gap:0!important;align-items:center!important;page-break-inside:avoid!important;border-bottom:2px solid #e2e8f0!important;background:#f8fafc!important}
+    .ar-exam-banner{margin:0 24px!important;padding:6px 20px!important;font-size:11pt!important;color:#fff!important;border-radius:0!important;font-weight:700!important;letter-spacing:0.04em!important}
+    .ar-summary-row{display:grid!important;grid-template-columns:1fr 2.5fr 1fr!important;padding:12px 24px!important;gap:0!important;align-items:center!important;page-break-inside:avoid!important;border-bottom:2px solid #e2e8f0!important;background:#f8fafc!important}
     .ar-summary-left{display:flex!important;flex-direction:column!important;justify-content:center!important}
     .ar-summary-means-row{display:flex!important;gap:20px!important;align-items:flex-end!important}
     .ar-summary-mean{display:flex!important;flex-direction:column!important}
@@ -306,43 +305,64 @@
     .ar-summary-mean-change{font-size:9pt!important;font-weight:700!important;margin-top:2px!important}
     .ar-summary-plv-label{font-size:9pt!important;color:#475569!important;font-weight:700!important;margin-bottom:2px!important;text-transform:uppercase!important;letter-spacing:0.05em!important}
     .ar-summary-plv-value{font-size:13pt!important;font-weight:900!important;color:#0f172a!important;line-height:1.1!important}
-    .ar-summary-chart{display:flex!important;align-items:center!important;justify-content:center!important;padding:8px 16px!important}
+    .ar-summary-chart{display:flex!important;align-items:center!important;justify-content:center!important;padding:0 8px!important}
     .ar-summary-chart canvas{width:100%!important;height:120px!important}
     .ar-summary-right{display:flex!important;flex-direction:column!important;align-items:flex-end!important;text-align:right!important;padding-right:8px!important}
     .ar-summary-students-label{font-size:9pt!important;color:#475569!important;font-weight:700!important;margin-bottom:4px!important;text-transform:uppercase!important;letter-spacing:0.05em!important}
     .ar-summary-students-value{font-size:36pt!important;font-weight:900!important;color:#0f172a!important;line-height:1!important}
     .ar-summary-students-sub{font-size:9pt!important;color:#94a3b8!important;font-weight:500!important;margin-top:4px!important}
-    .ar-section-title{font-size:11pt!important;font-weight:900!important;margin:16px 0 8px!important;padding-bottom:4px!important;border-bottom:1.5px solid #e2e8f0!important}
-    .ar-subject-banner{margin:0 24px 8px!important;padding:5px 14px!important;font-size:11pt!important;background:#e5e7eb!important;border-radius:0!important;font-weight:900!important}
+    .ar-section-title{font-size:11pt!important;font-weight:900!important;margin:8px 24px 4px!important;padding-bottom:3px!important;border-bottom:1.5px solid #e2e8f0!important}
+    .ar-subject-banner{margin:0 24px 4px!important;padding:4px 14px!important;font-size:11pt!important;background:#e5e7eb!important;border-radius:0!important;font-weight:900!important}
+    .ar-subject-section{page-break-inside:auto!important}
+    .ar-subject-section+.ar-subject-section{margin-top:16px!important;padding-top:4px!important;border-top:1.5px solid #d1d5db!important}
+    .ar-subject-section .ar-subject-banner{page-break-after:avoid!important}
 
-    .ar-table-wrap{padding:0 24px!important;margin-bottom:12px!important}
+    .ar-table-wrap{padding:0 24px!important;margin-bottom:8px!important}
     .ar-table{width:100%!important;border-collapse:collapse!important;font-size:11pt!important;border:1px solid #000!important;table-layout:auto!important}
-    .ar-table th{background:#e2e6ea!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:4px 6px!important;border:1px solid #000!important;text-transform:uppercase!important;white-space:nowrap!important}
-    .ar-table td{padding:3px 6px!important;border:1px solid #000!important;color:#000!important;font-size:11pt!important;white-space:nowrap!important}
+    .ar-table th{background:#e2e6ea!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:3px 5px!important;border:1px solid #000!important;text-transform:uppercase!important;white-space:nowrap!important}
+    .ar-table td{padding:2px 5px!important;border:1px solid #000!important;color:#000!important;font-size:11pt!important;white-space:nowrap!important}
     .ar-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
     .ar-table .col-trend{text-align:center!important}
 
-    .statistics-table-wrapper{margin:0 24px 10px!important;overflow:visible!important}
+    .statistics-table-wrapper{margin:0 24px 4px!important;overflow:visible!important;page-break-inside:avoid!important}
     .statistics-table-wrapper .target-data-table{width:100%!important;border-collapse:collapse!important;font-size:11pt!important;border:1.5px solid #000!important;table-layout:auto!important}
-    .statistics-table-wrapper .target-data-table th{background:#e2e6ea!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:3px 4px!important;border:1px solid #000!important;text-transform:uppercase!important;white-space:nowrap!important}
-    .statistics-table-wrapper .target-data-table td{padding:2px 4px!important;border:1px solid #000!important;color:#000!important;font-size:11pt!important;white-space:nowrap!important}
+    .statistics-table-wrapper .target-data-table th{background:#e2e6ea!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:2px 3px!important;border:1px solid #000!important;text-transform:uppercase!important;white-space:nowrap!important}
+    .statistics-table-wrapper .target-data-table td{padding:2px 3px!important;border:1px solid #000!important;color:#000!important;font-size:11pt!important;white-space:nowrap!important}
     .statistics-table-wrapper .target-data-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
-    .statistics-table-wrapper .subject-statistics-title-bar{background:#e5e7eb!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:5px 14px!important;border-radius:0!important}
+    .statistics-table-wrapper .subject-statistics-title-bar{background:#e5e7eb!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:4px 14px!important;border-radius:0!important}
+
+    .statistics-table-wrapper.cgs{page-break-inside:auto!important}
+    .statistics-table-wrapper.cgs .target-data-table{page-break-inside:auto!important}
+    .statistics-table-wrapper.cgs .target-data-table tr{page-break-inside:auto!important}
+    .statistics-table-wrapper.cgs .target-data-table tbody{page-break-inside:auto!important}
+
+    .ar-charts-row{page-break-inside:avoid!important}
+    .ar-pot-card{page-break-inside:avoid!important}
 
     .statistics-table-wrapper.cgs .target-data-table th{padding:3px 4px!important;font-size:11pt!important;white-space:nowrap!important}
     .statistics-table-wrapper.cgs .target-data-table td{padding:2px 4px!important;font-size:11pt!important;white-space:nowrap!important}
     .statistics-table-wrapper.cgs .target-data-table .col-name{min-width:0!important;white-space:nowrap!important}
+    .statistics-table-wrapper .target-data-table .col-trend{text-align:center!important;min-width:60px!important;padding:4px 8px!important}
+    .statistics-table-wrapper .target-data-table .col-trend.trend-positive,
+    .statistics-table-wrapper .target-data-table .col-trend.trend-negative,
+    .statistics-table-wrapper .target-data-table .col-trend.trend-zero{line-height:normal!important}
+    .statistics-table-wrapper .target-data-table .col-performance{text-align:center!important;padding:4px 8px!important}
+    .statistics-table-wrapper .target-data-table th.col-trend,.statistics-table-wrapper .target-data-table th.col-performance{text-align:center!important}
 
-    .ar-charts-row{padding:0 24px!important;margin-bottom:16px!important}
+    .ar-charts-row{padding:0 24px!important;margin-bottom:8px!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important}
     .ar-chart-box{border:1px solid #e5e7eb!important;border-radius:0!important}
-    .ar-chart-title{background:#e5e7eb!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:5px 14px!important;margin:0!important;border-radius:0!important}
-    .ar-pot-section{padding:0 24px!important}
+    .ar-chart-box canvas{width:100%!important;height:220px!important}
+    .ar-chart-title{background:#e2e6ea!important;color:#000!important;font-size:10pt!important;font-weight:900!important;padding:6px 14px!important;margin:0!important;border-radius:0!important;letter-spacing:0.03em!important}
+    .ar-pot-card{margin:0 24px 20px!important;border-radius:0!important;border:1px solid #000!important;background:#fff!important}
+    .ar-pot-title-bar{background:#e2e6ea!important;color:#000!important;padding:6px 14px!important;font-size:11pt!important;border-radius:0!important}
+    .ar-pot-body{padding:12px 16px 8px!important}
+    .ar-pot-body canvas{height:250px!important}
     .ar-loading,.ar-loading *{font-family:"Times New Roman",Times,serif!important;font-size:11pt!important;color:#000!important}
     .ar-loading .spinner{border:3px solid #e2e8f0!important;border-top-color:#0891b2!important}
 
     @page{
       size:A4 portrait;
-      margin:8mm 10mm 20mm 10mm;
+      margin:6mm 10mm 12mm 10mm;
       @bottom-center{
         content:"GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
         font-family:"Times New Roman",Times,serif;
@@ -627,9 +647,9 @@
 
   function esc(s){return s?s.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
 
-  var _svgUp='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
-  var _svgDown='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
-  var _svgRight='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
+  var _svgUp='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
+  var _svgDown='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
+  var _svgRight='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
   function trendIcon(val){
     var v=parseFloat(val);
     if(v>0) return '<span style="font-weight:700">'+_svgUp+' +'+v.toFixed(4)+'</span>';
@@ -778,7 +798,6 @@
     html+='<div class="ar-summary-students-sub">for the exam</div>';
     html+='</div>';
     html+='</div>';
-    html+='</div>';
 
     // ── Subject Statistics ──────────────────────────────────────────
     html+='<div class="statistics-table-wrapper">';
@@ -794,9 +813,9 @@
       var sr=d.subject_rows[i];
       var chg=sr.change||0;
       var chgVal=(chg>0?'+':'')+chg.toFixed(4);
-      var svgUp='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
-      var svgDown='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
-      var svgRight='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
+      var svgUp='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L7 9H10V16H17V13H14V9H17L12 4Z" fill="#2CA02C"/></svg>';
+      var svgDown='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20L17 15H14V8H7V11H10V15H7L12 20Z" fill="#FF9800"/></svg>';
+      var svgRight='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12L9 7V10H16V14H9V17L4 12Z" fill="#94a3b8"/></svg>';
       var trendArrow=chg>0?svgUp:(chg<0?svgDown:svgRight);
       var trendCls=chg>0?'trend-positive':(chg<0?'trend-negative':'trend-zero');
       html+='<tr>';
@@ -828,9 +847,9 @@
     html+='<td class="cell-center">'+(tr.X||0)+'</td><td class="cell-center">'+(tr.Y||0)+'</td>';
     html+='<td class="cell-center">'+(tr.entries||0)+'</td>';
     html+='<td class="cell-center">'+(tr.mean_marks||0)+'</td>';
-    html+='<td class="cell-center">'+trendIcon(tr.mm_dev||0)+'</td>';
+    html+='<td class="col-trend">'+trendIcon(tr.mm_dev||0)+'</td>';
     html+='<td class="cell-center">'+(tr.mean_points||0)+'</td>';
-    html+='<td class="cell-center">'+trendIcon(tr.mp_dev||0)+'</td>';
+    html+='<td class="col-trend">'+trendIcon(tr.mp_dev||0)+'</td>';
     html+='<td class="cell-center">'+plvBadge(tr.performance_level,labels)+'</td>';
     html+='</tr>';
     // Per-subject rows
@@ -842,9 +861,9 @@
       html+='<td class="cell-center">'+(sr.X||0)+'</td><td class="cell-center">'+(sr.Y||0)+'</td>';
       html+='<td class="cell-center">'+(sr.entries||0)+'</td>';
       html+='<td class="cell-center">'+(sr.mean_marks||0)+'</td>';
-      html+='<td class="cell-center">'+trendIcon(sr.mm_dev||0)+'</td>';
+      html+='<td class="col-trend">'+trendIcon(sr.mm_dev||0)+'</td>';
       html+='<td class="cell-center">'+(sr.mean_points||0)+'</td>';
-      html+='<td class="cell-center">'+trendIcon(sr.mp_dev||0)+'</td>';
+      html+='<td class="col-trend">'+trendIcon(sr.mp_dev||0)+'</td>';
       html+='<td class="cell-center">'+plvBadge(sr.performance_level,labels)+'</td>';
       html+='</tr>';
     }
@@ -857,6 +876,7 @@
     html+='</div>';
 
     // ── OVERALL section ─────────────────────────────────────────────
+    html+='<div class="ar-subject-section">';
     html+='<div class="ar-subject-banner">OVERALL</div>';
 
     // Overall grade summary
@@ -883,9 +903,9 @@
         h2+='<td class="cell-center">'+(gr.Y||0)+'</td>';
         h2+='<td class="cell-center">'+(gr.entries||0)+'</td>';
         h2+='<td class="cell-center">'+(gr.mean_marks||0)+'</td>';
-        h2+='<td class="cell-center">'+trendIcon(gr.mm_dev||0)+'</td>';
+        h2+='<td class="col-trend">'+trendIcon(gr.mm_dev||0)+'</td>';
         h2+='<td class="cell-center">'+(gr.mean_points||0)+'</td>';
-        h2+='<td class="cell-center">'+trendIcon(gr.mp_dev||0)+'</td>';
+        h2+='<td class="col-trend">'+trendIcon(gr.mp_dev||0)+'</td>';
         h2+='<td class="cell-center">'+plvBadge(gr.performance_level,labels)+'</td>';
         h2+='</tr>';
       }
@@ -998,12 +1018,15 @@
       html+='</tbody></table></div>';
     }
 
+    html+='</div>'; // close ar-subject-section (OVERALL)
+
     // ── Per-subject sections ────────────────────────────────────────
     for(var si=0;si<d.subject_names.length;si++){
       var subjName=d.subject_names[si];
       var bd=d.subject_breakdowns[subjName];
       if(!bd) continue;
 
+      html+='<div class="ar-subject-section">';
       html+='<div class="ar-subject-banner">'+esc(subjName)+'</div>';
 
       // Grade summary for this subject
@@ -1039,18 +1062,21 @@
         h3+='</tbody></table></div>';
         html+=h3;
       }
+      html+='</div>'; // close ar-subject-section
     }
 
     // ── Performance Over Time ───────────────────────────────────────
     if(d.pot_labels&&d.pot_labels.length){
-      html+='<div class="statistics-table-wrapper" style="margin:0 32px 16px"><div class="subject-statistics-title-bar">Performance Over Time</div></div>';
-      html+='<div class="ar-pot-section"><canvas id="arPOTChart"></canvas></div>';
+      html+='<div class="ar-pot-card">';
+      html+='<div class="ar-pot-title-bar"><span class="ar-pot-title-icon">&#128200;</span>Performance Over Time</div>';
+      html+='<div class="ar-pot-body"><canvas id="arPOTChart"></canvas></div>';
+      html+='</div>';
     }
 
     reportDiv.innerHTML=html;
 
-    // ── Render charts ──────────────────────────────────────────────
-    renderCharts(d);
+    // ── Render charts (non-blocking) ─────────────────────────────
+    try{renderCharts(d)}catch(e){console.warn('Charts skipped:',e)}
   }
 
   function renderCharts(d){
@@ -1064,26 +1090,31 @@
       var scStreams=d.streams_all&&d.streams_all.length?d.streams_all:d.streams;
       var scLabels=scStreams.map(function(s){return gradeName+' '+s});
       var scData=scStreams.map(function(s){return d.stream_stats[s]?d.stream_stats[s].mean_marks:0});
+      var scGrad=scCtx.getContext('2d').createLinearGradient(0,0,0,150);
+      scGrad.addColorStop(0,accentColor+'40');
+      scGrad.addColorStop(0.6,accentColor+'15');
+      scGrad.addColorStop(1,accentColor+'03');
       new Chart(scCtx.getContext('2d'),{
         type:'line',
         data:{labels:scLabels,datasets:[{
           label:'Performance of '+gradeName+' streams',
           data:scData,
           borderColor:accentColor,
-          backgroundColor:accentColor+'22',
+          backgroundColor:scGrad,
           fill:true,
-          tension:0.2,
-          pointBackgroundColor:accentColor,
-          pointBorderColor:'#ffffff',
+          tension:0.4,
+          pointBackgroundColor:'#ffffff',
+          pointBorderColor:accentColor,
           pointBorderWidth:3,
           pointRadius:8,
-          pointHoverRadius:10,
-          borderWidth:3
+          pointHoverRadius:11,
+          pointHoverBorderWidth:4,
+          borderWidth:4
         }]},
         options:{
           responsive:true,
           maintainAspectRatio:false,
-          layout:{padding:{top:12,bottom:4,left:4,right:4}},
+          layout:{padding:{top:14,bottom:6,left:6,right:6}},
           plugins:{
             legend:{
               display:true,
@@ -1091,36 +1122,37 @@
               align:'center',
               labels:{
                 usePointStyle:true,
-                boxWidth:12,
-                boxHeight:12,
-                padding:20,
-                font:{size:12,weight:'700',family:'Times New Roman, Times, serif'},
+                pointStyle:'circle',
+                boxWidth:8,
+                boxHeight:8,
+                padding:18,
+                font:{size:11,weight:'700',family:'Times New Roman, Times, serif'},
                 color:'#374151',
                 generateLabels:function(chart){
-                  return[{text:'Performance of '+gradeName+' streams',fillStyle:accentColor,strokeStyle:accentColor,lineWidth:0,pointStyle:'rectRounded',hidden:false,datasetIndex:0,index:0}];
+                  return[{text:'Performance of '+gradeName+' streams',fillStyle:accentColor,strokeStyle:accentColor,lineWidth:0,pointStyle:'circle',hidden:false,datasetIndex:0,index:0}];
                 }
               }
             },
             tooltip:{
               enabled:true,
-              backgroundColor:'#ffffff',
-              titleColor:'#1f2937',
-              bodyColor:'#4b5563',
-              titleFont:{size:13,weight:'700'},
-              bodyFont:{size:12,weight:'500'},
-              borderColor:'#e5e7eb',
+              backgroundColor:'rgba(15,23,42,0.92)',
+              titleColor:'#f8fafc',
+              bodyColor:'#e2e8f0',
+              titleFont:{size:12,weight:'700',family:'Times New Roman, Times, serif'},
+              bodyFont:{size:11,weight:'500',family:'Times New Roman, Times, serif'},
+              borderColor:accentColor,
               borderWidth:1,
-              padding:12,
-              cornerRadius:8,
+              padding:10,
+              cornerRadius:6,
               displayColors:true,
               usePointStyle:true,
-              boxWidth:8,
-              boxHeight:8,
+              boxWidth:6,
+              boxHeight:6,
               boxPadding:4,
               callbacks:{
                 title:function(items){return items[0].label},
                 label:function(ctx){
-                  return ctx.dataset.label+'  Stream Mean: '+ctx.parsed.y.toFixed(1)+'%';
+                  return ' Stream Mean: '+ctx.parsed.y.toFixed(1)+'%';
                 }
               }
             }
@@ -1129,24 +1161,24 @@
             x:{
               offset:true,
               grid:{display:false},
-              border:{color:'#d1d5db',width:1},
+              border:{color:'#e2e8f0',width:1},
               ticks:{
-                color:'#475569',
-                font:{size:11,weight:'600',family:'Times New Roman, Times, serif'},
+                color:'#64748b',
+                font:{size:10,weight:'600',family:'Times New Roman, Times, serif'},
                 maxRotation:40,
                 minRotation:40,
-                padding:8
+                padding:6
               }
             },
             y:{
               beginAtZero:false,
-              grace:'12%',
-              grid:{color:'#f3f4f6',drawTicks:false},
+              grace:'15%',
+              grid:{color:'#f1f5f9',drawTicks:false,lineWidth:0.8},
               border:{display:false},
               ticks:{
-                color:'#64748b',
-                font:{size:11,weight:'500'},
-                padding:8,
+                color:'#94a3b8',
+                font:{size:10,weight:'500',family:'Times New Roman, Times, serif'},
+                padding:6,
                 callback:function(v){return v.toFixed(0)+'%'}
               }
             }
@@ -1161,21 +1193,31 @@
       var sorted=d.subject_rows.slice().sort(function(a,b){return b.points-a.points});
       var smLabels=sorted.map(function(r){return r.code||r.name});
       var smData=sorted.map(function(r){return r.points});
+      var barColors=['#0d9488','#0891b2','#2563eb','#7c3aed','#c026d3','#e11d48','#ea580c','#d97706','#65a30d'];
+      var smGrad=smCtx.getContext('2d').createLinearGradient(0,0,0,250);
+      smGrad.addColorStop(0,'#0d9488');
+      smGrad.addColorStop(1,'#0d948855');
       new Chart(smCtx.getContext('2d'),{
         type:'bar',
         data:{labels:smLabels,datasets:[{
           label:'Mean Points',data:smData,
-          backgroundColor:'#42a5f5',borderRadius:3,barPercentage:0.7,categoryPercentage:0.8
+          backgroundColor:barColors,borderRadius:6,borderSkipped:false,barPercentage:0.65,categoryPercentage:0.85
         }]},
         options:{
           responsive:true,maintainAspectRatio:false,
+          layout:{padding:{top:8,bottom:4,left:2,right:2}},
           plugins:{legend:{display:false},
-            tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toFixed(4)}}}
+            tooltip:{
+              backgroundColor:'rgba(15,23,42,0.92)',titleColor:'#f8fafc',bodyColor:'#e2e8f0',
+              titleFont:{size:11,weight:'700'},bodyFont:{size:11,weight:'500'},
+              borderColor:accentColor,borderWidth:1,padding:8,cornerRadius:6,
+              callbacks:{label:function(ctx){return ' Points: '+ctx.parsed.y.toFixed(4)}}
+            }
           },
           scales:{
-            x:{ticks:{font:{size:11},maxRotation:45,minRotation:30},grid:{display:false}},
-            y:{beginAtZero:true,grid:{color:'#e5e7eb'},ticks:{font:{size:11},stepSize:1},
-              title:{display:true,text:'Points',font:{size:12,weight:'600'},color:'#374151'}
+            x:{ticks:{font:{size:10,weight:'600',family:'Times New Roman, Times, serif'},color:'#64748b',maxRotation:45,minRotation:30},grid:{display:false},border:{color:'#e2e8f0',width:1}},
+            y:{beginAtZero:true,grid:{color:'#f1f5f9',lineWidth:0.8},border:{display:false},ticks:{font:{size:10,weight:'500',family:'Times New Roman, Times, serif'},color:'#94a3b8',padding:4},
+              title:{display:true,text:'Points',font:{size:11,weight:'700',family:'Times New Roman, Times, serif'},color:'#475569'}
             }
           }
         }
@@ -1188,21 +1230,30 @@
       var tr=d.total_row||{};
       var ocLabels=d.breakdown_levels.slice();
       var ocData=ocLabels.map(function(lv){return tr[lv]||0});
+      var plvColorMap={'EE':'#059669','ME':'#2563eb','AE':'#d97706','BE':'#dc2626'};
+      var ocColors=ocLabels.map(function(lv){return plvColorMap[lv]||'#6366f1'});
+      var ocGrad=ocCtx.getContext('2d').createLinearGradient(0,0,0,220);
       new Chart(ocCtx.getContext('2d'),{
         type:'bar',
         data:{labels:ocLabels,datasets:[{
           label:'Number of Students',data:ocData,
-          backgroundColor:'#42a5f5',borderRadius:3,barPercentage:0.65,categoryPercentage:0.8
+          backgroundColor:ocColors,borderRadius:6,borderSkipped:false,barPercentage:0.6,categoryPercentage:0.8
         }]},
         options:{
           responsive:true,maintainAspectRatio:false,
+          layout:{padding:{top:8,bottom:4,left:2,right:2}},
           plugins:{legend:{display:false},
-            tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y+' students'}}}
+            tooltip:{
+              backgroundColor:'rgba(15,23,42,0.92)',titleColor:'#f8fafc',bodyColor:'#e2e8f0',
+              titleFont:{size:11,weight:'700'},bodyFont:{size:11,weight:'500'},
+              borderColor:'#475569',borderWidth:1,padding:8,cornerRadius:6,
+              callbacks:{label:function(ctx){return ' '+ctx.parsed.y+' students'}}
+            }
           },
           scales:{
-            x:{ticks:{font:{size:11}},grid:{display:false}},
-            y:{beginAtZero:true,grid:{color:'#e5e7eb'},ticks:{font:{size:11},stepSize:5},
-              title:{display:true,text:'Number of Students',font:{size:12,weight:'600'},color:'#374151'}
+            x:{ticks:{font:{size:10,weight:'600',family:'Times New Roman, Times, serif'},color:'#64748b'},grid:{display:false},border:{color:'#e2e8f0',width:1}},
+            y:{beginAtZero:true,grid:{color:'#f1f5f9',lineWidth:0.8},border:{display:false},ticks:{font:{size:10,weight:'500',family:'Times New Roman, Times, serif'},color:'#94a3b8',padding:4,stepSize:5},
+              title:{display:true,text:'Number of Students',font:{size:11,weight:'700',family:'Times New Roman, Times, serif'},color:'#475569'}
             }
           }
         }
@@ -1212,7 +1263,8 @@
     // Performance Over Time chart
     var potCtx=document.getElementById('arPOTChart');
     if(potCtx&&d.pot_labels&&d.pot_labels.length){
-      var potColors=['#3b82f6','#f43f5e','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899'];
+      var potColors=['#0d9488','#2563eb','#e11d48','#d97706','#7c3aed','#0891b2','#c026d3'];
+      var potFills=['rgba(13,148,136,0.08)','rgba(37,99,246,0.08)','rgba(225,29,72,0.08)','rgba(217,119,6,0.08)','rgba(124,58,237,0.08)','rgba(8,145,178,0.08)','rgba(192,38,211,0.08)'];
       var potDatasets=[];
       var allStreams=d.streams_all&&d.streams_all.length?d.streams_all:d.streams;
       // Overall grade line (average of all streams)
@@ -1225,10 +1277,14 @@
           });
           return cnt?+(sum/cnt).toFixed(4):null;
         });
-        potDatasets.push({label:gradeName,data:overallData,fill:false,borderColor:'#111827',backgroundColor:'#111827',borderWidth:2.5,tension:0.3,pointRadius:3,pointBackgroundColor:'#111827',pointBorderColor:'#111827'});
+        potDatasets.push({label:gradeName,data:overallData,fill:false,borderColor:'#0f172a',backgroundColor:'#0f172a',borderWidth:3,tension:0.4,pointRadius:6,pointBackgroundColor:'#ffffff',pointBorderColor:'#0f172a',pointBorderWidth:3,pointHoverRadius:9,pointHoverBackgroundColor:'#0f172a',pointHoverBorderColor:'#fff',pointHoverBorderWidth:3});
       }
       allStreams.forEach(function(s,i){
-        potDatasets.push({label:gradeName+' '+s,data:d.pot_streams_data[s]||[],fill:false,borderColor:potColors[i%potColors.length],backgroundColor:potColors[i%potColors.length],borderWidth:2,tension:0.3,pointRadius:3,pointBackgroundColor:potColors[i%potColors.length],pointBorderColor:potColors[i%potColors.length]});
+        var ctx2=potCtx.getContext('2d');
+        var grad=ctx2.createLinearGradient(0,0,0,350);
+        grad.addColorStop(0,potFills[i%potFills.length]);
+        grad.addColorStop(1,'rgba(255,255,255,0)');
+        potDatasets.push({label:gradeName+' '+s,data:d.pot_streams_data[s]||[],fill:true,backgroundColor:grad,borderColor:potColors[i%potColors.length],borderWidth:2.5,tension:0.4,pointRadius:5,pointBackgroundColor:'#ffffff',pointBorderColor:potColors[i%potColors.length],pointBorderWidth:2.5,pointHoverRadius:8,pointHoverBackgroundColor:potColors[i%potColors.length],pointHoverBorderColor:'#fff',pointHoverBorderWidth:3});
       });
       var isMobile=window.innerWidth<=768;
       new Chart(potCtx.getContext('2d'),{
@@ -1237,14 +1293,14 @@
         options:{
           responsive:true,
           maintainAspectRatio:false,
-          layout:{padding:{left:isMobile?4:15,right:isMobile?4:15,bottom:isMobile?10:25}},
+          layout:{padding:{left:isMobile?4:12,right:isMobile?4:12,bottom:isMobile?8:16,top:8}},
           plugins:{
-            legend:{position:isMobile?'bottom':'right',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:isMobile?6:8,padding:isMobile?8:14,font:{size:isMobile?10:12}}},
-            tooltip:{mode:'index',intersect:false}
+            legend:{position:isMobile?'bottom':'right',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:isMobile?8:10,padding:isMobile?10:18,font:{size:isMobile?10:12,weight:'700',family:'Times New Roman, Times, serif'},color:'#1e293b'}},
+            tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(15,23,42,0.95)',titleColor:'#f8fafc',bodyColor:'#e2e8f0',titleFont:{size:12,weight:'700',family:'Times New Roman, Times, serif'},bodyFont:{size:11,weight:'500',family:'Times New Roman, Times, serif'},borderColor:'#475569',borderWidth:1,padding:12,cornerRadius:8,displayColors:true,boxWidth:10,boxHeight:10,boxPadding:4}
           },
           scales:{
-            x:{offset:true,ticks:{font:{size:isMobile?8:10},maxRotation:isMobile?45:0,minRotation:isMobile?45:0,autoSkip:!isMobile,callback:function(value,index){var label=this.getLabelForValue(value);if(isMobile){if(label.length>18){var parts=label.split(',');if(parts.length>=2)return[parts[0].trim().substring(0,14),parts.slice(1).join(',').trim()];return label.substring(0,18)+'…'}return label}if(label.length>25){var mid=Math.ceil(label.length/2);var spaceBefore=mid;var spaceAfter=mid;for(var i=mid;i>=0;i--){if(label[i]===' '||label[i]===','){spaceBefore=i;break}}for(var i=mid;i<label.length;i++){if(label[i]===' '||label[i]===','){spaceAfter=i;break}}if(spaceAfter-spaceBefore<5){spaceAfter=mid+5}return[label.substring(0,spaceAfter+1).trim(),label.substring(spaceAfter+1).trim()]}return label}},grid:{color:'#cbd5e1',drawOnChartArea:true,drawTicks:true,tickMarkLength:6}},
-            y:{min:1,grace:'5%',ticks:{font:{size:isMobile?9:11},stepSize:1},grid:{color:'#e5e7eb',drawOnChartArea:true},border:{display:false}}
+            x:{offset:true,ticks:{font:{size:isMobile?8:11,weight:'600',family:'Times New Roman, Times, serif'},color:'#475569',maxRotation:isMobile?45:0,minRotation:isMobile?45:0,autoSkip:!isMobile,callback:function(value,index){var label=this.getLabelForValue(value);if(isMobile){if(label.length>18){var parts=label.split(',');if(parts.length>=2)return[parts[0].trim().substring(0,14),parts.slice(1).join(',').trim()];return label.substring(0,18)+'…'}return label}if(label.length>25){var mid=Math.ceil(label.length/2);var spaceBefore=mid;var spaceAfter=mid;for(var i=mid;i>=0;i--){if(label[i]===' '||label[i]===','){spaceBefore=i;break}}for(var i=mid;i<label.length;i++){if(label[i]===' '||label[i]===','){spaceAfter=i;break}}if(spaceAfter-spaceBefore<5){spaceAfter=mid+5}return[label.substring(0,spaceAfter+1).trim(),label.substring(spaceAfter+1).trim()]}return label}},grid:{color:'#d1d5db',drawOnChartArea:true,drawTicks:false,tickMarkLength:0,lineWidth:1},border:{display:false}},
+            y:{min:1,grace:'10%',ticks:{font:{size:isMobile?9:11,weight:'600',family:'Times New Roman, Times, serif'},color:'#64748b',stepSize:1,padding:8},grid:{color:'#d1d5db',drawOnChartArea:true,drawTicks:false,tickMarkLength:0,lineWidth:1},border:{display:false}}
           },
           interaction:{mode:'nearest',axis:'x',intersect:false}
         }
