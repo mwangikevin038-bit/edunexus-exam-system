@@ -56,47 +56,70 @@ def password_validation_errors(password, *, user=None, min_length=MIN_LENGTH):
         return ['Password is required.']
 
     if len(password) < min_length:
-        errors.append(f"Password must be at least {min_length} characters long.")
+        errors.append(f"Your password must be at least {min_length} characters long. You currently have {len(password)} character{'s' if len(password) != 1 else ''}.")
 
     # Only the first three character classes count toward the strength
     # requirement; the 4th is "strong" feedback.
     needed = []
-    if not any(c.isupper() for c in password):
-        needed.append('an uppercase letter')
-    if not any(c.islower() for c in password):
-        needed.append('a lowercase letter')
-    if not any(c.isdigit() for c in password):
-        needed.append('a digit')
-    if not any(not c.isalnum() for c in password):
-        needed.append('a special character')
+    missing_upper = not any(c.isupper() for c in password)
+    missing_lower = not any(c.islower() for c in password)
+    missing_digit = not any(c.isdigit() for c in password)
+    missing_special = not any(not c.isalnum() for c in password)
+
+    if missing_upper:
+        needed.append('an uppercase letter (A-Z)')
+    if missing_lower:
+        needed.append('a lowercase letter (a-z)')
+    if missing_digit:
+        needed.append('a number (0-9)')
+    if missing_special:
+        needed.append('a special character (!@#$%^&*)')
+
     if needed:
-        errors.append(
-            "Password must contain "
-            + ', '.join(needed[:-1])
-            + (' and ' + needed[-1] if len(needed) > 1 else needed[-1])
-            + '.'
-        )
+        if len(needed) == 1:
+            errors.append(f"Your password must include {needed[0]}.")
+        elif len(needed) == 2:
+            errors.append(f"Your password must include {needed[0]} and {needed[1]}.")
+        else:
+            errors.append(
+                "Your password must include "
+                + ', '.join(needed[:-1])
+                + ', and ' + needed[-1]
+                + '.'
+            )
 
     # 3+ repeated characters (e.g. "aaaaaa", "111111")
     import re
-    if re.search(r'(.)\1{2,}', password):
-        errors.append("Password must not contain 3 or more repeated characters in a row.")
+    repeated_match = re.search(r'(.)\1{2,}', password)
+    if repeated_match:
+        char = repeated_match.group(1)
+        errors.append(
+            f"Your password contains {repeated_match.group(0)} — "
+            f"avoid repeating the same character 3+ times in a row."
+        )
 
     # Common / dictionary blacklists
     if password.lower() in COMMON_BLACKLIST:
-        errors.append("Password is too common. Please choose a stronger password.")
+        errors.append(
+            "This password is too commonly used and would be easy to guess. "
+            "Try adding unique words, numbers, or symbols."
+        )
 
     # Disallow mirroring the username or email (cheap check)
     if user is not None:
         ident = (user.username or '') + ' ' + (user.email or '')
         ident = ident.lower()
         if password.lower() in ident:
-            errors.append("Password must not contain your username or email.")
+            errors.append(
+                "Your password must not contain your username or email address. "
+                "Choose something unrelated to your identity."
+            )
 
     # Disallow reuse of recent passwords
     if user is not None and user.pk and password_has_been_used(user, password):
         errors.append(
-            "You have used this password recently. Please choose a different one."
+            "You've used this password before. For security, please choose "
+            "a completely new password you haven't used recently."
         )
 
     return errors
@@ -184,36 +207,57 @@ def send_password_changed_email(user, *, request=None):
     """
     Send a security notification when the password is changed. Best-effort —
     any mail failure is logged but never blocks the change.
+
+    Retries up to 2 times with exponential backoff on transient failures.
     """
+    import time as _time
+
     if not user or not user.email:
         return False
-    try:
-        from django.core.mail import EmailMessage
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'EDUNEXUS Portal <edunexus.system@gmail.com>')
-        site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
-        context = {
-            'user': user,
-            'timestamp': timezone.now(),
-            'ip': request.META.get('REMOTE_ADDR') if request else None,
-            'login_url': f'{site_url}/login/',
-        }
-        html = render_to_string('email/password_changed.html', context)
-        text = render_to_string('email/password_changed.txt', context)
-        email = EmailMessage(
-            subject='Your EDUNEXUS password was changed',
-            body=html,
-            from_email=from_email,
-            to=[user.email],
-            headers={
-                'Reply-To': from_email,
-                'Precedence': 'bulk',
-                'List-Unsubscribe': f'<{site_url}/login/>',
-                'X-Auto-Response-Suppress': 'All',
-            },
-        )
-        email.content_subtype = 'html'
-        email.send(fail_silently=True)
-        return True
-    except Exception:
-        logger.exception("Could not send password-changed email to %s", user.email)
-        return False
+
+    MAX_RETRIES = 2
+    RETRY_DELAY = 1  # seconds
+
+    for attempt in range(1 + MAX_RETRIES):
+        try:
+            from django.core.mail import EmailMessage
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'EDUNEXUS Portal <edunexus.system@gmail.com>')
+            site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+            context = {
+                'user': user,
+                'timestamp': timezone.now(),
+                'ip': request.META.get('REMOTE_ADDR') if request else None,
+                'login_url': f'{site_url}/login/',
+            }
+            html = render_to_string('email/password_changed.html', context)
+            text = render_to_string('email/password_changed.txt', context)
+            email = EmailMessage(
+                subject='Your EDUNEXUS password was changed',
+                body=html,
+                from_email=from_email,
+                to=[user.email],
+                headers={
+                    'Reply-To': from_email,
+                    'Precedence': 'bulk',
+                    'List-Unsubscribe': f'<{site_url}/login/>',
+                    'X-Auto-Response-Suppress': 'All',
+                },
+            )
+            email.content_subtype = 'html'
+            email.send(fail_silently=True)
+            logger.info("Password-changed email sent to %s", user.email)
+            return True
+        except Exception as exc:
+            if attempt < MAX_RETRIES:
+                logger.warning(
+                    "Email send failed (attempt %d/%d) for %s: %s — retrying in %ds",
+                    attempt + 1, 1 + MAX_RETRIES, user.email, exc, RETRY_DELAY
+                )
+                _time.sleep(RETRY_DELAY)
+                RETRY_DELAY *= 2  # exponential backoff
+            else:
+                logger.exception(
+                    "Could not send password-changed email to %s after %d attempts",
+                    user.email, 1 + MAX_RETRIES
+                )
+    return False

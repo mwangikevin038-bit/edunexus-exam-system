@@ -1,11 +1,7 @@
 {% extends 'students/base.html' %}
 {% load static %}
 
-{# Unified print stylesheet — single source of truth shared with the PDF path. #}
-{# Loaded normally; @media print rules inside the file control when they apply. #}
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'students/css/report_card_print.css' %}">
-{% endblock %}
+{% block extra_head %}{% endblock %}
 
 {% block sub_tabs %}
 <nav class="sub-nav-bar dm-subnav">
@@ -683,10 +679,10 @@
         background: var(--section-accent, #16A34A);
         color: #fff; font-size: 10.5pt; font-weight: 800; text-transform: uppercase;
         letter-spacing: 0.08em; text-align: center;
-        padding: 4px 12px; border-radius: 8px 20px 0 0;
-        margin-left: -39px; margin-right: 20px;
+        padding: 4px 12px; border-radius: 0 20px 0 0;
+        margin-left: -20px; margin-right: 20px;
     }
-    .rc-remarks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; background: #F8FAFC; border-radius: 0 0 8px 8px; margin-left: -39px; margin-right: 20px; }
+    .rc-remarks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; background: #F8FAFC; border-radius: 0 0 8px 8px; margin-left: -20px; margin-right: 20px; }
     .rc-remark-box {
         border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px 20px;
         background: #FFFFFF;
@@ -839,110 +835,97 @@
        PRINT — Inline rules that fire when the user hits Ctrl+P
        ═══════════════════════════════════════════════════════════ */
     @media print {
-        @page { size: A4 portrait; margin: 6mm; }
+        @page { size: A4 portrait; margin: 5mm 5mm 8mm 5mm; }
+        @page { @bottom-center { content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026"; font-family: "Times New Roman", Times, serif; font-size: 7pt; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4pt; border-top: 0.5pt solid #cbd5e1; width: 70%; padding-top: 3pt; } @bottom-right { content: none; } }
 
-        /* Force print-color fidelity — backgrounds, gradients, borders render */
         * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
+            transition: none !important;
+            animation: none !important;
         }
 
-        /* Hide ALL screen chrome */
-        .global-header, .mobile-global-header,
-        .premium-sidebar, .sidebar, .sidebar-overlay,
-        .sub-nav-bar,
-        .rc-topbar, .rc-action-buttons, .rc-info-bar, .rc-context-card,
-        .rc-loading-overlay,
-        .hamburger-btn,
-        .global-loader-overlay, .bottom-nav,
-        .mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body,
-        .mobile-menu-header, .mobile-menu-backdrop,
-        .system-footer, .rc-print-watermark,
-        nav, header, .navbar, .left-menu, .control-panel,
-        .mobile-topbar, .topbar, .topbar-right, .workspace-toggle {
+        #reportCardsContainer .global-header, #reportCardsContainer .mobile-global-header,
+        #reportCardsContainer .premium-sidebar, #reportCardsContainer .sidebar, #reportCardsContainer .sidebar-overlay,
+        #reportCardsContainer .sub-nav-bar,
+        #reportCardsContainer .rc-topbar, #reportCardsContainer .rc-action-buttons, #reportCardsContainer .rc-info-bar, #reportCardsContainer .rc-context-card,
+        #reportCardsContainer .rc-loading-overlay,
+        #reportCardsContainer .hamburger-btn,
+        #reportCardsContainer .global-loader-overlay, #reportCardsContainer .bottom-nav,
+        #reportCardsContainer .mobile-menu-sheet, #reportCardsContainer .mobile-menu-panel, #reportCardsContainer .mobile-menu-body,
+        #reportCardsContainer .mobile-menu-header, #reportCardsContainer .mobile-menu-backdrop,
+        #reportCardsContainer .system-footer, #reportCardsContainer .rc-print-watermark,
+        #reportCardsContainer nav, #reportCardsContainer header, #reportCardsContainer .navbar, #reportCardsContainer .left-menu, #reportCardsContainer .control-panel,
+        #reportCardsContainer .mobile-topbar, #reportCardsContainer .topbar, #reportCardsContainer .topbar-right, #reportCardsContainer .workspace-toggle {
             display: none !important;
             visibility: hidden !important;
             height: 0 !important;
             overflow: hidden !important;
         }
 
-        /* Reset page */
-        html, body {
-            margin: 0 !important; padding: 0 !important;
-            background: #fff !important;
+        #reportCardsContainer {
+            display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important;
             font-family: 'Times New Roman', Times, serif !important;
-            font-size: 12pt !important;
+            font-size: 11pt !important;
             color: #1C1C1E !important;
-            width: 100% !important;
         }
-        .app-content, .main-content, .container-fluid {
-            margin: 0 !important; padding: 0 !important;
-            max-width: none !important; width: 100% !important;
-        }
-        #reportCardsContainer { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-        .rc-card-scroll { overflow: visible !important; margin: 0 !important; padding: 0 !important; }
-        .rc-card-scroll::after { display: none !important; }
+        #reportCardsContainer .rc-card-scroll { overflow: visible !important; margin: 0 !important; padding: 0 !important; }
+        #reportCardsContainer .rc-card-scroll::after { display: none !important; }
 
-        /* ═══════════════════════════════════════════════════════
-           GLOBAL PRINT CONTAINER — MIRROR BROWSER VIEW
-           Card at full width, blue line INSIDE the card,
-           banner extends left to connect with the blue line.
-           ═══════════════════════════════════════════════════════ */
-        .report-card {
+        #reportCardsContainer .report-card {
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
-            padding: 0.16in 0.35in 0.25in 0.55in !important;
+            padding: .18in .35in .20in .55in !important;
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             position: relative !important;
             font-family: 'Times New Roman', Times, serif !important;
-            font-size: 12pt !important;
+            font-size: 11pt !important;
+            color: #1C1C1E !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box !important;
+            flex-shrink: 0 !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
-        .report-card + .report-card { page-break-before: always !important; }
+        #reportCardsContainer .rc-card-scroll + .rc-card-scroll,
+        #reportCardsContainer .rv-card-container + .rv-card-container {
+            page-break-before: always !important;
+        }
 
-        /* Content fills its parent */
-        .report-content {
+        #reportCardsContainer .report-content {
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            font-family: 'Times New Roman', Times, serif !important;
-            font-size: 12pt !important;
-            gap: 8px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 !important;
+            gap: 6px !important;
         }
 
-        /* All internal children locked to 100% width */
-        .rc-header, .rc-banner, .rc-top-grid, .rc-stats,
-        .table-scroll, .rc-table,
-        .rc-comments-header, .rc-remarks-grid,
-        .rc-descriptors, .rc-descriptors-table,
-        .footer-dates, .date-box,
-        .rc-remark-box {
-            width: 100% !important;
-            box-sizing: border-box !important;
-        }
-
-        /* School header */
-        .rc-header {
-            gap: 14px !important; padding-bottom: 6px !important;
+        #reportCardsContainer .rc-header {
+            display: flex !important;
+            align-items: center !important;
+            gap: 14px !important;
+            padding-bottom: 5px !important;
             margin-bottom: 4px !important;
+            position: relative !important;
             border-bottom: none !important;
+            width: 100% !important;
         }
-        .report-logo, .rc-logo-placeholder { width: 88px !important; height: 88px !important; border-radius: 8px !important; }
-        .rc-logo-spacer { width: 88px !important; }
-        .rc-schoolinfo h1 { font-size: 16pt !important; margin: 0 0 4px !important; }
-        .rc-schoolinfo .rc-address { font-size: 11pt !important; margin-bottom: 2px !important; }
-        .rc-schoolinfo .rc-contact-line { font-size: 11pt !important; }
+        #reportCardsContainer .rc-header::after { display: none !important; }
+        #reportCardsContainer .report-logo, #reportCardsContainer .rc-logo-placeholder { width: 80px !important; height: 80px !important; border-radius: 8px !important; object-fit: contain !important; flex-shrink: 0 !important; }
+        #reportCardsContainer .rc-logo-spacer { width: 80px !important; flex-shrink: 0 !important; }
+        #reportCardsContainer .rc-schoolinfo { flex: 1 !important; text-align: center !important; }
+        #reportCardsContainer .rc-schoolinfo h1 { font-size: 16pt !important; font-weight: 900 !important; margin: 0 0 4px !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; line-height: 1.1 !important; }
+        #reportCardsContainer .rc-schoolinfo .rc-address { font-size: 10pt !important; font-weight: 600 !important; margin-bottom: 2px !important; }
+        #reportCardsContainer .rc-schoolinfo .rc-contact-line { font-size: 10pt !important; font-weight: 500 !important; margin: 0 !important; }
 
-        /* ═══════════════════════════════════════════════════════
-           BLUE DECORATIVE LINE — INSIDE the card, connects to banner
-           Matches browser: left:14px, width:19px, top:50px, bottom:20px
-           ═══════════════════════════════════════════════════════ */
-        .report-card::before {
+        #reportCardsContainer .report-card::before {
             content: '' !important;
             display: block !important;
             position: absolute !important;
@@ -952,100 +935,108 @@
             width: 19px !important;
             height: auto !important;
             background: var(--section-accent) !important;
-            border-radius: 0 24px 24px 0 !important;
+            border-radius: 0 20px 20px 0 !important;
             z-index: 1 !important;
         }
 
-        /* Banner — extends left to connect with the blue line */
-        .rc-banner {
-            padding: 4px 12px !important;
-            font-size: 11pt !important;
+        #reportCardsContainer .rc-banner {
+            padding: 5px 14px !important;
+            font-size: 10pt !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.04em !important;
+            text-transform: uppercase !important;
             white-space: nowrap !important;
             margin-left: calc(-0.55in + 33px) !important;
             box-decoration-break: clone !important;
             -webkit-box-decoration-break: clone !important;
         }
 
-        /* ═══════════════════════════════════════════════════════
-           FORCE SIDE-BY-SIDE COLUMNS
-           Student info (30%) + Chart (65%) stay horizontal
-           ═══════════════════════════════════════════════════════ */
-        .rc-top-grid {
+        #reportCardsContainer .rc-top-grid {
             display: flex !important;
             flex-direction: row !important;
             justify-content: space-between !important;
-            align-items: flex-start !important;
+            align-items: stretch !important;
+            gap: 20px !important;
             width: 100% !important;
-            gap: 10px !important;
             overflow: hidden !important;
         }
-        .rc-student-block {
-            width: 30% !important;
-            min-width: 0 !important;
-            flex-shrink: 0 !important;
+        #reportCardsContainer .rc-student-block {
+            flex: 1 !important;
+            min-width: 200px !important;
+            display: flex !important;
+            gap: 14px !important;
+            align-items: flex-start !important;
         }
-        .rc-chart-block {
-            width: 65% !important;
+        #reportCardsContainer .rc-chart-block {
+            flex: 2 !important;
             min-width: 0 !important;
-            flex-shrink: 0 !important;
             min-height: 0 !important;
-            max-height: 50mm !important;
+            max-height: 48mm !important;
             overflow: hidden !important;
         }
 
-        /* Student info */
-        .rc-initials-avatar { width: 22mm !important; height: 26mm !important; font-size: 22pt !important; }
-        .rc-student-name { font-size: 12pt !important; }
-        .rc-detail { font-size: 11pt !important; margin-bottom: 1px !important; }
+        #reportCardsContainer .rc-initials-avatar { width: 80px !important; height: 90px !important; border-radius: 8px !important; font-size: 28pt !important; font-weight: 800 !important; letter-spacing: 0.02em !important; }
+        #reportCardsContainer .rc-student-name { font-size: 13pt !important; font-weight: 800 !important; margin-bottom: 6px !important; }
+        #reportCardsContainer .rc-detail { font-size: 11pt !important; margin-bottom: 3px !important; line-height: 1.4 !important; }
+        #reportCardsContainer .rc-label { font-weight: 800 !important; text-transform: uppercase !important; }
 
-        /* Chart */
-        .rc-chart-title { font-size: 8.5pt !important; margin-bottom: 2px !important; }
-        .rc-chart-canvas-wrap { height: 45mm !important; max-height: 45mm !important; overflow: hidden !important; }
-        .rc-chart-canvas-wrap canvas { max-width: 100% !important; max-height: 45mm !important; }
-        .rc-chart-svg svg { max-height: 45mm !important; }
+        #reportCardsContainer .rc-chart-title { font-size: 9pt !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; margin-bottom: 3px !important; text-align: left !important; line-height: 1 !important; }
+        #reportCardsContainer .rc-chart-canvas-wrap { height: auto !important; max-height: 44mm !important; overflow: hidden !important; position: relative !important; z-index: 2 !important; }
+        #reportCardsContainer .rc-chart-canvas-wrap canvas { display: block !important; width: 100% !important; max-height: 44mm !important; }
+        #reportCardsContainer .rc-chart-svg { width: 100% !important; margin: 6px 0 !important; }
+        #reportCardsContainer .rc-chart-svg svg { max-height: 44mm !important; }
+        #reportCardsContainer .rc-chart-img { width: 100% !important; max-height: 44mm !important; object-fit: contain !important; }
 
-        /* Stats */
-        .rc-stats { gap: 10px !important; margin-top: 2px !important; }
-        .rc-stat { padding: 14px 10px !important; border-top: 3px solid var(--section-accent, #305CDE) !important; }
-        .rc-stat-label { font-size: 8pt !important; }
-        .rc-stat-value { font-size: 16pt !important; }
+        #reportCardsContainer .rc-stats { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 8px !important; width: 100% !important; }
+        #reportCardsContainer .rc-stat { border: 1px solid #E2E8F0 !important; border-top: 3px solid var(--section-accent) !important; border-radius: 10px !important; padding: 12px 10px !important; text-align: center !important; background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important; }
+        #reportCardsContainer .rc-stat-label { display: block !important; font-size: 8pt !important; font-weight: 800 !important; color: var(--section-accent) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; margin-bottom: 6px !important; }
+        #reportCardsContainer .rc-stat-value { display: block !important; font-size: 15pt !important; font-weight: 800 !important; color: #1E293B !important; line-height: 1.2 !important; }
+        #reportCardsContainer .rc-stat-value small { font-size: 10pt !important; font-weight: 600 !important; color: #94A3B8 !important; }
 
-        /* Table */
-        .table-scroll { overflow: visible !important; }
-        .rc-table { width: 100% !important; min-width: 0 !important; }
-        .rc-table th {
-            padding: 10px 8px !important; font-size: 10pt !important;
-            border: 1px solid #D5D9E0 !important; font-weight: 800 !important;
-            background: #E9ECF0 !important;
-        }
-        .rc-table td { padding: 6px !important; font-size: 11pt !important; border: 1px solid var(--rc-border) !important; }
+        #reportCardsContainer .table-scroll { width: 100% !important; overflow: visible !important; }
+        #reportCardsContainer .rc-table { width: 100% !important; min-width: 0 !important; border-collapse: collapse !important; table-layout: fixed !important; }
+        #reportCardsContainer .rc-table colgroup .col-subj { width: 32% !important; }
+        #reportCardsContainer .rc-table colgroup .col-marks { width: 13% !important; }
+        #reportCardsContainer .rc-table colgroup .col-dev { width: 18% !important; }
+        #reportCardsContainer .rc-table colgroup .col-grade { width: 12% !important; }
+        #reportCardsContainer .rc-table colgroup .col-teacher { width: 25% !important; }
+        #reportCardsContainer .rc-table thead th { padding: 6px 8px !important; font-size: 9pt !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.03em !important; border: 1px solid #000 !important; background: #E9ECF0 !important; color: #1E293B !important; white-space: nowrap !important; }
+        #reportCardsContainer .rc-table thead th:first-child { text-align: left !important; }
+        #reportCardsContainer .rc-table tbody tr { page-break-inside: avoid !important; }
+        #reportCardsContainer .rc-table tbody td { padding: 5px 8px !important; font-size: 11pt !important; border: 1px solid #000 !important; }
+        #reportCardsContainer .rc-subj { font-weight: 700 !important; text-align: left !important; white-space: nowrap !important; }
+        #reportCardsContainer .rc-center { text-align: center !important; }
+        #reportCardsContainer .rc-grade { font-weight: 800 !important; color: #2563EB !important; }
+        #reportCardsContainer .rc-teacher { font-style: italic !important; font-weight: 600 !important; padding-left: 10px !important; text-align: left !important; font-size: 11pt !important; }
 
-        /* Comments — extend left to connect with blue bar */
-        .rc-comments-header {
-            padding: 4px 12px !important; font-size: 10.5pt !important;
-            margin: 4px 0 0 !important;
-            margin-left: -39px !important; margin-right: 20px !important;
+        #reportCardsContainer .rc-comments-header {
+            padding: 5px 14px !important;
+            font-size: 10pt !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.06em !important;
+            text-align: center !important;
+            margin-left: -20px !important;
+            margin-right: 20px !important;
+            border-radius: 0 20px 0 0 !important;
             box-decoration-break: clone !important;
             -webkit-box-decoration-break: clone !important;
         }
-        .rc-remarks-grid { gap: 14px !important; padding: 14px !important; margin-left: 0 !important; margin-right: 20px !important; }
-        .rc-remark-box { padding: 18px 20px !important; border: 1px solid #E2E8F0 !important; }
-        .rc-remark-title { font-size: 10pt !important; margin-bottom: 14px !important; }
-        .rc-remark-text { font-size: 10.5pt !important; line-height: 1.6 !important; margin-bottom: 16px !important; flex-grow: 1 !important; min-height: 0 !important; }
-        .rc-signature { font-size: 8pt !important; padding-top: 4px !important; }
+        #reportCardsContainer .rc-remarks-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; padding: 14px !important; background: #F8FAFC !important; border-radius: 0 0 8px 8px !important; margin-left: -20px !important; margin-right: 20px !important; }
+        #reportCardsContainer .rc-remark-box { padding: 14px 16px !important; border: 1px solid #E2E8F0 !important; border-radius: 10px !important; background: #fff !important; display: flex !important; flex-direction: column !important; }
+        #reportCardsContainer .rc-remark-title { font-size: 11pt !important; font-weight: 800 !important; color: #1E293B !important; margin-bottom: 10px !important; border-bottom: none !important; }
+        #reportCardsContainer .rc-remark-text { font-size: 11pt !important; line-height: 1.5 !important; margin-bottom: 10px !important; flex-grow: 1 !important; }
+        #reportCardsContainer .rc-signature { font-size: 9pt !important; font-weight: 600 !important; color: #64748B !important; border-top: 1px dashed #CBD5E1 !important; padding-top: 6px !important; margin-top: auto !important; }
 
-        /* Descriptors */
-        .rc-descriptors { margin-top: 6px !important; }
-        .rc-descriptors-title { font-size: 9pt !important; margin-bottom: 3px !important; }
-        .rc-descriptors-table th, .rc-descriptors-table td { padding: 8px 10px !important; font-size: 9pt !important; border: 1px solid #E2E8F0 !important; }
+        #reportCardsContainer .rc-descriptors { margin-top: 10px !important; width: 100% !important; }
+        #reportCardsContainer .rc-descriptors-title { font-size: 9pt !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; margin-bottom: 4px !important; padding-bottom: 4px !important; border-bottom: 2px solid var(--section-accent) !important; }
+        #reportCardsContainer .rc-descriptors-table th, #reportCardsContainer .rc-descriptors-table td { padding: 5px 8px !important; font-size: 9pt !important; border: 1px solid #000 !important; }
+        #reportCardsContainer .rc-descriptors-table th { background: #E9ECF0 !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.02em !important; }
+        #reportCardsContainer .rc-descriptors-table td:first-child, #reportCardsContainer .rc-descriptors-table th:first-child { text-align: left !important; font-weight: 700 !important; background: #F8FAFC !important; }
 
-        /* Footer dates */
-        .footer-dates { gap: 20px !important; margin-top: 16px !important; }
-        .date-box { padding: 10px 14px !important; font-size: 10pt !important; border: 1px solid #E2E8F0 !important; }
-        .date-box span:first-child { font-size: 9pt !important; }
-
-        /* Disable hover/animation */
-        * { transition: none !important; animation: none !important; }
+        #reportCardsContainer .footer-dates { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 16px !important; margin-top: 14px !important; width: 100% !important; }
+        #reportCardsContainer .date-box { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 10px 14px !important; font-size: 11pt !important; font-weight: 700 !important; color: #1E293B !important; border-radius: 8px !important; border: 1px solid #E2E8F0 !important; background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important; }
+        #reportCardsContainer .date-box span:first-child { font-size: 9pt !important; color: #64748B !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; }
     }
 </style>
 
@@ -1069,7 +1060,7 @@
         </div>
     </div>
     <div class="rv-actions">
-        <button type="button" class="rv-btn rv-btn-ghost" onclick="window.print()"><i class="ph ph-printer"></i> Print</button>
+        <button type="button" class="rv-btn rv-btn-ghost" onclick="EDUNEXUSPrint.openPrintWindow('.rv-scroll', {title:'{{ student_marks_list.0.student.name }} Report Card'})"><i class="ph ph-printer"></i> Print</button>
         <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="rv-btn rv-btn-green" style="text-decoration:none;text-align:center;"><i class="ph ph-file-pdf"></i> Download PDF</a>
     </div>
     <div class="rv-scroll">
@@ -1143,14 +1134,14 @@
 
     <div class="rc-action-buttons">
         {% if view_mode == 'bulk' %}
-        <button type="button" class="rc-action-btn rc-action-btn-outline" onclick="window.print()">
+        <button type="button" class="rc-action-btn rc-action-btn-outline" onclick="EDUNEXUSPrint.openPrintWindow('#reportCardsContainer', {title:'{{ selected_grade }} {{ selected_stream }} Report Cards'})">
             <i class="ph ph-printer"></i> Print
         </button>
         <a href="{% url 'download_bulk_report_pdf' %}?grade={{ selected_grade|default:'' }}&stream={{ selected_stream|default:'' }}&exam_id={{ selected_exam_id|default:'' }}" class="rc-action-btn rc-action-btn-green" style="text-decoration:none;text-align:center;">
             <i class="ph ph-file-pdf"></i> Download PDF
         </a>
         {% elif view_mode == 'individual' %}
-        <button type="button" class="rc-action-btn rc-action-btn-outline" onclick="window.print()">
+        <button type="button" class="rc-action-btn rc-action-btn-outline" onclick="EDUNEXUSPrint.openPrintWindow('#reportCardsContainer', {title:'{{ student_marks_list.0.student.name }} Report Card'})">
             <i class="ph ph-printer"></i> Print
         </button>
         <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="rc-action-btn rc-action-btn-green" style="text-decoration:none;text-align:center;">
@@ -1188,140 +1179,29 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
 
 <script>
 (function() {
-
     /* ═══════════════════════════════════════════════════════════
-       PRINT HANDLER — Direct DOM manipulation
-       CSS @media print is unreliable for position:fixed elements.
-       This JS hides chrome and resets layout before the browser
-       captures the print snapshot, then restores everything after.
+       PRINT HANDLER — Intercept Ctrl+P / Cmd+P → openPrintWindow
        ═══════════════════════════════════════════════════════════ */
-
-    /* Elements to hide during print */
-    var HIDE_SELECTORS = [
-        '.global-header',
-        '.premium-sidebar', '.sidebar', '.sidebar-overlay',
-        '.sub-nav-bar',
-        '.rc-topbar', '.rc-action-buttons', '.rc-info-bar', '.rc-context-card',
-        '.rc-loading-overlay',
-        '.hamburger-btn',
-        '.global-loader-overlay', '.bottom-nav',
-        '.mobile-menu-sheet', '.mobile-menu-panel', '.mobile-menu-body',
-        '.mobile-menu-header', '.mobile-menu-backdrop',
-        '.system-footer', '.rc-print-watermark'
-    ].join(',');
-
-    /* Store original inline styles so we can restore them */
-    var savedStyles = [];
-
-    function prepareForPrint() {
-        savedStyles = [];
-
-        /* 1. Hide all screen chrome */
-        var els = document.querySelectorAll(HIDE_SELECTORS);
-        els.forEach(function(el) {
-            savedStyles.push({ el: el, orig: el.style.cssText });
-            el.style.cssText = 'display:none !important; visibility:hidden !important; height:0 !important; overflow:hidden !important;';
-        });
-
-        /* 2. Reset .app-content margin-top (was pushing card down) */
-        var appContent = document.querySelector('.app-content');
-        if (appContent) {
-            savedStyles.push({ el: appContent, orig: appContent.style.cssText });
-            appContent.style.cssText = 'margin-top:0 !important;';
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            e.preventDefault();
+            e.stopPropagation();
+            {% if view_mode == 'bulk' %}
+            if (typeof EDUNEXUSPrint !== 'undefined' && EDUNEXUSPrint.openPrintWindow) {
+                EDUNEXUSPrint.openPrintWindow('#reportCardsContainer', {title: '{{ selected_grade }} {{ selected_stream }} Report Cards'});
+            }
+            {% elif view_mode == 'individual' %}
+            if (typeof EDUNEXUSPrint !== 'undefined' && EDUNEXUSPrint.openPrintWindow) {
+                EDUNEXUSPrint.openPrintWindow('#reportCardsContainer', {title: '{{ student_marks_list.0.student.name }} Report Card'});
+            }
+            {% endif %}
+            return false;
         }
+    }, true);
+})();
+</script>
 
-        /* 3. Reset .main-content margin-left and max-width (was offset by sidebar width) */
-        var mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            savedStyles.push({ el: mainContent, orig: mainContent.style.cssText });
-            mainContent.style.cssText = 'margin-left:0 !important; max-width:100% !important; padding:0 !important;';
-        }
-
-        /* 4. GLOBAL CONTAINER — mirror browser: full width, original padding */
-        var cards = document.querySelectorAll('.report-card');
-        cards.forEach(function(card) {
-            savedStyles.push({ el: card, orig: card.style.cssText });
-            card.style.cssText = 'width:100% !important; max-width:none !important; margin:0 !important; padding:0.16in 0.35in 0.25in 0.55in !important; border:none !important; border-radius:0 !important; box-shadow:none !important; position:relative !important; font-family:"Times New Roman",Times,serif !important; font-size:12pt !important;';
-        });
-
-        /* 5. Content fills its parent */
-        var reportContents = document.querySelectorAll('.report-content');
-        reportContents.forEach(function(el) {
-            savedStyles.push({ el: el, orig: el.style.cssText });
-            el.style.cssText = 'width:100% !important; margin:0 !important; padding:0 !important; font-family:"Times New Roman",Times,serif !important; font-size:12pt !important; gap:8px !important;';
-        });
-
-        /* 6. Force side-by-side columns with explicit widths */
-        var topGrids = document.querySelectorAll('.rc-top-grid');
-        topGrids.forEach(function(el) {
-            savedStyles.push({ el: el, orig: el.style.cssText });
-            el.style.cssText = 'display:flex !important; flex-direction:row !important; justify-content:space-between !important; align-items:flex-start !important; width:100% !important; gap:10px !important; overflow:hidden !important;';
-        });
-        var studentBlocks = document.querySelectorAll('.rc-student-block');
-        studentBlocks.forEach(function(el) {
-            savedStyles.push({ el: el, orig: el.style.cssText });
-            el.style.cssText = 'width:30% !important; min-width:0 !important; flex-shrink:0 !important;';
-        });
-        var chartBlocks = document.querySelectorAll('.rc-chart-block');
-        chartBlocks.forEach(function(el) {
-            savedStyles.push({ el: el, orig: el.style.cssText });
-            el.style.cssText = 'width:65% !important; min-width:0 !important; flex-shrink:0 !important; min-height:0 !important; max-height:50mm !important; overflow:hidden !important;';
-        });
-
-        /* 7. Constrain chart canvases */
-        var canvases = document.querySelectorAll('.rc-chart-canvas-wrap');
-        canvases.forEach(function(el) {
-            savedStyles.push({ el: el, orig: el.style.cssText });
-            el.style.cssText = 'height:45mm !important; max-height:45mm !important; overflow:hidden !important;';
-        });
-
-        /* 7. Fix blue background bleed on banners and headers */
-        var bleedEls = document.querySelectorAll('.rc-banner, .rc-comments-header');
-        bleedEls.forEach(function(el) {
-            savedStyles.push({ el: el, orig: el.style.cssText });
-            el.style.cssText += '; box-decoration-break:clone !important; -webkit-box-decoration-break:clone !important;';
-        });
-
-        /* 7b. Comments header + remarks grid — extend left to connect with blue bar */
-        var commentsHeader = document.querySelectorAll('.rc-comments-header');
-        commentsHeader.forEach(function(el) {
-            savedStyles.push({ el: el, orig: el.style.cssText });
-            el.style.cssText += '; margin-left:-39px !important; margin-right:20px !important;';
-        });
-        var remarksGrids = document.querySelectorAll('.rc-remarks-grid');
-        remarksGrids.forEach(function(el) {
-            savedStyles.push({ el: el, orig: el.style.cssText });
-            el.style.cssText += '; margin-left:0 !important; margin-right:20px !important;';
-        });
-
-        /* 8. Blue decorative line — INSIDE card, matches browser exactly */
-        var stripeStyle = document.createElement('style');
-        stripeStyle.id = 'print-stripe-fix';
-        stripeStyle.textContent = '.report-card::before{content:""!important;display:block!important;position:absolute!important;left:14px!important;top:0!important;bottom:0!important;width:19px!important;height:auto!important;background:var(--section-accent)!important;border-radius:0 24px 24px 0!important;z-index:1!important;}.rc-banner{margin-left:calc(-0.55in + 33px)!important;}.rc-comments-header{margin-left:-39px!important;margin-right:20px!important;}.rc-remarks-grid{margin-left:0!important;margin-right:20px!important;}';
-        document.head.appendChild(stripeStyle);
-
-        /* 8. Force Chart.js to re-render for print */
-        if (typeof Chart !== 'undefined' && Chart.instances) {
-            Object.keys(Chart.instances).forEach(function(key) {
-                var chart = Chart.instances[key];
-                if (chart && chart.resize) chart.resize();
-            });
-        }
-    }
-
-    function restoreAfterPrint() {
-        savedStyles.forEach(function(item) {
-            item.el.style.cssText = item.orig;
-        });
-        savedStyles = [];
-        /* Remove injected stripe fix style */
-        var injected = document.getElementById('print-stripe-fix');
-        if (injected) injected.parentNode.removeChild(injected);
-    }
-
-    window.addEventListener('beforeprint', prepareForPrint);
-    window.addEventListener('afterprint', restoreAfterPrint);
-
+<script>
     /* ═══════════════════════════════════════════════════════════
        AJAX POLLING (bulk view only)
        ═══════════════════════════════════════════════════════════ */

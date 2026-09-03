@@ -77,27 +77,48 @@ class RateLimitedPasswordResetView(PasswordResetView):
     def send_mail(self, subject_template_name, email_template_name,
                   context, from_email, to_email,
                   html_email_template_name=None):
-        from django.core.mail import EmailMessage
-        from django.template.loader import render_to_string
-        subject = render_to_string(subject_template_name, context)
-        subject = ''.join(subject.splitlines())
-        html_body = render_to_string(html_email_template_name or email_template_name, context)
-        text_body = render_to_string(email_template_name, context)
-        site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
-        email = EmailMessage(
-            subject=subject,
-            body=html_body,
-            from_email=from_email,
-            to=[to_email],
-            headers={
-                'Reply-To': from_email,
-                'Precedence': 'bulk',
-                'List-Unsubscribe': f'<{site_url}/login/>',
-                'X-Auto-Response-Suppress': 'All',
-            },
-        )
-        email.content_subtype = 'html'
-        email.send(fail_silently=True)
+        import time as _time
+        MAX_RETRIES = 2
+        RETRY_DELAY = 1
+
+        for attempt in range(1 + MAX_RETRIES):
+            try:
+                from django.core.mail import EmailMessage
+                from django.template.loader import render_to_string
+                subject = render_to_string(subject_template_name, context)
+                subject = ''.join(subject.splitlines())
+                html_body = render_to_string(html_email_template_name or email_template_name, context)
+                text_body = render_to_string(email_template_name, context)
+                site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+                email = EmailMessage(
+                    subject=subject,
+                    body=html_body,
+                    from_email=from_email,
+                    to=[to_email],
+                    headers={
+                        'Reply-To': from_email,
+                        'Precedence': 'bulk',
+                        'List-Unsubscribe': f'<{site_url}/login/>',
+                        'X-Auto-Response-Suppress': 'All',
+                    },
+                )
+                email.content_subtype = 'html'
+                email.send(fail_silently=True)
+                logger.info("Password reset email sent to %s", to_email)
+                return
+            except Exception as exc:
+                if attempt < MAX_RETRIES:
+                    logger.warning(
+                        "Password reset email failed (attempt %d/%d) for %s: %s — retrying",
+                        attempt + 1, 1 + MAX_RETRIES, to_email, exc
+                    )
+                    _time.sleep(RETRY_DELAY)
+                    RETRY_DELAY *= 2
+                else:
+                    logger.exception(
+                        "Could not send password reset email to %s after %d attempts",
+                        to_email, 1 + MAX_RETRIES
+                    )
 
     def form_valid(self, form):
         email = form.cleaned_data.get('email', '').lower().strip()
@@ -194,8 +215,14 @@ class SecurePasswordResetConfirmView(PasswordResetConfirmView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Add token expiry info (24 hours from Django default)
-        context['token_expiry_hours'] = 24
+        # Calculate actual token expiry from Django's settings
+        # Django default is PASSWORD_RESET_TIMEOUT_DAYS = 1 (or PASSWORD_RESET_TIMEOUT in seconds)
+        from django.conf import settings
+        timeout_seconds = getattr(settings, 'PASSWORD_RESET_TIMEOUT', None)
+        if timeout_seconds is None:
+            timeout_days = getattr(settings, 'PASSWORD_RESET_TIMEOUT_DAYS', 1)
+            timeout_seconds = timeout_days * 86400
+        context['token_expiry_hours'] = max(1, timeout_seconds // 3600)
         return context
 
 

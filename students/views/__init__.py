@@ -14,7 +14,7 @@ Module layout:
   exams.py        – Mark entry, exam management, submission review, locks
   reports.py      – Results list, report cards (single & bulk)
   faculty.py      – Faculty matrix, subject comments, learner profile
-  pdf_exports.py  – Playwright-based PDF downloads (broadsheet, class list)
+  pdf_exports.py  – WeasyPrint-based PDF downloads (broadsheet, class list)
   classes_manage.py – Grade/stream management
   csv_upload.py   – Premium CSV onboarding wizard & progress API
 """
@@ -129,7 +129,11 @@ from .pdf_exports import (  # noqa: F401
     download_broadsheet_pdf,
     download_bulk_report_pdf,
     download_classlist_pdf,
+    download_generated_pdf,
     download_individual_report_pdf,
+    individual_report_print_html,
+    pdf_progress,
+    start_bulk_report_pdf,
 )
 
 # ── Class/stream management ──────────────────────────────────────────────────

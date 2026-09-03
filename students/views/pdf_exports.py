@@ -386,9 +386,8 @@ def _embed_logo_base64(template_html, request):
 @rate_limit("report_download", max_requests=10, window_seconds=60, methods=["GET", "POST"])
 def download_broadsheet_pdf(request):
     """
-    Renders the real results_list.html, injects PDF overrides, and hands it
-    to Playwright with emulate_media('screen') so the screen styles win —
-    giving a PDF that looks exactly like the web view.
+    Renders the real results_list.html, injects PDF overrides, and generates
+    a high-quality PDF via WeasyPrint.
     """
     school = get_request_school(request)
     if not school:
@@ -573,12 +572,12 @@ def download_broadsheet_pdf(request):
     }, request=request)
 
     # Embed the school logo for PDF export so it prints reliably even when
-    # Playwright is rendering HTML outside the normal browser page.
+    # WeasyPrint is rendering HTML outside the normal browser page.
     template_html = _embed_logo_base64(template_html, request)
 
     # ── 3. Minimal PDF overlay CSS ────────────────────────────────────────────
     #
-    # Playwright now uses emulate_media("print") so the template's own
+    # WeasyPrint uses print media so the template's own
     # @media print CSS does all the heavy lifting (table styling, colors,
     # fonts, page-break, @page rules). We only inject CSS here to hide
     # screen-only chrome that the template's print CSS doesn't cover.
@@ -635,7 +634,7 @@ def download_broadsheet_pdf(request):
 </style>
 """
 
-    # Give Playwright a real origin so relative media/static URLs load in PDFs.
+    # Give WeasyPrint a real origin so relative media/static URLs load in PDFs.
     pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
 
     # Insert overrides using bulletproof injector
@@ -900,7 +899,7 @@ def download_individual_report_pdf(request, student_id):
     """
     Server-side PDF for individual report cards.
     Reuses the same data context as individual_report() and renders
-    via Playwright with emulate_media('print') for high-quality output.
+    via WeasyPrint for high-quality output.
     """
 
     school = get_request_school(request)
@@ -1206,6 +1205,276 @@ def download_individual_report_pdf(request, student_id):
         return HttpResponse("Error generating report", status=500)
 
 
+@login_required(login_url='login')
+def individual_report_print_html(request, student_id):
+    """
+    GET /report/<student_id>/print-html/
+    
+    Returns clean print-only HTML for the popup print system.
+    Same data as download_individual_report_pdf but returns HTML instead of PDF.
+    The popup window loads this URL, then fires window.print() on the clean content.
+    """
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'error': 'School context is required.'}, status=400)
+
+    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    prefetch_school_grading(school)
+
+    student = get_school_object_or_403(Student, request, using="all_objects", id=student_id)
+    if not student:
+        return JsonResponse({'error': 'Student not found.'}, status=404)
+    if not user_can_access_class_stream(request.user, student.class_name, student.stream, require_class_teacher=True):
+        return JsonResponse({'error': 'Not authorized.'}, status=403)
+
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
+    year       = request.GET.get('year', datetime.date.today().year)
+    term       = request.GET.get('term', 'Term 1')
+    assessment = request.GET.get('assessment', 'opener')
+    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
+
+    _term_closing, _term_opening = resolve_term_dates(school, int(year), term)
+
+    student_sub_section = 'LOWER' if student.class_name in LOWER_PRIMARY_GRADE_CHOICES else ('UPPER' if student.school_section == 'PRIMARY' else None)
+
+    published_subject_codes = get_published_subject_codes(
+        student.class_name, student.stream, year, term, db_assessment,
+        sub_section=student_sub_section,
+        is_admin=is_admin_view,
+    )
+    from ..models import Subject
+    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+
+    marks = Mark.all_objects.filter(
+        school=school, student=student, year=year, term=term,
+        exam_type=db_assessment, subject__in=published_subjects_qs,
+        school_section=student.school_section,
+    ).select_related('subject')
+
+    totals = marks.aggregate(
+        total_score=Sum('score'),
+        total_pts=Sum('points'),
+    )
+    total_marks = totals['total_score'] or 0
+    total_points = totals['total_pts'] or 0
+
+    marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
+
+    grade_summaries = ExamSummary.all_objects.filter(
+        school=school,
+        year=year, term=term, exam_name=db_assessment,
+        school_section=student.school_section, sub_section=student.sub_section,
+    )
+    grade_sorted = sorted(grade_summaries, key=lambda s: (-s.total_marks, -s.total_points))
+    class_leaderboard_rank = {s.student_id: rank for rank, s in enumerate(grade_sorted, start=1)}
+    class_count = len(grade_sorted)
+    position = class_leaderboard_rank.get(student.id, 0)
+
+    is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
+    is_primary = student.school_section == 'PRIMARY'
+    if is_lower_primary:
+        subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
+    elif is_primary:
+        subject_mapping = PRIMARY_SUBJECT_NAMES
+    else:
+        subject_mapping = {s.code: s.name for s in published_subjects_qs}
+
+    teacher_map = {
+        a.subject.code: a.teacher_profile.get_full_title()
+        for a in SubjectAssignment.all_objects.filter(
+            school=school, class_name=student.class_name, stream=student.stream
+        ).select_related('teacher_profile__user', 'subject')
+        if a.subject
+    }
+
+    from ..models import Teacher
+    class_teacher_name = ""
+    ct_q = Teacher.all_objects.filter(
+        school=school, assigned_task__icontains=student.class_name,
+    ).filter(
+        Q(assigned_task__icontains=student.stream),
+    ).select_related('user').first()
+    if ct_q:
+        class_teacher_name = ct_q.get_full_title()
+
+    marks_list = list(marks)
+    for mark in marks_list:
+        mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
+        mark.teacher_name = teacher_map.get(mark.subject.code, '\u2014')
+        if is_primary and not mark.is_absent:
+            pct = mark.score or 0
+            mark.performance_level, mark.points = _get_primary_performance(pct)
+
+    class_subject_avgs = (
+        Mark.all_objects.filter(
+            school=school,
+            student__class_name=student.class_name, student__stream=student.stream,
+            year=year, term=term, exam_type=db_assessment,
+            subject__in=published_subjects_qs,
+        )
+        .exclude(is_absent=True)
+        .values('subject__code')
+        .annotate(avg_score=Avg('score'))
+    )
+    class_avg_map = {row['subject__code']: round(row['avg_score'], 1) for row in class_subject_avgs}
+
+    for mark in marks_list:
+        class_avg = class_avg_map.get(mark.subject.code)
+        mark.class_average = class_avg
+        if class_avg is not None and mark.score is not None and not mark.is_absent:
+            mark.deviation = round(mark.score - class_avg, 1)
+        else:
+            mark.deviation = None
+
+    grade_descriptors = resolve_scale_fast(school.pk, student.school_section, student.sub_section)
+
+    assessed_subjects   = sum(1 for m in marks_list if m.score is not None and not m.is_absent)
+    max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
+    mean_points         = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
+    max_total_marks     = assessed_subjects * 100
+    max_total_points    = assessed_subjects * max_points_per_subj
+
+    chart_data_json = json.dumps({
+        'labels':    [m.subject_name for m in marks_list if not m.is_absent],
+        'student':   [m.score for m in marks_list if not m.is_absent],
+        'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
+    })
+
+    chart_labels = [m.subject_name for m in marks_list if not m.is_absent]
+    chart_student = [m.score for m in marks_list if not m.is_absent]
+    chart_class_avg = [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent]
+
+    chart_cache_key = f"student_chart_{student.id}_{year}_{term}"
+    chart_svg = cache.get(chart_cache_key)
+    if not chart_svg:
+        chart_svg = generate_premium_vector_chart_svg(chart_labels, chart_student, chart_class_avg)
+        if chart_svg:
+            cache.set(chart_cache_key, chart_svg, timeout=86400)
+
+    overall_plv = calculate_primary_plv(total_marks, assessed_subjects, sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks)
+
+    from ..models import ClassTeacherMasterComment, SchoolHeadteacherComment
+    master_comment = ClassTeacherMasterComment.objects.filter(
+        school=school, year=year, term=term, grade=student.class_name,
+        stream=student.stream, exam_type=db_assessment,
+    ).first()
+    school_ht_comment = SchoolHeadteacherComment.objects.filter(
+        school=school, year=year, term=term, exam_type=db_assessment,
+        school_section=student.school_section,
+    ).first()
+
+    class_teacher_remark = ""
+    headteacher_comment = ""
+    closing_date = None
+    opening_date = None
+    freeze_threshold = datetime.timedelta(days=30)
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    if master_comment and overall_plv != '-':
+        ct_comment_field = f"comment_{overall_plv.lower()}"
+        live_ct = getattr(master_comment, ct_comment_field, "") or ""
+        if live_ct.strip():
+            class_teacher_remark = live_ct
+        elif marks_list and marks_list[0].frozen_class_teacher_comment:
+            class_teacher_remark = marks_list[0].frozen_class_teacher_comment
+
+    if school_ht_comment and overall_plv != '-':
+        ht_comment_field = f"ht_comment_{overall_plv.lower()}"
+        live_ht = getattr(school_ht_comment, ht_comment_field, "") or ""
+        if live_ht.strip():
+            headteacher_comment = live_ht
+        elif marks_list and marks_list[0].frozen_headteacher_comment:
+            headteacher_comment = marks_list[0].frozen_headteacher_comment
+
+    if master_comment:
+        closing_date = master_comment.closing_date
+        opening_date = master_comment.opening_date
+    if not closing_date and marks_list and marks_list[0].frozen_closing_date:
+        closing_date = marks_list[0].frozen_closing_date
+    if not opening_date and marks_list and marks_list[0].frozen_opening_date:
+        opening_date = marks_list[0].frozen_opening_date
+    if not closing_date and _term_closing:
+        closing_date = _term_closing
+    if not opening_date and _term_opening:
+        opening_date = _term_opening
+
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if student.school_section == 'PRIMARY' and student.sub_section == 'LOWER':
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif student.school_section == 'PRIMARY':
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors['JSS']
+
+    template_html = render_to_string('students/report_card_print.html', {
+        'student':             student,
+        'marks':               marks_list,
+        'total_marks':         total_marks,
+        'total_points':        total_points,
+        'position':            position,
+        'class_count':         class_count,
+        'overall_plv':         overall_plv,
+        'mean_points':         mean_points,
+        'mean_points_max':     max_points_per_subj,
+        'max_total_marks':     max_total_marks,
+        'max_total_points':    max_total_points,
+        'grade_descriptors':   grade_descriptors,
+        'chart_data_json':     chart_data_json,
+        'chart_svg':           chart_svg,
+        'class_teacher_remark': class_teacher_remark,
+        'class_teacher_name':   class_teacher_name,
+        'headteacher_comment': headteacher_comment,
+        'closing_date':        closing_date,
+        'opening_date':        opening_date,
+        'selected_year':       year,
+        'selected_term':       term,
+        'selected_assessment': ASSESSMENT_MAP.get(assessment, assessment),
+        'today':               datetime.date.today(),
+        'section_accent':      section_accent,
+        'view_mode':           'print',
+        'show_mobile_shell':   False,
+        'show_header':         False,
+        'show_control_panel':  False,
+        'student_marks_list':  [{
+            'student': student, 'marks': marks_list,
+            'total_marks': total_marks, 'total_points': total_points,
+            'overall_plv': overall_plv,
+            'mean_points': mean_points,
+            'mean_points_max': max_points_per_subj,
+            'max_total_marks': max_total_marks,
+            'max_total_points': max_total_points,
+            'grade_descriptors': grade_descriptors,
+            'chart_data_json': chart_data_json,
+            'chart_svg': chart_svg,
+            'class_teacher_remark': class_teacher_remark,
+            'class_teacher_name':   class_teacher_name,
+            'headteacher_comment': headteacher_comment,
+            'closing_date': closing_date,
+            'opening_date': opening_date,
+            'position': position, 'class_count': class_count,
+        }],
+    }, request=request)
+
+    template_html = _embed_logo_base64(template_html, request)
+
+    # The template already loads report_card_print.css and has an auto-print
+    # script that fires when view_mode=print is in the URL. We just need to
+    # ensure the <base> tag is set for static file resolution.
+    base_tag = f'<base href="{request.build_absolute_uri("/")}">'
+    patched_html = template_html.replace(
+        '</head>',
+        f'{base_tag}</head>',
+        1,
+    )
+
+    return HttpResponse(patched_html, content_type='text/html; charset=utf-8')
+
+
 # ==============================================================================
 # download_bulk_report_pdf — Parallel PDF Stitching Engine
 # ==============================================================================
@@ -1382,4 +1651,156 @@ def download_bulk_report_pdf(request):
     response = HttpResponse(output_buffer.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     output_buffer.close()
+    return response
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  BACKGROUND PDF GENERATION — Start / Poll / Download endpoints
+# ═══════════════════════════════════════════════════════════════════════
+
+import uuid as _uuid
+
+
+def _get_pdf_cache():
+    from django.core.cache import caches
+    return caches["pdf_generation"]
+
+
+@login_required
+def start_bulk_report_pdf(request):
+    """
+    POST /bulk-reports/generate-pdf/
+    
+    Starts background PDF generation via Celery. Returns a job_id that
+    the frontend polls via /api/pdf-progress/<job_id>/.
+    
+    Accepts same params as download_bulk_report_pdf:
+      grade, stream, exam_id, year, term, assessment
+    """
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'error': 'School context is required.'}, status=400)
+
+    grade_name  = request.GET.get('grade', '').strip() or request.POST.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip() or request.POST.get('stream', '').strip()
+    exam_id     = request.GET.get('exam_id', '').strip() or request.POST.get('exam_id', '').strip()
+    year        = request.GET.get('year', str(datetime.date.today().year)).strip()
+    term        = request.GET.get('term', 'Term 1').strip()
+    assessment  = request.GET.get('assessment', 'opener').strip()
+
+    if not grade_name or not stream_name or not exam_id:
+        return JsonResponse({'error': 'grade, stream, and exam_id are required.'}, status=400)
+
+    # Resolve student IDs (same logic as synchronous view)
+    from .helpers import build_report_card_context
+    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
+
+    is_admin_view = user_has_main_school_admin_override(request.user)
+
+    try:
+        _exam = Exam.all_objects.get(id=exam_id, school=school, is_deleted=False)
+    except (Exam.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Exam not found.'}, status=404)
+
+    db_assessment = _exam.name
+
+    try:
+        _resolved = build_report_card_context(
+            school, grade_name, stream_name, exam_id,
+            include_chart_svg=False,
+            is_admin=is_admin_view,
+        )
+        student_ids = [s['student'].id for s in _resolved['student_marks_list']]
+    except Exam.DoesNotExist:
+        return JsonResponse({'error': 'Exam not found.'}, status=404)
+
+    if not student_ids:
+        return JsonResponse({'error': 'No students found for that grade/stream/exam.'}, status=404)
+
+    # Access check
+    sample = Student.all_objects.filter(id__in=student_ids, school=school).first()
+    if not sample:
+        return JsonResponse({'error': 'No valid students found.'}, status=404)
+
+    if not user_can_access_class_stream(
+        request.user, sample.class_name, sample.stream, require_class_teacher=True,
+    ):
+        return JsonResponse({'error': 'Not authorized for this class stream.'}, status=403)
+
+    # Generate unique job ID and dispatch to Celery
+    job_id = _uuid.uuid4().hex[:16]
+
+    from .tasks import generate_bulk_report_pdf
+    generate_bulk_report_pdf.delay(
+        job_id=job_id,
+        school_id=school.id,
+        grade_name=grade_name,
+        stream_name=stream_name,
+        exam_id=int(exam_id),
+        year=year,
+        term=term,
+        assessment=assessment,
+        student_ids=student_ids,
+        user_id=request.user.id,
+    )
+
+    return JsonResponse({
+        'job_id': job_id,
+        'total': len(student_ids),
+        'message': 'PDF generation started in background.',
+    })
+
+
+@login_required
+def pdf_progress(request, job_id):
+    """
+    GET /api/pdf-progress/<job_id>/
+    
+    Poll endpoint for the frontend to check PDF generation progress.
+    Returns compiled/total counts and status.
+    """
+    pdf_cache = _get_pdf_cache()
+
+    # Check for completion first
+    result = pdf_cache.get(f"pdf_result_{job_id}")
+    if result:
+        return JsonResponse(result)
+
+    # Check for in-progress
+    progress = pdf_cache.get(f"pdf_progress_{job_id}")
+    if progress:
+        return JsonResponse(progress)
+
+    return JsonResponse({'status': 'not_found', 'message': 'Job not found or expired.'}, status=404)
+
+
+@login_required
+def download_generated_pdf(request, job_id):
+    """
+    GET /api/pdf-download/<job_id>/
+    
+    Download the completed PDF. Only available after generation is complete.
+    Cleans up cache entries after download.
+    """
+    pdf_cache = _get_pdf_cache()
+
+    result = pdf_cache.get(f"pdf_result_{job_id}")
+    if not result:
+        return JsonResponse({'error': 'PDF not ready or expired.'}, status=404)
+
+    if result.get('status') == 'error':
+        return JsonResponse(result, status=400)
+
+    pdf_bytes = pdf_cache.get(f"pdf_data_{job_id}")
+    if not pdf_bytes:
+        return JsonResponse({'error': 'PDF data expired. Please regenerate.'}, status=404)
+
+    filename = result.get('filename', 'report_cards.pdf')
+
+    # Clean up cache
+    pdf_cache.delete(f"pdf_data_{job_id}")
+    pdf_cache.delete(f"pdf_result_{job_id}")
+
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response

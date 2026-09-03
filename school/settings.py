@@ -161,6 +161,10 @@ if not DEBUG and _REDIS_URL:
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': _REDIS_URL,
         },
+        'pdf_generation': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': _REDIS_URL,
+        },
     }
 else:
     CACHES = {
@@ -168,6 +172,9 @@ else:
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         },
         'csv_upload': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        },
+        'pdf_generation': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         },
     }

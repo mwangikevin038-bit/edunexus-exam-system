@@ -356,6 +356,107 @@
             gap: var(--space-2);
         }
     }
+
+    /* ── Zeraki-style loading screen ─────────────────────────────────── */
+    .rc-gen-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: #eaecf0;
+        z-index: 99999;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .rc-gen-overlay.visible {
+        display: flex;
+    }
+    .rc-gen-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0;
+        overflow: hidden;
+        max-width: 600px;
+        width: 90%;
+        box-shadow: 0 14px 34px rgba(15,23,42,0.05);
+    }
+    .rc-gen-card-header {
+        padding: 24px 32px 12px;
+    }
+    .rc-gen-card-header h2 {
+        font-family: 'Plus Jakarta Sans','Inter',sans-serif;
+        font-weight: 700;
+        font-size: 20px;
+        color: #111827;
+        margin: 0;
+    }
+    .rc-gen-summary {
+        padding: 12px 32px 20px;
+        background: #f1f5f9;
+    }
+    .rc-gen-summary-grade {
+        font-size: 18px;
+        font-weight: 800;
+        color: #0f172a;
+        font-family: 'Inter',sans-serif;
+    }
+    .rc-gen-summary-exam {
+        font-size: 14px;
+        color: #475569;
+        font-weight: 500;
+        font-family: 'Inter',sans-serif;
+    }
+    .rc-gen-body {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    .rc-gen-text {
+        font-size: 16px;
+        color: #374151;
+        font-weight: 600;
+        margin-bottom: 24px;
+        font-family: 'Inter',sans-serif;
+    }
+    .rc-gen-spinner {
+        display: inline-flex;
+        align-items: flex-end;
+        gap: 4px;
+        height: 40px;
+    }
+    .rc-gen-bar {
+        width: 8px;
+        background: #16a34a;
+        border-radius: 2px;
+        animation: rcGenBar 1s ease-in-out infinite;
+    }
+    .rc-gen-bar:nth-child(1) { height: 12px; animation-delay: 0s; }
+    .rc-gen-bar:nth-child(2) { height: 20px; animation-delay: 0.15s; }
+    .rc-gen-bar:nth-child(3) { height: 28px; animation-delay: 0.3s; }
+    .rc-gen-bar:nth-child(4) { height: 36px; animation-delay: 0.45s; }
+    .rc-gen-bar:nth-child(5) { height: 28px; animation-delay: 0.6s; }
+    @keyframes rcGenBar {
+        0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+        50% { transform: scaleY(1); opacity: 1; }
+    }
+    .rc-gen-progress {
+        margin-top: 20px;
+        font-size: 13px;
+        color: #64748b;
+        font-family: 'Inter',sans-serif;
+    }
+    .rc-gen-footer {
+        text-align: center;
+        padding: 20px 32px;
+        color: #9ca3af;
+        font-size: 12px;
+        margin-top: 20px;
+    }
+    .rc-gen-footer a {
+        color: #16a34a;
+        text-decoration: none;
+        font-weight: 600;
+    }
 </style>
 
 {# ── DESKTOP VIEW (hidden on mobile via rc-mobile.css) ── #}
@@ -903,7 +1004,74 @@ function printSelectedReports() {
         alert('Please select at least one learner first.');
         return;
     }
-    window.location.href = `{% url 'bulk_report_cards' %}?ids=${selectedIds.join(',')}&year={{ selected_year }}&term={{ selected_term|urlencode }}&assessment={{ selected_assessment }}`;
+
+    var overlay = document.getElementById('rcGenOverlay');
+    var progressEl = document.getElementById('rcGenProgress');
+    overlay.classList.add('visible');
+    progressEl.textContent = 'Preparing ' + selectedIds.length + ' report cards...';
+
+    var url = '{% url "start_bulk_report_pdf" %}?grade={{ selected_grade|default:""|urlencode }}&stream={{ selected_stream|default:""|urlencode }}&exam_id={{ selected_exam_id|default:"" }}&year={{ selected_year|default:"" }}&term={{ selected_term|default:""|urlencode }}&assessment={{ selected_assessment|default:""|urlencode }}&ids=' + selectedIds.join(',');
+
+    fetch(url, { method: 'GET', credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) {
+                overlay.classList.remove('visible');
+                alert('Error: ' + data.error);
+                return;
+            }
+            var jobId = data.job_id;
+            var total = data.total || selectedIds.length;
+            progressEl.textContent = 'Compiling 0/' + total + ' report cards...';
+            pollPdfProgress(jobId, total, overlay, progressEl);
+        })
+        .catch(function(err) {
+            overlay.classList.remove('visible');
+            alert('Failed to start PDF generation: ' + err.message);
+        });
+}
+
+function pollPdfProgress(jobId, total, overlay, progressEl) {
+    var pollUrl = '{% url "pdf_progress" job_id="__JOBID__" %}'.replace('__JOBID__', jobId);
+    var checkCount = 0;
+    var maxChecks = 300;
+
+    function poll() {
+        checkCount++;
+        if (checkCount > maxChecks) {
+            overlay.classList.remove('visible');
+            alert('PDF generation timed out. Please try again.');
+            return;
+        }
+
+        fetch(pollUrl, { method: 'GET', credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.status === 'processing') {
+                    var compiled = data.compiled || 0;
+                    var failed = data.failed || 0;
+                    progressEl.textContent = 'Compiling ' + compiled + '/' + total + ' report cards...' + (failed > 0 ? ' (' + failed + ' failed)' : '');
+                    setTimeout(poll, 1500);
+                } else if (data.status === 'completed' || data.status === 'completed_with_errors') {
+                    var msg = 'Done! ' + (data.compiled || 0) + ' report cards compiled.';
+                    if (data.failed > 0) msg += ' ' + data.failed + ' failed.';
+                    progressEl.textContent = msg + ' Downloading...';
+                    var downloadUrl = '{% url "download_generated_pdf" job_id="__JOBID__" %}'.replace('__JOBID__', jobId);
+                    window.location.href = downloadUrl;
+                    setTimeout(function() { overlay.classList.remove('visible'); }, 2000);
+                } else if (data.status === 'error') {
+                    overlay.classList.remove('visible');
+                    alert('PDF generation failed: ' + (data.message || 'Unknown error'));
+                } else {
+                    setTimeout(poll, 2000);
+                }
+            })
+            .catch(function() {
+                setTimeout(poll, 3000);
+            });
+    }
+
+    poll();
 }
 
 function rcSearchStudents() {

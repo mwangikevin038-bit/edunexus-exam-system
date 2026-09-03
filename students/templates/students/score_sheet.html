@@ -561,13 +561,13 @@
   });
 
   printBtn.addEventListener('click',function(){
-    window.print();
+    EDUNEXUSPrint.printCurrentPage();
   });
 
   downloadBtn.addEventListener('click',function(){
     var origTitle=document.title;
     document.title='ScoreSheet_{{ school_name|default:"report" }}_'+new Date().getFullYear();
-    window.print();
+    EDUNEXUSPrint.printCurrentPage();
     setTimeout(function(){document.title=origTitle;},1000);
   });
 

@@ -238,7 +238,7 @@
        data-pdf-base="{% url 'download_broadsheet_pdf' %}"
        style="{% if show_table %}display: flex{% else %}display: none{% endif %}; justify-content: flex-end; align-items: center; gap: 12px; margin: 3.5rem 0 1.5rem; padding: 0; width: 100%; clear: both; box-sizing: border-box;">
     <button type="button"
-            onclick="window.print();"
+            onclick="EDUNEXUSPrint.printCurrentPage()"
             class="action-btn btn-print-premium"
             style="display: inline-flex; align-items: center; gap: 7px; background: #ffffff; border: 1.5px solid #4CAF50; color: #4CAF50; padding: 9px 20px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
       <i class="ph ph-printer" style="font-size: 1.1rem;"></i> Print

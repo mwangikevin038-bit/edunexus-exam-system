@@ -9,7 +9,7 @@ A multi-tenant school exam management system built with Django. Handles student 
 - **Mark entry** — Teachers enter marks per subject, with automatic performance level calculation
 - **Broadsheet** — Class-wide analysis with subject averages, distributions, and PLV
 - **Report cards** — Individual and bulk report cards with class teacher/headteacher remarks
-- **PDF export** — Playwright-based PDF generation for broadsheets and report cards
+- **PDF export** — WeasyPrint-based PDF generation for broadsheets and report cards
 - **Religion-aware** — CRE/IRE mutually exclusive for both Primary and JSS
 - **Comment freeze** — Teacher remarks stay editable for 30 days, then freeze in report cards
 - **Role-based access** — School admin, class teacher, and subject teacher roles

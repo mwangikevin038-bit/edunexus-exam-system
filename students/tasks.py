@@ -641,3 +641,295 @@ def populate_exam_summaries(
         "exam_name": exam_name,
         "summaries_created": count,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  BULK REPORT CARD PDF — Background Generation with Progress Tracking
+# ═══════════════════════════════════════════════════════════════════════
+
+pdf_cache = caches["pdf_generation"]
+
+PDF_CHUNK_SIZE = 50
+PDF_MAX_RETRIES = 2
+PDF_RETRY_BACKOFF = 5  # seconds
+
+
+def _pdf_send_progress(job_id, data):
+    """Push PDF generation progress to cache."""
+    pdf_cache.set(f"pdf_progress_{job_id}", data, timeout=1800)
+
+
+def _pdf_send_complete(job_id, data):
+    """Push PDF completion to cache and clean up progress key."""
+    pdf_cache.set(f"pdf_result_{job_id}", data, timeout=3600)
+    pdf_cache.delete(f"pdf_progress_{job_id}")
+
+
+@shared_task(bind=True, max_retries=1, default_retry_delay=30)
+def generate_bulk_report_pdf(
+    self,
+    job_id,
+    school_id,
+    grade_name,
+    stream_name,
+    exam_id,
+    year,
+    term,
+    assessment,
+    student_ids,
+    user_id,
+):
+    """
+    Background Celery task: generate bulk report card PDF in chunks of 50.
+    
+    Progress is tracked in Django cache (pdf_generation backend) and can be
+    polled via the /api/pdf-progress/<job_id>/ endpoint.
+    
+    On completion, the stitched PDF bytes are stored in cache under
+    pdf_result_<job_id> for 1 hour.
+    """
+    import base64
+    import io
+    import mimetypes
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from functools import partial
+
+    from django.contrib.auth import get_user_model
+    from django.template.loader import render_to_string
+    from pypdf import PdfWriter
+    from weasyprint import HTML as WeasyHTML
+
+    from .models import Exam, School, Student
+    from .views.helpers import build_report_card_context
+    from .views.pdf_exports import _compile_single_student_pdf, _load_print_css
+
+    User = get_user_model()
+    logger = logging.getLogger("students.pdf_tasks")
+
+    total = len(student_ids)
+    compiled = 0
+    failed = 0
+    failed_students = []
+    pdf_chunks = []  # list of (chunk_index, pdf_bytes)
+
+    _pdf_send_progress(job_id, {
+        "status": "processing",
+        "compiled": 0,
+        "total": total,
+        "failed": 0,
+        "message": f"Starting PDF generation for {total} students...",
+    })
+
+    # ── Resolve school and exam ────────────────────────────────────────
+    try:
+        school = School.objects.get(pk=school_id)
+    except School.DoesNotExist:
+        _pdf_send_complete(job_id, {
+            "status": "error",
+            "message": "School not found.",
+            "compiled": 0,
+            "total": total,
+            "failed": total,
+        })
+        return {"status": "error", "message": "School not found"}
+
+    try:
+        _exam = Exam.all_objects.get(id=exam_id, school=school, is_deleted=False)
+    except (Exam.DoesNotExist, ValueError):
+        _pdf_send_complete(job_id, {
+            "status": "error",
+            "message": "Exam not found.",
+            "compiled": 0,
+            "total": total,
+            "failed": total,
+        })
+        return {"status": "error", "message": "Exam not found"}
+
+    db_assessment = _exam.name
+
+    # ── Build full context (same as synchronous view) ──────────────────
+    try:
+        ctx = build_report_card_context(
+            school, grade_name, stream_name, str(exam_id),
+            student_ids=student_ids,
+            include_chart_svg=True,
+            is_admin=False,
+        )
+    except Exception as e:
+        logger.exception("generate_bulk_report_pdf: context build failed: %s", e)
+        _pdf_send_complete(job_id, {
+            "status": "error",
+            "message": f"Failed to build report context: {e}",
+            "compiled": 0,
+            "total": total,
+            "failed": total,
+        })
+        return {"status": "error", "message": str(e)}
+
+    section_accent = ctx['section_accent']
+    student_marks_list = ctx['student_marks_list']
+
+    # Pre-compute logo base64 ONCE
+    logo_base64_data = ""
+    try:
+        school_logo = getattr(school, "logo", None)
+        if school_logo:
+            logo_url = school_logo.url
+            logo_type = mimetypes.guess_type(logo_url)[0] or "image/png"
+            with school_logo.open("rb") as logo_file:
+                logo_data = base64.b64encode(logo_file.read()).decode("ascii")
+            logo_base64_data = f'data:{logo_type};base64,{logo_data}'
+    except Exception:
+        logger.warning("Failed to pre-compute school logo base64", exc_info=True)
+
+    # ── Build per-student contexts ─────────────────────────────────────
+    student_contexts = []
+    for student_data in student_marks_list:
+        student_contexts.append({
+            'student_marks_list':   [student_data],
+            'selected_year':        ctx['selected_year'],
+            'selected_term':        ctx['selected_term'],
+            'selected_assessment':  ctx['selected_assessment_raw'],
+            'class_count':          ctx['class_count'],
+            'closing_date':         ctx['closing_date'],
+            'opening_date':         ctx['opening_date'],
+            'section_accent':       section_accent,
+            'view_mode':            'pdf',
+            'show_mobile_shell':    False,
+            'show_header':          False,
+            'show_control_panel':   False,
+        })
+
+    base_url = ""  # No request in Celery — relative URLs won't work, but logo is base64
+
+    # ── Process in chunks of 50 with retry ─────────────────────────────
+    from django.db import connection
+    connection.close()
+
+    for chunk_start in range(0, total, PDF_CHUNK_SIZE):
+        chunk = student_contexts[chunk_start: chunk_start + PDF_CHUNK_SIZE]
+        chunk_index = chunk_start // PDF_CHUNK_SIZE
+
+        compile_fn = partial(
+            _compile_single_student_pdf,
+            logo_base64=logo_base64_data,
+            section_accent=section_accent,
+            base_url=base_url,
+        )
+
+        # Try compiling with retry for failures
+        chunk_results = _compile_chunk_with_retry(
+            compile_fn, chunk, chunk_start, PDF_MAX_RETRIES, PDF_RETRY_BACKOFF
+        )
+
+        chunk_pdfs = []
+        for i, result in enumerate(chunk_results):
+            if result is not None:
+                chunk_pdfs.append(result)
+                compiled += 1
+            else:
+                failed += 1
+                student_idx = chunk_start + i
+                if student_idx < len(student_marks_list):
+                    sm = student_marks_list[student_idx]
+                    failed_students.append({
+                        'name': sm.get('student', {}).get('name', f'Student #{student_idx + 1}'),
+                        'admission_no': sm.get('student', {}).get('admission_no', ''),
+                    })
+
+        if chunk_pdfs:
+            pdf_chunks.append((chunk_index, chunk_pdfs))
+
+        _pdf_send_progress(job_id, {
+            "status": "processing",
+            "compiled": compiled,
+            "total": total,
+            "failed": failed,
+            "message": f"Compiled {compiled}/{total} students... ({failed} failed)",
+        })
+
+    # ── Stitch all chunks into final PDF ───────────────────────────────
+    if not pdf_chunks:
+        _pdf_send_complete(job_id, {
+            "status": "error",
+            "message": "All students failed to compile. No PDF generated.",
+            "compiled": 0,
+            "total": total,
+            "failed": total,
+            "failed_students": failed_students,
+        })
+        return {"status": "error", "message": "No PDFs compiled"}
+
+    merger = PdfWriter()
+    for chunk_index, chunk_pdfs in sorted(pdf_chunks, key=lambda x: x[0]):
+        for pdf_bytes in chunk_pdfs:
+            try:
+                merger.append(io.BytesIO(pdf_bytes))
+            except Exception:
+                logger.warning("Failed to append PDF chunk to merger", exc_info=True)
+
+    output_buffer = io.BytesIO()
+    merger.write(output_buffer)
+    merger.close()
+    pdf_bytes_final = output_buffer.getvalue()
+    output_buffer.close()
+
+    # Store in cache for download (1 hour TTL)
+    pdf_cache.set(f"pdf_data_{job_id}", pdf_bytes_final, timeout=3600)
+
+    status = "completed" if not failed else "completed_with_errors"
+    _pdf_send_complete(job_id, {
+        "status": status,
+        "compiled": compiled,
+        "total": total,
+        "failed": failed,
+        "failed_students": failed_students[:20],
+        "message": f"Done: {compiled} compiled, {failed} failed out of {total} students.",
+        "filename": f"Bulk_Report_Cards_{grade_name}_{stream_name}_{year}_{term}.pdf".replace(' ', '_'),
+    })
+
+    logger.info(
+        "generate_bulk_report_pdf: school=%s grade=%s %s %s [%s] — %d/%d compiled, %d failed",
+        school_id, grade_name, year, term, assessment, compiled, total, failed,
+    )
+
+    return {
+        "status": status,
+        "compiled": compiled,
+        "total": total,
+        "failed": failed,
+    }
+
+
+def _compile_chunk_with_retry(compile_fn, chunk, chunk_start, max_retries, backoff):
+    """
+    Compile a chunk of student contexts with retry logic.
+    Returns a list of pdf_bytes or None for each student.
+    """
+    import time
+
+    results = [None] * len(chunk)
+    pending = list(range(len(chunk)))
+
+    for attempt in range(max_retries + 1):
+        if not pending:
+            break
+
+        if attempt > 0:
+            time.sleep(backoff * attempt)
+
+        for i in list(pending):
+            try:
+                pdf = compile_fn(chunk[i])
+                if pdf is not None:
+                    results[i] = pdf
+                    pending.remove(i)
+            except Exception:
+                logger.warning(
+                    "Chunk compile failed: chunk_start=%d idx=%d attempt=%d",
+                    chunk_start, i, attempt,
+                    exc_info=True,
+                )
+
+    return results

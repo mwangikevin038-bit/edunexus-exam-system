@@ -173,6 +173,13 @@
 
         <div class="table-scroll">
         <table class="rc-table">
+            <colgroup>
+                <col class="col-subj">
+                <col class="col-marks">
+                <col class="col-dev">
+                <col class="col-grade">
+                <col class="col-teacher">
+            </colgroup>
             <thead><tr><th style="text-align:left;">Subjects</th><th>Marks</th><th>Dev.</th><th>Grade</th><th>Teacher</th></tr></thead>
             <tbody>
                 {% for mark in student_data.marks %}

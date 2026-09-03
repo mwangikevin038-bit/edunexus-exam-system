@@ -4,7 +4,7 @@ import asyncio
 import os
 import sys
 
-# Windows fix: ProactorEventLoop is needed for subprocess spawning (Playwright)
+# Windows fix: ProactorEventLoop is needed for subprocess spawning
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 

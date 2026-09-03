@@ -188,49 +188,119 @@ def switch_workspace(request):
 @login_required(login_url='login')
 def custom_password_change(request):
     """Custom password change view that enforces strong passwords and updates must_change_password flag."""
+    import logging
     from ..forms import StrongPasswordChangeForm
 
+    logger = logging.getLogger('students.security.password_change')
     force_password_change = request.session.get('force_password_change', False)
 
     if request.method == 'POST':
         form = StrongPasswordChangeForm(user=request.user, data=request.POST)
         if form.is_valid():
             user = request.user
-            form.save()
+            old_password = form.cleaned_data.get('old_password')
+
+            # Verify old password matches before proceeding (defense-in-depth)
+            if not user.check_password(old_password):
+                logger.warning(
+                    "Password change attempted with incorrect old password for user_id=%s",
+                    user.pk
+                )
+                messages.error(request, "Your current password was incorrect. Please try again.")
+                return render(request, 'password_change_form.html', {
+                    'form': form,
+                    'force_password_change': force_password_change,
+                })
+
+            try:
+                form.save()
+            except Exception as exc:
+                logger.exception("Failed to save new password for user_id=%s", user.pk)
+                messages.error(
+                    request,
+                    "Something went wrong while saving your password. "
+                    "Please try again. If this keeps happening, contact support."
+                )
+                return render(request, 'password_change_form.html', {
+                    'form': form,
+                    'force_password_change': force_password_change,
+                })
+
             # Clear the force_password_change session flag
             request.session.pop('force_password_change', None)
+            request.session.modified = True
+
             # Update must_change_password on Teacher profile — use all_objects
             # to bypass SchoolScopedManager which may filter out the record
+            profile_cleared = False
             try:
                 teacher = Teacher.all_objects.get(user=user)
                 if teacher.must_change_password:
                     teacher.must_change_password = False
                     teacher.save(update_fields=['must_change_password'])
+                    profile_cleared = True
             except Teacher.DoesNotExist:
                 pass
+            except Exception as exc:
+                logger.warning("Could not update Teacher.must_change_password: %s", exc)
+
             # Update must_change_password on SchoolAdmin profile
             try:
                 admin = SchoolAdmin.objects.get(user=user)
                 if admin.must_change_password:
                     admin.must_change_password = False
                     admin.save(update_fields=['must_change_password'])
+                    profile_cleared = True
             except SchoolAdmin.DoesNotExist:
                 pass
+            except Exception as exc:
+                logger.warning("Could not update SchoolAdmin.must_change_password: %s", exc)
+
+            if not profile_cleared and force_password_change:
+                logger.warning(
+                    "force_password_change was True but no profile was cleared for user_id=%s",
+                    user.pk
+                )
+
             # Re-login to refresh the session auth hash — otherwise Django
             # invalidates the session on the next request because the
             # password changed but the stored auth hash is stale.
-            from django.contrib.auth import login as auth_login
-            auth_login(request, user, backend=user.backend)
+            try:
+                from django.contrib.auth import login as auth_login
+                auth_login(request, user, backend=user.backend)
+            except Exception as exc:
+                logger.exception("Failed to re-login user_id=%s after password change", user.pk)
+                # If re-login fails, force logout and redirect to login
+                logout(request)
+                messages.warning(
+                    request,
+                    "Your password was changed, but we couldn't refresh your session. "
+                    "Please sign in again with your new password."
+                )
+                return redirect('login')
 
             # Invalidate other sessions (security)
-            from ..security.passwords import invalidate_other_sessions, send_password_changed_email
-            invalidate_other_sessions(user, keep_session_key=request.session.session_key)
+            try:
+                from ..security.passwords import invalidate_other_sessions, send_password_changed_email
+                invalidate_other_sessions(user, keep_session_key=request.session.session_key)
+            except Exception as exc:
+                logger.warning("Failed to invalidate other sessions: %s", exc)
 
             # Send notification email (best-effort)
-            send_password_changed_email(user, request=request)
+            try:
+                send_password_changed_email(user, request=request)
+            except Exception as exc:
+                logger.warning("Failed to send password-changed email: %s", exc)
 
             messages.success(request, "Your password has been changed successfully.")
             return redirect('home_alt')
+        else:
+            # Form has validation errors — log the reason
+            logger.info(
+                "Password change form invalid for user_id=%s: %s",
+                request.user.pk,
+                form.errors.as_json() if hasattr(form.errors, 'as_json') else form.errors
+            )
     else:
         form = StrongPasswordChangeForm(user=request.user)
 
