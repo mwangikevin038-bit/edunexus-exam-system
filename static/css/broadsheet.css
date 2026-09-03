@@ -416,11 +416,10 @@
         background: #ffffff !important;
     }
 
-    /* ── Hide all non-document UI ────────────────────────── */
+    /* ── Hide non-document UI (broadheet pages only handle their own sidebar hiding) ── */
     .no-print,
     .broadsheet-actions-toolbar,
     .global-header,
-    .sidebar,
     .bottom-nav,
     .bottom-nav-mobile,
     .sub-nav-bar,
