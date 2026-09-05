@@ -128,7 +128,7 @@
             var s = scripts[i];
             var type = (s.getAttribute('type') || '').toLowerCase();
             var src = (s.getAttribute('src') || '').toLowerCase();
-            var isChartPayload = type === 'application/json' && s.id && s.id.indexOf('rc-chart-payload-') === 0;
+            var isChartPayload = type === 'application/json' && s.id && (s.id.indexOf('rc-chart-payload-') === 0 || s.id.indexOf('ar-chart-payload') === 0);
             var isChartInit = !src && s.textContent && s.textContent.indexOf('new Chart(') !== -1;
             var isChartUid = !src && s.textContent && s.textContent.indexOf('rc-chart-payload-') !== -1;
             if (isChartPayload || isChartInit || isChartUid) { continue; }
@@ -182,7 +182,8 @@
         var optimized;
         try { optimized = optimizeForPrint(container); } catch(e) { retry(); return; }
 
-        var printCSS = _buildPrintCSS(sectionAccent);
+        var pageStyle = document.getElementById('pagePrintCSS');
+        var printCSS = pageStyle ? pageStyle.textContent : _buildPrintCSS(sectionAccent);
         var printWin = _openWindow(750, 650, 20, 50);
         if (!printWin) { _doPrintCurrentPage(opts, done, retry); return; }
 
@@ -217,9 +218,11 @@
                 try {
                     var w = printWin;
                     if (!w || w.closed) { clearInterval(iv); _removeTimer(iv); done(); return; }
-                    var chartsReady = w.Chart && w.document.querySelectorAll('canvas').length > 0;
+                    var hasCanvas = w.document.querySelectorAll('canvas').length > 0;
+                    var chartsReady = w.Chart && hasCanvas;
                     var scriptsDone = w.document.readyState === 'complete';
-                    if ((chartsReady && scriptsDone) || checkCount >= maxChecks) {
+                    var noChartsNeeded = !hasCanvas && scriptsDone;
+                    if ((chartsReady && scriptsDone) || noChartsNeeded || checkCount >= maxChecks) {
                         clearInterval(iv); _removeTimer(iv);
                         var dt = setTimeout(function() { _removeTimer(dt); firePrint(); }, 600);
                         _trackTimer(dt);

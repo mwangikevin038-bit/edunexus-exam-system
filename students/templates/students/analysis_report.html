@@ -386,18 +386,85 @@
       }
     }
   }
-      @bottom-right{
-        content:"Page " counter(page) " of " counter(pages);
-        font-family:"Times New Roman",Times,serif;
-        font-size:8pt;
-        font-weight:700;
-        color:#64748b;
-        width:28%;
-        white-space:nowrap;
-      }
-    }
-  }
 </style>
+
+<script type="text/plain" id="pagePrintCSS">
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;font-family:"Times New Roman",Times,serif!important;font-size:11pt!important}
+html,body,.app-content,.main-content{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important;background-image:none!important}
+.sub-nav-bar,.global-header,.mobile-global-header,.bottom-nav,.ar-toolbar,.ar-card,.ar-empty,.print-watermark{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+.ar-wrap{padding:0!important;margin:0!important;max-width:none!important;background:#fff!important}
+.ar-report{position:static!important;width:100%!important;display:block!important;border:none!important;box-shadow:none!important;border-radius:0!important;background:#fff!important;overflow:visible!important}
+.ar-report,.ar-report *{visibility:visible!important;font-family:"Times New Roman",Times,serif!important;font-size:11pt!important}
+.ar-accent-bar{display:none!important}
+.ar-school-hdr{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:0!important;border:none!important;border-bottom:2px solid!important;padding:10px 0 8px 100px!important;min-height:auto!important;background:#fff!important}
+.ar-school-logo{position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:80px!important;height:80px!important;object-fit:contain!important;display:block!important;border-radius:6px!important}
+.ar-school-info{text-align:center!important}
+.ar-school-name{font-family:"Times New Roman",Times,serif!important;font-size:24px!important;font-weight:900!important;text-transform:uppercase!important;color:#0f1727!important;margin:0!important;line-height:1.1!important;letter-spacing:0.08em!important}
+.ar-school-motto{font-family:"Times New Roman",Times,serif!important;font-size:10pt!important;color:#374151!important;margin:3px 0 0!important;font-weight:600!important;letter-spacing:0.1em!important;text-transform:uppercase!important}
+.ar-school-addr{font-size:10pt!important;color:#374151!important;font-weight:600!important;margin:2px 0 0!important;font-family:"Times New Roman",Times,serif!important}
+.ar-school-contact{font-size:10pt!important;color:#374151!important;font-weight:500!important;margin:1px 0 0!important;font-family:"Times New Roman",Times,serif!important}
+.ar-school-spacer{display:none!important}
+.ar-exam-banner{margin:0 24px!important;padding:6px 20px!important;font-size:11pt!important;color:#fff!important;border-radius:0!important;font-weight:700!important;letter-spacing:0.04em!important}
+.ar-summary-row{display:grid!important;grid-template-columns:1fr 2.5fr 1fr!important;padding:12px 24px!important;gap:0!important;align-items:center!important;page-break-inside:avoid!important;border-bottom:2px solid #e2e8f0!important;background:#f8fafc!important}
+.ar-summary-left{display:flex!important;flex-direction:column!important;justify-content:center!important}
+.ar-summary-means-row{display:flex!important;gap:20px!important;align-items:flex-end!important}
+.ar-summary-mean{display:flex!important;flex-direction:column!important}
+.ar-summary-plv{display:flex!important;flex-direction:column!important;border-left:2px solid #cbd5e1!important;padding-left:16px!important;margin-left:8px!important}
+.ar-summary-mean-label{font-size:9pt!important;color:#475569!important;font-weight:700!important;margin-bottom:2px!important;text-transform:uppercase!important;letter-spacing:0.05em!important}
+.ar-summary-mean-value{font-size:18pt!important;font-weight:900!important;color:#16a34a!important;line-height:1.1!important}
+.ar-summary-mean-change{font-size:9pt!important;font-weight:700!important;margin-top:2px!important}
+.ar-summary-plv-label{font-size:9pt!important;color:#475569!important;font-weight:700!important;margin-bottom:2px!important;text-transform:uppercase!important;letter-spacing:0.05em!important}
+.ar-summary-plv-value{font-size:13pt!important;font-weight:900!important;color:#0f172a!important;line-height:1.1!important}
+.ar-summary-chart{display:flex!important;align-items:center!important;justify-content:center!important;padding:0 8px!important}
+.ar-summary-chart canvas{width:100%!important;height:120px!important}
+.ar-summary-right{display:flex!important;flex-direction:column!important;align-items:flex-end!important;text-align:right!important;padding-right:8px!important}
+.ar-summary-students-label{font-size:9pt!important;color:#475569!important;font-weight:700!important;margin-bottom:4px!important;text-transform:uppercase!important;letter-spacing:0.05em!important}
+.ar-summary-students-value{font-size:36pt!important;font-weight:900!important;color:#0f172a!important;line-height:1!important}
+.ar-summary-students-sub{font-size:9pt!important;color:#94a3b8!important;font-weight:500!important;margin-top:4px!important}
+.ar-section-title{font-size:11pt!important;font-weight:900!important;margin:8px 24px 4px!important;padding-bottom:3px!important;border-bottom:1.5px solid #e2e8f0!important}
+.ar-subject-banner{margin:0 24px 4px!important;padding:4px 14px!important;font-size:11pt!important;background:#e5e7eb!important;border-radius:0!important;font-weight:900!important}
+.ar-subject-section{page-break-inside:auto!important}
+.ar-subject-section+.ar-subject-section{margin-top:16px!important;padding-top:4px!important;border-top:1.5px solid #d1d5db!important}
+.ar-subject-section .ar-subject-banner{page-break-after:avoid!important}
+.ar-table-wrap{padding:0 24px!important;margin-bottom:8px!important}
+.ar-table{width:100%!important;border-collapse:collapse!important;font-size:11pt!important;border:1px solid #000!important;table-layout:auto!important}
+.ar-table th{background:#e2e6ea!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:3px 5px!important;border:1px solid #000!important;text-transform:uppercase!important;white-space:nowrap!important}
+.ar-table td{padding:2px 5px!important;border:1px solid #000!important;color:#000!important;font-size:11pt!important;white-space:nowrap!important}
+.ar-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
+.ar-table .col-trend{text-align:center!important}
+.statistics-table-wrapper{margin:0 24px 4px!important;overflow:visible!important;page-break-inside:avoid!important}
+.statistics-table-wrapper .target-data-table{width:100%!important;border-collapse:collapse!important;font-size:11pt!important;border:1.5px solid #000!important;table-layout:auto!important}
+.statistics-table-wrapper .target-data-table th{background:#e2e6ea!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:2px 3px!important;border:1px solid #000!important;text-transform:uppercase!important;white-space:nowrap!important}
+.statistics-table-wrapper .target-data-table td{padding:2px 3px!important;border:1px solid #000!important;color:#000!important;font-size:11pt!important;white-space:nowrap!important}
+.statistics-table-wrapper .target-data-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
+.statistics-table-wrapper .subject-statistics-title-bar{background:#e5e7eb!important;color:#000!important;font-size:11pt!important;font-weight:900!important;padding:4px 14px!important;border-radius:0!important}
+.statistics-table-wrapper.cgs{page-break-inside:auto!important}
+.statistics-table-wrapper.cgs .target-data-table{page-break-inside:auto!important}
+.statistics-table-wrapper.cgs .target-data-table tr{page-break-inside:auto!important}
+.statistics-table-wrapper.cgs .target-data-table tbody{page-break-inside:auto!important}
+.ar-charts-row{page-break-inside:avoid!important}
+.ar-pot-card{page-break-inside:avoid!important}
+.statistics-table-wrapper.cgs .target-data-table th{padding:3px 4px!important;font-size:11pt!important;white-space:nowrap!important}
+.statistics-table-wrapper.cgs .target-data-table td{padding:2px 4px!important;font-size:11pt!important;white-space:nowrap!important}
+.statistics-table-wrapper.cgs .target-data-table .col-name{min-width:0!important;white-space:nowrap!important}
+.statistics-table-wrapper .target-data-table .col-trend{text-align:center!important;min-width:60px!important;padding:4px 8px!important}
+.statistics-table-wrapper .target-data-table .col-trend.trend-positive,
+.statistics-table-wrapper .target-data-table .col-trend.trend-negative,
+.statistics-table-wrapper .target-data-table .col-trend.trend-zero{line-height:normal!important}
+.statistics-table-wrapper .target-data-table .col-performance{text-align:center!important;padding:4px 8px!important}
+.statistics-table-wrapper .target-data-table th.col-trend,.statistics-table-wrapper .target-data-table th.col-performance{text-align:center!important}
+.ar-charts-row{padding:0 24px!important;margin-bottom:8px!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important}
+.ar-chart-box{border:1px solid #e5e7eb!important;border-radius:0!important}
+.ar-chart-box canvas{width:100%!important;height:220px!important}
+.ar-chart-title{background:#e2e6ea!important;color:#000!important;font-size:10pt!important;font-weight:900!important;padding:6px 14px!important;margin:0!important;border-radius:0!important;letter-spacing:0.03em!important}
+.ar-pot-card{margin:0 24px 20px!important;border-radius:0!important;border:1px solid #000!important;background:#fff!important}
+.ar-pot-title-bar{background:#e2e6ea!important;color:#000!important;padding:6px 14px!important;font-size:11pt!important;border-radius:0!important}
+.ar-pot-body{padding:12px 16px 8px!important}
+.ar-pot-body canvas{height:250px!important}
+.ar-loading,.ar-loading *{font-family:"Times New Roman",Times,serif!important;font-size:11pt!important;color:#000!important}
+.ar-loading .spinner{border:3px solid #e2e8f0!important;border-top-color:#0891b2!important}
+@page{size:A4 portrait;margin:6mm 10mm 12mm 10mm;@bottom-center{content:"GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";font-family:"Times New Roman",Times,serif;font-size:8pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5pt;border-top:0.5pt solid #cbd5e1;width:70%;padding-top:4pt}@bottom-right{content:"Page " counter(page) " of " counter(pages);font-family:"Times New Roman",Times,serif;font-size:8pt;font-weight:700;color:#64748b;width:28%;white-space:nowrap}}
+</script>
 
 <div class="ar-wrap">
   <!-- Selection Card -->
@@ -457,7 +524,7 @@
 
   <!-- Toolbar between cards -->
   <div class="ar-toolbar" id="arToolbar">
-    <button type="button" class="ar-toolbar-btn ar-toolbar-btn-print" onclick="EDUNEXUSPrint.printCurrentPage()">
+    <button type="button" class="ar-toolbar-btn ar-toolbar-btn-print" onclick="EDUNEXUSPrint.openPrintWindow('.ar-report', {title:'Analysis Report'})">
       <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Print
     </button>
@@ -1077,6 +1144,9 @@
 
     // ── Render charts (non-blocking) ─────────────────────────────
     try{renderCharts(d)}catch(e){console.warn('Charts skipped:',e)}
+
+    // ── Inject chart payloads for print popup (survives clone) ──
+    try{injectChartPayloads(d,reportDiv)}catch(e){}
   }
 
   function renderCharts(d){
@@ -1308,8 +1378,80 @@
     }
   }
 
+  function injectChartPayloads(d, container) {
+    var gradeName = d.grade_name;
+    var accentColor = getAccentColor(gradeName);
+    var scStreams = d.streams_all && d.streams_all.length ? d.streams_all : d.streams;
+    var scLabels = scStreams.map(function(s){return gradeName+' '+s});
+    var scData = scStreams.map(function(s){return d.stream_stats[s]?d.stream_stats[s].mean_marks:0});
+    var sorted = d.subject_rows.slice().sort(function(a,b){return b.points-a.points});
+    var smLabels = sorted.map(function(r){return r.code||r.name});
+    var smData = sorted.map(function(r){return r.points});
+    var tr = d.total_row || {};
+    var ocLabels = d.breakdown_levels.slice();
+    var ocData = ocLabels.map(function(lv){return tr[lv]||0});
+    var allStreams = d.streams_all && d.streams_all.length ? d.streams_all : d.streams;
+
+    var potDatasets = [];
+    if(d.pot_labels && d.pot_labels.length > 1 || allStreams.length > 1){
+      var overallData = d.pot_labels.map(function(_,li){
+        var sum=0,cnt=0;
+        allStreams.forEach(function(s){var arr=d.pot_streams_data[s]||[];if(arr[li]!=null){sum+=arr[li];cnt++}});
+        return cnt?+(sum/cnt).toFixed(4):null;
+      });
+      potDatasets.push({label:gradeName,data:overallData});
+    }
+    allStreams.forEach(function(s,i){
+      potDatasets.push({label:gradeName+' '+s,data:d.pot_streams_data[s]||[]});
+    });
+
+    var payload = {
+      gradeName: gradeName, accentColor: accentColor,
+      scLabels: scLabels, scData: scData,
+      smLabels: smLabels, smData: smData,
+      ocLabels: ocLabels, ocData: ocData,
+      potLabels: d.pot_labels || [], potDatasets: potDatasets
+    };
+
+    var payloadScript = document.createElement('script');
+    payloadScript.type = 'application/json';
+    payloadScript.id = 'ar-chart-payload';
+    payloadScript.textContent = JSON.stringify(payload);
+    container.appendChild(payloadScript);
+
+    var initScript = document.createElement('script');
+    initScript.textContent = '(function(){' +
+      'var p;try{p=JSON.parse(document.getElementById("ar-chart-payload").textContent)}catch(e){return}' +
+      'if(typeof Chart==="undefined")return;' +
+      'var sc=document.getElementById("arSummaryChart");' +
+      'if(sc){var grad=sc.getContext("2d").createLinearGradient(0,0,0,150);grad.addColorStop(0,p.accentColor+"40");grad.addColorStop(0.6,p.accentColor+"15");grad.addColorStop(1,p.accentColor+"03");new Chart(sc.getContext("2d"),{type:"line",data:{labels:p.scLabels,datasets:[{label:"Performance of "+p.gradeName+" streams",data:p.scData,borderColor:p.accentColor,backgroundColor:grad,fill:true,tension:0.4,pointBackgroundColor:"#ffffff",pointBorderColor:p.accentColor,pointBorderWidth:3,pointRadius:8,pointHoverRadius:11,borderWidth:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:"top",labels:{usePointStyle:true,pointStyle:"circle",boxWidth:8,padding:18,font:{size:11,weight:"700",family:"Times New Roman, Times, serif"},color:"#374151"}}},scales:{x:{display:false},y:{display:false}}}})}' +
+      'var sm=document.getElementById("arSubjectMeansChart");' +
+      'if(sm){var bc=["#0d9488","#0891b2","#2563eb","#7c3aed","#c026d3","#e11d48","#ea580c","#d97706","#65a30d"];new Chart(sm.getContext("2d"),{type:"bar",data:{labels:p.smLabels,datasets:[{label:"Mean Points",data:p.smData,backgroundColor:bc,borderRadius:6,borderSkipped:false,barPercentage:0.65}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10,weight:"600",family:"Times New Roman, Times, serif"},color:"#64748b",maxRotation:45,minRotation:30},grid:{display:false}},y:{beginAtZero:true,grid:{color:"#f1f5f9"},ticks:{font:{size:10,weight:"500",family:"Times New Roman, Times, serif"},color:"#94a3b8"},title:{display:true,text:"Points",font:{size:11,weight:"700",family:"Times New Roman, Times, serif"},color:"#475569"}}}}})}' +
+      'var oc=document.getElementById("arOverallChart");' +
+      'if(oc){var pcm={"EE":"#059669","ME":"#2563eb","AE":"#d97706","BE":"#dc2626"};var ocC=p.ocLabels.map(function(lv){return pcm[lv]||"#6366f1"});new Chart(oc.getContext("2d"),{type:"bar",data:{labels:p.ocLabels,datasets:[{label:"Number of Students",data:p.ocData,backgroundColor:ocC,borderRadius:6,borderSkipped:false,barPercentage:0.6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:"#f1f5f9"},ticks:{font:{size:10,weight:"500",family:"Times New Roman, Times, serif"},color:"#94a3b8"},title:{display:true,text:"Number of Students",font:{size:11,weight:"700",family:"Times New Roman, Times, serif"},color:"#475569"}}}}})}' +
+      'var pot=document.getElementById("arPOTChart");' +
+      'if(pot&&p.potLabels.length&&p.potDatasets.length){var pc=["#0d9488","#2563eb","#e11d48","#d97706","#7c3aed","#0891b2","#c026d3"];var isM=window.innerWidth<=768;var pDS=p.potDatasets.map(function(ds,i){return{label:ds.label,data:ds.data,fill:i>0,borderColor:i===0?"#0f172a":pc[(i-1)%pc.length],backgroundColor:i===0?"#0f172a":pc[(i-1)%pc.length],borderWidth:i===0?3:2.5,tension:0.4,pointRadius:i===0?6:5,pointBackgroundColor:"#ffffff",pointBorderColor:i===0?"#0f172a":pc[(i-1)%pc.length],pointBorderWidth:i===0?3:2.5}});new Chart(pot.getContext("2d"),{type:"line",data:{labels:p.potLabels,datasets:pDS},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:isM?"bottom":"right",labels:{usePointStyle:true,pointStyle:"circle",boxWidth:isM?8:10,padding:isM?10:18,font:{size:isM?10:12,weight:"700",family:"Times New Roman, Times, serif"},color:"#1e293b"}}},scales:{x:{offset:true,ticks:{font:{size:isM?8:11,weight:"600",family:"Times New Roman, Times, serif"},color:"#475569",maxRotation:isM?45:0,minRotation:isM?45:0}},y:{min:1,grace:"10%",ticks:{font:{size:isM?9:11,weight:"600",family:"Times New Roman, Times, serif"},color:"#64748b",stepSize:1},grid:{color:"#d1d5db"},border:{display:false}}}}})}' +
+    '})();';
+    container.appendChild(initScript);
+  }
+
   updateGetBtn();
   updateClearBtns();
 })();
+</script>
+<script>
+  /* ═══ PRINT HANDLER — Intercept Ctrl+P / Cmd+P → openPrintWindow ═══ */
+  (function(){
+    var arReport=document.getElementById('arReport');
+    if(!arReport)return;
+    document.addEventListener('keydown',function(e){
+      if((e.ctrlKey||e.metaKey)&&e.key==='p'){
+        e.preventDefault();
+        if(typeof EDUNEXUSPrint!=='undefined'&&EDUNEXUSPrint.openPrintWindow){
+          EDUNEXUSPrint.openPrintWindow('.ar-report',{title:'Analysis Report'});
+        }
+      }
+    });
+  })();
 </script>
 {% endblock %}
