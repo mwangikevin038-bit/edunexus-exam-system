@@ -65,14 +65,14 @@
 .rf-loading{display:none;text-align:center;padding:60px 20px}
   .rf-loading.visible{display:block}
   .rf-loading-text{font-size:16px;color:#374151;font-weight:600;margin-bottom:16px;font-family:'Inter',sans-serif}
-  .rf-spinner{display:inline-flex;align-items:flex-end;gap:4px;height:40px}
-  .rf-spinner-bar{width:8px;background:#16a34a;border-radius:2px;animation:rf-bar 1s ease-in-out infinite}
-  .rf-spinner-bar:nth-child(1){height:12px;animation-delay:0s}
-  .rf-spinner-bar:nth-child(2){height:20px;animation-delay:0.15s}
-  .rf-spinner-bar:nth-child(3){height:28px;animation-delay:0.3s}
-  .rf-spinner-bar:nth-child(4){height:36px;animation-delay:0.45s}
-  .rf-spinner-bar:nth-child(5){height:28px;animation-delay:0.6s}
-  @keyframes rf-bar{0%,100%{transform:scaleY(0.4);opacity:0.5}50%{transform:scaleY(1);opacity:1}}
+  .rf-spinner{display:inline-flex;align-items:center;gap:8px;height:56px}
+  .rf-spinner-bar{width:8px;background:#4CAF50;border-radius:1px;animation:rf-bar 0.8s ease-in-out infinite alternate}
+  .rf-spinner-bar:nth-child(1){height:24px;animation-delay:0s}
+  .rf-spinner-bar:nth-child(2){height:38px;animation-delay:0.12s}
+  .rf-spinner-bar:nth-child(3){height:56px;animation-delay:0.24s}
+  .rf-spinner-bar:nth-child(4){height:38px;animation-delay:0.36s}
+  .rf-spinner-bar:nth-child(5){height:24px;animation-delay:0.48s}
+  @keyframes rf-bar{0%{transform:scaleY(0.35);opacity:0.6}50%{transform:scaleY(1);opacity:1}100%{transform:scaleY(0.35);opacity:0.6}}
   .rf-footer{text-align:center;padding:20px 32px;color:#9ca3af;font-size:12px;margin-top:20px}
   .rf-footer a{color:#16a34a;text-decoration:none;font-weight:600}
   .rf-footer a:hover{text-decoration:underline}

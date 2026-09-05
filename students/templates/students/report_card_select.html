@@ -444,24 +444,25 @@
     }
     .rc-gen-spinner {
         display: inline-flex;
-        align-items: flex-end;
-        gap: 4px;
-        height: 40px;
+        align-items: center;
+        gap: 8px;
+        height: 56px;
     }
     .rc-gen-bar {
         width: 8px;
-        background: #16a34a;
-        border-radius: 2px;
-        animation: rcGenBar 1s ease-in-out infinite;
+        background: #4CAF50;
+        border-radius: 1px;
+        animation: rcGenBar 0.8s ease-in-out infinite alternate;
     }
-    .rc-gen-bar:nth-child(1) { height: 12px; animation-delay: 0s; }
-    .rc-gen-bar:nth-child(2) { height: 20px; animation-delay: 0.15s; }
-    .rc-gen-bar:nth-child(3) { height: 28px; animation-delay: 0.3s; }
-    .rc-gen-bar:nth-child(4) { height: 36px; animation-delay: 0.45s; }
-    .rc-gen-bar:nth-child(5) { height: 28px; animation-delay: 0.6s; }
+    .rc-gen-bar:nth-child(1) { height: 24px; animation-delay: 0s; }
+    .rc-gen-bar:nth-child(2) { height: 38px; animation-delay: 0.12s; }
+    .rc-gen-bar:nth-child(3) { height: 56px; animation-delay: 0.24s; }
+    .rc-gen-bar:nth-child(4) { height: 38px; animation-delay: 0.36s; }
+    .rc-gen-bar:nth-child(5) { height: 24px; animation-delay: 0.48s; }
     @keyframes rcGenBar {
-        0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
-        50% { transform: scaleY(1); opacity: 1; }
+        0%   { transform: scaleY(0.35); opacity: 0.6; }
+        50%  { transform: scaleY(1);    opacity: 1; }
+        100% { transform: scaleY(0.35); opacity: 0.6; }
     }
     .rc-gen-progress {
         margin-top: 20px;
