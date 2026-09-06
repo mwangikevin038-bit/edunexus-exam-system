@@ -10,4 +10,5 @@ from students import consumers
 
 websocket_urlpatterns = [
     re_path(r"ws/upload-progress/(?P<upload_id>[0-9a-f-]+)/$", consumers.UploadProgressConsumer.as_asgi()),
+    re_path(r"ws/pdf-progress/(?P<job_id>[0-9a-f-]+)/$", consumers.PdfProgressConsumer.as_asgi()),
 ]

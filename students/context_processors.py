@@ -22,5 +22,7 @@ def school_context(request):
     else:
         request.school = None
 
-    # Return an empty dictionary because we are altering the 'request' object itself
-    return {}
+    # Provide ws_protocol for WebSocket URLs (http→ws, https→wss)
+    ws_protocol = 'wss' if request.is_secure() else 'ws'
+
+    return {'ws_protocol': ws_protocol}

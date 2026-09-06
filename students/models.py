@@ -499,7 +499,11 @@ class Mark(SchoolScopedModel):
     points = models.IntegerField(editable=False)
 
     date_recorded = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     integrity_checksum = models.CharField(max_length=64, editable=False, blank=True, default="")
+
+    # Optimistic locking: incremented on every save to detect concurrent writes
+    version = models.PositiveIntegerField(default=1)
 
     def clean(self):
         """Validate primary assessment fields and subject-grade consistency."""
@@ -605,6 +609,13 @@ class Mark(SchoolScopedModel):
             models.Index(fields=['school', 'term', 'year', 'exam_type'], name='mark_exam_lookup_idx'),
             models.Index(fields=['school', 'school_section', 'term', 'year'], name='mark_section_idx'),
             models.Index(fields=['school', 'student', 'subject', 'term', 'exam_type', 'year', 'school_section', 'sub_section'], name='mark_upsert_idx'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['school', 'student', 'subject', 'term', 'exam_type', 'year', 'school_section', 'sub_section'],
+                name='mark_unique_per_student_subject_exam',
+                condition=models.Q(subject__isnull=False),
+            ),
         ]
 
     def __str__(self):
@@ -1284,6 +1295,55 @@ class SecurityAuditLog(models.Model):
             default=str,
         )
         return compute_audit_record_hash(payload)
+
+
+class MarkAuditLog(models.Model):
+    """Immutable audit trail for every mark change. Tracks who changed what."""
+
+    ACTION_CHOICES = [
+        ("create", "Create"),
+        ("update", "Update"),
+        ("delete", "Delete"),
+    ]
+
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    actor = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mark_audit_actions",
+    )
+    school = models.ForeignKey('School', on_delete=models.SET_NULL, null=True, blank=True)
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES, db_index=True)
+
+    # Mark identification
+    student = models.ForeignKey('Student', on_delete=models.SET_NULL, null=True, blank=True)
+    subject = models.ForeignKey('Subject', on_delete=models.SET_NULL, null=True, blank=True)
+    term = models.CharField(max_length=20, blank=True, default='')
+    year = models.IntegerField(default=0)
+    exam_type = models.CharField(max_length=50, blank=True, default='')
+
+    # Snapshot of old and new values
+    old_raw_score = models.PositiveIntegerField(null=True, blank=True)
+    old_score = models.PositiveIntegerField(null=True, blank=True)
+    old_is_absent = models.BooleanField(null=True, blank=True)
+    new_raw_score = models.PositiveIntegerField(null=True, blank=True)
+    new_score = models.PositiveIntegerField(null=True, blank=True)
+    new_is_absent = models.BooleanField(null=True, blank=True)
+    new_performance_level = models.CharField(max_length=50, blank=True, default='')
+
+    client_ip = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['school', 'student', 'timestamp'], name='mark_audit_student_idx'),
+            models.Index(fields=['school', 'subject', 'timestamp'], name='mark_audit_subject_idx'),
+            models.Index(fields=['actor', 'timestamp'], name='mark_audit_actor_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.get_action_display()} by {self.actor_id} on {self.student_id} @ {self.timestamp}"
 
 
 # -------------------- Class Teacher Assignment Model --------------------

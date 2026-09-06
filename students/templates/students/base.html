@@ -547,6 +547,23 @@
         function showLoader() { if (globalLoader) globalLoader.classList.add('active'); }
         function hideLoader() { if (globalLoader) globalLoader.classList.remove('active'); }
 
+        // ── Toast Notifications ─────────────────────────────────
+        function showToast(message, type) {
+            type = type || 'info';
+            var existing = document.querySelector('.en-toast');
+            if (existing) existing.remove();
+            var toast = document.createElement('div');
+            toast.className = 'en-toast en-toast-' + type;
+            toast.innerHTML = '<span>' + message + '</span>';
+            document.body.appendChild(toast);
+            setTimeout(function(){ toast.classList.add('visible'); }, 10);
+            setTimeout(function(){ toast.classList.remove('visible'); setTimeout(function(){ toast.remove(); }, 300); }, 4000);
+        }
+
+        // Override alert() with toast for non-critical messages
+        window._originalAlert = window.alert;
+        window.alert = function(msg) { showToast(msg, 'error'); };
+
         showLoader();
         window.addEventListener('load', hideLoader);
         setTimeout(hideLoader, 3000);

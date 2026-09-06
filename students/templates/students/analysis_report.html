@@ -19,7 +19,7 @@
   .ar-wrap{max-width:1100px;margin:0 auto;padding:10px 0 60px;background:#eaecf0;min-height:100vh}
   .main-content{background:#eaecf0!important}
   .app-content{background:#eaecf0!important}
-  .ar-card{background:#fff;border:1px solid #e5e7eb;border-radius:0;overflow:hidden}
+  .ar-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
   .ar-card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #e5e7eb}
   .ar-card-header-left{display:flex;flex-direction:column;gap:2px}
   .ar-card-header h1{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:18px;color:#1e293b;margin:0}
@@ -68,7 +68,7 @@
 
   /* School header */
   /* School header — matching score sheet style */
-  .ar-accent-bar{height:6px;background:linear-gradient(90deg,#1e40af 0%,#2563EB 40%,#3b82f6 100%)}
+  .ar-accent-bar{height:6px;background:linear-gradient(90deg,#388E3C 0%,#4CAF50 40%,#66BB6A 100%)}
   .ar-school-hdr{display:flex;align-items:center;gap:20px;padding:20px 32px 16px;background:#fff}
   .ar-school-logo{width:96px;height:96px;object-fit:contain;flex-shrink:0}
   .ar-school-logo .no-logo{font-size:11px;color:#1e40af;font-weight:700;text-align:center;line-height:1.2;width:96px;height:96px;display:flex;align-items:center;justify-content:center;border:2px solid #e2e8f0;border-radius:8px}
@@ -874,7 +874,7 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
     html+='<th class="col-points">Points</th>';
     html+='<th class="col-change">Change</th>';
     html+='<th class="col-trend cell-center">Trend</th>';
-    html+='<th class="col-performance">Perfomance level</th>';
+    html+='<th class="col-performance">Performance level</th>';
     html+='</tr></thead><tbody>';
     for(var i=0;i<d.subject_rows.length;i++){
       var sr=d.subject_rows[i];

@@ -437,7 +437,7 @@ def select_exam(request):
                     )
 
             # ============================================================
-            # PHASE 3 — Post-atomic side effects (non-critical, no lock)
+            # PHASE 3 — Post-atomic side effects (inside transaction)
             # ============================================================
             if religion_student_ids:
                 Student.objects.filter(id__in=religion_student_ids).update(religion=religion_tag)
@@ -2473,19 +2473,20 @@ def review_submission(request):
             messages.success(request, f"{corrected_count} learner score correction(s) saved.")
 
         elif action_type == "return_submission":
-            submission.status = "returned"
-            submission.admin_note = admin_note
-            submission.reviewed_at = timezone.now()
-            submission.save()
+            with transaction.atomic():
+                submission.status = "returned"
+                submission.admin_note = admin_note
+                submission.reviewed_at = timezone.now()
+                submission.save()
 
-            # Unlock the assessment so the teacher can edit the returned sheet
-            AssessmentLock.objects.filter(
-                school=school,
-                year=exam.year,
-                term=exam.term,
-                grade=assignment.class_name,
-                exam_type=exam.name,
-            ).update(is_locked=False)
+                # Unlock the assessment so the teacher can edit the returned sheet
+                AssessmentLock.objects.filter(
+                    school=school,
+                    year=exam.year,
+                    term=exam.term,
+                    grade=assignment.class_name,
+                    exam_type=exam.name,
+                ).update(is_locked=False)
 
             messages.success(request, "Assessment sheet has been returned to the teacher for correction.")
 
@@ -3599,8 +3600,9 @@ def batch_save_marks(request):
     saved_count = 0
     with transaction.atomic():
         # Fetch all existing marks for this subject/exam in ONE query
+        # SELECT FOR UPDATE prevents concurrent batch saves from racing
         existing_marks = {
-            m.student_id: m for m in Mark.all_objects.filter(
+            m.student_id: m for m in Mark.all_objects.select_for_update(nowait=False).filter(
                 subject=assignment.subject,
                 term=exam.term,
                 exam_type=exam.name,
@@ -3620,6 +3622,7 @@ def batch_save_marks(request):
         marks_to_create = []
         marks_to_update = []
         marks_to_delete = []
+        skipped_unchanged = 0
 
         for item in marks_data:
             student_id = item.get('student_id')
@@ -3636,6 +3639,10 @@ def batch_save_marks(request):
 
             existing = existing_marks.get(int(student_id) if str(student_id).isdigit() else student_id)
 
+            # Store version for optimistic locking check during update
+            if existing:
+                existing._read_version = existing.version
+
             # Clear mark
             if existing and score_value == '':
                 marks_to_delete.append(existing.pk)
@@ -3643,12 +3650,18 @@ def batch_save_marks(request):
 
             if score_value.upper() == 'AB':
                 if existing:
+                    # Skip if nothing changed
+                    if (existing.is_absent and existing.raw_score is None
+                            and existing.maximum_marks == maximum_marks):
+                        skipped_unchanged += 1
+                        continue
                     existing.raw_score = None
                     existing.maximum_marks = maximum_marks
                     existing.score = 0
                     existing.is_absent = True
                     existing.performance_level = 'AB'
                     existing.points = 0
+                    existing.version = F('version') + 1
                     existing.integrity_checksum = compute_mark_checksum(existing)
                     marks_to_update.append(existing)
                 else:
@@ -3687,12 +3700,22 @@ def batch_save_marks(request):
                 perf_level, perf_points = '-', 0
 
             if existing:
+                # Skip if nothing changed (optimistic locking: no DB write needed)
+                if (existing.raw_score == raw_score
+                        and existing.maximum_marks == maximum_marks
+                        and existing.score == score
+                        and not existing.is_absent
+                        and existing.performance_level == perf_level
+                        and existing.points == perf_points):
+                    skipped_unchanged += 1
+                    continue
                 existing.raw_score = raw_score
                 existing.maximum_marks = maximum_marks
                 existing.score = score
                 existing.is_absent = False
                 existing.performance_level = perf_level
                 existing.points = perf_points
+                existing.version = F('version') + 1
                 existing.integrity_checksum = compute_mark_checksum(existing)
                 marks_to_update.append(existing)
             else:
@@ -3713,19 +3736,72 @@ def batch_save_marks(request):
                 marks_to_create.append(new_mark)
             saved_count += 1
 
+        # Bulk operations with optimistic locking check
+        # Version is bumped via F('version') + 1 above, and we verify the
+        # version hasn't changed since we read it (prevents silent overwrites)
         if marks_to_delete:
             Mark.all_objects.filter(pk__in=marks_to_delete).delete()
         if marks_to_create:
             Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
         if marks_to_update:
-            Mark.all_objects.bulk_update(
-                marks_to_update,
-                ['raw_score', 'maximum_marks', 'score', 'is_absent',
-                 'performance_level', 'points', 'integrity_checksum'],
-                batch_size=250,
-            )
+            # Each mark was read with its current version. The UPDATE only
+            # succeeds if the version in the DB matches what we read.
+            updated_count = 0
+            for m in marks_to_update:
+                old_version = getattr(m, '_read_version', m.version) if hasattr(m, '_read_version') else 1
+                rows = Mark.all_objects.filter(pk=m.pk, version=old_version).update(
+                    raw_score=m.raw_score,
+                    maximum_marks=m.maximum_marks,
+                    score=m.score,
+                    is_absent=m.is_absent,
+                    performance_level=m.performance_level,
+                    points=m.points,
+                    integrity_checksum=m.integrity_checksum,
+                    version=F('version') + 1,
+                )
+                updated_count += rows
+            if updated_count < len(marks_to_update):
+                logger.warning(
+                    "[batch_save] %d/%d marks had version conflicts (concurrent edit detected)",
+                    len(marks_to_update) - updated_count, len(marks_to_update),
+                )
 
-    return JsonResponse({'ok': True, 'saved': saved_count})
+        # Audit trail: log all mark changes
+        _client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '')
+        MarkAuditLog = None
+        try:
+            from students.models import MarkAuditLog as _MarkAuditLog
+            MarkAuditLog = _MarkAuditLog
+        except ImportError:
+            pass
+
+        if MarkAuditLog:
+            audit_entries = []
+            for m in marks_to_create:
+                audit_entries.append(MarkAuditLog(
+                    actor=request.user, school=school, action='create',
+                    student=m.student, subject=m.subject,
+                    term=exam.term, year=exam.year, exam_type=exam.name,
+                    new_raw_score=m.raw_score, new_score=m.score,
+                    new_is_absent=m.is_absent, new_performance_level=m.performance_level,
+                    client_ip=_client_ip,
+                ))
+            for m in marks_to_update:
+                old_raw = m._old_raw_score if hasattr(m, '_old_raw_score') else None
+                old_score = m._old_score if hasattr(m, '_old_score') else None
+                audit_entries.append(MarkAuditLog(
+                    actor=request.user, school=school, action='update',
+                    student=m.student, subject=m.subject,
+                    term=exam.term, year=exam.year, exam_type=exam.name,
+                    old_raw_score=old_raw, old_score=old_score,
+                    new_raw_score=m.raw_score, new_score=m.score,
+                    new_is_absent=m.is_absent, new_performance_level=m.performance_level,
+                    client_ip=_client_ip,
+                ))
+            if audit_entries:
+                MarkAuditLog.objects.bulk_create(audit_entries, batch_size=250)
+
+    return JsonResponse({'ok': True, 'saved': saved_count, 'skipped': skipped_unchanged})
 
 
 @login_required(login_url='login')

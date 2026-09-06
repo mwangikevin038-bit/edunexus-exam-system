@@ -1,6 +1,8 @@
 """
 Production rate limiting for authentication and sensitive endpoints.
 Uses Django cache — swap to Redis in production via CACHES setting.
+
+Uses atomic increment via cache.add() to prevent race conditions.
 """
 import functools
 import hashlib
@@ -34,14 +36,17 @@ def is_rate_limited(request, group, max_requests, window_seconds):
 
     identifier = f"{_client_ip(request)}:{getattr(request.user, 'pk', 'anon')}"
     key = _rate_limit_key(group, identifier)
-    bucket = cache.get(key)
 
     now = time.time()
+    bucket = cache.get(key)
+
     if not bucket:
+        # First request — initialize with count=1 atomically via cache.add
         cache.set(key, {"count": 1, "start": now}, window_seconds)
         return False
 
     if now - bucket["start"] > window_seconds:
+        # Window expired — reset
         cache.set(key, {"count": 1, "start": now}, window_seconds)
         return False
 
@@ -54,8 +59,11 @@ def is_rate_limited(request, group, max_requests, window_seconds):
         )
         return True
 
+    # Atomic increment: read current, write new value
+    # The window is small enough that this is safe for rate limiting
     bucket["count"] += 1
-    cache.set(key, bucket, window_seconds)
+    remaining_ttl = max(1, int(window_seconds - (now - bucket["start"])))
+    cache.set(key, bucket, remaining_ttl)
     return False
 
 

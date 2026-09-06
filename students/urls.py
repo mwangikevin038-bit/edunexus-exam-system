@@ -68,6 +68,7 @@ urlpatterns = [
     path('bulk-reports/download-pdf/', views.download_bulk_report_pdf, name='download_bulk_report_pdf'),
     path('bulk-reports/generate-pdf/', views.start_bulk_report_pdf, name='start_bulk_report_pdf'),
     path('api/pdf-progress/<str:job_id>/', views.pdf_progress, name='pdf_progress'),
+    path('api/pdf-cancel/<str:job_id>/', views.cancel_bulk_pdf, name='cancel_bulk_pdf'),
     path('api/pdf-download/<str:job_id>/', views.download_generated_pdf, name='download_generated_pdf'),
     path('bulk-reports/poll-status/', views.report_card_poll_status, name='report_card_poll_status'),
 

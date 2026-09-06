@@ -81,20 +81,39 @@ def _start_celery():
     """Start Celery worker."""
     if not CELERY_EXE:
         print("  [celery] WARNING: celery not found, skipping")
-        return None
+        return []
 
-    proc = subprocess.Popen(
+    # Worker 1: PDF generation (CPU-intensive, needs dedicated process)
+    proc_pdf = subprocess.Popen(
         [CELERY_EXE, "-A", CELERY_APP, "worker",
          "-l", CELERY_LOGLEVEL,
-         "-P", "solo",
-         "--concurrency=2",
-         "--max-tasks-per-child=200",
-         "-Q", "default,csv_upload"],
+         "-P", "prefork",
+         "--concurrency=4",
+         "--max-tasks-per-child=50",
+         "-Q", "pdf_generation",
+         "-n", "pdf_worker@%%h"],
         cwd=PROJECT_ROOT,
         creationflags=subprocess.CREATE_NO_WINDOW,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+    # Worker 2: CSV uploads + default tasks (I/O-bound)
+    proc_default = subprocess.Popen(
+        [CELERY_EXE, "-A", CELERY_APP, "worker",
+         "-l", CELERY_LOGLEVEL,
+         "-P", "prefork",
+         "--concurrency=4",
+         "--max-tasks-per-child=200",
+         "-Q", "default,csv_upload",
+         "-n", "default_worker@%%h"],
+        cwd=PROJECT_ROOT,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    return [proc_pdf, proc_default]
     print(f"  [celery] Started (PID {proc.pid})")
     return proc
 
@@ -136,8 +155,8 @@ if __name__ == '__main__':
     # ── Start Redis & Celery ─────────────────────────────────────────────────
     print(f"  Starting services...")
     redis_proc = _start_redis()
-    celery_proc = _start_celery()
-    _child_procs = [redis_proc, celery_proc]
+    celery_procs = _start_celery()
+    _child_procs = [redis_proc] + celery_procs
 
     print(f"=" * 60)
     print(f"  All services running. Press CTRL-BREAK to stop.")

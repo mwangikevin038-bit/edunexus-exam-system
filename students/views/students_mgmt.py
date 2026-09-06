@@ -3658,7 +3658,7 @@ def analysis_report_pdf(request):
         except Exception:
             pass
 
-    pdf = HTML(string=html_string).write_pdf()
+    pdf = HTML(string=html_string).write_pdf(optimize_size='images')
     grade_name = data.get('grade_name', 'Report')
     exam_name = data.get('exam', {}).get('name', '')
     filename = f"Analysis_Report_{grade_name}_{exam_name}.pdf".replace(' ', '_')

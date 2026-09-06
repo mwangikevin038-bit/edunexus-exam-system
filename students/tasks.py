@@ -6,6 +6,7 @@ Supports upsert via composite unique key: (school_id, admission_no).
 """
 
 import logging
+import os
 
 from asgiref.sync import async_to_sync
 from celery import shared_task
@@ -652,17 +653,36 @@ pdf_cache = caches["pdf_generation"]
 PDF_CHUNK_SIZE = 50
 PDF_MAX_RETRIES = 2
 PDF_RETRY_BACKOFF = 5  # seconds
+PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
 def _pdf_send_progress(job_id, data):
-    """Push PDF generation progress to cache."""
+    """Push PDF generation progress to cache and WebSocket."""
     pdf_cache.set(f"pdf_progress_{job_id}", data, timeout=1800)
+    channel_layer = get_channel_layer()
+    if channel_layer is not None:
+        try:
+            async_to_sync(channel_layer.group_send)(
+                f"pdf_job_{job_id}",
+                {"type": "pdf.progress", "data": data},
+            )
+        except Exception:
+            pass
 
 
 def _pdf_send_complete(job_id, data):
-    """Push PDF completion to cache and clean up progress key."""
+    """Push PDF completion to cache, WebSocket, and clean up progress key."""
     pdf_cache.set(f"pdf_result_{job_id}", data, timeout=3600)
     pdf_cache.delete(f"pdf_progress_{job_id}")
+    channel_layer = get_channel_layer()
+    if channel_layer is not None:
+        try:
+            async_to_sync(channel_layer.group_send)(
+                f"pdf_job_{job_id}",
+                {"type": "pdf.complete", "data": data},
+            )
+        except Exception:
+            pass
 
 
 @shared_task(bind=True, max_retries=1, default_retry_delay=30)
@@ -808,6 +828,18 @@ def generate_bulk_report_pdf(
     connection.close()
 
     for chunk_start in range(0, total, PDF_CHUNK_SIZE):
+        # Check if job was cancelled
+        if pdf_cache.get(f"pdf_cancel_{job_id}"):
+            pdf_cache.delete(f"pdf_cancel_{job_id}")
+            _pdf_send_complete(job_id, {
+                "status": "cancelled",
+                "message": "Job cancelled by user.",
+                "compiled": compiled,
+                "total": total,
+                "failed": failed,
+            })
+            return
+
         chunk = student_contexts[chunk_start: chunk_start + PDF_CHUNK_SIZE]
         chunk_index = chunk_start // PDF_CHUNK_SIZE
 
@@ -825,12 +857,15 @@ def generate_bulk_report_pdf(
 
         chunk_pdfs = []
         for i, result in enumerate(chunk_results):
+            student_idx = chunk_start + i
+            student_name = ""
+            if student_idx < len(student_marks_list):
+                student_name = student_marks_list[student_idx].get('student', {}).get('name', f'Student {student_idx + 1}')
             if result is not None:
-                chunk_pdfs.append(result)
+                chunk_pdfs.append((result, student_name))
                 compiled += 1
             else:
                 failed += 1
-                student_idx = chunk_start + i
                 if student_idx < len(student_marks_list):
                     sm = student_marks_list[student_idx]
                     failed_students.append({
@@ -862,10 +897,14 @@ def generate_bulk_report_pdf(
         return {"status": "error", "message": "No PDFs compiled"}
 
     merger = PdfWriter()
+    page_offset = 0
     for chunk_index, chunk_pdfs in sorted(pdf_chunks, key=lambda x: x[0]):
-        for pdf_bytes in chunk_pdfs:
+        for pdf_bytes, student_name in chunk_pdfs:
             try:
                 merger.append(io.BytesIO(pdf_bytes))
+                num_pages = len(merger.pages) - page_offset
+                merger.add_outline_item(student_name, page_offset)
+                page_offset += num_pages
             except Exception:
                 logger.warning("Failed to append PDF chunk to merger", exc_info=True)
 
@@ -875,8 +914,25 @@ def generate_bulk_report_pdf(
     pdf_bytes_final = output_buffer.getvalue()
     output_buffer.close()
 
+    if len(pdf_bytes_final) > PDF_MAX_SIZE_BYTES:
+        _pdf_send_complete(job_id, {
+            "status": "error",
+            "message": f"Generated PDF exceeds 50 MB limit ({len(pdf_bytes_final) // (1024*1024)} MB). Try selecting fewer students.",
+            "compiled": compiled,
+            "total": total,
+            "failed": total,
+            "failed_students": failed_students,
+        })
+        return {"status": "error", "message": "PDF too large"}
+
     # Store in cache for download (1 hour TTL)
     pdf_cache.set(f"pdf_data_{job_id}", pdf_bytes_final, timeout=3600)
+
+    _pdf_audit_logger = logging.getLogger("students.pdf_audit")
+    _pdf_audit_logger.info(
+        "pdf_job user=%s school=%s type=bulk_report_async grade=%s stream=%s year=%s term=%s compiled=%d failed=%d total=%d",
+        user_id, school_id, grade_name, stream_name, year, term, compiled, failed, total,
+    )
 
     status = "completed" if not failed else "completed_with_errors"
     _pdf_send_complete(job_id, {
@@ -904,13 +960,16 @@ def generate_bulk_report_pdf(
 
 def _compile_chunk_with_retry(compile_fn, chunk, chunk_start, max_retries, backoff):
     """
-    Compile a chunk of student contexts with retry logic.
+    Compile a chunk of student contexts with retry logic and parallelism.
+    Uses ThreadPoolExecutor for parallel WeasyPrint renders (releases GIL).
     Returns a list of pdf_bytes or None for each student.
     """
     import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     results = [None] * len(chunk)
     pending = list(range(len(chunk)))
+    max_workers = min(2, max(1, (os.cpu_count() or 2)))
 
     for attempt in range(max_retries + 1):
         if not pending:
@@ -919,17 +978,24 @@ def _compile_chunk_with_retry(compile_fn, chunk, chunk_start, max_retries, backo
         if attempt > 0:
             time.sleep(backoff * attempt)
 
-        for i in list(pending):
-            try:
-                pdf = compile_fn(chunk[i])
-                if pdf is not None:
-                    results[i] = pdf
-                    pending.remove(i)
-            except Exception:
-                logger.warning(
-                    "Chunk compile failed: chunk_start=%d idx=%d attempt=%d",
-                    chunk_start, i, attempt,
-                    exc_info=True,
-                )
+        # Parallel compilation within the chunk
+        futures = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for i in list(pending):
+                futures[executor.submit(compile_fn, chunk[i])] = i
+
+            for future in as_completed(futures):
+                i = futures[future]
+                try:
+                    pdf = future.result()
+                    if pdf is not None:
+                        results[i] = pdf
+                        pending.remove(i)
+                except Exception:
+                    logger.warning(
+                        "Chunk compile failed: chunk_start=%d idx=%d attempt=%d",
+                        chunk_start, i, attempt,
+                        exc_info=True,
+                    )
 
     return results

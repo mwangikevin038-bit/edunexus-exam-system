@@ -1,0 +1,909 @@
+/* ═══════════════════════════════════════════════════════════════
+   EDUNEXUS — Shared Print / PDF CSS (Single Source of Truth)
+   Used by Playwright headless Chrome for pixel-perfect PDFs.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Font Face (Google Fonts CDN for Playwright) ──────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ── @page Rules ──────────────────────────────────────────── */
+@page {
+    size: A4 portrait;
+    margin: 5mm 5mm 8mm 5mm;
+}
+@page {
+    @bottom-center {
+        content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
+        font-family: "Times New Roman", Times, serif;
+        font-size: 7pt;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.4pt;
+        border-top: 0.5pt solid #cbd5e1;
+        width: 70%;
+        padding-top: 3pt;
+    }
+    @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: "Times New Roman", Times, serif;
+        font-size: 7pt;
+        font-weight: 700;
+        color: #94a3b8;
+        width: 28%;
+        white-space: nowrap;
+    }
+}
+
+@page landscape {
+    size: A4 landscape;
+    margin: 8mm 10mm 12mm 10mm;
+}
+@page landscape {
+    @bottom-center {
+        content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
+        font-family: "Times New Roman", Times, serif;
+        font-size: 8pt;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5pt;
+        border-top: 0.5pt solid #cbd5e1;
+        width: 70%;
+        padding-top: 4pt;
+    }
+    @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: "Times New Roman", Times, serif;
+        font-size: 8pt;
+        font-weight: 700;
+        color: #64748b;
+        width: 28%;
+        white-space: nowrap;
+    }
+}
+
+/* ── Global Reset ─────────────────────────────────────────── */
+* {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    color: #1C1C1E !important;
+    width: 100% !important;
+}
+
+/* ── Hide Screen-Only Chrome ──────────────────────────────── */
+.sidebar, .sidebar-overlay, nav, header, .mobile-topbar,
+.hamburger-btn, .global-loader-overlay, .published-switcher,
+.exam-groups-wrapper, .empty-official-state, .btn-print-action,
+.topbar, .topbar-right, .topbar-user, .topbar-avatar,
+.topbar-username, .topbar-chevron, .topbar-dropdown,
+.topbar-spacer, .workspace-toggle, .sub-nav-bar,
+.app-sidebar, .bottom-nav, .bottom-nav-mobile,
+.global-header, .cp-mobile-header, .mobile-menu-sheet,
+.mobile-menu-panel, .mobile-menu-body, .mobile-menu-header,
+.mobile-menu-backdrop, .system-footer, .no-print,
+.print-watermark, .rc-print-watermark, .rc-topbar,
+.rc-action-buttons, .rc-info-bar, .rc-context-card,
+.rc-loading-overlay, .rc-form-panel, .rc-toolbar,
+.official-results-hero, .broadsheet-actions-toolbar,
+.toolbar-row, .sub-tabs-bar, .segmented-control,
+.d-print-none, .rs-shell, .rs-shell *,
+.rd-desktop-selector, .mobile-summary-row, .mobile-subject-grid,
+.mobile-subject-chip, .expand-hint {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* ── Layout Reset ─────────────────────────────────────────── */
+.app-content, .main-content, .container-fluid,
+.analysis-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+}
+
+html, body {
+    overflow: visible !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   REPORT CARD
+   ═══════════════════════════════════════════════════════════ */
+
+#reportCardsContainer {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.rv-card-scroll, .rc-card-scroll {
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.rv-card-scroll::after, .rc-card-scroll::after {
+    display: none !important;
+}
+
+.report-card {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: .18in .35in .20in .55in !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    position: relative !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    color: #1C1C1E !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background: white !important;
+}
+.report-card + .report-card {
+    page-break-before: always !important;
+}
+.report-card:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+}
+
+.report-card::before {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    left: 14px !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 19px !important;
+    height: auto !important;
+    background: var(--section-accent) !important;
+    border-radius: 0 20px 20px 0 !important;
+    z-index: 1 !important;
+}
+
+.report-content {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    gap: 6px !important;
+}
+
+/* ── Report Card Header ───────────────────────────────────── */
+.rc-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding-bottom: 5px !important;
+    margin-bottom: 4px !important;
+    position: relative !important;
+    border-bottom: none !important;
+    width: 100% !important;
+}
+.rc-header::after { display: none !important; }
+
+.report-logo, .rc-logo-placeholder {
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 8px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+}
+.rc-logo-spacer { width: 80px !important; flex-shrink: 0 !important; }
+
+.rc-schoolinfo {
+    flex: 1 !important;
+    text-align: center !important;
+}
+.rc-schoolinfo h1 {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 16pt !important;
+    font-weight: 900 !important;
+    margin: 0 0 4px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    line-height: 1.1 !important;
+}
+.rc-schoolinfo .rc-address {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 10pt !important;
+    font-weight: 600 !important;
+    margin-bottom: 2px !important;
+}
+.rc-schoolinfo .rc-contact-line {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 10pt !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+}
+
+/* ── Banner ────────────────────────────────────────────────── */
+.rc-banner {
+    background: var(--section-accent) !important;
+    color: #fff !important;
+    text-align: center !important;
+    font-size: 10pt !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    padding: 5px 14px !important;
+    border-radius: 0 !important;
+    white-space: nowrap !important;
+    margin-left: calc(-0.55in + 33px) !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
+}
+
+/* ── Top Grid: Student + Chart ─────────────────────────────── */
+.rc-top-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+    width: 100% !important;
+    overflow: hidden !important;
+}
+.rc-student-block {
+    flex: 1 !important;
+    min-width: 200px !important;
+    display: flex !important;
+    gap: 14px !important;
+    align-items: flex-start !important;
+}
+.rc-chart-block {
+    flex: 2 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: 48mm !important;
+    overflow: hidden !important;
+}
+
+.rc-initials-avatar {
+    width: 80px !important;
+    height: 90px !important;
+    border-radius: 8px !important;
+    background: var(--section-accent) !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 28pt !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.02em !important;
+    flex-shrink: 0 !important;
+}
+.rc-student-name {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 13pt !important;
+    font-weight: 800 !important;
+    margin-bottom: 6px !important;
+    color: #1C1C1E !important;
+}
+.rc-detail {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    margin-bottom: 3px !important;
+    color: #1C1C1E !important;
+    line-height: 1.4 !important;
+}
+.rc-label { font-weight: 800 !important; text-transform: uppercase !important; }
+
+/* ── Chart ─────────────────────────────────────────────────── */
+.rc-chart-title {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    margin-bottom: 3px !important;
+    text-align: left !important;
+    line-height: 1 !important;
+}
+.rc-chart-canvas-wrap {
+    height: auto !important;
+    max-height: 44mm !important;
+    overflow: hidden !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+.rc-chart-canvas-wrap canvas {
+    display: block !important;
+    width: 100% !important;
+    max-height: 44mm !important;
+}
+.rc-chart-canvas-wrap img {
+    display: block !important;
+    width: 100% !important;
+    max-height: 44mm !important;
+    object-fit: contain !important;
+    margin: 0 auto !important;
+}
+.rc-chart-svg {
+    width: 100% !important;
+    margin: 6px 0 !important;
+    overflow: hidden !important;
+}
+.rc-chart-svg svg {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 44mm !important;
+    display: block !important;
+}
+.rc-chart-img {
+    width: 100% !important;
+    max-height: 44mm !important;
+    object-fit: contain !important;
+}
+
+/* ── Stats Grid ────────────────────────────────────────────── */
+.rc-stats {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+}
+.rc-stat {
+    border: 1px solid #E2E8F0 !important;
+    border-top: 3px solid var(--section-accent) !important;
+    border-radius: 10px !important;
+    padding: 12px 10px !important;
+    text-align: center !important;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+}
+.rc-stat-label {
+    display: block !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 8pt !important;
+    font-weight: 800 !important;
+    color: var(--section-accent) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    margin-bottom: 6px !important;
+}
+.rc-stat-value {
+    display: block !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 15pt !important;
+    font-weight: 800 !important;
+    color: #1E293B !important;
+    line-height: 1.2 !important;
+}
+.rc-stat-value small {
+    font-size: 10pt !important;
+    font-weight: 600 !important;
+    color: #94A3B8 !important;
+}
+
+/* ── Subjects Table ────────────────────────────────────────── */
+.table-scroll {
+    width: 100% !important;
+    overflow: visible !important;
+}
+.rc-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+}
+.rc-table colgroup .col-subj { width: 32% !important; }
+.rc-table colgroup .col-marks { width: 13% !important; }
+.rc-table colgroup .col-dev { width: 18% !important; }
+.rc-table colgroup .col-grade { width: 12% !important; }
+.rc-table colgroup .col-teacher { width: 25% !important; }
+.rc-table thead th {
+    background: #E9ECF0 !important;
+    color: #1E293B !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 9pt !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+    padding: 6px 8px !important;
+    border: 1px solid #000 !important;
+    white-space: nowrap !important;
+}
+.rc-table thead th:first-child { text-align: left !important; }
+.rc-table tbody tr { page-break-inside: avoid !important; }
+.rc-table tbody td {
+    font-family: 'Times New Roman', Times, serif !important;
+    padding: 5px 8px !important;
+    border: 1px solid #000 !important;
+    font-size: 11pt !important;
+    color: #1C1C1E !important;
+    vertical-align: middle !important;
+}
+.rc-subj { font-weight: 700 !important; text-align: left !important; white-space: nowrap !important; }
+.rc-center { text-align: center !important; }
+.rc-grade { font-weight: 800 !important; color: #2563EB !important; }
+.rc-teacher {
+    font-style: italic !important;
+    font-weight: 600 !important;
+    padding-left: 10px !important;
+    text-align: left !important;
+    font-size: 11pt !important;
+}
+
+/* ── Comments Section ──────────────────────────────────────── */
+.rc-comments-header {
+    background: var(--section-accent) !important;
+    color: #fff !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 10pt !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    text-align: center !important;
+    padding: 5px 14px !important;
+    border-radius: 0 20px 0 0 !important;
+    margin-left: -20px !important;
+    margin-right: 20px !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
+}
+.rc-remarks-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 14px !important;
+    padding: 14px !important;
+    background: #F8FAFC !important;
+    border-radius: 0 0 8px 8px !important;
+    margin-left: -20px !important;
+    margin-right: 20px !important;
+}
+.rc-remark-box {
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 10px !important;
+    padding: 14px 16px !important;
+    background: #fff !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+.rc-remark-title {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    font-weight: 800 !important;
+    color: #1E293B !important;
+    margin-bottom: 10px !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+}
+.rc-remark-text {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    font-weight: 400 !important;
+    color: #334155 !important;
+    line-height: 1.5 !important;
+    margin-bottom: 10px !important;
+    flex-grow: 1 !important;
+}
+.rc-signature {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 9pt !important;
+    font-weight: 600 !important;
+    color: #64748B !important;
+    border-top: 1px dashed #CBD5E1 !important;
+    padding-top: 6px !important;
+    margin-top: auto !important;
+}
+
+/* ── Grade Descriptors ─────────────────────────────────────── */
+.rc-descriptors {
+    margin-top: 10px !important;
+    width: 100% !important;
+}
+.rc-descriptors-title {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 9pt !important;
+    font-weight: 800 !important;
+    color: #1E293B !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin-bottom: 4px !important;
+    padding-bottom: 4px !important;
+    border-bottom: 2px solid var(--section-accent) !important;
+}
+.rc-descriptors-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+}
+.rc-descriptors-table th, .rc-descriptors-table td {
+    border: 1px solid #000 !important;
+    padding: 5px 8px !important;
+    font-size: 9pt !important;
+    text-align: center !important;
+    font-family: 'Times New Roman', Times, serif !important;
+}
+.rc-descriptors-table th {
+    background: #E9ECF0 !important;
+    color: #1E293B !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+}
+.rc-descriptors-table td:first-child, .rc-descriptors-table th:first-child {
+    text-align: left !important;
+    font-weight: 700 !important;
+    background: #F8FAFC !important;
+    color: #1E293B !important;
+}
+
+/* ── Footer Dates ──────────────────────────────────────────── */
+.footer-dates {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 16px !important;
+    margin-top: 14px !important;
+    width: 100% !important;
+}
+.date-box {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    color: #1E293B !important;
+    padding: 10px 14px !important;
+    border-radius: 8px !important;
+    border: 1px solid #E2E8F0 !important;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+}
+.date-box span:first-child {
+    color: #64748B !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    font-size: 9pt !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BROADSHEET / RESULTS LIST
+   ═══════════════════════════════════════════════════════════ */
+
+.broadsheet-document {
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+}
+
+.broadsheet-card {
+    position: relative !important;
+    background: #ffffff !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+}
+
+/* ── Branding Header ───────────────────────────────────────── */
+.bs-header-block {
+    display: block !important;
+    padding: 6px 16px 4px 16px !important;
+    border-bottom: 3pt solid var(--section-accent, #305CDE) !important;
+    margin-bottom: 6px !important;
+    background: transparent !important;
+}
+.bs-header-main {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    align-items: center !important;
+    gap: 14px !important;
+}
+.bs-header-main > div:first-child { flex: 1 !important; min-width: 0 !important; }
+.bs-header-main > span:last-child {
+    flex-shrink: 0 !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+    padding: 12px 24px !important;
+}
+.bs-header-logo-wrap {
+    display: flex !important;
+    align-items: center !important;
+    width: 1in !important;
+    padding-right: 12px !important;
+}
+.bs-logo-frame {
+    width: 1in !important;
+    height: 1in !important;
+}
+.bs-header-logo-wrap img {
+    max-width: 1in !important;
+    max-height: 1in !important;
+}
+.bs-logo-placeholder {
+    width: 1in !important;
+    height: 1in !important;
+    font-size: 6pt !important;
+}
+.bs-school-name {
+    font-family: "Georgia", "Times New Roman", Times, serif !important;
+    font-size: 22pt !important;
+    font-weight: 700 !important;
+    color: var(--section-accent, #305CDE) !important;
+    letter-spacing: 0.5px !important;
+    line-height: 1.1 !important;
+    margin: 0 0 3px !important;
+    text-transform: uppercase !important;
+}
+.bs-meta-line {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 10pt !important;
+    font-weight: 700 !important;
+    color: #374151 !important;
+    text-transform: uppercase !important;
+}
+.bs-results-badge {
+    flex-shrink: 0 !important;
+    font-size: 10pt !important;
+    font-weight: 700 !important;
+    color: #fff !important;
+    background: var(--section-accent, #305CDE) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px 18px !important;
+    border-radius: 20px !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+}
+
+/* ── Broadsheet Table ──────────────────────────────────────── */
+.table-analysis {
+    display: table !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    border: none !important;
+    background: #fff !important;
+    font-family: "Times New Roman", Times, serif !important;
+    color: #000 !important;
+}
+.table-analysis th, .table-analysis td {
+    display: table-cell !important;
+    border: 1px solid #000 !important;
+    padding: 3px 4px !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    text-align: center !important;
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+    overflow: hidden !important;
+    color: #000 !important;
+    font-family: "Times New Roman", Times, serif !important;
+}
+.table-analysis th {
+    font-weight: 800 !important;
+    background: #e2e6ea !important;
+    color: #000 !important;
+}
+.table-analysis tr {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+}
+.table-analysis thead { display: table-header-group !important; }
+.table-analysis tbody { display: table-row-group !important; }
+.table-analysis tfoot { display: table-footer-group !important; }
+
+/* Column widths */
+.col-adm { width: 40px !important; }
+.col-name { width: 150px !important; text-align: left !important; padding-left: 6px !important; white-space: nowrap !important; }
+.col-strm { width: 28px !important; }
+.col-mk { width: 26px !important; }
+.col-lv { width: 32px !important; }
+.col-tps { width: 30px !important; }
+.col-total { width: 36px !important; }
+.col-plv { width: 33px !important; }
+
+/* Aggregate columns */
+.tps-col { background-color: #9AD725 !important; color: #1e293b !important; font-weight: 700 !important; border: 1px solid #000 !important; }
+.total-col { background-color: #9AD725 !important; color: #1e293b !important; font-weight: 800 !important; border: 1px solid #000 !important; }
+.plv-col { background-color: #F4C400 !important; color: #1e293b !important; font-weight: 800 !important; border: 1px solid #000 !important; }
+.lv-col { background-color: #EDF4FC !important; color: #305CDE !important; font-weight: 700 !important; border: 1px solid #000 !important; }
+
+/* Subject headers */
+.subj-header { background: #e2e8f0 !important; color: #000 !important; border: 1px solid #000 !important; font-size: 9pt !important; font-weight: 700 !important; }
+.sub-hdr-mk { background: #e2e8f0 !important; color: #000 !important; border: 1px solid #000 !important; font-size: 9pt !important; font-weight: 600 !important; }
+.sub-hdr-lv { background: #e2e8f0 !important; color: #000 !important; border: 1px solid #000 !important; font-size: 9pt !important; font-weight: 600 !important; }
+
+/* Row colors */
+.table-analysis tbody tr td { background: #fff !important; }
+.table-analysis tbody tr td.tps-col { background: #9AD725 !important; }
+.table-analysis tbody tr td.total-col { background: #9AD725 !important; }
+.table-analysis tbody tr td.plv-col { background: #F4C400 !important; }
+.table-analysis tbody tr td.lv-col { background: #EDF4FC !important; }
+
+/* ── Summary Tables ────────────────────────────────────────── */
+.analysis-page-container {
+    break-before: page !important;
+    page-break-before: always !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 12px !important;
+    margin-top: 0 !important;
+    border: none !important;
+    background: #fff !important;
+    overflow: visible !important;
+}
+.summary-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    font-size: 12pt !important;
+    font-family: "Times New Roman", Times, serif !important;
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+}
+.summary-table th {
+    background-color: #B6B6B5 !important;
+    color: #000 !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 12pt !important;
+    border: 1px solid #000 !important;
+    padding: 6px 5px !important;
+    white-space: nowrap !important;
+}
+.summary-table td {
+    border: 1px solid #000 !important;
+    text-align: center !important;
+    padding: 5px 5px !important;
+    font-weight: 600 !important;
+    font-size: 12pt !important;
+    white-space: nowrap !important;
+}
+.summary-table td.sub-lbl {
+    text-align: left !important;
+    font-weight: 800 !important;
+    padding-left: 10px !important;
+    color: #000 !important;
+}
+.summary-table td.teacher-col {
+    text-align: left !important;
+    font-weight: 600 !important;
+    padding-left: 8px !important;
+    color: #374151 !important;
+    white-space: nowrap !important;
+}
+.summary-table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+.summary-table tr:nth-child(even) { background-color: #fff !important; }
+.summary-table tr:nth-child(odd) { background-color: #fff !important; }
+
+/* Grade badges */
+.badge-ee { background-color: #dcfce7 !important; color: #166534 !important; font-weight: 700 !important; }
+.badge-me { background-color: #fef9c3 !important; color: #854d0e !important; font-weight: 700 !important; }
+.badge-ae { background-color: #ffedd5 !important; color: #9a3412 !important; font-weight: 700 !important; }
+.badge-be { background-color: #fee2e2 !important; color: #991b1b !important; font-weight: 700 !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   CLASS LIST
+   ═══════════════════════════════════════════════════════════ */
+
+.pdf-sheet { padding: 0 !important; width: 100% !important; }
+.pdf-heading {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    padding: 8px 0 6px 100px !important;
+    min-height: auto !important;
+    margin: 0 0 8px !important;
+    text-align: center !important;
+    background: #fff !important;
+    border: none !important;
+    border-bottom: 2px solid var(--section-accent, #0f1727) !important;
+}
+.pdf-logo {
+    position: absolute !important;
+    left: 0 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 80px !important;
+    height: 80px !important;
+    object-fit: contain !important;
+    border-radius: 6px !important;
+}
+.pdf-heading-copy { text-align: center !important; }
+.pdf-heading-copy h2 {
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 22px !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    color: var(--section-accent, #0f1727) !important;
+    margin: 0 !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.06em !important;
+}
+.pdf-heading-copy p {
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 11px !important;
+    color: #374151 !important;
+    margin: 1px 0 0 !important;
+    font-weight: 600 !important;
+}
+
+.register-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border: 1px solid #000 !important;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 12pt !important;
+    table-layout: fixed !important;
+}
+.register-table th {
+    background: #e2e6ea !important;
+    color: #000 !important;
+    font-weight: 900 !important;
+    font-size: 12pt !important;
+    padding: 5px 8px !important;
+    border: 1px solid #000 !important;
+    text-transform: uppercase !important;
+    text-align: left !important;
+    line-height: 1.3 !important;
+}
+.register-table td {
+    padding: 4px 8px !important;
+    border: 1px solid #000 !important;
+    color: #000 !important;
+    font-weight: 400 !important;
+    font-size: 12pt !important;
+    line-height: 1.3 !important;
+    vertical-align: middle !important;
+}
+.register-table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+.grid-cell {
+    width: 36px !important;
+    height: 34px !important;
+    background: #fff !important;
+    font-size: 12pt !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ANALYSIS REPORT
+   ═══════════════════════════════════════════════════════════ */
+
+.ar-page { page-break-before: always !important; }
+.ar-page:first-child { page-break-before: auto !important; }
+
+/* ── Transitions Off ───────────────────────────────────────── */
+* {
+    transition: none !important;
+    animation: none !important;
+}

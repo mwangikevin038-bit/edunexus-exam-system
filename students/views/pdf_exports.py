@@ -1,8 +1,9 @@
 """
 PDF export views for broadsheet results and class list registers.
 
-Uses WeasyPrint to render Django templates to PDF,
-applying screen-emulated CSS overrides so the output matches the web view.
+Hybrid rendering engine:
+  - Playwright (headless Chrome) for user-triggered downloads — pixel-perfect
+  - WeasyPrint for background/Celery bulk tasks — fast, lightweight
 """
 
 import base64
@@ -26,8 +27,15 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.utils.text import slugify
+from django.views.decorators.http import require_POST
 from pypdf import PdfWriter
 from pathlib import Path
+
+try:
+    from ..pdf_engine import render_html_to_pdf as _playwright_render, get_print_css as _get_playwright_css
+    _HAS_PLAYWRIGHT = True
+except ImportError:
+    _HAS_PLAYWRIGHT = False
 
 from .constants import ASSESSMENT_MAP, GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_NAMES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_DISPLAY_ORDER, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
 from .reports import PRIMARY_ORDERED_LEVELS
@@ -52,6 +60,39 @@ from ..models import ClassTeacherMasterComment, ExamSummary, Mark, SchoolHeadtea
 from ..security import get_request_school, get_request_school_section, get_school_object_or_403, rate_limit, user_has_main_school_admin_override
 
 logger = logging.getLogger('pdf_export')
+
+
+# ── Playwright PDF Helper ──────────────────────────────────────────────────
+
+def _build_playwright_html(template_html, request, *, landscape=False):
+    """
+    Wrap a Django template's rendered HTML into a complete document
+    ready for Playwright PDF rendering.
+
+    Injects:
+      - <base> tag for static file resolution
+      - Shared print CSS from static/css/print-shared.css
+      - Logo base64 embedding
+    """
+    from ..pdf_engine import get_print_css
+
+    html = template_html
+
+    # Embed school logo as data URI
+    html = _embed_logo_base64(html, request)
+
+    # Load shared print CSS
+    print_css = get_print_css()
+
+    # Inject <base> + print CSS before </head>
+    base_tag = f'<base href="{request.build_absolute_uri("/")}">'
+    html = html.replace(
+        '</head>',
+        f'{base_tag}<style id="pdf-override">{print_css}</style></head>',
+        1,
+    )
+
+    return html
 
 
 def generate_premium_vector_chart_svg(labels, student_scores, class_averages):
@@ -222,21 +263,14 @@ def _compile_single_student_pdf(student_context, logo_base64, section_accent, ba
     """
     Compile a single student's report card HTML to PDF bytes.
 
-    Uses the stripped ``report_card_print.html`` template (no ``base.html``)
-    plus the unified ``report_card_print.css`` — the same CSS the browser
-    loads via ``<link media="print">``. This guarantees the downloaded PDF
-    is byte-equivalent to what the user sees with Ctrl+P.
-
-    Designed to be called from a thread pool (Gunicorn gthread) or a
-    ProcessPoolExecutor. Reading the CSS file from disk is cheap and avoids
-    a 200-line inline CSS string per call.
+    Uses WeasyPrint with the WeasyPrint-compatible CSS for background/bulk tasks.
+    This is the fast path used by Celery tasks where speed > perfect fidelity.
     """
     from django.template.loader import render_to_string
     from weasyprint import HTML
     from django.conf import settings
 
     # Render the stripped template — no base.html, no sidebar/topbar/context
-    # card HTML for WeasyPrint to walk and discard.
     single_html = render_to_string(
         'students/report_card_print.html',
         student_context,
@@ -247,10 +281,10 @@ def _compile_single_student_pdf(student_context, logo_base64, section_accent, ba
     if logo_base64:
         single_html = single_html.replace('src="/static/', f'src="{logo_base64}')
 
-    # Load the unified print CSS from disk (cached after first read)
-    print_css = _load_print_css()
+    # Load the WeasyPrint-compatible CSS from disk (cached after first read)
+    print_css = _load_weasyprint_css()
 
-    # Inject <base> + the unified CSS so the PDF looks identical to Ctrl+P.
+    # Inject <base> + the WeasyPrint CSS
     single_html = single_html.replace(
         '</head>',
         f'<base href="{base_url}"><style id="pdf-override">{print_css}</style></head>',
@@ -266,23 +300,42 @@ def _compile_single_student_pdf(student_context, logo_base64, section_accent, ba
 
 
 _PRINT_CSS_CACHE = None
+_WEASY_CSS_CACHE = None
 
 def _load_print_css():
     """
-    Read students/static/students/css/report_card_print.css once per process
-    and cache it in memory. Subsequent PDF compiles skip the disk hit.
+    Read static/css/print-shared.css once per process and cache it.
+    Used by Playwright-based rendering.
     """
     global _PRINT_CSS_CACHE
     if _PRINT_CSS_CACHE is not None:
         return _PRINT_CSS_CACHE
     from django.conf import settings as _s
-    css_path = Path(_s.BASE_DIR) / 'students' / 'static' / 'students' / 'css' / 'report_card_print.css'
+    css_path = Path(_s.BASE_DIR) / 'static' / 'css' / 'print-shared.css'
     try:
         _PRINT_CSS_CACHE = css_path.read_text(encoding='utf-8')
     except FileNotFoundError:
-        logger.error("[pdf] report_card_print.css not found at %s", css_path)
+        logger.error("[pdf] print-shared.css not found at %s", css_path)
         _PRINT_CSS_CACHE = ''
     return _PRINT_CSS_CACHE
+
+
+def _load_weasyprint_css():
+    """
+    Read static/css/print-weasyprint.css once per process and cache it.
+    Used by WeasyPrint-based rendering (Celery bulk tasks).
+    """
+    global _WEASY_CSS_CACHE
+    if _WEASY_CSS_CACHE is not None:
+        return _WEASY_CSS_CACHE
+    from django.conf import settings as _s
+    css_path = Path(_s.BASE_DIR) / 'static' / 'css' / 'print-weasyprint.css'
+    try:
+        _WEASY_CSS_CACHE = css_path.read_text(encoding='utf-8')
+    except FileNotFoundError:
+        logger.error("[pdf] print-weasyprint.css not found at %s", css_path)
+        _WEASY_CSS_CACHE = ''
+    return _WEASY_CSS_CACHE
 
 
 def _log_pdf_error(view_name, error, context=None):
@@ -318,15 +371,41 @@ def _log_pdf_error(view_name, error, context=None):
 # WEASYPRESS PDF GENERATION
 # ==============================================================================
 
-def _generate_pdf(patched_html, *, landscape=False, margin=None, **kwargs):
-    """Generates PDF directly from HTML string using WeasyPrint in-memory compilation"""
+def _generate_pdf(patched_html, *, landscape=False, margin=None, engine='auto', **kwargs):
+    """
+    Generate PDF from HTML string. Tries Playwright first, falls back to WeasyPrint.
+
+    Args:
+        patched_html: Complete HTML document string.
+        landscape: If True, use A4 landscape.
+        margin: Optional margin override.
+        engine: 'playwright' | 'weasyprint' | 'auto' (default: try Playwright first).
+    """
+    # ── Try Playwright (pixel-perfect rendering) ──
+    if engine in ('auto', 'playwright') and _HAS_PLAYWRIGHT:
+        try:
+            margins = None
+            if margin:
+                margins = {'top': margin, 'bottom': margin, 'left': margin, 'right': margin}
+            pdf_bytes = _playwright_render(
+                patched_html,
+                landscape=landscape,
+                margins=margins,
+                timeout_ms=30000,
+            )
+            if pdf_bytes:
+                return {'pdf': pdf_bytes}
+        except Exception as e:
+            if engine == 'playwright':
+                logger.error(f"[pdf] Playwright generation failed: {str(e)}")
+                return {'pdf': None, 'error': str(e)}
+            logger.warning(f"[pdf] Playwright failed, falling back to WeasyPrint: {str(e)}")
+
+    # ── Fallback: WeasyPrint ──
     try:
         from weasyprint import HTML as _WeasyHTML
-        # Create WeasyPrint HTML document instance directly from string
         html_doc = _WeasyHTML(string=patched_html)
-
-        # Write the PDF directly to bytes memory
-        pdf_bytes = html_doc.write_pdf()
+        pdf_bytes = html_doc.write_pdf(optimize_size='images')
         return {'pdf': pdf_bytes}
     except Exception as e:
         logger.error(f"[pdf] WeasyPrint generation failed: {str(e)}")
@@ -571,78 +650,12 @@ def download_broadsheet_pdf(request):
         'section_accent':          section_accent,
     }, request=request)
 
-    # Embed the school logo for PDF export so it prints reliably even when
-    # WeasyPrint is rendering HTML outside the normal browser page.
-    template_html = _embed_logo_base64(template_html, request)
+    # ── 3. Build Playwright-ready HTML ────────────────────────────────────────
+    patched_html = _build_playwright_html(template_html, request, landscape=True)
 
-    # ── 3. Minimal PDF overlay CSS ────────────────────────────────────────────
-    #
-    # WeasyPrint uses print media so the template's own
-    # @media print CSS does all the heavy lifting (table styling, colors,
-    # fonts, page-break, @page rules). We only inject CSS here to hide
-    # screen-only chrome that the template's print CSS doesn't cover.
-    #
-    pdf_css = """
-<style id="pdf-override">
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Hide all screen-only chrome */
-  .sidebar,
-  .sidebar-overlay,
-  nav,
-  header,
-  .mobile-topbar,
-  .hamburger-btn,
-  .global-loader-overlay,
-  .official-results-hero,
-  .d-print-none,
-  .published-switcher,
-  .exam-groups-wrapper,
-  .empty-official-state,
-  .btn-print-action,
-  .topbar,
-  .topbar-right,
-  .topbar-user,
-  .topbar-avatar,
-  .topbar-username,
-  .topbar-chevron,
-  .topbar-dropdown,
-  .topbar-spacer,
-  .workspace-toggle {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    overflow: hidden !important;
-  }
-
-  /* Kill sidebar layout offset so broadsheet fills full page width */
-  .main-content {
-    margin-left: 0 !important;
-    padding-left: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  body > .sidebar ~ .main-content {
-    margin-left: 0 !important;
-  }
-  html, body {
-    overflow: visible !important;
-  }
-</style>
-"""
-
-    # Give WeasyPrint a real origin so relative media/static URLs load in PDFs.
-    pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
-
-    # Insert overrides using bulletproof injector
-    patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
-
-    # ── 4. WeasyPrint — generate PDF directly from HTML ──
+    # ── 4. Generate PDF ──
     try:
-        pdf_data = _generate_pdf(patched_html, landscape=True)
+        pdf_data = _generate_pdf(patched_html, landscape=True, engine='auto')
     except Exception as e:
         _log_pdf_error('download_broadsheet_pdf', e, {
             'year': year, 'term': term, 'section': section,
@@ -741,134 +754,11 @@ def download_classlist_pdf(request):
         'section_accent':        section_accent,
     }, request=request)
 
-    template_html = _embed_logo_base64(template_html, request)
-
-    pdf_css = f"""
-<style id="pdf-override">
-  * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-
-  html, body {{
-    margin: 0 !important; padding: 0 !important;
-    background: #ffffff !important;
-    font-family: "Times New Roman", Times, serif !important;
-    font-size: 12pt !important; color: #000 !important;
-    width: 100% !important;
-    overflow: visible !important;
-  }}
-
-  body > * {{
-    margin-left: 0 !important;
-    padding-left: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }}
-
-  .pdf-sheet {{
-    padding: 0 !important;
-    width: 100% !important;
-  }}
-
-  .pdf-heading {{
-    text-align: center !important;
-    position: relative !important;
-    padding: 0 130px !important;
-    min-height: 110px !important;
-    margin-bottom: 10pt !important;
-  }}
-
-  .pdf-logo {{
-    position: absolute !important;
-    left: 0 !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    width: 110px !important;
-    height: 110px !important;
-    object-fit: contain !important;
-  }}
-
-  .pdf-heading-copy {{
-    text-align: center !important;
-  }}
-
-  .pdf-heading-copy h2 {{
-    font-family: "Times New Roman", Times, serif !important;
-    font-size: 25pt !important;
-    font-weight: 900 !important;
-    text-transform: uppercase !important;
-    color: {section_accent} !important;
-    margin: 0 !important;
-    letter-spacing: 0.08em !important;
-  }}
-
-  .pdf-heading-copy p {{
-    font-family: "Times New Roman", Times, serif !important;
-    font-size: 12pt !important;
-    color: #64748b !important;
-    margin: 2px 0 0 !important;
-    font-weight: 700 !important;
-  }}
-
-  .register-table {{
-    width: 100% !important;
-    min-width: 0 !important;
-    border-collapse: collapse !important;
-    border: 1.5px solid #000 !important;
-    background: #ffffff !important;
-    table-layout: fixed !important;
-    font-family: "Times New Roman", Times, serif !important;
-    font-size: 12pt !important;
-  }}
-
-  .register-table th {{
-    background: #E9ECF0 !important;
-    color: #1E293B !important;
-    font-weight: 900 !important;
-    font-size: 12pt !important;
-    padding: 3pt 5pt !important;
-    border: 1.5px solid #000 !important;
-    text-align: left !important;
-    text-transform: uppercase !important;
-    line-height: 1.05 !important;
-  }}
-
-  .register-table td {{
-    padding: 3pt 5pt !important;
-    border: 1.5px solid #000 !important;
-    color: #000 !important;
-    font-weight: 800 !important;
-    font-size: 12pt !important;
-    line-height: 1.05 !important;
-    vertical-align: middle !important;
-  }}
-
-  .register-table tr {{
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }}
-
-  .grid-cell {{
-    width: 24px !important;
-    height: 21pt !important;
-    background: #ffffff !important;
-  }}
-
-  .clp-actions, .clp-card, .sub-nav-bar, .sidebar, .global-header {{
-    display: none !important;
-    visibility: hidden !important;
-  }}
-
-  @page {{
-    size: A4 portrait;
-    margin: 0.62in 0.38in 0.72in 0.5in;
-  }}
-</style>
-"""
-
-    pdf_base_tag = f'<base href="{request.build_absolute_uri("/")}">'
-    patched_html = _inject_pdf_css(template_html, pdf_css, pdf_base_tag)
+    # ── Build Playwright-ready HTML ──
+    patched_html = _build_playwright_html(template_html, request, landscape=False)
 
     try:
-        pdf_data = _generate_pdf(patched_html, landscape=False)
+        pdf_data = _generate_pdf(patched_html, landscape=False, engine='auto')
     except Exception as e:
         _log_pdf_error('download_classlist_pdf', e, {
             'grade': grade_name, 'stream': stream_name,
@@ -1174,17 +1064,12 @@ def download_individual_report_pdf(request, student_id):
 
     template_html = _embed_logo_base64(template_html, request)
 
-    # Inject <base> + the unified CSS so the PDF looks identical to Ctrl+P.
-    print_css = _load_print_css()
-    patched_html = template_html.replace(
-        '</head>',
-        f'<base href="{request.build_absolute_uri("/")}"><style id="pdf-override">{print_css}</style></head>',
-        1,
-    )
+    # ── Build Playwright-ready HTML ──
+    patched_html = _build_playwright_html(template_html, request, landscape=False)
 
-    # ── WeasyPrint — generate PDF directly from HTML ──
+    # ── Generate PDF ──
     try:
-        pdf_data = _generate_pdf(patched_html, landscape=False)
+        pdf_data = _generate_pdf(patched_html, landscape=False, engine='auto')
     except Exception as e:
         _log_pdf_error('download_individual_report_pdf', e, {
             'student_id': student_id, 'year': year, 'term': term,
@@ -1804,3 +1689,27 @@ def download_generated_pdf(request, job_id):
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+@login_required
+@require_POST
+def cancel_bulk_pdf(request, job_id):
+    """
+    POST /api/pdf-cancel/<job_id>/
+
+    Sets a cancellation flag in the pdf_generation cache. The Celery worker
+    checks ``pdf_cancel_<job_id>`` between chunks (see ``tasks.py``) and aborts
+    the bulk-PDF job on the next iteration, sending a ``cancelled`` status
+    back through the cache + websocket.
+    """
+    pdf_cache = _get_pdf_cache()
+
+    # 24h TTL matches the longest realistic bulk job. The worker deletes the key
+    # itself after consuming it (see tasks.py).
+    pdf_cache.set(f"pdf_cancel_{job_id}", "1", timeout=60 * 60 * 24)
+
+    return JsonResponse({
+        'status': 'cancelling',
+        'job_id': job_id,
+        'message': 'Cancellation requested. The job will stop after the current chunk.',
+    })

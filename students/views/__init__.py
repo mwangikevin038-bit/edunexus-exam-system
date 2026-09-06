@@ -133,6 +133,7 @@ from .pdf_exports import (  # noqa: F401
     download_individual_report_pdf,
     individual_report_print_html,
     pdf_progress,
+    cancel_bulk_pdf,
     start_bulk_report_pdf,
 )
 

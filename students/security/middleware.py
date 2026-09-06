@@ -8,21 +8,12 @@ from django.http import HttpResponseForbidden
 
 from students.security import get_user_school_id, get_user_school_object
 from students.security.audit import bind_request_for_audit
-from students.security.ratelimit import is_rate_limited
 
 logger = logging.getLogger("students.security.middleware")
 
 # Paths that are public (no tenant required) or superuser-only.
 # Everything else requires a resolved school tenant for non-superusers.
 PUBLIC_PREFIXES = ("/login/", "/logout/", "/forgot-password/", "/reset/", "/super/", "/admin/", "/static/", "/media/")
-RATE_LIMITED_PATHS = {
-    "/": ("login", 8, 60),
-    "/super/": ("super_login", 8, 60),
-    "/select-exam/": ("mark_entry", 30, 60),
-    "/results/download-pdf/": ("report_download", 10, 60),
-    "/class-lists/download-pdf/": ("report_download", 10, 60),
-    "/bulk-reports/": ("report_download", 10, 60),
-}
 
 
 class SecurityAuditMiddleware:
@@ -126,21 +117,6 @@ class SessionSchoolValidator:
     def _get_actual_school_id(user):
         """Return the user's true school_id from their profile, or None."""
         return get_user_school_id(user)
-
-
-class EndpointRateLimitMiddleware:
-    """Path-based rate limiting for login, mark entry, and report downloads."""
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        config = RATE_LIMITED_PATHS.get(request.path)
-        if config and request.method in {"GET", "POST"}:
-            group, max_requests, window = config
-            if is_rate_limited(request, group, max_requests, window):
-                return HttpResponseForbidden("Rate limit exceeded. Try again later.")
-        return self.get_response(request)
 
 
 class SecurityHeadersMiddleware:

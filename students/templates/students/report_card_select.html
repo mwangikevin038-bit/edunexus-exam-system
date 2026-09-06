@@ -975,78 +975,14 @@ function printSelectedReports() {
             if (cb && selectedIds.indexOf(cb.value) === -1) selectedIds.push(cb.value);
         }
     });
-    if (selectedIds.length === 0) {
-        alert('Please select at least one learner first.');
-        return;
-    }
-
-    var overlay = document.getElementById('rcGenOverlay');
-    var progressEl = document.getElementById('rcGenProgress');
-    overlay.classList.add('visible');
-    progressEl.textContent = 'Preparing ' + selectedIds.length + ' report cards...';
-
-    var url = '{% url "start_bulk_report_pdf" %}?grade={{ selected_grade|default:""|urlencode }}&stream={{ selected_stream|default:""|urlencode }}&exam_id={{ selected_exam_id|default:"" }}&year={{ selected_year|default:"" }}&term={{ selected_term|default:""|urlencode }}&assessment={{ selected_assessment|default:""|urlencode }}&ids=' + selectedIds.join(',');
-
-    fetch(url, { method: 'GET', credentials: 'same-origin' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.error) {
-                overlay.classList.remove('visible');
-                alert('Error: ' + data.error);
-                return;
-            }
-            var jobId = data.job_id;
-            var total = data.total || selectedIds.length;
-            progressEl.textContent = 'Compiling 0/' + total + ' report cards...';
-            pollPdfProgress(jobId, total, overlay, progressEl);
-        })
-        .catch(function(err) {
-            overlay.classList.remove('visible');
-            alert('Failed to start PDF generation: ' + err.message);
-        });
-}
-
-function pollPdfProgress(jobId, total, overlay, progressEl) {
-    var pollUrl = '{% url "pdf_progress" job_id="__JOBID__" %}'.replace('__JOBID__', jobId);
-    var checkCount = 0;
-    var maxChecks = 300;
-
-    function poll() {
-        checkCount++;
-        if (checkCount > maxChecks) {
-            overlay.classList.remove('visible');
-            alert('PDF generation timed out. Please try again.');
-            return;
-        }
-
-        fetch(pollUrl, { method: 'GET', credentials: 'same-origin' })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.status === 'processing') {
-                    var compiled = data.compiled || 0;
-                    var failed = data.failed || 0;
-                    progressEl.textContent = 'Compiling ' + compiled + '/' + total + ' report cards...' + (failed > 0 ? ' (' + failed + ' failed)' : '');
-                    setTimeout(poll, 1500);
-                } else if (data.status === 'completed' || data.status === 'completed_with_errors') {
-                    var msg = 'Done! ' + (data.compiled || 0) + ' report cards compiled.';
-                    if (data.failed > 0) msg += ' ' + data.failed + ' failed.';
-                    progressEl.textContent = msg + ' Downloading...';
-                    var downloadUrl = '{% url "download_generated_pdf" job_id="__JOBID__" %}'.replace('__JOBID__', jobId);
-                    window.location.href = downloadUrl;
-                    setTimeout(function() { overlay.classList.remove('visible'); }, 2000);
-                } else if (data.status === 'error') {
-                    overlay.classList.remove('visible');
-                    alert('PDF generation failed: ' + (data.message || 'Unknown error'));
-                } else {
-                    setTimeout(poll, 2000);
-                }
-            })
-            .catch(function() {
-                setTimeout(poll, 3000);
-            });
-    }
-
-    poll();
+    BulkPDF.start(selectedIds, {
+        grade: '{{ selected_grade|default:""|urlencode }}',
+        stream: '{{ selected_stream|default:""|urlencode }}',
+        exam_id: '{{ selected_exam_id|default:"" }}',
+        year: '{{ selected_year|default:"" }}',
+        term: '{{ selected_term|default:""|urlencode }}',
+        assessment: '{{ selected_assessment|default:""|urlencode }}'
+    });
 }
 
 function rcSearchStudents() {
@@ -1076,7 +1012,12 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Zeraki-style loading overlay for PDF generation -->
-<div class="rc-gen-overlay" id="rcGenOverlay">
+<div class="rc-gen-overlay" id="rcGenOverlay"
+     data-start-url="{% url "start_bulk_report_pdf" %}"
+     data-poll-url="{% url "pdf_progress" job_id="__JOBID__" %}"
+     data-download-url="{% url "download_generated_pdf" job_id="__JOBID__" %}"
+     data-cancel-url="{% url "cancel_bulk_pdf" job_id="__JOBID__" %}"
+     data-ws-url="{{ ws_protocol }}://{{ request.get_host }}/ws/pdf-progress/__JOBID__/">
   <div class="rc-gen-card">
     <div class="rc-gen-card-header">
       <h2>Report Forms</h2>
@@ -1095,10 +1036,12 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="rc-gen-bar"></div>
       </div>
       <div class="rc-gen-progress" id="rcGenProgress"></div>
+      <button type="button" id="rcGenCancelBtn" onclick="BulkPDF.cancel()" style="display:none;margin-top:16px;padding:8px 24px;border:2px solid #dc2626;background:#fff;color:#dc2626;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s;">Cancel</button>
     </div>
   </div>
   <div class="rc-gen-footer">
     &copy; 2026 <a href="#">EduNexus</a>. All Rights Reserved.
   </div>
 </div>
+<script src="{% static 'js/bulk_pdf_poll.js' %}"></script>
 {% endblock %}

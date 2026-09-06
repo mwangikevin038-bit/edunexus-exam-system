@@ -78,6 +78,15 @@
   .clp-top-action.print:hover{background:#4CAF50;color:#fff;box-shadow:0 4px 12px rgba(76,175,80,0.3);transform:translateY(-1px)}
   .clp-top-action.pdf{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
   .clp-top-action.pdf:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
+  .clp-top-action.pdf:disabled{opacity:1;cursor:wait;transform:none;box-shadow:none;gap:10px}
+  .clp-spinner{display:inline-flex;gap:4px;align-items:center;height:18px}
+  .clp-spinner i{display:block;width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.9);animation:clpBounce 1.2s ease-in-out infinite}
+  .clp-spinner i:nth-child(1){animation-delay:0s}
+  .clp-spinner i:nth-child(2){animation-delay:.15s}
+  .clp-spinner i:nth-child(3){animation-delay:.3s}
+  .clp-spinner i:nth-child(4){animation-delay:.45s}
+  .clp-spinner i:nth-child(5){animation-delay:.6s}
+  @keyframes clpBounce{0%,80%,100%{transform:scale(0.4);opacity:.4}40%{transform:scale(1);opacity:1}}
 
   @media(max-width:768px){
     .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
@@ -246,10 +255,12 @@
       <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Print
     </button>
-    <a href="{% url 'download_classlist_pdf' %}?context={{ selected_context_key|urlencode }}&view_mode={{ current_view_mode }}" class="clp-top-action pdf" target="_blank">
+    <button type="button" class="clp-top-action pdf" id="clpPdfBtn"
+            onclick="clpDownloadPdf(this)"
+            data-url="{% url 'download_classlist_pdf' %}?context={{ selected_context_key|urlencode }}&view_mode={{ current_view_mode }}">
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Download PDF
-    </a>
+    </button>
   </div>
 
   <div class="clp-results visible" id="clpResults">
@@ -387,5 +398,26 @@
   }
 
 })();
+
+function clpDownloadPdf(btn) {
+    if (btn.disabled) return;
+    var orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="clp-spinner"><i></i><i></i><i></i><i></i><i></i></span> Generating\u2026';
+    fetch(btn.dataset.url)
+    .then(function(r) { if (!r.ok) throw new Error('PDF failed'); return r.blob(); })
+    .then(function(blob) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    })
+    .catch(function() { btn.disabled = false; btn.innerHTML = orig; alert('Failed to generate PDF.'); });
+}
 </script>
 {% endblock %}

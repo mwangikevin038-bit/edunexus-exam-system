@@ -49,12 +49,8 @@
   .ss-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .ss-btn-print{background:#fff;border:1.5px solid #4CAF50;color:#4CAF50}
   .ss-btn-print:hover{background:#4CAF50;color:#fff;box-shadow:0 4px 12px rgba(76,175,80,0.3);transform:translateY(-1px)}
-  .ss-btn-download{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
-  .ss-btn-download:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
-  .ss-btn-teal{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
-  .ss-btn-teal:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
-  .ss-btn-dark{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
-  .ss-btn-dark:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
+  .ss-btn-download,.ss-btn-teal,.ss-btn-dark{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
+  .ss-btn-download:hover,.ss-btn-teal:hover,.ss-btn-dark:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
   .ss-btn-hidden{display:none}
 
   .ss-sheet-toolbar{display:none;align-items:center;justify-content:flex-end;gap:10px;padding:12px 0;margin-bottom:0}
@@ -84,7 +80,7 @@
   .ss-table td.center{text-align:center;color:#000;font-size:12pt}
 
   .ss-loading{text-align:center;padding:48px}
-  .ss-spinner{display:inline-block;width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:#16a34a;border-radius:50%;animation:ss-spin 0.7s linear infinite}
+  .ss-spinner{display:inline-block;width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:#4CAF50;border-radius:50%;animation:ss-spin 0.7s linear infinite}
   @keyframes ss-spin{to{transform:rotate(360deg)}}
   .ss-loading-text{font-family:'Inter',sans-serif;font-size:13px;color:#9ca3af;margin-top:10px}
 
@@ -592,7 +588,7 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
   });
 
   downloadBtn.addEventListener('click',function(){
-    EDUNEXUSPrint.printCurrentPage();
+    EDUNEXUSPrint.openPrintWindow('.ss-sheet', {title:'{{ selected_grade|default:"Score" }} {{ selected_stream|default:"Sheet" }} - Score Sheet'});
   });
 
   updateGetBtn();

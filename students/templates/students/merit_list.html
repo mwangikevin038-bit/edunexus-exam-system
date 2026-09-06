@@ -5,6 +5,15 @@
 <style>
   .btn-print-premium:hover{background:#4CAF50!important;color:#fff!important;box-shadow:0 4px 12px rgba(76,175,80,0.3)!important;transform:translateY(-1px)!important}
   .btn-pdf-premium:hover{background:#3d8b40!important;border-color:#3d8b40!important;box-shadow:0 4px 12px rgba(76,175,80,0.35)!important;transform:translateY(-1px)!important}
+  .btn-pdf-premium:disabled{opacity:1;cursor:wait;transform:none!important;box-shadow:none!important;gap:10px}
+  .clp-spinner{display:inline-flex;gap:4px;align-items:center;height:18px}
+  .clp-spinner i{display:block;width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.9);animation:clpBounce 1.2s ease-in-out infinite}
+  .clp-spinner i:nth-child(1){animation-delay:0s}
+  .clp-spinner i:nth-child(2){animation-delay:.15s}
+  .clp-spinner i:nth-child(3){animation-delay:.3s}
+  .clp-spinner i:nth-child(4){animation-delay:.45s}
+  .clp-spinner i:nth-child(5){animation-delay:.6s}
+  @keyframes clpBounce{0%,80%,100%{transform:scale(0.4);opacity:.4}40%{transform:scale(1);opacity:1}}
 </style>
 <nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
@@ -44,7 +53,7 @@
   .ml-page{max-width:1200px;margin:0 auto;padding:40px 40px 60px;background:#eaecf0;min-height:100vh}
   .main-content{background:#eaecf0!important}
   .app-content{background:#eaecf0!important}
-  .ml-card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:0;overflow:hidden}
+  .ml-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:0;overflow:hidden}
   .ml-card-header{display:flex;align-items:center;justify-content:space-between;padding:24px 32px 12px}
   .ml-card-header h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:20px;color:#111827;margin:0}
   .ml-toggle{background:none;border:none;cursor:pointer;padding:4px;color:#64748b;transition:color 0.15s}
@@ -62,8 +71,8 @@
   .ml-field select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
   .ml-btn-row{display:flex;justify-content:flex-end;margin-top:28px}
   .ml-fetch-btn{display:inline-flex;align-items:center;gap:8px;background:#d1d5db;color:#6b7280;border:none;border-radius:6px;padding:12px 32px;font-size:14px;font-weight:700;cursor:not-allowed;font-family:'Inter',sans-serif;transition:all 0.2s ease}
-  .ml-fetch-btn.ready{background:#84cc16;color:#14532d;cursor:pointer;box-shadow:0 2px 8px rgba(132,204,22,0.3)}
-  .ml-fetch-btn.ready:hover{background:#65a30d;color:#052e16;box-shadow:0 4px 14px rgba(101,163,13,0.4);transform:translateY(-1px)}
+  .ml-fetch-btn.ready{background:#4CAF50;color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(76,175,80,0.3)}
+  .ml-fetch-btn.ready:hover{background:#3d8b40;color:#fff;box-shadow:0 4px 14px rgba(76,175,80,0.4);transform:translateY(-1px)}
   .ml-loading{display:none;text-align:center;padding:80px 20px}
   .ml-loading.visible{display:block}
   .ml-loading-text{font-size:20px;color:#1e40af;font-weight:700;margin-bottom:24px;font-family:'Inter',sans-serif}
@@ -285,13 +294,14 @@ html,body{overflow:visible!important;margin:0!important;padding:0!important;back
       <i class="ph ph-printer" style="font-size: 1.1rem;"></i> Print
     </button>
 
-    <a href="{% if show_table %}{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}{% else %}#{% endif %}"
-       target="_blank"
-       class="action-btn btn-pdf-premium"
-       id="broadsheetPdfLink"
-       style="display: inline-flex; align-items: center; gap: 7px; background: #4CAF50; border: 1.5px solid #4CAF50; color: #ffffff; padding: 9px 20px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+    <button type="button"
+            class="action-btn btn-pdf-premium"
+            id="broadsheetPdfLink"
+            onclick="clpDownloadPdf(this)"
+            data-url="{% if show_table %}{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}{% endif %}"
+            style="display: inline-flex; align-items: center; gap: 7px; background: #4CAF50; border: 1.5px solid #4CAF50; color: #ffffff; padding: 9px 20px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
       <i class="ph ph-download-simple" style="font-size: 1.1rem;"></i> Download PDF
-    </a>
+    </button>
   </div>
 
   <div id="broadsheet-display-target" class="animate-fade-in" style="margin-top: 0;">
@@ -488,5 +498,27 @@ html,body{overflow:visible!important;margin:0!important;padding:0!important;back
       }
     });
   })();
+</script>
+<script>
+function clpDownloadPdf(btn) {
+    if (btn.disabled) return;
+    var orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="clp-spinner"><i></i><i></i><i></i><i></i><i></i></span> Generating\u2026';
+    fetch(btn.dataset.url)
+    .then(function(r) { if (!r.ok) throw new Error('PDF failed'); return r.blob(); })
+    .then(function(blob) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    })
+    .catch(function() { btn.disabled = false; btn.innerHTML = orig; alert('Failed to generate PDF.'); });
+}
 </script>
 {% endblock %}

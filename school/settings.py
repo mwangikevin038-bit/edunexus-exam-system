@@ -152,7 +152,7 @@ DATA_INTEGRITY_KEY = os.environ.get('DATA_INTEGRITY_KEY', SECRET_KEY)
 # ==============================================================================
 _REDIS_URL = os.environ.get('EDUNEXUS_REDIS_URL', '')
 
-if not DEBUG and _REDIS_URL:
+if _REDIS_URL:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
@@ -285,7 +285,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 0 if DEBUG else 600,
+        'CONN_MAX_AGE': 600,
         'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
             'connect_timeout': 5,
@@ -379,8 +379,8 @@ CELERY_ENABLE_UTC = True
 CELERY_WORKER_CONCURRENCY = 4
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 200
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-CELERY_TASK_TIME_LIMIT = 300
-CELERY_TASK_SOFT_TIME_LIMIT = 240
+CELERY_TASK_TIME_LIMIT = 3600
+CELERY_TASK_SOFT_TIME_LIMIT = 3300
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_BROKER_TRANSPORT_OPTIONS = {
