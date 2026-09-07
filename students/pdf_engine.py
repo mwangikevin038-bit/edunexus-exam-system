@@ -164,9 +164,11 @@ async def _render_html_to_pdf_async(
                 timeout=timeout_ms,
             )
 
-        # Wait for any Chart.js canvases to finish rendering
+        # Brief settle delay — matplotlib SVGs render synchronously via
+        # set_content, but networkidle + a short pause ensures fonts and
+        # any deferred layout are flushed before PDF capture.
         try:
-            await page.wait_for_timeout(800)  # Give Chart.js time to render
+            await page.wait_for_timeout(100)
         except Exception:
             pass
 

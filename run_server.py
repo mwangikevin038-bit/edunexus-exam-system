@@ -89,7 +89,7 @@ def _start_celery():
          "-l", CELERY_LOGLEVEL,
          "-P", "prefork",
          "--concurrency=4",
-         "--max-tasks-per-child=50",
+         "--max-tasks-per-child=20",
          "-Q", "pdf_generation",
          "-n", "pdf_worker@%%h"],
         cwd=PROJECT_ROOT,

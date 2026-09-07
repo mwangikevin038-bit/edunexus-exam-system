@@ -650,9 +650,9 @@ def populate_exam_summaries(
 
 pdf_cache = caches["pdf_generation"]
 
-PDF_CHUNK_SIZE = 50
+PDF_CHUNK_SIZE = 100
 PDF_MAX_RETRIES = 2
-PDF_RETRY_BACKOFF = 5  # seconds
+PDF_RETRY_BACKOFF = 3  # seconds
 PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
@@ -961,15 +961,19 @@ def generate_bulk_report_pdf(
 def _compile_chunk_with_retry(compile_fn, chunk, chunk_start, max_retries, backoff):
     """
     Compile a chunk of student contexts with retry logic and parallelism.
-    Uses ThreadPoolExecutor for parallel WeasyPrint renders (releases GIL).
+    Uses ProcessPoolExecutor for true parallel WeasyPrint renders (CPU-bound).
+    Falls back to ThreadPoolExecutor if process spawning fails.
     Returns a list of pdf_bytes or None for each student.
     """
     import time
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
     results = [None] * len(chunk)
     pending = list(range(len(chunk)))
-    max_workers = min(2, max(1, (os.cpu_count() or 2)))
+    cpu_count = os.cpu_count() or 4
+    max_workers = min(cpu_count, 8)
+
+    ExecutorClass = ProcessPoolExecutor
 
     for attempt in range(max_retries + 1):
         if not pending:
@@ -978,24 +982,45 @@ def _compile_chunk_with_retry(compile_fn, chunk, chunk_start, max_retries, backo
         if attempt > 0:
             time.sleep(backoff * attempt)
 
-        # Parallel compilation within the chunk
         futures = {}
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            for i in list(pending):
-                futures[executor.submit(compile_fn, chunk[i])] = i
+        try:
+            with ExecutorClass(max_workers=max_workers) as executor:
+                for i in list(pending):
+                    futures[executor.submit(compile_fn, chunk[i])] = i
 
-            for future in as_completed(futures):
-                i = futures[future]
-                try:
-                    pdf = future.result()
-                    if pdf is not None:
-                        results[i] = pdf
-                        pending.remove(i)
-                except Exception:
-                    logger.warning(
-                        "Chunk compile failed: chunk_start=%d idx=%d attempt=%d",
-                        chunk_start, i, attempt,
-                        exc_info=True,
-                    )
+                for future in as_completed(futures):
+                    i = futures[future]
+                    try:
+                        pdf = future.result()
+                        if pdf is not None:
+                            results[i] = pdf
+                            pending.remove(i)
+                    except Exception:
+                        logger.warning(
+                            "Chunk compile failed: chunk_start=%d idx=%d attempt=%d",
+                            chunk_start, i, attempt,
+                            exc_info=True,
+                        )
+        except RuntimeError:
+            ExecutorClass = ThreadPoolExecutor
+            max_workers = min(4, cpu_count)
+            futures = {}
+            with ExecutorClass(max_workers=max_workers) as executor:
+                for i in list(pending):
+                    futures[executor.submit(compile_fn, chunk[i])] = i
+
+                for future in as_completed(futures):
+                    i = futures[future]
+                    try:
+                        pdf = future.result()
+                        if pdf is not None:
+                            results[i] = pdf
+                            pending.remove(i)
+                    except Exception:
+                        logger.warning(
+                            "Chunk compile failed: chunk_start=%d idx=%d attempt=%d",
+                            chunk_start, i, attempt,
+                            exc_info=True,
+                        )
 
     return results
