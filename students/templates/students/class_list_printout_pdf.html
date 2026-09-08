@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Class List</title>
+  <title>{{ selected_grade }} {{ selected_stream }} — Class List</title>
   <style>
     @page {
       size: A4 portrait;
-      margin: 8mm 10mm 20mm 10mm;
+      margin: 8mm 10mm 15mm 10mm;
       @bottom-center {
-        content: "GENERATED FROM EDUNEXUS EXAM SYSTEM © 2026";
+        content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
         font-family: "Times New Roman", Times, serif;
         font-size: 8pt;
         font-weight: 700;
@@ -29,24 +29,153 @@
         white-space: nowrap;
       }
     }
-    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
-    body { margin: 0; padding: 0; background: #fff; font-family: "Times New Roman", Times, serif; font-size: 12pt; }
-    .pdf-sheet { width: 100%; }
-    .pdf-heading {
-      display: flex; align-items: center; justify-content: center;
-      position: relative; padding: 8px 0 6px 100px; min-height: auto;
-      margin: 0 0 8px; text-align: center; background: #fff;
-      border: none; border-bottom: 2px solid {{ section_accent|default:'#0f1727' }};
+
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+      box-sizing: border-box;
     }
-    .pdf-logo { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 80px; height: 80px; object-fit: contain; border-radius: 6px; }
+
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      color: #000;
+    }
+
+    .pdf-sheet {
+      width: 100%;
+      padding: 0;
+    }
+
+    /* ── Heading — matches print template sheet-heading ─────────────── */
+    .pdf-heading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 8px 0 6px 100px;
+      min-height: auto;
+      margin: 0 0 8px;
+      text-align: center;
+      background: #fff;
+      border: none;
+      border-bottom: 2px solid {{ section_accent|default:'#0f1727' }};
+    }
+    .pdf-logo {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
     .pdf-heading-copy { text-align: center; }
-    .pdf-heading-copy h2 { font-family: "Times New Roman", Times, serif; font-size: 22px; font-weight: 900; text-transform: uppercase; color: {{ section_accent|default:'#0f1727' }}; margin: 0; line-height: 1.1; letter-spacing: 0.06em; }
-    .pdf-heading-copy p { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #374151; margin: 1px 0 0; font-weight: 600; }
-    .register-table { width: 100%; border-collapse: collapse; border: 1px solid #000; font-family: "Times New Roman", Times, serif; font-size: 12pt; table-layout: fixed; }
-    .register-table th { background: #e2e6ea; color: #000; font-weight: 900; font-size: 12pt; padding: 5px 8px; border: 1px solid #000; text-transform: uppercase; text-align: left; line-height: 1.3; }
-    .register-table td { padding: 4px 8px; border: 1px solid #000; color: #000; font-weight: 400; font-size: 12pt; line-height: 1.3; vertical-align: middle; }
-    .register-table tr { page-break-inside: avoid; break-inside: avoid; }
-    .grid-cell { width: 36px; height: 34px; background: #fff; font-size: 12pt; }
+    .pdf-heading-copy h2 {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 22px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: {{ section_accent|default:'#0f1727' }};
+      margin: 0;
+      line-height: 1.1;
+      letter-spacing: 0.06em;
+    }
+    .pdf-heading-copy .pdf-addr {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 11px;
+      color: #374151;
+      font-weight: 600;
+      margin: 1px 0 0;
+    }
+    .pdf-heading-copy .pdf-contact {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 11px;
+      color: #374151;
+      font-weight: 500;
+      margin: 1px 0 0;
+    }
+    .pdf-heading-copy .pdf-subtitle {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 11px;
+      color: #374151;
+      margin: 2px 0 0;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .pdf-heading-copy .pdf-year {
+      display: inline-block;
+      background: {{ section_accent|default:'#0f1727' }};
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 20px;
+      margin-left: 4px;
+    }
+
+    /* ── Accent bar ──────────────────────────────────────────────────── */
+    .pdf-accent-bar {
+      height: 3px;
+      background: {{ section_accent|default:'#0f1727' }};
+      border-radius: 2px;
+      margin: 0 0 10px;
+    }
+
+    /* ── Table — matches print template register-table ───────────────── */
+    .register-table {
+      width: 100%;
+      min-width: 0;
+      border-collapse: collapse;
+      border: 1px solid #000;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      table-layout: fixed;
+    }
+    .register-table th {
+      background: #e2e6ea;
+      color: #000;
+      font-weight: 900;
+      font-size: 12pt;
+      padding: 5px 8px;
+      border: 1px solid #000;
+      text-transform: uppercase;
+      text-align: left;
+      line-height: 1.2;
+    }
+    .register-table td {
+      padding: 4px 8px;
+      border: 1px solid #000;
+      color: #000;
+      font-weight: 400;
+      font-size: 12pt;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
+    .register-table tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .register-table thead {
+      display: table-header-group;
+    }
+    .col-adm { width: 6.5%; }
+    .col-stream { width: 10%; }
+    .col-name { width: 20%; }
+    .col-gender { width: 7%; }
+    .col-assess { width: 12%; }
+    .grid-cell {
+      width: auto;
+      height: 28px;
+      background: #fff;
+      font-size: 12pt;
+    }
   </style>
 </head>
 <body>
@@ -57,7 +186,15 @@
       {% endif %}
       <div class="pdf-heading-copy">
         <h2>{{ school.name }}</h2>
-        <p>{{ selected_grade }} {{ selected_stream }} | Teacher Mark Entry Sheet | {% now "Y" %}</p>
+        {% if school.address %}<p class="pdf-addr">Address: {{ school.address }}</p>{% endif %}
+        {% if school.phone or school.email %}
+        <p class="pdf-contact">
+          {% if school.phone %}Tel {{ school.phone }}{% endif %}
+          {% if school.phone and school.email %} &nbsp;|&nbsp; {% endif %}
+          {% if school.email %}Email {{ school.email }}{% endif %}
+        </p>
+        {% endif %}
+        <p class="pdf-subtitle">{{ selected_grade }} {{ selected_stream }} | Teacher Mark Entry Sheet <span class="pdf-year">{% now "Y" %}</span></p>
       </div>
     </div>
 
@@ -65,13 +202,14 @@
     <table class="register-table">
       <thead>
         <tr>
-          <th style="width:70px">Adm</th>
+          <th class="col-adm">Adm</th>
           {% if selected_stream == 'Combined' %}
-            <th style="width:80px">Stream</th>
+            <th class="col-stream">Stream</th>
           {% endif %}
-          <th style="width:220px">Learner Name</th>
-          <th style="width:120px">Assessment No</th>
-          {% for i in "123456789012345" %}
+          <th class="col-name">Learner Name</th>
+          <th class="col-gender">Sex</th>
+          <th class="col-assess">Ass. No</th>
+          {% for i in "1234567890" %}
             <th class="grid-cell"></th>
           {% endfor %}
         </tr>
@@ -83,9 +221,10 @@
           {% if selected_stream == 'Combined' %}
             <td>{{ s.stream }}</td>
           {% endif %}
-          <td>{{ s.name }}</td>
+          <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.name }}</td>
+          <td>{{ s.gender|default:"-" }}</td>
           <td>{{ s.assessment_no|default:"-" }}</td>
-          {% for i in "123456789012345" %}
+          {% for i in "1234567890" %}
             <td class="grid-cell"></td>
           {% endfor %}
         </tr>

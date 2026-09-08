@@ -122,6 +122,12 @@ var BulkPDF = (function () {
         var card = overlay.querySelector('.rc-gen-card');
         if (!card) return null;
 
+        // Save grade/exam text BEFORE clearing innerHTML (they live inside the card)
+        var gradeEl = document.getElementById('rcGenGrade');
+        var examEl = document.getElementById('rcGenExam');
+        var gradeText = gradeEl ? gradeEl.textContent : '';
+        var examText = examEl ? examEl.textContent : '';
+
         card.innerHTML = '';
 
         // Header
@@ -131,13 +137,21 @@ var BulkPDF = (function () {
         card.appendChild(header);
 
         // Summary
-        var grade = document.getElementById('rcGenGrade');
-        var exam = document.getElementById('rcGenExam');
-        if (grade || exam) {
+        if (gradeText || examText) {
             var summary = document.createElement('div');
             summary.className = 'rc-gen-summary';
-            if (grade) summary.appendChild(grade.cloneNode(true));
-            if (exam) summary.appendChild(exam.cloneNode(true));
+            if (gradeText) {
+                var g = document.createElement('div');
+                g.className = 'rc-gen-summary-grade';
+                g.textContent = gradeText;
+                summary.appendChild(g);
+            }
+            if (examText) {
+                var e = document.createElement('div');
+                e.className = 'rc-gen-summary-exam';
+                e.textContent = examText;
+                summary.appendChild(e);
+            }
             card.appendChild(summary);
         }
 
@@ -301,9 +315,8 @@ var BulkPDF = (function () {
             _formatTime((Date.now() - _startTime) / 1000);
         ui.cancelBtn.style.display = 'none';
 
-        // Confetti
-        var card = overlay.querySelector('.rc-gen-card');
-        if (card) _spawnConfetti(card);
+        // Confetti — append to overlay (not card) to avoid overflow:hidden clipping
+        if (overlay) _spawnConfetti(overlay);
 
         // Auto-download
         var downloadUrl = downloadTpl.replace('__JOBID__', jobId);

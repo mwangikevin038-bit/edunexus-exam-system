@@ -335,7 +335,8 @@ def admin_add_student(request):
     # GET — Build query and context
     # --------------------------------------------------------------------------
     section = get_request_school_section(request)
-    grades_for_section = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES
+    is_admin = user_has_main_school_admin_override(request.user)
+    grades_for_section = GRADE_CHOICES if is_admin else (LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES)
 
     tab = active_tab
     search_type = request.GET.get('search_type', 'adm_no')
@@ -1959,7 +1960,9 @@ def teacher_search_fields(request):
     WRAP_STYLE = 'display: flex; flex-direction: column; gap: 6px;'
 
     if search_type == 'name':
-        if section == 'LOWER_PRIMARY':
+        if is_admin_view:
+            grades = list(GRADE_CHOICES)
+        elif section == 'LOWER_PRIMARY':
             grades = list(LOWER_PRIMARY_GRADE_CHOICES)
         elif section == 'PRIMARY':
             grades = list(PRIMARY_GRADE_CHOICES)
@@ -2126,7 +2129,10 @@ def teacher_search_submit(request):
 def teacher_search_reset(request):
     """HTMX endpoint: return the empty search form shell to replace results."""
     section = get_request_school_section(request)
-    if section == 'LOWER_PRIMARY':
+    is_admin_view = user_has_main_school_admin_override(request.user)
+    if is_admin_view:
+        grades = list(GRADE_CHOICES)
+    elif section == 'LOWER_PRIMARY':
         grades = list(LOWER_PRIMARY_GRADE_CHOICES)
     elif section == 'PRIMARY':
         grades = list(PRIMARY_GRADE_CHOICES)

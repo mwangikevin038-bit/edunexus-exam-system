@@ -114,6 +114,10 @@ urlpatterns = [
     path('school-admin/api/grade-subjects/', views.api_grade_subjects, name='api_grade_subjects'),
     path('school-admin/api/check-grade-streams/', views.api_check_grade_streams, name='api_check_grade_streams'),
 
+    # ── Events ──────────────────────────────────────────────────────────
+    path('school-admin/events/add/', views.add_event, name='add_event'),
+    path('school-admin/events/<int:event_id>/delete/', views.delete_event, name='delete_event'),
+
     # ── Premium CSV Onboarding Engine ────────────────────────────────────
     path('school-admin/csv-onboard/', views.premium_csv_upload_page, name='premium_csv_upload'),
     path('school-admin/csv-onboard/fragment/', views.premium_csv_upload_fragment, name='premium_csv_upload_fragment'),

@@ -794,6 +794,21 @@ def school_admin_dashboard(request):
             'end': td.end_date.isoformat(),
         })
 
+    # --- School events for calendar ---
+    from ..models import Event
+    school_events_qs = Event.objects.filter(school=school).order_by('event_date', 'time')
+    school_events = []
+    for ev in school_events_qs:
+        school_events.append({
+            'id': ev.id,
+            'name': ev.name,
+            'date_mode': ev.date_mode,
+            'start': ev.event_date.isoformat(),
+            'end': ev.end_date.isoformat() if ev.end_date else ev.event_date.isoformat(),
+            'time': ev.time.strftime('%H:%M') if ev.time else '',
+            'participants': ev.participants,
+        })
+
     return render(request, 'students/dashboard_admin.html', {
         'total_students':       total_students,
         'total_teachers':       total_teachers,
@@ -819,4 +834,97 @@ def school_admin_dashboard(request):
         'is_primary':           True,
         'section_label':        'All Sections',
         'term_events_json':     _json.dumps(term_events),
+        'school_events_json':   _json.dumps(school_events),
     })
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Event CRUD
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@login_required(login_url='login')
+@school_admin_required
+def add_event(request):
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'ok': False, 'error': 'No school'}, status=400)
+
+    name = (request.POST.get('name') or '').strip()
+    date_mode = (request.POST.get('date_mode') or 'single').strip()
+    event_date_str = (request.POST.get('event_date') or '').strip()
+    end_date_str = (request.POST.get('end_date') or '').strip()
+    time_str = (request.POST.get('time') or '').strip()
+    participants = (request.POST.get('participants') or 'All').strip()
+
+    if not name:
+        return JsonResponse({'ok': False, 'error': 'Event name is required'}, status=400)
+    if not event_date_str:
+        return JsonResponse({'ok': False, 'error': 'Event date is required'}, status=400)
+
+    try:
+        from datetime import datetime as _dt
+        event_date = _dt.strptime(event_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'ok': False, 'error': 'Invalid date format (use YYYY-MM-DD)'}, status=400)
+
+    end_date = None
+    if date_mode == 'range' and end_date_str:
+        try:
+            end_date = _dt.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'ok': False, 'error': 'Invalid end date format'}, status=400)
+
+    event_time = None
+    if time_str:
+        try:
+            event_time = _dt.strptime(time_str, '%H:%M').time()
+        except ValueError:
+            return JsonResponse({'ok': False, 'error': 'Invalid time format (use HH:MM)'}, status=400)
+
+    from ..models import Event
+    ev = Event.objects.create(
+        school=school,
+        name=name,
+        date_mode=date_mode,
+        event_date=event_date,
+        end_date=end_date,
+        time=event_time,
+        participants=participants,
+        created_by=request.user,
+    )
+
+    return JsonResponse({
+        'ok': True,
+        'event': {
+            'id': ev.id,
+            'name': ev.name,
+            'date_mode': ev.date_mode,
+            'start': ev.event_date.isoformat(),
+            'end': ev.end_date.isoformat() if ev.end_date else ev.event_date.isoformat(),
+            'time': ev.time.strftime('%H:%M') if ev.time else '',
+            'participants': ev.participants,
+        }
+    })
+
+
+@login_required(login_url='login')
+@school_admin_required
+def delete_event(request, event_id):
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required'}, status=405)
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'ok': False, 'error': 'No school'}, status=400)
+
+    from ..models import Event
+    try:
+        ev = Event.objects.get(id=event_id, school=school)
+    except Event.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': 'Event not found'}, status=404)
+
+    ev.delete()
+    return JsonResponse({'ok': True})

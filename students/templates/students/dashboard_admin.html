@@ -88,45 +88,138 @@
     <!-- RIGHT SIDEBAR COLUMN (40% Width) -->
     <div class="dashboard-right-column">
         <div class="upcoming-events-card tall-layout">
-            <!-- Row 1: Header Title & Add Button -->
+            <!-- Header Row -->
             <div class="events-header">
                 <h3 class="events-title">Upcoming Events</h3>
                 <div class="events-header-actions">
-                    <button class="btn-icon-dimmed"><i class="ph ph-calendar"></i></button>
-                    <button class="btn-add-event">
+                    <div class="icon-toggle-group">
+                        <button class="icon-toggle-btn active" id="calViewListBtn" onclick="setCalView('list',null)" title="List view"><i class="ph ph-list-bullets"></i></button>
+                        <button class="icon-toggle-btn" id="calViewGridBtn" onclick="setCalView('month',null)" title="Calendar view"><i class="ph ph-calendar"></i></button>
+                    </div>
+                    <button class="btn-add-event" onclick="openEventModal()">
                         <i class="ph ph-plus"></i>
                         <span>Add Event</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Row 2: Date Selector Block (Centered Layout) -->
-            <div class="events-date-slider">
-                <button class="date-nav-arrow" onclick="calNav(-1)"><i class="ph ph-caret-left"></i></button>
-                <div class="date-display-box">
-                    <span class="main-date-range" id="calMain"></span>
-                    <span class="sub-date-range" id="calSub"></span>
+            <!-- Month Navigator + View Pills Row -->
+            <div class="events-nav-row">
+                <div class="events-date-slider">
+                    <button class="date-nav-arrow" onclick="calNav(-1)"><i class="ph ph-caret-left"></i></button>
+                    <div class="date-display-box">
+                        <span class="main-date-range" id="calMain"></span>
+                        <span class="sub-date-range" id="calSub"></span>
+                    </div>
+                    <button class="date-nav-arrow" onclick="calNav(1)"><i class="ph ph-caret-right"></i></button>
                 </div>
-                <button class="date-nav-arrow" onclick="calNav(1)"><i class="ph ph-caret-right"></i></button>
-            </div>
-
-            <!-- Row 3: Full Width View Filter Row -->
-            <div class="events-filter-bar">
                 <div class="view-filter-pills">
-                    <button class="view-pill" onclick="setCalView('month',this)">month</button>
+                    <button class="view-pill active" onclick="setCalView('month',this)">Month</button>
                     <button class="view-pill" onclick="setCalView('week',this)">Week</button>
-                    <button class="view-pill active" onclick="setCalView('day',this)">Day</button>
+                    <button class="view-pill" onclick="setCalView('day',this)">Day</button>
                     <button class="view-pill" onclick="setCalView('list',this)">List</button>
                 </div>
             </div>
 
-            <!-- Row 4: Viewport Area Box -->
-            <div class="events-viewport extended-panel">
-                <p class="empty-events-text">No events to display</p>
+            <!-- Calendar Grid Viewport -->
+            <div class="events-viewport extended-panel" id="eventsViewport">
+                <div class="cal-grid" id="calGrid"></div>
             </div>
         </div>
     </div>
 
+</div>
+
+<!-- ═══ Add Event Modal ═══════════════════════════════════════ -->
+<div class="event-modal-overlay" id="eventModalOverlay" onclick="closeEventModal()">
+    <div class="event-modal-dialog" onclick="event.stopPropagation()">
+        <div class="event-modal-header">
+            <h3 class="event-modal-title">Add Event</h3>
+            <button class="event-modal-close" onclick="closeEventModal()">&times;</button>
+        </div>
+        <div class="event-modal-body">
+            <div class="event-modal-row">
+                <!-- Left Column -->
+                <div class="event-modal-col">
+                    <div class="event-field">
+                        <label class="event-label">Event Name</label>
+                        <input type="text" id="evtName" class="event-input" placeholder="Event Name">
+                    </div>
+                    <div class="event-field">
+                        <label class="event-label">Event Dates</label>
+                        <div class="event-radio-group">
+                            <label class="event-radio">
+                                <input type="radio" name="dateMode" value="single" checked onchange="toggleDateMode()">
+                                <span class="event-radio-dot"></span>
+                                Single
+                            </label>
+                            <label class="event-radio">
+                                <input type="radio" name="dateMode" value="range" onchange="toggleDateMode()">
+                                <span class="event-radio-dot"></span>
+                                Range
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <!-- Right Column -->
+                <div class="event-modal-col">
+                    <div class="event-field">
+                        <label class="event-label">Event Participants</label>
+                        <div class="event-custom-select" id="participantSelect" onclick="toggleParticipantDropdown()">
+                            <span class="event-select-display" id="participantDisplay">Select participants</span>
+                            <div class="event-dropdown" id="participantDropdown">
+                                <div class="event-dropdown-item" onclick="selectParticipant('Teachers', event)">Teachers</div>
+                                <div class="event-dropdown-item" onclick="selectParticipant('Parents', event)">Parents</div>
+                                <div class="event-dropdown-item" onclick="selectParticipant('All', event)">All</div>
+                            </div>
+                        </div>
+                        <i class="ph ph-caret-down event-select-chevron"></i>
+                    </div>
+                    <div class="event-field">
+                        <label class="event-label" id="pickDateLabel">Pick date</label>
+                        <div class="event-datepicker-trigger" id="datePickerTrigger" onclick="openDatePicker()">
+                            <div class="event-datepicker-icon"><i class="ph ph-calendar"></i></div>
+                            <span class="event-datepicker-text" id="datePickerDisplay">Pick date/time</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="event-modal-footer">
+            <button class="event-btn-close" onclick="closeEventModal()">Close</button>
+            <button class="event-btn-save" onclick="saveEvent()">Save Event</button>
+        </div>
+
+        <!-- Custom Date/Time Picker Popup -->
+        <div class="event-datepicker-popup" id="datePickerPopup">
+            <div class="edp-header">
+                <button class="edp-nav" onclick="edpNavMonth(-1)"><i class="ph ph-caret-left"></i></button>
+                <span class="edp-month-year" id="edpMonthYear"></span>
+                <button class="edp-nav" onclick="edpNavMonth(1)"><i class="ph ph-caret-right"></i></button>
+            </div>
+            <div class="edp-weekdays">
+                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="edp-grid" id="edpGrid"></div>
+            <div class="edp-time">
+                <div class="edp-time-col">
+                    <button class="edp-time-arrow" onclick="edpTimeAdj('h',1)"><i class="ph ph-caret-up"></i></button>
+                    <span class="edp-time-val" id="edpHour">14</span>
+                    <button class="edp-time-arrow" onclick="edpTimeAdj('h',-1)"><i class="ph ph-caret-down"></i></button>
+                </div>
+                <span class="edp-time-sep">:</span>
+                <div class="edp-time-col">
+                    <button class="edp-time-arrow" onclick="edpTimeAdj('m',1)"><i class="ph ph-caret-up"></i></button>
+                    <span class="edp-time-val" id="edpMin">00</span>
+                    <button class="edp-time-arrow" onclick="edpTimeAdj('m',-1)"><i class="ph ph-caret-down"></i></button>
+                </div>
+            </div>
+            <div class="edp-actions">
+                <button class="edp-btn-cancel" onclick="closeDatePicker()">Cancel</button>
+                <button class="edp-btn-set" onclick="setDatePicker()">Set</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Component 4 Section Heading -->
@@ -341,7 +434,10 @@
         <section class="dash-events-card" aria-label="Upcoming Events">
             <div class="dash-events-head">
                 <h3 class="dash-events-title">Upcoming Events</h3>
-                <button class="dash-events-cal-btn"><i class="ph ph-calendar"></i></button>
+                <div class="dash-events-head-actions">
+                    <button class="dash-events-cal-btn" onclick="setCalView('list',null)"><i class="ph ph-list-bullets"></i></button>
+                    <button class="dash-events-cal-btn active" onclick="setCalView('month',null)"><i class="ph ph-calendar"></i></button>
+                </div>
             </div>
             <div class="dash-events-nav">
                 <button class="dash-events-arrow" onclick="calNav(-1)"><i class="ph ph-caret-left"></i></button>
@@ -350,15 +446,15 @@
                     <span class="dash-events-sub" id="calSub"></span>
                 </div>
                 <button class="dash-events-arrow" onclick="calNav(1)"><i class="ph ph-caret-right"></i></button>
-            </div>
-            <div class="dash-events-pills">
-                <button class="dash-pill" onclick="setCalView('month',this)">Month</button>
-                <button class="dash-pill" onclick="setCalView('week',this)">Week</button>
-                <button class="dash-pill active" onclick="setCalView('day',this)">Day</button>
-                <button class="dash-pill" onclick="setCalView('list',this)">List</button>
+                <div class="dash-events-pills">
+                    <button class="dash-pill" onclick="setCalView('month',this)">Month</button>
+                    <button class="dash-pill" onclick="setCalView('week',this)">Week</button>
+                    <button class="dash-pill" onclick="setCalView('day',this)">Day</button>
+                    <button class="dash-pill" onclick="setCalView('list',this)">List</button>
+                </div>
             </div>
             <div class="dash-events-viewport" id="eventsViewport">
-                <p class="dash-events-empty">No events to display</p>
+                <div class="cal-grid" id="calGrid"></div>
             </div>
         </section>
 
@@ -466,91 +562,424 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
 (function(){
     var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     var FULL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     var baseDate = new Date();
     var offset = 0;
-    var view = 'day';
+    var view = 'month';
     var termEvents = {{ term_events_json|safe }};
+    var schoolEvents = {{ school_events_json|safe }};
 
-    function startOfWeek(d){ var s=new Date(d); var day=s.getDay(); s.setDate(s.getDate()-day); s.setHours(0,0,0,0); return s; }
+    function startOfWeek(d){ var s=new Date(d); var day=s.getDay(); s.setDate(s.getDate()-(day===0?6:day-1)); s.setHours(0,0,0,0); return s; }
     function endOfWeek(d){ var e=startOfWeek(d); e.setDate(e.getDate()+6); e.setHours(23,59,59,999); return e; }
     function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
     function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
 
-    function renderEvents(){
+    function getEventDates(){
         var now = new Date();
         now.setHours(0,0,0,0);
-        var vp = document.getElementById('eventsViewport') || document.querySelector('.events-viewport');
-        if(!vp) return;
-
-        var events = [];
+        var evDates = {};
         termEvents.forEach(function(te){
             var sd = new Date(te.start);
             var ed = new Date(te.end);
-            events.push({
-                label: te.term + ' ' + te.year + ' (' + sd.getDate()+' '+MONTHS[sd.getMonth()]+' – '+ed.getDate()+' '+MONTHS[ed.getMonth()]+')',
-                start: sd,
-                end: ed,
-                status: (now >= sd && now <= ed) ? 'active' : (now < sd ? 'upcoming' : 'past')
-            });
+            var cur = new Date(sd);
+            while(cur <= ed){
+                var key = cur.getFullYear()+'-'+(cur.getMonth()+1)+'-'+cur.getDate();
+                evDates[key] = {term: te.term, year: te.year, start: sd, end: ed};
+                cur.setDate(cur.getDate()+1);
+            }
         });
+        return evDates;
+    }
 
-        if(events.length === 0){
-            vp.innerHTML = '<p class="empty-events-text">No term dates configured</p>';
-            return;
-        }
+    function renderCalendarGrid(){
+        var grid = document.getElementById('calGrid');
+        if(!grid) return;
+        var now = new Date();
+        now.setHours(0,0,0,0);
+        var ref = new Date(now);
+        ref.setMonth(ref.getMonth() + offset);
+
+        var firstDay = startOfMonth(ref);
+        var lastDay = endOfMonth(ref);
+
+        var startDayOfWeek = firstDay.getDay();
+        var startIdx = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
 
         var html = '';
-        events.forEach(function(ev){
-            var icon = ev.status === 'active' ? '&#9679;' : (ev.status === 'upcoming' ? '&#9654;' : '&#9632;');
-            var color = ev.status === 'active' ? '#4CAF50' : (ev.status === 'upcoming' ? '#3b82f6' : '#94a3b8');
-            var bg = ev.status === 'active' ? '#f0fdf4' : (ev.status === 'upcoming' ? '#eff6ff' : '#f8fafc');
-            html += '<div class="event-item" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:8px;background:'+bg+';border:1px solid '+color+'22">';
-            html += '<span style="color:'+color+';font-size:10px">'+icon+'</span>';
-            html += '<div style="flex:1"><div style="font-size:.82rem;font-weight:600;color:#1e293b">'+ev.label+'</div>';
-            html += '<div style="font-size:.72rem;color:#64748b;margin-top:2px">'+ev.status.charAt(0).toUpperCase()+ev.status.slice(1)+'</div></div>';
-            html += '</div>';
+        DAYS.forEach(function(d){
+            html += '<div class="cal-header-cell">'+d+'</div>';
         });
+
+        var totalCells = startIdx + lastDay.getDate();
+        var rows = Math.ceil(totalCells / 7);
+
+        for(var i = 0; i < rows * 7; i++){
+            var dayNum = i - startIdx + 1;
+            var classes = ['cal-day-cell'];
+            var cellDate = new Date(ref.getFullYear(), ref.getMonth(), dayNum);
+            var isCurrentMonth = cellDate.getMonth() === ref.getMonth();
+            var isToday = cellDate.getTime() === now.getTime();
+
+            if(!isCurrentMonth) classes.push('outside');
+            if(isToday) classes.push('today');
+
+            html += '<div class="'+classes.join(' ')+'">';
+            if(isCurrentMonth){
+                html += '<span class="cal-day-num">'+cellDate.getDate()+'</span>';
+            }
+            html += '</div>';
+        }
+        grid.innerHTML = html;
+    }
+
+    function renderWeekView(){
+        var vp = document.getElementById('eventsViewport');
+        if(!vp) return;
+        var now = new Date();
+        var ref = new Date(now);
+        ref.setDate(now.getDate() + offset*7);
+        var ws = startOfWeek(ref), we = endOfWeek(ref);
+        var html = '<div class="cal-week-list">';
+        var d = new Date(ws);
+        while(d <= we){
+            var isToday = d.toDateString() === now.toDateString();
+            html += '<div class="cal-week-row'+(isToday?' today':'')+'">';
+            html += '<span class="cal-week-day">'+DAYS[d.getDay()===0?6:d.getDay()-1]+'</span>';
+            html += '<span class="cal-week-date">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</span>';
+            html += '</div>';
+            d.setDate(d.getDate()+1);
+        }
+        html += '</div>';
         vp.innerHTML = html;
     }
 
-    function render(){
+    function renderDayView(){
+        var vp = document.getElementById('eventsViewport');
+        if(!vp) return;
+        var now = new Date();
+        var ref = new Date(now);
+        ref.setDate(now.getDate() + offset);
+        var evDates = getEventDates();
+        var dateKey = ref.getFullYear()+'-'+(ref.getMonth()+1)+'-'+ref.getDate();
+        var ev = evDates[dateKey];
+        var html = '<div class="cal-day-detail">';
+        html += '<div class="cal-day-detail-date">'+DAYS[ref.getDay()===0?6:ref.getDay()-1]+', '+ref.getDate()+' '+MONTHS[ref.getMonth()]+' '+ref.getFullYear()+'</div>';
+        if(ev){
+            html += '<div class="cal-day-event-badge">'+ev.term+' '+ev.year+'</div>';
+        }
+        var dayEvents = schoolEvents.filter(function(sEv){
+            var sd = new Date(sEv.start);
+            var ed = new Date(sEv.end);
+            var check = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+            return check >= new Date(sd.getFullYear(),sd.getMonth(),sd.getDate()) && check <= new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());
+        });
+        dayEvents.forEach(function(sEv){
+            var timeStr = sEv.time ? ' at '+sEv.time : '';
+            html += '<div class="cal-day-event-badge custom-event">'+sEv.name+timeStr+'</div>';
+        });
+        if(!ev && dayEvents.length === 0){
+            html += '<p class="empty-events-text">No events on this day</p>';
+        }
+        html += '</div>';
+        vp.innerHTML = html;
+    }
+
+    function renderListView(){
+        var vp = document.getElementById('eventsViewport');
+        if(!vp) return;
+        var now = new Date();
+        now.setHours(0,0,0,0);
+        if(termEvents.length === 0 && schoolEvents.length === 0){
+            vp.innerHTML = '<p class="empty-events-text">No events yet</p>';
+            return;
+        }
+        var html = '<div class="cal-list-view">';
+        termEvents.forEach(function(te){
+            var sd = new Date(te.start);
+            var ed = new Date(te.end);
+            var status = (now >= sd && now <= ed) ? 'active' : (now < sd ? 'upcoming' : 'past');
+            var color = status === 'active' ? '#22c55e' : (status === 'upcoming' ? '#3b82f6' : '#94a3b8');
+            var bg = status === 'active' ? '#f0fdf4' : (status === 'upcoming' ? '#eff6ff' : '#f8fafc');
+            html += '<div class="cal-list-item" style="background:'+bg+';border-left:3px solid '+color+'">';
+            html += '<div class="cal-list-label">'+te.term+' '+te.year+'</div>';
+            html += '<div class="cal-list-dates">'+sd.getDate()+' '+MONTHS[sd.getMonth()]+' – '+ed.getDate()+' '+MONTHS[ed.getMonth()]+' '+ed.getFullYear()+'</div>';
+            html += '<span class="cal-list-status" style="color:'+color+'">'+status.charAt(0).toUpperCase()+status.slice(1)+'</span>';
+            html += '</div>';
+        });
+        schoolEvents.forEach(function(ev){
+            var sd = new Date(ev.start);
+            var ed = new Date(ev.end);
+            var status = (now >= sd && now <= ed) ? 'active' : (now < sd ? 'upcoming' : 'past');
+            var color = status === 'active' ? '#22c55e' : (status === 'upcoming' ? '#8b5cf6' : '#94a3b8');
+            var bg = status === 'active' ? '#f0fdf4' : (status === 'upcoming' ? '#f5f3ff' : '#f8fafc');
+            var dateStr = ev.date_mode==='range' ? sd.getDate()+' '+MONTHS[sd.getMonth()]+' – '+ed.getDate()+' '+MONTHS[ed.getMonth()]+' '+ed.getFullYear() : sd.getDate()+' '+MONTHS[sd.getMonth()]+' '+sd.getFullYear();
+            var timeStr = ev.time ? ' at '+ev.time : '';
+            html += '<div class="cal-list-item" style="background:'+bg+';border-left:3px solid '+color+'">';
+            html += '<div class="cal-list-label">'+ev.name+'</div>';
+            html += '<div class="cal-list-dates">'+dateStr+timeStr+' — '+ev.participants+'</div>';
+            html += '<span class="cal-list-status" style="color:'+color+'">'+status.charAt(0).toUpperCase()+status.slice(1)+'</span>';
+            html += '<button class="cal-list-delete" onclick="deleteEvent('+ev.id+')" title="Delete event"><i class="ph ph-trash"></i></button>';
+            html += '</div>';
+        });
+        html += '</div>';
+        vp.innerHTML = html;
+    }
+
+    function renderDateText(){
         var now = new Date();
         var ref = new Date(now);
         var mainEl = document.getElementById('calMain');
         var subEl = document.getElementById('calSub');
         if(!mainEl || !subEl) return;
+        mainEl.textContent = '';
+        subEl.textContent = '';
 
-        if(view==='week'){
+        if(view==='month'){
+            ref.setMonth(now.getMonth() + offset);
+            mainEl.textContent = FULL_MONTHS[ref.getMonth()];
+            subEl.textContent = ref.getFullYear();
+        } else if(view==='week'){
             ref.setDate(now.getDate() + offset*7);
             var ws = startOfWeek(ref), we = endOfWeek(ref);
-            mainEl.textContent = ws.getDate()+' '+MONTHS[ws.getMonth()]+' –';
-            subEl.textContent = we.getDate()+' '+MONTHS[we.getMonth()]+' '+we.getFullYear();
+            mainEl.textContent = ws.getDate()+' '+MONTHS[ws.getMonth()]+' – '+we.getDate()+' '+MONTHS[we.getMonth()];
+            subEl.textContent = we.getFullYear();
         } else if(view==='day'){
             ref.setDate(now.getDate() + offset);
             mainEl.textContent = ref.getDate()+' '+MONTHS[ref.getMonth()];
             subEl.textContent = ref.getFullYear();
-        } else if(view==='month'){
-            ref.setMonth(now.getMonth() + offset);
-            mainEl.textContent = FULL_MONTHS[ref.getMonth()];
-            subEl.textContent = ref.getFullYear();
         } else {
-            ref.setDate(now.getDate() + offset*7);
-            var ws2 = startOfWeek(ref), we2 = endOfWeek(ref);
-            mainEl.textContent = ws2.getDate()+' '+MONTHS[ws2.getMonth()]+' –';
-            subEl.textContent = we2.getDate()+' '+MONTHS[we2.getMonth()]+' '+we2.getFullYear();
+            mainEl.textContent = 'Upcoming Events';
+            subEl.textContent = '';
         }
-        renderEvents();
+    }
+
+    function renderViewport(){
+        var vp = document.getElementById('eventsViewport');
+        if(!vp) return;
+        if(view==='month'){
+            vp.innerHTML = '<div class="cal-grid" id="calGrid"></div>';
+            renderCalendarGrid();
+        } else if(view==='week'){
+            renderWeekView();
+        } else if(view==='day'){
+            renderDayView();
+        } else {
+            renderListView();
+        }
+    }
+
+    function render(){
+        renderDateText();
+        renderViewport();
     }
 
     window.calNav = function(dir){ offset+=dir; render(); };
     window.setCalView = function(v, btn){
-        view=v; offset=0;
-        document.querySelectorAll('.view-filter-pills .view-pill, .dash-events-pills .dash-pill').forEach(function(p){p.classList.remove('active');});
+        view = v; offset = 0;
+        document.querySelectorAll('.view-filter-pills .view-pill').forEach(function(p){p.classList.remove('active');});
         if(btn) btn.classList.add('active');
+        else {
+            document.querySelectorAll('.view-filter-pills .view-pill').forEach(function(p){
+                if(p.textContent.trim().toLowerCase() === v) p.classList.add('active');
+            });
+        }
+        var listBtn = document.getElementById('calViewListBtn');
+        var gridBtn = document.getElementById('calViewGridBtn');
+        if(listBtn) listBtn.classList.toggle('active', v==='list');
+        if(gridBtn) gridBtn.classList.toggle('active', v!=='list');
         render();
     };
 
     render();
+})();
+</script>
+
+<!-- ═══ Event Modal JS ════════════════════════════════════════ -->
+<script>
+(function(){
+    var edpDate = new Date();
+    var edpHour = 14, edpMin = 0;
+    var selectedDateStr = '';
+    var EDPMONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var EDPFULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    window.openEventModal = function(){
+        var overlay = document.getElementById('eventModalOverlay');
+        if(overlay) overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeEventModal = function(){
+        var overlay = document.getElementById('eventModalOverlay');
+        if(overlay) overlay.classList.remove('open');
+        document.body.style.overflow = '';
+        var popup = document.getElementById('datePickerPopup');
+        if(popup) popup.classList.remove('open');
+    };
+
+    window.toggleDateMode = function(){
+        var mode = document.querySelector('input[name="dateMode"]:checked').value;
+        var label = document.getElementById('pickDateLabel');
+        if(label) label.textContent = mode === 'range' ? 'Start date' : 'Pick date';
+    };
+
+    /* ── Custom Participant Dropdown ────────────────────────── */
+    window.toggleParticipantDropdown = function(){
+        var dd = document.getElementById('participantDropdown');
+        if(dd) dd.classList.toggle('open');
+    };
+
+    window.selectParticipant = function(val, e){
+        if(e) e.stopPropagation();
+        var display = document.getElementById('participantDisplay');
+        if(display) display.textContent = val;
+        var dd = document.getElementById('participantDropdown');
+        if(dd) dd.classList.remove('open');
+    };
+
+    document.addEventListener('click', function(e){
+        var dd = document.getElementById('participantDropdown');
+        if(dd && !dd.parentElement.contains(e.target)) dd.classList.remove('open');
+    });
+
+    /* ── Custom Date/Time Picker ────────────────────────────── */
+    window.openDatePicker = function(){
+        var popup = document.getElementById('datePickerPopup');
+        if(popup) popup.classList.add('open');
+        renderEDP();
+    };
+
+    window.closeDatePicker = function(){
+        var popup = document.getElementById('datePickerPopup');
+        if(popup) popup.classList.remove('open');
+    };
+
+    window.edpNavMonth = function(dir){
+        edpDate.setMonth(edpDate.getMonth() + dir);
+        renderEDP();
+    };
+
+    window.edpTimeAdj = function(unit, dir){
+        if(unit==='h'){ edpHour = (edpHour + dir + 24) % 24; }
+        else { edpMin = (edpMin + dir*15 + 60) % 60; }
+        var hEl = document.getElementById('edpHour');
+        var mEl = document.getElementById('edpMin');
+        if(hEl) hEl.textContent = edpHour < 10 ? '0'+edpHour : edpHour;
+        if(mEl) mEl.textContent = edpMin < 10 ? '0'+edpMin : edpMin;
+    };
+
+    window.setDatePicker = function(){
+        var h = edpHour < 10 ? '0'+edpHour : edpHour;
+        var m = edpMin < 10 ? '0'+edpMin : edpMin;
+        selectedDateStr = edpDate.getFullYear()+'-'+(edpDate.getMonth()+1<10?'0':'')+(edpDate.getMonth()+1)+'-'+(edpDate.getDate()<10?'0':'')+' '+h+':'+m;
+        var display = document.getElementById('datePickerDisplay');
+        if(display) display.textContent = EDPMONTHS[edpDate.getMonth()]+' '+edpDate.getDate()+', '+edpDate.getFullYear()+' '+h+':'+m;
+        closeDatePicker();
+    };
+
+    function renderEDP(){
+        var myEl = document.getElementById('edpMonthYear');
+        var grid = document.getElementById('edpGrid');
+        if(!myEl || !grid) return;
+
+        myEl.textContent = EDPFULL[edpDate.getMonth()]+' '+edpDate.getFullYear();
+
+        var first = new Date(edpDate.getFullYear(), edpDate.getMonth(), 1);
+        var last = new Date(edpDate.getFullYear(), edpDate.getMonth()+1, 0);
+        var startDay = first.getDay();
+        var today = new Date();
+        today.setHours(0,0,0,0);
+
+        var html = '';
+        for(var i = 0; i < startDay; i++){
+            var d = new Date(edpDate.getFullYear(), edpDate.getMonth(), -(startDay-i-1));
+            html += '<div class="edp-day outside">'+d.getDate()+'</div>';
+        }
+        for(var j = 1; j <= last.getDate(); j++){
+            var cls = 'edp-day';
+            var cell = new Date(edpDate.getFullYear(), edpDate.getMonth(), j);
+            if(cell.getTime() === today.getTime()) cls += ' today';
+            if(cell.getTime() === edpDate.setHours(0,0,0,0) && edpDate.getDate() === j) cls += ' selected';
+            html += '<div class="'+cls+'" onclick="edpPickDay('+j+')">'+j+'</div>';
+        }
+        var remaining = 42 - (startDay + last.getDate());
+        for(var k = 1; k <= remaining; k++){
+            html += '<div class="edp-day outside">'+k+'</div>';
+        }
+        grid.innerHTML = html;
+    }
+
+    window.edpPickDay = function(day){
+        edpDate = new Date(edpDate.getFullYear(), edpDate.getMonth(), day);
+        renderEDP();
+    };
+
+    /* ── Save Event ─────────────────────────────────────────── */
+    window.saveEvent = function(){
+        var name = document.getElementById('evtName').value.trim();
+        if(!name){ alert('Please enter an event name.'); return; }
+
+        var mode = document.querySelector('input[name="dateMode"]:checked');
+        var dateMode = mode ? mode.value : 'single';
+
+        var dateParts = selectedDateStr.split(' ');
+        var eventDate = dateParts[0] || '';
+        var eventTime = dateParts[1] || '';
+
+        if(!eventDate){ alert('Please pick a date.'); return; }
+
+        var endDate = '';
+        if(dateMode === 'range'){
+            endDate = prompt('Enter end date (YYYY-MM-DD):', eventDate);
+            if(!endDate) return;
+        }
+
+        var participants = document.getElementById('participantDisplay').textContent.trim();
+        if(participants === 'Select participants') participants = 'All';
+
+        var fd = new FormData();
+        fd.append('name', name);
+        fd.append('date_mode', dateMode);
+        fd.append('event_date', eventDate);
+        fd.append('end_date', endDate);
+        fd.append('time', eventTime);
+        fd.append('participants', participants);
+
+        fetch("{% url 'add_event' %}", {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'},
+            body: fd
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if(data.ok){
+                schoolEvents.push(data.event);
+                closeEventModal();
+                render();
+            } else {
+                alert(data.error || 'Failed to save event');
+            }
+        })
+        .catch(function(e){ alert('Network error: '+e); });
+    };
+
+    window.deleteEvent = function(id){
+        if(!confirm('Delete this event?')) return;
+        fetch("{% url 'delete_event' event_id=0 %}".replace('/0/','/'+id+'/'), {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if(data.ok){
+                schoolEvents = schoolEvents.filter(function(ev){ return ev.id !== id; });
+                render();
+            } else {
+                alert(data.error || 'Failed to delete');
+            }
+        })
+        .catch(function(e){ alert('Network error: '+e); });
+    };
 })();
 </script>
 {% endblock %}

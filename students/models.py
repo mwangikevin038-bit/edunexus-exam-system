@@ -113,6 +113,45 @@ class TermDate(models.Model):
         ordering = ['-academic_year', 'term']
 
 
+class Event(models.Model):
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name='events',
+    )
+    name = models.CharField(max_length=200, verbose_name="Event Name")
+    DATE_MODE_CHOICES = [
+        ('single', 'Single'),
+        ('range', 'Range'),
+    ]
+    date_mode = models.CharField(max_length=10, choices=DATE_MODE_CHOICES, default='single', verbose_name="Date Mode")
+    event_date = models.DateField(verbose_name="Event Date")
+    end_date = models.DateField(null=True, blank=True, verbose_name="End Date")
+    time = models.TimeField(null=True, blank=True, verbose_name="Event Time")
+    PARTICIPANT_CHOICES = [
+        ('Teachers', 'Teachers'),
+        ('Parents', 'Parents'),
+        ('All', 'All'),
+    ]
+    participants = models.CharField(max_length=20, choices=PARTICIPANT_CHOICES, default='All', verbose_name="Participants")
+    created_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='created_events',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.event_date})"
+
+    class Meta:
+        verbose_name = "Event"
+        verbose_name_plural = "Events"
+        ordering = ['event_date', 'time']
+
+
 class SchoolScopedModel(models.Model):
     school = models.ForeignKey(
         School,

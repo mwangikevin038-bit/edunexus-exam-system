@@ -15,21 +15,21 @@
     @bottom-center {
         content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
         font-family: "Times New Roman", Times, serif;
-        font-size: 7pt;
+        font-size: 8pt;
         font-weight: 700;
-        color: #94a3b8;
+        color: #64748b;
         text-transform: uppercase;
-        letter-spacing: 0.4pt;
+        letter-spacing: 0.5pt;
         border-top: 0.5pt solid #cbd5e1;
         width: 70%;
-        padding-top: 3pt;
+        padding-top: 4pt;
     }
     @bottom-right {
         content: "Page " counter(page) " of " counter(pages);
         font-family: "Times New Roman", Times, serif;
-        font-size: 7pt;
+        font-size: 8pt;
         font-weight: 700;
-        color: #94a3b8;
+        color: #64748b;
         width: 28%;
         white-space: nowrap;
     }
@@ -813,10 +813,12 @@ html, body {
 .badge-be { background-color: #fee2e2 !important; color: #991b1b !important; font-weight: 700 !important; }
 
 /* ═══════════════════════════════════════════════════════════
-   CLASS LIST
+   CLASS LIST — must match browser print CSS exactly
    ═══════════════════════════════════════════════════════════ */
 
 .pdf-sheet { padding: 0 !important; width: 100% !important; }
+
+/* ── Heading — mirrors .sheet-heading print rules ─────────────── */
 .pdf-heading {
     display: flex !important;
     align-items: center !important;
@@ -838,6 +840,7 @@ html, body {
     width: 80px !important;
     height: 80px !important;
     object-fit: contain !important;
+    display: block !important;
     border-radius: 6px !important;
 }
 .pdf-heading-copy { text-align: center !important; }
@@ -851,19 +854,52 @@ html, body {
     line-height: 1.1 !important;
     letter-spacing: 0.06em !important;
 }
-.pdf-heading-copy p {
+.pdf-heading-copy .pdf-addr {
     font-family: "Times New Roman", Times, serif !important;
     font-size: 11px !important;
     color: #374151 !important;
-    margin: 1px 0 0 !important;
     font-weight: 600 !important;
+    margin: 1px 0 0 !important;
+}
+.pdf-heading-copy .pdf-contact {
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 11px !important;
+    color: #374151 !important;
+    font-weight: 500 !important;
+    margin: 1px 0 0 !important;
+}
+.pdf-heading-copy .pdf-subtitle {
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 11px !important;
+    color: #374151 !important;
+    margin: 2px 0 0 !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+}
+.pdf-heading-copy .pdf-year {
+    display: inline-block !important;
+    background: var(--section-accent, #0f1727) !important;
+    color: #fff !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    padding: 1px 7px !important;
+    border-radius: 20px !important;
+    margin-left: 4px !important;
 }
 
+/* ── Table — matches print register-table exactly ────────────── */
+.register-table,
+.register-table *,
+.register-table *::before,
+.register-table *::after {
+    font-family: "Times New Roman", Times, serif !important;
+}
 .register-table {
     width: 100% !important;
+    min-width: 0 !important;
     border-collapse: collapse !important;
     border: 1px solid #000 !important;
-    font-family: "Times New Roman", Times, serif !important;
     font-size: 12pt !important;
     table-layout: fixed !important;
 }
@@ -876,7 +912,7 @@ html, body {
     border: 1px solid #000 !important;
     text-transform: uppercase !important;
     text-align: left !important;
-    line-height: 1.3 !important;
+    line-height: 1.2 !important;
 }
 .register-table td {
     padding: 4px 8px !important;
@@ -884,13 +920,24 @@ html, body {
     color: #000 !important;
     font-weight: 400 !important;
     font-size: 12pt !important;
-    line-height: 1.3 !important;
+    line-height: 1.2 !important;
     vertical-align: middle !important;
 }
-.register-table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+.register-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+}
+.register-table thead { display: table-header-group !important; }
+.register-table a { color: #000 !important; text-decoration: none !important; }
+.col-adm { width: 6.5% !important; }
+.col-stream { width: 10% !important; }
+.col-name { width: 20% !important; }
+.col-gender { width: 7% !important; }
+.col-assess { width: 12% !important; }
 .grid-cell {
-    width: 36px !important;
-    height: 34px !important;
+    width: auto !important;
+    height: 28px !important;
     background: #fff !important;
     font-size: 12pt !important;
 }

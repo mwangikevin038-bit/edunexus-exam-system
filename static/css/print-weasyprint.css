@@ -403,18 +403,27 @@ html, body {
 .badge-ae { background-color: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; }
 .badge-be { background-color: #fee2e2 !important; color: #991b1b !important; font-weight: 700; }
 
-/* Class List */
+/* ── Class List — must match browser print CSS exactly ──────── */
 .pdf-sheet { width: 100%; }
-.pdf-heading { width: 100%; padding: 8px 0 6px 100px; margin: 0 0 8px; text-align: center; background: #fff; border: none; border-bottom: 2px solid #0f1727; position: relative; }
-.pdf-logo { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 80px; height: 80px; }
+.pdf-heading { width: 100%; padding: 8px 0 6px 100px; margin: 0 0 8px; text-align: center; background: #fff; border: none; border-bottom: 2px solid #0f1727; position: relative; display: flex; align-items: center; justify-content: center; }
+.pdf-logo { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 80px; height: 80px; object-fit: contain; display: block; border-radius: 6px; }
 .pdf-heading-copy { text-align: center; }
-.pdf-heading-copy h2 { font-size: 22px; font-weight: 900; text-transform: uppercase; color: #0f1727; margin: 0; }
-.pdf-heading-copy p { font-size: 11px; color: #374151; margin: 1px 0 0; font-weight: 600; }
+.pdf-heading-copy h2 { font-family: "Times New Roman", Times, serif; font-size: 22px; font-weight: 900; text-transform: uppercase; color: #0f1727; margin: 0; line-height: 1.1; letter-spacing: 0.06em; }
+.pdf-heading-copy .pdf-addr { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #374151; font-weight: 600; margin: 1px 0 0; }
+.pdf-heading-copy .pdf-contact { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #374151; font-weight: 500; margin: 1px 0 0; }
+.pdf-heading-copy .pdf-subtitle { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #374151; margin: 2px 0 0; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.pdf-heading-copy .pdf-year { display: inline-block; background: #0f1727; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 7px; border-radius: 20px; margin-left: 4px; }
 
-.register-table { width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 12pt; table-layout: fixed; }
-.register-table th { background: #e2e6ea; color: #000; font-weight: 900; padding: 5px 8px; border: 1px solid #000; text-transform: uppercase; text-align: left; }
-.register-table td { padding: 4px 8px; border: 1px solid #000; font-weight: 400; font-size: 12pt; vertical-align: middle; }
+.register-table { width: 100%; min-width: 0; border-collapse: collapse; border: 1px solid #000; font-family: "Times New Roman", Times, serif; font-size: 12pt; table-layout: fixed; }
+.register-table th { background: #e2e6ea; color: #000; font-weight: 900; font-size: 12pt; padding: 5px 8px; border: 1px solid #000; text-transform: uppercase; text-align: left; line-height: 1.2; }
+.register-table td { padding: 4px 8px; border: 1px solid #000; color: #000; font-weight: 400; font-size: 12pt; line-height: 1.2; vertical-align: middle; }
 .register-table tr { page-break-inside: avoid; }
-.grid-cell { width: 36px; height: 34px; background: #fff; }
+.register-table thead { display: table-header-group; }
+.col-adm { width: 6.5%; }
+.col-stream { width: 10%; }
+.col-name { width: 20%; }
+.col-gender { width: 7%; }
+.col-assess { width: 12%; }
+.grid-cell { width: auto; height: 28px; background: #fff; font-size: 12pt; }
 
 * { transition: none !important; animation: none !important; }

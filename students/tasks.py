@@ -943,6 +943,7 @@ def generate_bulk_report_pdf(
         "failed_students": failed_students[:20],
         "message": f"Done: {compiled} compiled, {failed} failed out of {total} students.",
         "filename": f"Bulk_Report_Cards_{grade_name}_{stream_name}_{year}_{term}.pdf".replace(' ', '_'),
+        "size": len(pdf_bytes_final),
     })
 
     logger.info(
@@ -1001,9 +1002,14 @@ def _compile_chunk_with_retry(compile_fn, chunk, chunk_start, max_retries, backo
                             chunk_start, i, attempt,
                             exc_info=True,
                         )
-        except RuntimeError:
-            ExecutorClass = ThreadPoolExecutor
-            max_workers = min(4, cpu_count)
+        except Exception:
+            # ProcessPoolExecutor failed (e.g. pickling error on Windows spawn,
+            # or system doesn't support it). Fall back to thread-based parallelism.
+            if ExecutorClass is ProcessPoolExecutor:
+                ExecutorClass = ThreadPoolExecutor
+                max_workers = min(4, cpu_count)
+            else:
+                raise
             futures = {}
             with ExecutorClass(max_workers=max_workers) as executor:
                 for i in list(pending):
