@@ -821,7 +821,7 @@ def manage_faculty_matrix(request):
     # Use all_objects to bypass SchoolScopedManager — we explicitly filter
     # by school and sub_section below, and PRIMARY workspace needs BOTH.
     teachers = Teacher.all_objects.filter(school=school).select_related('user').filter(is_active=True)
-    assignments = SubjectAssignment.all_objects.filter(school=school).select_related('teacher_profile__user').all()
+    assignments = SubjectAssignment.all_objects.filter(school=school, is_active=True).select_related('teacher_profile__user').all()
 
     # Admin users see ALL teachers regardless of section
     if not user_has_main_school_admin_override(request.user):
@@ -849,7 +849,7 @@ def manage_faculty_matrix(request):
         return '—'
 
     teacher_assignment_count = dict(
-        SubjectAssignment.all_objects.filter(school=school)
+        SubjectAssignment.all_objects.filter(school=school, is_active=True)
         .values('teacher_profile_id').annotate(n=Count('id'))
         .values_list('teacher_profile_id', 'n')
     )
@@ -1265,7 +1265,7 @@ def teacher_classes(request, teacher_id):
 
     # Get all subject assignments for this teacher
     assignments = SubjectAssignment.all_objects.filter(
-        school=school, teacher_profile=teacher
+        school=school, teacher_profile=teacher, is_active=True
     ).select_related('subject').order_by('class_name', 'stream', 'subject__code')
 
     # Get active exams per section for fallback labels

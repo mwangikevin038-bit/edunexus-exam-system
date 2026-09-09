@@ -573,7 +573,7 @@ def manage_subjects(request, grade_id, stream_name):
             return redirect('manage_subjects', grade_id=grade.id, stream_name=stream_name)
 
     assignments = SubjectAssignment.all_objects.filter(
-        school=school, class_name=grade.name, stream=stream_name,
+        school=school, class_name=grade.name, stream=stream_name, is_active=True,
     ).select_related('subject', 'teacher_profile').order_by('subject__code')
 
     assigned_subject_ids = set(a.subject_id for a in assignments)
@@ -968,3 +968,466 @@ def api_check_grade_streams(request):
         'grade_name': grade_name,
         'existing_streams': streams,
     })
+
+
+# ── Combine Streams ───────────────────────────────────────────────────────────
+@login_required(login_url='login')
+@school_admin_required
+def combine_streams(request, grade_id):
+    """
+    POST: Combine selected streams into one new stream.
+    Saves each student's current stream to previous_stream before merging.
+    Archives old SubjectAssignments, creates new ones for the combined stream,
+    and updates Teacher.assigned_task for class teachers.
+    """
+    from django.http import JsonResponse
+    from django.db import models, transaction
+    from ..models import Grade, Stream, Student, SubjectAssignment, Teacher
+
+    if request.method != 'POST':
+        return redirect('manage_streams', grade_id=grade_id)
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    try:
+        grade = Grade.all_objects.get(id=grade_id, school=school)
+    except Grade.DoesNotExist:
+        messages.error(request, "Grade not found.")
+        return redirect('manage_classes')
+
+    stream_ids = request.POST.getlist('stream_ids')
+    new_name = request.POST.get('new_stream_name', '').strip().title()
+
+    if not new_name:
+        messages.error(request, "Please provide a name for the merged stream.")
+        return redirect('manage_streams', grade_id=grade.id)
+
+    if len(stream_ids) < 2:
+        messages.error(request, "Select at least 2 streams to combine.")
+        return redirect('manage_streams', grade_id=grade.id)
+
+    # Get the Stream records
+    streams_to_combine = Stream.all_objects.filter(
+        id__in=stream_ids, school=school, grade=grade
+    )
+    if streams_to_combine.count() != len(stream_ids):
+        messages.error(request, "One or more selected streams not found.")
+        return redirect('manage_streams', grade_id=grade.id)
+
+    stream_names = list(streams_to_combine.values_list('name', flat=True))
+
+    # Check if new name conflicts with an existing stream not being merged
+    other_streams = Stream.all_objects.filter(
+        school=school, grade=grade
+    ).exclude(id__in=stream_ids)
+    if other_streams.filter(name=new_name).exists():
+        messages.error(
+            request,
+            f"Cannot rename to '{new_name}' — a stream with that name already exists "
+            f"in {grade.name} and is not part of the merge.",
+        )
+        return redirect('manage_streams', grade_id=grade.id)
+
+    with transaction.atomic():
+        # 1. Save previous_stream for all affected students, then update stream
+        students = Student.all_objects.filter(
+            school=school, class_name=grade.name, stream__in=stream_names, is_active=True,
+        )
+        updated = students.update(previous_stream=models.F('stream'), stream=new_name)
+
+        # 2. Collect unique subjects BEFORE archiving (queryset re-evaluates after update)
+        old_assignments = SubjectAssignment.all_objects.filter(
+            school=school, class_name=grade.name, stream__in=stream_names, is_active=True,
+        )
+        subjects_to_create = list(
+            old_assignments.values('subject_id', 'school_section', 'sub_section').distinct()
+        )
+
+        # 3. Archive old SubjectAssignments (set is_active=False)
+        archived_count = old_assignments.update(is_active=False)
+
+        # 4. Create new SubjectAssignments for the combined stream
+        new_assignments = []
+        for subj_data in subjects_to_create:
+            new_assignments.append(SubjectAssignment(
+                school=school,
+                subject_id=subj_data['subject_id'],
+                class_name=grade.name,
+                stream=new_name,
+                school_section=subj_data['school_section'],
+                sub_section=subj_data['sub_section'],
+                teacher_profile=None,
+                is_active=True,
+            ))
+        if new_assignments:
+            SubjectAssignment.all_objects.bulk_create(new_assignments, ignore_conflicts=True)
+
+        # 4. Update class teachers: demote to "Teacher", then promote one per subject
+        # Find class teachers of the old streams
+        old_ct_pattern = models.Q()
+        for sname in stream_names:
+            old_ct_pattern |= models.Q(assigned_task__icontains=f"{grade.name} {sname}")
+        class_teachers = Teacher.all_objects.filter(
+            school=school, is_active=True,
+            assigned_task__startswith='Class Teacher',
+        ).filter(old_ct_pattern)
+
+        # Demote all old class teachers to "Teacher"
+        class_teachers.update(assigned_task='Teacher')
+
+        # Update Teacher.classes denormalized field for affected teachers
+        for teacher in class_teachers:
+            if teacher.classes:
+                old_classes = [c.strip() for c in teacher.classes.split(',') if c.strip()]
+                new_classes = []
+                for cls in old_classes:
+                    # Check if this class references any of the old streams
+                    matched = False
+                    for sname in stream_names:
+                        if grade.name in cls and sname in cls:
+                            matched = True
+                            break
+                    if not matched:
+                        new_classes.append(cls)
+                # Add the new combined class
+                new_classes.append(f"{grade.name} {new_name}")
+                teacher.classes = ', '.join(new_classes)
+                teacher.save(update_fields=['classes'])
+
+        # 5. Delete old Stream model records
+        streams_to_combine.delete()
+
+        # 6. Create the new Stream record
+        Stream.all_objects.create(
+            school=school,
+            grade=grade,
+            name=new_name,
+            school_section=grade.school_section,
+        )
+
+    messages.success(
+        request,
+        f"Combined {len(stream_names)} streams ({', '.join(stream_names)}) → '{new_name}'. "
+        f"{updated} students updated, {archived_count} subject assignments archived. "
+        f"New subject assignments created — go to Manage Subjects to assign teachers.",
+    )
+    return redirect('manage_streams', grade_id=grade.id)
+
+
+# ── Split Streams ─────────────────────────────────────────────────────────────
+@login_required(login_url='login')
+@school_admin_required
+def split_streams(request, grade_id):
+    """
+    POST: Split a single stream into multiple streams with smart balancing.
+    The old stream record is preserved in the database for future combine operations.
+    SubjectAssignments are auto-created for new streams (no teachers assigned).
+    Students are distributed by gender + performance balance.
+    """
+    from django.http import JsonResponse
+    from django.db import transaction
+    from ..models import Grade, Stream, Student, SubjectAssignment, ExamSummary, Teacher, current_year
+
+    if request.method != 'POST':
+        return redirect('manage_streams', grade_id=grade_id)
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    try:
+        grade = Grade.all_objects.get(id=grade_id, school=school)
+    except Grade.DoesNotExist:
+        messages.error(request, "Grade not found.")
+        return redirect('manage_classes')
+
+    target_stream = request.POST.get('target_stream', '').strip()
+    split_names_raw = request.POST.getlist('split_names')
+    split_names = [n.strip() for n in split_names_raw if n.strip()]
+
+    if not target_stream:
+        messages.error(request, "No stream selected to split.")
+        return redirect('manage_streams', grade_id=grade.id)
+
+    if not split_names or len(split_names) < 2:
+        messages.error(request, "Please provide names for at least 2 new streams.")
+        return redirect('manage_streams', grade_id=grade.id)
+
+    # Verify the target stream exists
+    stream_record = Stream.all_objects.filter(
+        school=school, grade=grade, name=target_stream
+    ).first()
+    if not stream_record:
+        messages.error(request, f"Stream '{target_stream}' not found.")
+        return redirect('manage_streams', grade_id=grade.id)
+
+    if len(set(split_names)) != len(split_names):
+        messages.error(request, "Stream names must be unique.")
+        return redirect('manage_streams', grade_id=grade.id)
+
+    # Check name conflicts (allow the target_stream name itself — it stays)
+    existing_names = set(
+        Stream.all_objects.filter(school=school, grade=grade).values_list('name', flat=True)
+    )
+    for name in split_names:
+        if name in existing_names and name != target_stream:
+            messages.error(request, f"Stream '{name}' already exists in {grade.name}.")
+            return redirect('manage_streams', grade_id=grade.id)
+
+    # Fetch all students from the source stream
+    students = Student.all_objects.filter(
+        school=school, class_name=grade.name, stream=target_stream, is_active=True,
+    )
+    student_list = list(students.values('id', 'gender', 'name'))
+
+    # Get latest performance data for smart balancing
+    latest_term = 'Term 3'
+    latest_year = current_year()
+    summaries = ExamSummary.all_objects.filter(
+        school=school,
+        student__class_name=grade.name,
+        term=latest_term,
+        year=latest_year,
+    ).values('student_id', 'total_marks')
+    perf_map = {s['student_id']: s['total_marks'] for s in summaries}
+
+    for s in student_list:
+        s['total_marks'] = perf_map.get(s['id'], 0)
+        s['gender'] = (s.get('gender') or 'Not Specified')
+
+    # ── Smart Balance Algorithm ───────────────────────────────────────────
+    # Split by gender first, then balance performance within each gender
+    boys = [s for s in student_list if s['gender'] == 'Male']
+    girls = [s for s in student_list if s['gender'] == 'Female']
+    other = [s for s in student_list if s['gender'] not in ('Male', 'Female')]
+
+    # Sort each group by performance descending
+    boys.sort(key=lambda x: (-x['total_marks'], x['name']))
+    girls.sort(key=lambda x: (-x['total_marks'], x['name']))
+    other.sort(key=lambda x: (-x['total_marks'], x['name']))
+
+    n = len(split_names)
+    groups = {name: [] for name in split_names}
+    group_boys = {name: 0 for name in split_names}
+    group_girls = {name: 0 for name in split_names}
+    group_perf = {name: 0 for name in split_names}
+
+    # Distribute boys round-robin (snake: 1→2→3→4→4→3→2→1) for performance balance
+    def snake_distribute(items, groups_dict, gender_key):
+        order = list(range(n))
+        reverse = False
+        idx = 0
+        while idx < len(items):
+            for pos in order:
+                if idx >= len(items):
+                    break
+                stream_idx = pos if not reverse else order[-(pos + 1)]
+                sname = split_names[stream_idx]
+                groups_dict[sname].append(items[idx]['id'])
+                group_perf[sname] += items[idx]['total_marks']
+                if gender_key == 'Male':
+                    group_boys[sname] += 1
+                else:
+                    group_girls[sname] += 1
+                idx += 1
+            reverse = not reverse
+
+    snake_distribute(boys, groups, 'Male')
+    snake_distribute(girls, groups, 'Female')
+    # Distribute 'other' gender students evenly
+    for i, s in enumerate(other):
+        sname = split_names[i % n]
+        groups[sname].append(s['id'])
+        group_perf[sname] += s['total_marks']
+
+    # ── Apply Changes ─────────────────────────────────────────────────────
+    with transaction.atomic():
+        # 1. Collect subjects from the source stream BEFORE any changes
+        source_assignments = SubjectAssignment.all_objects.filter(
+            school=school, class_name=grade.name, stream=target_stream, is_active=True,
+        )
+        subjects_data = list(
+            source_assignments.values('subject_id', 'school_section', 'sub_section').distinct()
+        )
+
+        # 2. Archive the source stream's SubjectAssignments (don't delete — preserve for future combine)
+        source_assignments.update(is_active=False)
+
+        # 3. Create new Stream records for each split name
+        for name in split_names:
+            Stream.all_objects.get_or_create(
+                school=school, grade=grade, name=name,
+                defaults={'school_section': grade.school_section},
+            )
+
+            # 4. Auto-create SubjectAssignments for this new stream (no teacher)
+            new_sas = []
+            for subj in subjects_data:
+                new_sas.append(SubjectAssignment(
+                    school=school,
+                    subject_id=subj['subject_id'],
+                    class_name=grade.name,
+                    stream=name,
+                    school_section=subj['school_section'],
+                    sub_section=subj['sub_section'],
+                    teacher_profile=None,
+                    is_active=True,
+                ))
+            if new_sas:
+                SubjectAssignment.all_objects.bulk_create(new_sas, ignore_conflicts=True)
+
+        # 5. Move students to their new streams (preserve previous_stream for future restore)
+        for name in split_names:
+            sids = groups[name]
+            if sids:
+                Student.all_objects.filter(id__in=sids).update(
+                    stream=name, previous_stream=target_stream,
+                )
+
+        # 6. Demote class teacher of the source stream (if any)
+        Teacher.all_objects.filter(
+            school=school, is_active=True,
+            assigned_task__startswith='Class Teacher',
+            assigned_task__icontains=target_stream,
+        ).update(assigned_task='Teacher')
+
+    # Build summary
+    parts = []
+    for name in split_names:
+        cnt = len(groups[name])
+        avg = group_perf[name] / cnt if cnt else 0
+        parts.append(f"{name}: {cnt} students ({group_boys[name]}B/{group_girls[name]}G, avg {avg:.0f} marks)")
+
+    messages.success(
+        request,
+        f"Split '{target_stream}' → {len(split_names)} streams. "
+        + "; ".join(parts)
+        + ". SubjectAssignments created (no teachers). Go to Manage Subjects to assign teachers.",
+    )
+    return redirect('manage_streams', grade_id=grade.id)
+
+
+# ── Split Preview API ─────────────────────────────────────────────────────────
+@login_required(login_url='login')
+@school_admin_required
+def api_split_preview(request, grade_id):
+    """
+    GET: Preview smart-balance distribution for a stream split.
+    Returns JSON with proposed groups, gender counts, and average performance.
+    Uses snake-draft distribution for gender + performance balance.
+    """
+    from django.http import JsonResponse
+    from ..models import Grade, Student, ExamSummary, current_year
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'error': 'No school context'}, status=400)
+
+    try:
+        grade = Grade.all_objects.get(id=grade_id, school=school)
+    except Grade.DoesNotExist:
+        return JsonResponse({'error': 'Grade not found'}, status=404)
+
+    stream_name = request.GET.get('stream', '').strip()
+    num_splits = int(request.GET.get('num_splits', 2))
+    split_names_raw = request.GET.get('names', '').strip()
+    split_names = [n.strip() for n in split_names_raw.split(',') if n.strip()] if split_names_raw else []
+
+    if not stream_name or num_splits < 2:
+        return JsonResponse({'error': 'Invalid parameters'}, status=400)
+
+    # Use provided names or generate defaults
+    if len(split_names) != num_splits:
+        defaults = ['A', 'B', 'C', 'D']
+        split_names = defaults[:num_splits]
+
+    students = Student.all_objects.filter(
+        school=school, class_name=grade.name, stream=stream_name, is_active=True,
+    )
+
+    # Get latest performance data
+    latest_term = 'Term 3'
+    latest_year = current_year()
+    summaries = ExamSummary.all_objects.filter(
+        school=school,
+        student__class_name=grade.name,
+        term=latest_term,
+        year=latest_year,
+    ).values('student_id', 'total_marks')
+    perf_map = {s['student_id']: s['total_marks'] for s in summaries}
+
+    student_data = []
+    for s in students.values('id', 'name', 'gender'):
+        student_data.append({
+            'id': s['id'],
+            'name': s['name'],
+            'gender': (s.get('gender') or 'Not Specified'),
+            'total_marks': perf_map.get(s['id'], 0),
+        })
+
+    # ── Smart Balance (same algorithm as the view) ────────────────────────
+    boys = [s for s in student_data if s['gender'] == 'Male']
+    girls = [s for s in student_data if s['gender'] == 'Female']
+    other = [s for s in student_data if s['gender'] not in ('Male', 'Female')]
+
+    boys.sort(key=lambda x: (-x['total_marks'], x['name']))
+    girls.sort(key=lambda x: (-x['total_marks'], x['name']))
+    other.sort(key=lambda x: (-x['total_marks'], x['name']))
+
+    n = num_splits
+    groups = {name: [] for name in split_names}
+    group_boys = {name: 0 for name in split_names}
+    group_girls = {name: 0 for name in split_names}
+    group_perf = {name: 0 for name in split_names}
+
+    def snake_distribute(items, groups_dict, gender_key):
+        order = list(range(n))
+        reverse = False
+        idx = 0
+        while idx < len(items):
+            for pos in order:
+                if idx >= len(items):
+                    break
+                stream_idx = pos if not reverse else order[-(pos + 1)]
+                sname = split_names[stream_idx]
+                groups_dict[sname].append(items[idx])
+                group_perf[sname] += items[idx]['total_marks']
+                if gender_key == 'Male':
+                    group_boys[sname] += 1
+                else:
+                    group_girls[sname] += 1
+                idx += 1
+            reverse = not reverse
+
+    snake_distribute(boys, groups, 'Male')
+    snake_distribute(girls, groups, 'Female')
+    for i, s in enumerate(other):
+        sname = split_names[i % n]
+        groups[sname].append(s)
+        group_perf[sname] += s['total_marks']
+
+    result = {
+        'total_students': len(student_data),
+        'total_boys': len(boys),
+        'total_girls': len(girls),
+        'groups': {},
+    }
+    for name in split_names:
+        cnt = len(groups[name])
+        avg = group_perf[name] / cnt if cnt else 0
+        result['groups'][name] = {
+            'count': cnt,
+            'boys': group_boys[name],
+            'girls': group_girls[name],
+            'avg_marks': round(avg, 1),
+            'students': [
+                {'id': s['id'], 'name': s['name'], 'gender': s['gender'], 'marks': s['total_marks']}
+                for s in groups[name]
+            ],
+        }
+
+    return JsonResponse(result)

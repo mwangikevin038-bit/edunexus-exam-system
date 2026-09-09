@@ -946,7 +946,11 @@ def admin_student_profile_edit(request, student_id):
         sel = ' selected' if g == student.class_name else ''
         grade_options += f'<option value="{g}"{sel}>{g}</option>'
 
-    streams = ['Yellow', 'Blue', 'Main']
+    from ..models import Stream as StreamModel
+    streams = list(
+        StreamModel.all_objects.filter(school=school)
+        .values_list('name', flat=True).distinct().order_by('name')
+    ) if school else ['Main']
     stream_options = ''
     for s_val in streams:
         sel = ' selected' if s_val == student.stream else ''
@@ -3338,7 +3342,7 @@ def api_exams_for_class(request):
         sa_filters &= Q(school_section='PRIMARY', sub_section='UPPER')
     else:
         sa_filters &= Q(school_section='JSS')
-    total_subjects = SubjectAssignment.all_objects.filter(sa_filters).values('subject').distinct().count()
+    total_subjects = SubjectAssignment.all_objects.filter(is_active=True, **sa_filters).values('subject').distinct().count()
 
     all_exams = list(qs.order_by('-year', 'term', 'name'))
 
@@ -3432,6 +3436,7 @@ def api_teacher_for_subject(request):
         school=school,
         class_name=grade_name,
         subject_id=subject_id,
+        is_active=True,
     )
     if stream_name:
         assignment = assignment.filter(stream=stream_name)
@@ -4420,7 +4425,7 @@ def api_analysis_data(request):
     subject_teachers = {}
     for subj_name in subject_names:
         assignments = SubjectAssignment.all_objects.filter(
-            school=school, class_name=grade_name, subject__name=subj_name,
+            school=school, class_name=grade_name, subject__name=subj_name, is_active=True
         ).select_related('teacher_profile__user')
         teacher_names = []
         for a in assignments:
@@ -4434,7 +4439,7 @@ def api_analysis_data(request):
     subject_stream_teachers = {}
     for subj_name in subject_names:
         assignments = SubjectAssignment.all_objects.filter(
-            school=school, class_name=grade_name, subject__name=subj_name,
+            school=school, class_name=grade_name, subject__name=subj_name, is_active=True
         ).select_related('teacher_profile__user')
         stream_map = {}
         for a in assignments:

@@ -79,7 +79,7 @@ def profile_view(request):
     published_count = 0
 
     if teacher:
-        assignments = SubjectAssignment.objects.filter(teacher_profile=teacher).order_by(
+        assignments = SubjectAssignment.objects.filter(teacher_profile=teacher, is_active=True).order_by(
             'class_name', 'stream', 'subject__code'
         )
         section = get_request_school_section(request)
@@ -238,7 +238,7 @@ def dashboard(request):
     if user_has_main_school_admin_override(request.user):
         return redirect('school_admin_dashboard')
 
-    assignments_qs = SubjectAssignment.objects.filter(school=school, teacher_profile=teacher).order_by(
+    assignments_qs = SubjectAssignment.objects.filter(school=school, teacher_profile=teacher, is_active=True).order_by(
         'class_name', 'stream', 'subject__code'
     ) if teacher and school else SubjectAssignment.objects.none()
     active_exams = Exam.objects.filter(school=school, status='active', is_deleted=False).order_by('-year', 'term', 'name') if school else Exam.objects.none()
@@ -522,7 +522,7 @@ def school_admin_dashboard(request):
     student_qs = Student.all_objects.filter(school=school, is_active=True)
     teacher_qs = Teacher.all_objects.filter(school=school)
     exam_qs = Exam.all_objects.filter(school=school, is_deleted=False)
-    assignment_qs = SubjectAssignment.all_objects.filter(school=school)
+    assignment_qs = SubjectAssignment.all_objects.filter(school=school, is_active=True)
     submission_qs = MarkSubmission.all_objects.filter(school=school)
     mark_qs = Mark.all_objects.filter(school=school)
 

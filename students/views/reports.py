@@ -196,7 +196,7 @@ def results_list(request):
 
         # Map assigned teachers for this grade/stream
         teacher_map = {}
-        sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream=stream).select_related('teacher_profile__user', 'subject')
+        sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream=stream, is_active=True).select_related('teacher_profile__user', 'subject')
         if section == 'LOWER_PRIMARY':
             sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='LOWER')
         elif section == 'PRIMARY':
@@ -455,7 +455,7 @@ def report_card_select(request):
         sa_filter['sub_section'] = active_sub
     else:
         sa_filter['school_section'] = 'JSS'
-    total_required_subjects = SubjectAssignment.all_objects.filter(**sa_filter).values(
+    total_required_subjects = SubjectAssignment.all_objects.filter(is_active=True, **sa_filter).values(
         "subject__code"
     ).distinct().count() if selected_context else 0
 
@@ -633,7 +633,7 @@ def individual_report(request, student_id):
         a.subject.code: a.teacher_profile.get_full_title()
         for a in SubjectAssignment.all_objects.filter(
             school=school,
-            class_name=student.class_name, stream=student.stream
+            class_name=student.class_name, stream=student.stream, is_active=True
         ).select_related('teacher_profile__user', 'subject')
         if a.subject
     }
@@ -960,7 +960,7 @@ def bulk_report_cards(request):
         a.subject.code: a.teacher_profile.get_full_title()
         for a in SubjectAssignment.all_objects.filter(
             school=school,
-            class_name=sample.class_name, stream=sample.stream
+            class_name=sample.class_name, stream=sample.stream, is_active=True
         ).select_related('teacher_profile__user', 'subject')
     }
 
@@ -1375,7 +1375,7 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
     # Map assigned teachers for this grade/stream
     from ..models import SubjectAssignment
     teacher_map = {}
-    sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream__in=actual_streams if is_combined else [stream]).select_related('teacher_profile__user', 'subject')
+    sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream__in=actual_streams if is_combined else [stream], is_active=True).select_related('teacher_profile__user', 'subject')
     if section == 'LOWER_PRIMARY':
         sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':

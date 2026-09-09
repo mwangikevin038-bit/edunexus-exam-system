@@ -129,7 +129,7 @@ def select_exam(request):
 
     assignments = (
         SubjectAssignment.objects
-        .filter(school=school, teacher_profile=teacher, school_section='JSS')
+        .filter(school=school, teacher_profile=teacher, school_section='JSS', is_active=True)
         .select_related('subject', 'teacher_profile__user', 'teacher_profile')
         .order_by('class_name', 'stream', 'subject__code')
     )
@@ -950,7 +950,7 @@ def manage_exams(request):
     if selected_exam:
         assignments = (
             SubjectAssignment.all_objects
-            .filter(school=school)
+            .filter(school=school, is_active=True)
             .select_related("subject", "teacher_profile", "teacher_profile__user")
             .order_by("class_name", "stream", "subject__code")
         )
@@ -1187,7 +1187,7 @@ def manage_exams(request):
                 sub_counts[key][sub.status] += 1
 
         total_subjects_by_class = {}
-        for row in SubjectAssignment.all_objects.filter(school=school).values('class_name').annotate(cnt=Count('id')):
+        for row in SubjectAssignment.all_objects.filter(school=school, is_active=True).values('class_name').annotate(cnt=Count('id')):
             total_subjects_by_class[row['class_name']] = row['cnt']
 
         exam_class_subject_counts = {}
@@ -2108,7 +2108,7 @@ def review_stream_submission(request):
         exams = Exam.all_objects.filter(school=school, is_deleted=False).order_by("-year", "term", "name")
         stream_cards = []
         pairs = (
-            SubjectAssignment.all_objects.filter(school=school)
+            SubjectAssignment.all_objects.filter(school=school, is_active=True)
             .values("class_name", "stream")
             .distinct()
             .order_by("class_name", "stream")
@@ -2158,7 +2158,7 @@ def review_stream_submission(request):
 
     section = get_request_school_section(request)
     valid_pairs = set(
-        SubjectAssignment.all_objects.filter(school=school)
+        SubjectAssignment.all_objects.filter(school=school, is_active=True)
         .values_list("class_name", "stream")
         .distinct()
     )
@@ -2839,7 +2839,7 @@ def select_exam_primary(request):
 
     assignments = (
         SubjectAssignment.all_objects
-        .filter(school=school, teacher_profile=teacher, school_section=exam_section)
+        .filter(school=school, teacher_profile=teacher, school_section=exam_section, is_active=True)
         .select_related('teacher_profile__user')
         .order_by('class_name', 'stream', 'subject__code')
     )

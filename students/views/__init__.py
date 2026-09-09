@@ -149,6 +149,9 @@ from .classes_manage import (  # noqa: F401
     add_new_class,
     api_grade_subjects,
     api_check_grade_streams,
+    combine_streams,
+    split_streams,
+    api_split_preview,
 )
 
 # ── Grading configuration ────────────────────────────────────────────────────

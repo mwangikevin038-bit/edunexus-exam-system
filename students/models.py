@@ -384,6 +384,7 @@ class Student(SchoolScopedModel):
     )
     class_name = models.CharField(max_length=20, choices=CLASS_CHOICES)
     stream = models.CharField(max_length=20)
+    previous_stream = models.CharField(max_length=20, blank=True, null=True, help_text='Original stream before combine. Used to restore split.')
     term = models.CharField(max_length=20, choices=TERM_CHOICES, default='Term 1')
     assessment_no = models.CharField(max_length=50, blank=True, null=True)
     guardian = models.ForeignKey(Guardian, on_delete=models.PROTECT, related_name='students')
@@ -958,12 +959,17 @@ class SubjectAssignment(SchoolScopedModel):
         blank=True,
         help_text="Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS."
     )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="False when archived after a stream combine/split. Only active assignments appear in mark entry."
+    )
 
     class Meta:
         unique_together = ('school', 'subject', 'class_name', 'stream')
 
     def __str__(self):
-        return f"{self.teacher_profile.user.get_full_name() or self.teacher_profile.user.username} -> {self.subject.name} ({self.class_name} {self.stream})"
+        teacher = self.teacher_profile.user.get_full_name() or self.teacher_profile.user.username if self.teacher_profile else '(no teacher)'
+        return f"{teacher} -> {self.subject.name} ({self.class_name} {self.stream})"
 
     def clean(self):
         super().clean()

@@ -159,29 +159,34 @@ class StudentAdmin(SchoolScopedAdminMixin, ModelAdmin):
 
     # ============ METRIC CARDS ============
     def get_list_metrics(self, request):
+        from .models import Stream as StreamModel
         queryset = self.get_queryset(request)
         base_url = request.path
         
-        return {
-            "g7_yellow": {
-                "title": "Grade 7 Yellow",
-                "metric": queryset.filter(class_name="Grade 7", stream="Yellow").count(),
-                "icon": "school",
-                "path": f"{base_url}?class_name__exact=Grade+7&stream__exact=Yellow"
-            },
-            "g7_blue": {
-                "title": "Grade 7 Blue",
-                "metric": queryset.filter(class_name="Grade 7", stream="Blue").count(),
-                "icon": "school",
-                "path": f"{base_url}?class_name__exact=Grade+7&stream__exact=Blue"
-            },
-            "g8_main": {
-                "title": "Grade 8 Main",
-                "metric": queryset.filter(class_name="Grade 8", stream="Main").count(),
-                "icon": "school",
-                "path": f"{base_url}?class_name__exact=Grade+8&stream__exact=Main"
-            },
-        }
+        # Dynamically build metrics from actual streams in the database
+        metrics = {}
+        try:
+            school = queryset.model.objects.all().first()
+            if school:
+                streams = StreamModel.all_objects.filter(
+                    school=school.school
+                ).select_related('grade').order_by('grade__order', 'name')
+                
+                for s in streams:
+                    key = f"grade_{s.grade.order}_{s.name.lower().replace(' ', '_')}"
+                    count = queryset.filter(
+                        class_name=s.grade.name, stream=s.name
+                    ).count()
+                    metrics[key] = {
+                        "title": f"{s.grade.name} {s.name}",
+                        "metric": count,
+                        "icon": "school",
+                        "path": f"{base_url}?class_name__exact={s.grade.name.replace(' ', '+')}&stream__exact={s.name}",
+                    }
+        except Exception:
+            pass
+        
+        return metrics
 
     def log_addition(self, request, object, message): pass
     def log_change(self, request, object, message): pass

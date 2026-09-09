@@ -546,7 +546,7 @@ def download_broadsheet_pdf(request):
             })
 
         for a in SubjectAssignment.all_objects.filter(
-            school=school, class_name=grade, stream=stream
+            school=school, class_name=grade, stream=stream, is_active=True
         ).select_related('teacher_profile__user', 'subject'):
             code = a.subject.code if a.subject else None
             if code:
@@ -862,7 +862,7 @@ def download_individual_report_pdf(request, student_id):
     teacher_map = {
         a.subject.code: a.teacher_profile.get_full_title()
         for a in SubjectAssignment.all_objects.filter(
-            school=school, class_name=student.class_name, stream=student.stream
+            school=school, class_name=student.class_name, stream=student.stream, is_active=True
         ).select_related('teacher_profile__user', 'subject')
         if a.subject
     }
@@ -1168,7 +1168,7 @@ def individual_report_print_html(request, student_id):
     teacher_map = {
         a.subject.code: a.teacher_profile.get_full_title()
         for a in SubjectAssignment.all_objects.filter(
-            school=school, class_name=student.class_name, stream=student.stream
+            school=school, class_name=student.class_name, stream=student.stream, is_active=True
         ).select_related('teacher_profile__user', 'subject')
         if a.subject
     }

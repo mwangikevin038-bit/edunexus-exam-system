@@ -406,10 +406,19 @@
 
             <div class="classes-card-header">
                 <h1>Streams – {{ grade.name }}</h1>
-                <button type="button" class="btn-add-stream" onclick="document.getElementById('addStreamModal').style.display='flex'">
-                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Add Stream
-                </button>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    {% if stream_rows|length > 1 %}
+                    <button type="button" onclick="document.getElementById('combineModal').style.display='flex'"
+                            style="display:inline-flex;align-items:center;gap:6px;background:#E65100;color:#fff;border:none;border-radius:6px;padding:10px 18px;font-size:13px;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif;cursor:pointer;box-shadow:0 1px 3px rgba(230,81,0,0.3);">
+                        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M12 2v20M2 12h20"/></svg>
+                        Combine Streams
+                    </button>
+                    {% endif %}
+                    <button type="button" class="btn-add-stream" onclick="document.getElementById('addStreamModal').style.display='flex'">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Stream
+                    </button>
+                </div>
             </div>
 
             {% if stream_rows %}
@@ -454,6 +463,10 @@
                                         <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                                         Class list
                                     </a>
+                                    <button type="button" onclick="openSplitModal('{{ row.name }}', {{ row.total }})">
+                                        <svg viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg>
+                                        Split Stream
+                                    </button>
                                     <button type="button" class="dropdown-delete" onclick="openDeleteModal('{{ row.id }}', '{{ row.name }}', {{ row.total }})">
                                         <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                                         Delete
@@ -526,6 +539,10 @@
                                     <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                                     Class list
                                 </a>
+                                <button type="button" onclick="openSplitModal('{{ row.name }}', {{ row.total }})">
+                                    <svg viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg>
+                                    Split Stream
+                                </button>
                                 <button type="button" class="dropdown-delete" onclick="openDeleteModal('{{ row.id }}', '{{ row.name }}', {{ row.total }})">
                                     <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                                     Delete
@@ -602,6 +619,136 @@
     </div>
 </div>
 
+<!-- ═══ Combine Streams Modal ═══ -->
+<div id="combineModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:28px;width:480px;max-width:92vw;max-height:85vh;overflow-y:auto;box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <h3 style="margin:0 0 6px;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:17px;font-weight:700;color:#111827;">Combine Streams – {{ grade.name }}</h3>
+        <p style="margin:0 0 16px;font-size:13px;color:#64748b;font-family:'Plus Jakarta Sans','Inter',sans-serif;">
+            Select the streams you want to merge and give the merged stream a name.
+        </p>
+        <form method="POST" action="{% url 'combine_streams' grade.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="combine_streams">
+            <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;font-family:'Plus Jakarta Sans','Inter',sans-serif;">Streams to combine</label>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+                {% for row in stream_rows %}
+                <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all 0.15s;font-family:'Plus Jakarta Sans','Inter',sans-serif;">
+                    <input type="checkbox" name="stream_ids" value="{{ row.id }}" onchange="validateCombine()"
+                           style="width:18px;height:18px;accent-color:#E65100;flex-shrink:0;">
+                    <div>
+                        <div style="font-size:14px;font-weight:600;color:#1e293b;">{{ row.name }}</div>
+                        <div style="font-size:12px;color:#64748b;">{{ row.total }} students ({{ row.boys }}B / {{ row.girls }}G)</div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+            <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;font-family:'Plus Jakarta Sans','Inter',sans-serif;">New stream name</label>
+            <input type="text" name="new_stream_name" id="combineNewName" required placeholder="e.g. Main, Combined"
+                   style="width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:6px;font-size:14px;font-family:'Plus Jakarta Sans','Inter',sans-serif;box-sizing:border-box;margin-bottom:6px;">
+            <p id="combineWarning" style="display:none;margin:0 0 12px;font-size:12px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-family:'Plus Jakarta Sans','Inter',sans-serif;"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+                <button type="button" onclick="this.closest('#combineModal').style.display='none'"
+                        style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;">Cancel</button>
+                <button type="submit" id="combineBtn" disabled
+                        style="padding:8px 16px;border:none;border-radius:6px;background:#E65100;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;opacity:0.5;">Combine</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══ Split Stream Modal ═══ -->
+<div id="splitModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;width:560px;max-width:94vw;max-height:90vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.25);display:flex;flex-direction:column;">
+        <!-- Header -->
+        <div style="padding:20px 24px 0;flex-shrink:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <h3 style="margin:0;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:18px;font-weight:700;color:#111827;">Split Stream</h3>
+                <button type="button" onclick="closeSplitModal()" style="background:none;border:none;cursor:pointer;padding:4px;color:#94a3b8;">
+                    <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <p style="margin:0 0 16px;font-size:13px;color:#64748b;font-family:'Plus Jakarta Sans','Inter',sans-serif;">
+                Split <strong id="splitStreamName"></strong> (<span id="splitStudentCount"></span> students) into multiple streams.
+            </p>
+            <!-- Step indicators -->
+            <div style="display:flex;gap:0;margin-bottom:0;">
+                <div class="split-step-dot" data-step="1" style="flex:1;text-align:center;padding:10px 0;font-size:12px;font-weight:700;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#E65100;border-bottom:3px solid #E65100;cursor:pointer;">1. Streams</div>
+                <div class="split-step-dot" data-step="2" style="flex:1;text-align:center;padding:10px 0;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#94a3b8;border-bottom:3px solid #e2e8f0;">2. Balance</div>
+                <div class="split-step-dot" data-step="3" style="flex:1;text-align:center;padding:10px 0;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#94a3b8;border-bottom:3px solid #e2e8f0;">3. Confirm</div>
+            </div>
+        </div>
+
+        <form method="POST" action="{% url 'split_streams' grade.id %}" id="splitForm" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+            {% csrf_token %}
+            <input type="hidden" name="target_stream" id="split_target_stream">
+
+            <!-- Step 1: Choose count + names -->
+            <div id="splitStep1" style="padding:20px 24px;flex:1;overflow-y:auto;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;font-family:'Plus Jakarta Sans','Inter',sans-serif;">How many streams?</label>
+                <div style="display:flex;gap:10px;margin-bottom:20px;">
+                    <button type="button" class="split-num-btn active" data-num="2" onclick="setSplitNum(2,this)">
+                        <span style="font-size:22px;font-weight:800;">2</span>
+                        <span style="font-size:11px;color:#64748b;">streams</span>
+                    </button>
+                    <button type="button" class="split-num-btn" data-num="3" onclick="setSplitNum(3,this)">
+                        <span style="font-size:22px;font-weight:800;">3</span>
+                        <span style="font-size:11px;color:#64748b;">streams</span>
+                    </button>
+                    <button type="button" class="split-num-btn" data-num="4" onclick="setSplitNum(4,this)">
+                        <span style="font-size:22px;font-weight:800;">4</span>
+                        <span style="font-size:11px;color:#64748b;">streams</span>
+                    </button>
+                </div>
+                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;font-family:'Plus Jakarta Sans','Inter',sans-serif;">Name each stream</label>
+                <div id="splitNamesContainer"></div>
+            </div>
+
+            <!-- Step 2: Preview balance -->
+            <div id="splitStep2" style="padding:20px 24px;flex:1;overflow-y:auto;display:none;">
+                <div id="splitPreviewLoading" style="text-align:center;padding:30px 0;">
+                    <div style="display:inline-block;width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#E65100;border-radius:50%;animation:splitSpin 0.8s linear infinite;"></div>
+                    <p style="margin:12px 0 0;font-size:13px;color:#64748b;font-family:'Plus Jakarta Sans','Inter',sans-serif;">Calculating smart balance...</p>
+                </div>
+                <div id="splitPreviewContent" style="display:none;"></div>
+            </div>
+
+            <!-- Step 3: Confirm -->
+            <div id="splitStep3" style="padding:20px 24px;flex:1;overflow-y:auto;display:none;">
+                <div id="splitConfirmContent"></div>
+            </div>
+
+            <!-- Footer -->
+            <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+                <button type="button" id="splitBackBtn" onclick="splitGoBack()" style="display:none;padding:10px 20px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#475569;">Back</button>
+                <button type="button" id="splitCancelBtn" onclick="closeSplitModal()" style="padding:10px 20px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#475569;">Cancel</button>
+                <button type="button" id="splitNextBtn" onclick="splitGoNext()" style="padding:10px 24px;border:none;border-radius:8px;background:#E65100;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;">Next</button>
+                <button type="submit" id="splitApplyBtn" style="display:none;padding:10px 24px;border:none;border-radius:8px;background:#2E7D32;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;box-shadow:0 2px 8px rgba(46,125,50,0.3);">
+                    <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg>
+                    Apply Split
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+@keyframes splitSpin { to { transform: rotate(360deg); } }
+.split-num-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 14px 24px; border: 2px solid #e2e8f0; border-radius: 12px;
+    background: #fff; cursor: pointer; transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans','Inter',sans-serif; min-width: 80px;
+}
+.split-num-btn:hover { border-color: #E65100; background: #FFF7ED; }
+.split-num-btn.active { border-color: #E65100; background: #FFF7ED; color: #E65100; }
+.split-num-btn.active span:first-child { color: #E65100; }
+@media (max-width: 768px) {
+    #splitModal > div { width: 96vw; border-radius: 16px; max-height: 92vh; }
+    .split-num-btn { padding: 12px 16px; min-width: 70px; }
+    .split-num-btn span:first-child { font-size: 18px !important; }
+}
+</style>
+
 <script>
 function toggleActionsDropdown(btn) {
     var dropdown = btn.nextElementSibling;
@@ -649,6 +796,277 @@ function openRenameModal(streamId, currentName) {
     document.getElementById('rename_stream_id').value = streamId;
     document.getElementById('rename_stream_name').value = currentName;
     document.getElementById('renameModal').style.display = 'flex';
+}
+
+// ── Combine Streams ──────────────────────────────────────────────────────
+function validateCombine() {
+    var checked = document.querySelectorAll('#combineModal input[name="stream_ids"]:checked');
+    var btn = document.getElementById('combineBtn');
+    var warn = document.getElementById('combineWarning');
+    var nameInput = document.getElementById('combineNewName');
+
+    if (checked.length < 2) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        warn.style.display = 'none';
+        return;
+    }
+
+    var allNames = [{% for row in stream_rows %}'{{ row.name }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+    var checkedLabels = [];
+    checked.forEach(function(cb) {
+        var labelDiv = cb.closest('label');
+        if (labelDiv) {
+            var nameDiv = labelDiv.querySelector('div > div:first-child');
+            if (nameDiv) checkedLabels.push(nameDiv.textContent.trim());
+        }
+    });
+    var unselected = allNames.filter(function(n) { return checkedLabels.indexOf(n) === -1; });
+
+    var newName = nameInput.value.trim();
+    if (newName && unselected.indexOf(newName) !== -1) {
+        warn.style.display = 'block';
+        warn.textContent = '"' + newName + '" already exists in this grade and is not part of the merge. Choose a different name.';
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+    } else {
+        warn.style.display = 'none';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+    }
+}
+
+// ── Split Stream 3-Step Wizard ───────────────────────────────────────────────
+var splitTargetStream = '';
+var splitNum = 2;
+var splitStep = 1;
+var splitPreviewData = null;
+
+function openSplitModal(streamName, total) {
+    splitTargetStream = streamName;
+    splitStep = 1;
+    splitPreviewData = null;
+    document.getElementById('splitStreamName').textContent = streamName;
+    document.getElementById('splitStudentCount').textContent = total;
+    document.getElementById('split_target_stream').value = streamName;
+    document.getElementById('splitModal').style.display = 'flex';
+    setSplitNum(2, document.querySelector('.split-num-btn[data-num="2"]'));
+    updateSplitStep();
+}
+
+function closeSplitModal() {
+    document.getElementById('splitModal').style.display = 'none';
+    splitStep = 1;
+    splitPreviewData = null;
+}
+
+function splitGoNext() {
+    if (splitStep === 1) {
+        // Validate names
+        var inputs = document.querySelectorAll('#splitNamesContainer input[name="split_names"]');
+        var names = [];
+        var valid = true;
+        inputs.forEach(function(inp) {
+            var v = inp.value.trim();
+            if (!v) { valid = false; inp.style.borderColor = '#dc2626'; }
+            else { inp.style.borderColor = '#d1d5db'; names.push(v); }
+        });
+        if (!valid || names.length < 2) return;
+        // Check uniqueness
+        if (new Set(names).size !== names.length) {
+            alert('Stream names must be unique.');
+            return;
+        }
+        splitStep = 2;
+        updateSplitStep();
+        loadSplitPreview();
+    } else if (splitStep === 2) {
+        splitStep = 3;
+        updateSplitStep();
+        renderSplitConfirm();
+    }
+}
+
+function splitGoBack() {
+    if (splitStep > 1) {
+        splitStep--;
+        updateSplitStep();
+    }
+}
+
+function updateSplitStep() {
+    // Hide all steps
+    document.getElementById('splitStep1').style.display = 'none';
+    document.getElementById('splitStep2').style.display = 'none';
+    document.getElementById('splitStep3').style.display = 'none';
+
+    // Show current step
+    document.getElementById('splitStep' + splitStep).style.display = 'block';
+
+    // Update step dots
+    document.querySelectorAll('.split-step-dot').forEach(function(dot) {
+        var s = parseInt(dot.getAttribute('data-step'));
+        if (s <= splitStep) {
+            dot.style.color = '#E65100';
+            dot.style.borderBottomColor = '#E65100';
+            dot.style.fontWeight = '700';
+        } else {
+            dot.style.color = '#94a3b8';
+            dot.style.borderBottomColor = '#e2e8f0';
+            dot.style.fontWeight = '600';
+        }
+    });
+
+    // Update buttons
+    var backBtn = document.getElementById('splitBackBtn');
+    var cancelBtn = document.getElementById('splitCancelBtn');
+    var nextBtn = document.getElementById('splitNextBtn');
+    var applyBtn = document.getElementById('splitApplyBtn');
+
+    backBtn.style.display = splitStep > 1 ? 'inline-block' : 'none';
+    cancelBtn.textContent = splitStep === 1 ? 'Cancel' : 'Back';
+    cancelBtn.onclick = splitStep === 1 ? closeSplitModal : splitGoBack;
+
+    if (splitStep === 3) {
+        nextBtn.style.display = 'none';
+        applyBtn.style.display = 'inline-flex';
+    } else {
+        nextBtn.style.display = 'inline-block';
+        nextBtn.textContent = splitStep === 1 ? 'Preview Balance' : 'Confirm';
+        applyBtn.style.display = 'none';
+    }
+}
+
+function setSplitNum(num, el) {
+    splitNum = num;
+    document.querySelectorAll('.split-num-btn').forEach(function(b) {
+        b.classList.remove('active');
+        b.style.borderColor = '#e2e8f0';
+        b.style.background = '#fff';
+    });
+    el.classList.add('active');
+    el.style.borderColor = '#E65100';
+    el.style.background = '#FFF7ED';
+
+    var container = document.getElementById('splitNamesContainer');
+    container.innerHTML = '';
+    var defaults = ['Blue','Yellow','Green','Red'];
+    for (var i = 1; i <= num; i++) {
+        var def = defaults[i-1] || ('Stream ' + i);
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:10px;';
+        row.innerHTML =
+            '<div style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;font-family:Plus Jakarta Sans,Inter,sans-serif;flex-shrink:0;' +
+            'background:' + ['#EEF2FF','#ECFDF5','#FFFBEB','#FEF2F2'][i-1] + ';color:' + ['#4F46E5','#059669','#D97706','#DC2626'][i-1] + ';">' + i + '</div>' +
+            '<input type="text" name="split_names" value="' + def + '" required placeholder="e.g. ' + def + '"' +
+            ' style="flex:1;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;font-family:Plus Jakarta Sans,Inter,sans-serif;box-sizing:border-box;transition:border-color 0.15s;"' +
+            ' onfocus="this.style.borderColor=\'#E65100\'" onblur="this.style.borderColor=\'#d1d5db\'">';
+        container.appendChild(row);
+    }
+}
+
+function loadSplitPreview() {
+    var loading = document.getElementById('splitPreviewLoading');
+    var content = document.getElementById('splitPreviewContent');
+    loading.style.display = 'block';
+    content.style.display = 'none';
+
+    var names = [];
+    document.querySelectorAll('#splitNamesContainer input[name="split_names"]').forEach(function(inp) {
+        names.push(inp.value.trim());
+    });
+
+    var url = '{% url "api_split_preview" grade.id %}?stream=' +
+        encodeURIComponent(splitTargetStream) + '&num_splits=' + splitNum +
+        '&names=' + encodeURIComponent(names.join(','));
+
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            loading.style.display = 'none';
+            if (data.error) {
+                content.innerHTML = '<p style="color:#dc2626;margin:0;font-size:13px;">' + data.error + '</p>';
+                content.style.display = 'block';
+                return;
+            }
+            splitPreviewData = data;
+            var html = '';
+            html += '<div style="text-align:center;margin-bottom:16px;">';
+            html += '<div style="font-size:28px;font-weight:800;color:#111827;font-family:Plus Jakarta Sans,Inter,sans-serif;">' + data.total_students + '</div>';
+            html += '<div style="font-size:12px;color:#64748b;font-family:Plus Jakarta Sans,Inter,sans-serif;">total students · ' + data.total_boys + ' boys · ' + data.total_girls + ' girls</div>';
+            html += '</div>';
+
+            var colorSchemes = [
+                { bg: '#EEF2FF', border: '#C7D2FE', accent: '#4F46E5', light: '#E0E7FF' },
+                { bg: '#ECFDF5', border: '#A7F3D0', accent: '#059669', light: '#D1FAE5' },
+                { bg: '#FFFBEB', border: '#FDE68A', accent: '#D97706', light: '#FEF3C7' },
+                { bg: '#FEF2F2', border: '#FECACA', accent: '#DC2626', light: '#FEE2E2' },
+            ];
+
+            var idx = 0;
+            for (var name in data.groups) {
+                var g = data.groups[name];
+                var c = colorSchemes[idx % colorSchemes.length];
+                var avgDeviation = Math.abs(g.avg_marks - (data.total_students > 0 ? Object.values(data.groups).reduce(function(a,b){return a+b.avg_marks*b.count},0)/data.total_students : 0));
+                html += '<div style="padding:14px 16px;border:2px solid ' + c.border + ';border-radius:12px;background:' + c.bg + ';margin-bottom:10px;">';
+                html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
+                html += '<span style="font-size:15px;font-weight:700;color:' + c.accent + ';font-family:Plus Jakarta Sans,Inter,sans-serif;">' + name + '</span>';
+                html += '<span style="font-size:20px;font-weight:800;color:' + c.accent + ';font-family:Plus Jakarta Sans,Inter,sans-serif;">' + g.count + '</span>';
+                html += '</div>';
+                html += '<div style="display:flex;gap:16px;font-size:12px;color:#475569;font-family:Plus Jakarta Sans,Inter,sans-serif;">';
+                html += '<span><strong>' + g.boys + '</strong> Boys</span>';
+                html += '<span><strong>' + g.girls + '</strong> Girls</span>';
+                html += '<span>Avg: <strong>' + g.avg_marks + '</strong></span>';
+                html += '</div>';
+                html += '</div>';
+                idx++;
+            }
+
+            content.innerHTML = html;
+            content.style.display = 'block';
+        })
+        .catch(function() {
+            loading.style.display = 'none';
+            content.innerHTML = '<p style="color:#dc2626;margin:0;font-size:13px;">Failed to load preview.</p>';
+            content.style.display = 'block';
+        });
+}
+
+function renderSplitConfirm() {
+    var container = document.getElementById('splitConfirmContent');
+    if (!splitPreviewData) {
+        container.innerHTML = '<p style="color:#dc2626;">No preview data. Go back and preview first.</p>';
+        return;
+    }
+    var data = splitPreviewData;
+    var html = '';
+    html += '<div style="text-align:center;padding:8px 0 16px;">';
+    html += '<svg viewBox="0 0 24 24" style="width:48px;height:48px;stroke:#2E7D32;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+    html += '<h4 style="margin:8px 0 4px;font-size:16px;font-weight:700;color:#111827;font-family:Plus Jakarta Sans,Inter,sans-serif;">Ready to Split</h4>';
+    html += '<p style="margin:0;font-size:13px;color:#64748b;font-family:Plus Jakarta Sans,Inter,sans-serif;">' + splitTargetStream + ' → ' + data.total_students + ' students into ' + Object.keys(data.groups).length + ' streams</p>';
+    html += '</div>';
+
+    var colorSchemes = ['#4F46E5','#059669','#D97706','#DC2626'];
+    var idx = 0;
+    for (var name in data.groups) {
+        var g = data.groups[name];
+        var c = colorSchemes[idx % colorSchemes.length];
+        html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;">';
+        html += '<div style="width:8px;height:40px;border-radius:4px;background:' + c + ';flex-shrink:0;"></div>';
+        html += '<div style="flex:1;">';
+        html += '<div style="font-size:14px;font-weight:700;color:#1e293b;font-family:Plus Jakarta Sans,Inter,sans-serif;">' + name + '</div>';
+        html += '<div style="font-size:12px;color:#64748b;font-family:Plus Jakarta Sans,Inter,sans-serif;">' + g.count + ' students · ' + g.boys + 'B / ' + g.girls + 'G · avg ' + g.avg_marks + '</div>';
+        html += '</div>';
+        html += '</div>';
+        idx++;
+    }
+
+    html += '<div style="margin-top:16px;padding:12px;background:#FFF7ED;border:1px solid #fed7aa;border-radius:8px;">';
+    html += '<p style="margin:0;font-size:12px;color:#92400e;font-family:Plus Jakarta Sans,Inter,sans-serif;">';
+    html += '<strong>What happens:</strong> Students are moved to new streams. SubjectAssignments are auto-created. Class teacher of ' + splitTargetStream + ' is released. You can assign teachers later in Manage Subjects.</p>';
+    html += '</div>';
+
+    container.innerHTML = html;
 }
 
 

@@ -185,7 +185,7 @@ def get_stream_submission_summary(class_name, stream, exam):
         assignment_filters['school'] = school
 
     assignments = (
-        SubjectAssignment.all_objects.filter(**assignment_filters)
+        SubjectAssignment.all_objects.filter(is_active=True, **assignment_filters)
         .select_related("teacher_profile", "teacher_profile__user", "subject")
         .order_by("subject__code")
     )
@@ -331,7 +331,7 @@ def get_learner_contexts_for_user(user):
         qs = student_qs.values("class_name", "stream").annotate(learner_count=Count("id"))
     elif class_teacher_scope:
         # Section-scoped SubjectAssignment
-        assignment_qs = SubjectAssignment.objects.all()
+        assignment_qs = SubjectAssignment.objects.filter(is_active=True)
         if section == 'LOWER_PRIMARY':
             assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='LOWER')
         elif section == 'PRIMARY':
@@ -348,7 +348,7 @@ def get_learner_contexts_for_user(user):
             filters |= Q(class_name=item["class_name"], stream=item["stream"])
         qs = student_qs.filter(filters).values("class_name", "stream").annotate(learner_count=Count("id"))
     else:
-        assignment_qs = SubjectAssignment.objects.all()
+        assignment_qs = SubjectAssignment.objects.filter(is_active=True)
         if section == 'LOWER_PRIMARY':
             assignment_qs = assignment_qs.filter(school_section='PRIMARY', sub_section='LOWER')
         elif section == 'PRIMARY':
@@ -438,6 +438,7 @@ def user_can_access_class_stream(user, grade, stream, require_class_teacher=Fals
         teacher_profile=teacher,
         class_name=grade,
         stream=stream,
+        is_active=True,
     ).exists()
 
 
@@ -1132,7 +1133,7 @@ def build_report_card_context(
     teacher_map = {
         a.subject.code: a.teacher_profile.get_full_title()
         for a in SubjectAssignment.all_objects.filter(
-            school=school, class_name=grade, stream=stream,
+            school=school, class_name=grade, stream=stream, is_active=True,
         ).select_related('teacher_profile__user', 'subject')
         if a.subject
     }

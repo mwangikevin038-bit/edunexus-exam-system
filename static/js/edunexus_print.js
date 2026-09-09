@@ -183,7 +183,7 @@
         try { optimized = optimizeForPrint(container); } catch(e) { retry(); return; }
 
         var pageStyle = document.getElementById('pagePrintCSS');
-        var printCSS = pageStyle ? pageStyle.textContent : _buildPrintCSS(sectionAccent);
+        var templateCSS = pageStyle ? pageStyle.textContent : _buildPrintCSS(sectionAccent);
         var printWin = _openWindow(750, 650, 20, 50);
         if (!printWin) { _doPrintCurrentPage(opts, done, retry); return; }
 
@@ -202,14 +202,17 @@
             _trackTimer(st);
         }
 
-        try {
-            var doc = printWin.document;
-            doc.open();
-            doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
-                '<style>' + printCSS + '</style>' +
-                '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"><\/script>' +
-                '</head><body>' + optimized.innerHTML + '</body></html>');
-            doc.close();
+        function writePopup(sharedCSS) {
+            var combinedCSS = (sharedCSS || '') + '\n' + templateCSS;
+            try {
+                var doc = printWin.document;
+                doc.open();
+                doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
+                    '<style>' + combinedCSS + '</style>' +
+                    '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"><\/script>' +
+                    '</head><body>' + optimized.innerHTML + '</body></html>');
+                doc.close();
+            } catch(e) { _safeClose(printWin); retry(); return; }
 
             var checkCount = 0;
             var maxChecks = 60;
@@ -236,7 +239,13 @@
                 }
             }, 150);
             _trackTimer(iv);
-        } catch(e) { _safeClose(printWin); retry(); }
+        }
+
+        // Fetch print-shared.css then write popup
+        fetch('/static/css/print-shared.css')
+            .then(function(r) { return r.ok ? r.text() : ''; })
+            .then(function(css) { writePopup(css); })
+            .catch(function() { writePopup(''); });
     }
 
     function printCurrentPage(opts) {
