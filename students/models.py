@@ -8,6 +8,13 @@ from django.conf import settings
 from django.db import models
 
 from .school_scope import SchoolScopedManager, get_current_school
+
+
+def validate_image_size(file):
+    """Limit uploaded images to 2MB."""
+    max_size = 2 * 1024 * 1024  # 2MB
+    if file.size > max_size:
+        raise ValidationError(f'Image too large. Maximum size is 2MB. Your file is {file.size // 1024 // 1024}MB.')
 from .security.integrity import (
     compute_exam_checksum,
     compute_mark_checksum,
@@ -26,7 +33,7 @@ class School(models.Model):
         db_index=True,
         help_text="Used in logins, e.g. 0712345678@baringohigh",
     )
-    logo = models.ImageField(upload_to='school_logos/', blank=True, null=True, verbose_name="Official School Logo")
+    logo = models.ImageField(upload_to='school_logos/', blank=True, null=True, verbose_name="Official School Logo", validators=[validate_image_size])
     
     # Contact Information
     address = models.CharField(max_length=255, blank=True, null=True, verbose_name="Postal Address", help_text="e.g., P.O. BOX 31-80402")
@@ -649,6 +656,7 @@ class Mark(SchoolScopedModel):
             models.Index(fields=['school', 'term', 'year', 'exam_type'], name='mark_exam_lookup_idx'),
             models.Index(fields=['school', 'school_section', 'term', 'year'], name='mark_section_idx'),
             models.Index(fields=['school', 'student', 'subject', 'term', 'exam_type', 'year', 'school_section', 'sub_section'], name='mark_upsert_idx'),
+            models.Index(fields=['student'], name='mark_student_idx'),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -856,7 +864,8 @@ class Teacher(SchoolScopedModel):
         blank=True,
         null=True,
         verbose_name="Profile Picture",
-        help_text="Teacher's profile photo"
+        help_text="Teacher's profile photo",
+        validators=[validate_image_size]
     )
 
     signature = models.ImageField(
@@ -864,7 +873,8 @@ class Teacher(SchoolScopedModel):
         blank=True,
         null=True,
         verbose_name="Signature",
-        help_text="Teacher's digital signature image"
+        help_text="Teacher's digital signature image",
+        validators=[validate_image_size]
     )
     
     # ============ STATUS & METADATA ============
@@ -966,6 +976,10 @@ class SubjectAssignment(SchoolScopedModel):
 
     class Meta:
         unique_together = ('school', 'subject', 'class_name', 'stream')
+        indexes = [
+            models.Index(fields=['teacher_profile'], name='sa_teacher_idx'),
+            models.Index(fields=['is_active'], name='sa_active_idx'),
+        ]
 
     def __str__(self):
         teacher = self.teacher_profile.user.get_full_name() or self.teacher_profile.user.username if self.teacher_profile else '(no teacher)'
@@ -1043,6 +1057,10 @@ class MarkSubmission(SchoolScopedModel):
             'year',
             'school_section',
         )
+        indexes = [
+            models.Index(fields=['subject'], name='ms_subject_idx'),
+            models.Index(fields=['status'], name='ms_status_idx'),
+        ]
 
     def __str__(self):
         return (
@@ -1089,6 +1107,9 @@ class ClassTeacherMasterComment(SchoolScopedModel):
 
     class Meta:
         unique_together = ('school', 'year', 'term', 'grade', 'stream', 'exam_type')
+        indexes = [
+            models.Index(fields=['school', 'year', 'term', 'grade', 'stream'], name='ctmc_lookup_idx'),
+        ]
 
     def __str__(self):
         return f"{self.grade} {self.stream} - Comments ({self.exam_type})"
