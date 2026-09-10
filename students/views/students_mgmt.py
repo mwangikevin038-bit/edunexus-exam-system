@@ -3335,14 +3335,14 @@ def api_exams_for_class(request):
             return JsonResponse({'exams': []})
 
     # Count total distinct subjects assigned to this grade across all streams
-    sa_filters = Q(school=school, class_name=grade_name)
+    sa_filters = Q(school=school, class_name=grade_name, is_active=True)
     if grade_name in LOWER_PRIMARY_GRADE_CHOICES:
         sa_filters &= Q(school_section='PRIMARY', sub_section='LOWER')
     elif grade_name in PRIMARY_GRADE_CHOICES:
         sa_filters &= Q(school_section='PRIMARY', sub_section='UPPER')
     else:
         sa_filters &= Q(school_section='JSS')
-    total_subjects = SubjectAssignment.all_objects.filter(is_active=True, **sa_filters).values('subject').distinct().count()
+    total_subjects = SubjectAssignment.all_objects.filter(sa_filters).values('subject').distinct().count()
 
     all_exams = list(qs.order_by('-year', 'term', 'name'))
 

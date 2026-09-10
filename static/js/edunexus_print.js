@@ -207,12 +207,25 @@
             try {
                 var doc = printWin.document;
                 doc.open();
-                doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
+                doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>' + escapeHtml(title) + '</title>' +
                     '<style>' + combinedCSS + '</style>' +
-                    '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"><\/script>' +
-                    '</head><body>' + optimized.innerHTML + '</body></html>');
+                    '<script src="/static/js/chart.min.js"><\/script>' +
+                    '</head><body>' + optimized.innerHTML +
+                    '<div id="printPageFooter" style="position:fixed;bottom:0;left:0;right:0;padding:4pt 10mm;font-family:\u0022Times New Roman\u0022,Times,serif;font-size:8pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5pt;border-top:0.5pt solid #cbd5e1;display:none;justify-content:space-between;pointer-events:none;z-index:9999"><span style="width:70%">GENERATED FROM EDUNEXUS EXAM SYSTEM \u00a9 2026</span><span id="printPageNum" style="width:28%;text-align:right;white-space:nowrap"></span></div>' +
+                    '</body></html>');
                 doc.close();
             } catch(e) { _safeClose(printWin); retry(); return; }
+
+            // Firefox @page margin box fallback: show HTML footer only in browsers that lack support
+            try {
+                var pw = printWin;
+                var ua = (pw.navigator && pw.navigator.userAgent) || '';
+                var isFirefox = ua.indexOf('Firefox') !== -1;
+                var footer = pw.document.getElementById('printPageFooter');
+                if (footer) {
+                    footer.style.display = isFirefox ? 'flex' : 'none';
+                }
+            } catch(e) {}
 
             var checkCount = 0;
             var maxChecks = 60;

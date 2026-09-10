@@ -449,7 +449,7 @@
         overflow: visible !important;
     }
 
-    /* ── Strict Typography: Times New Roman 12pt ─────────── */
+    /* ── Strict Typography: Times New Roman 11.5pt ────────── */
     .table-analysis,
     .table-analysis th,
     .table-analysis td,
@@ -457,7 +457,7 @@
     .summary-table th,
     .summary-table td {
         font-family: "Times New Roman", Times, serif !important;
-        font-size: 12pt !important;
+        font-size: 11.5pt !important;
     }
 
     .bs-header-block,
@@ -659,7 +659,7 @@
     .summary-table th,
     .summary-table td {
         font-family: "Times New Roman", Times, serif !important;
-        font-size: 12pt !important;
+        font-size: 11.5pt !important;
     }
     .summary-table {
         width: 100% !important;
@@ -698,7 +698,7 @@
         color: #000000 !important;
         font-weight: 600 !important;
         font-family: "Times New Roman", Times, serif !important;
-        font-size: 12pt !important;
+        font-size: 11.5pt !important;
         white-space: nowrap !important;
     }
     .summary-table tr {

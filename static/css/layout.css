@@ -40,7 +40,7 @@
 }
 
 .brand-logo {
-    height: 32px;
+    height: 38px;
     width: auto;
 }
 
@@ -54,7 +54,7 @@
 }
 
 .brand-text span {
-    color: var(--en-green);
+    color: #4CAF50;
 }
 
 /* ── Surface Panel (grey, flex stretch) ───────────────────── */
@@ -1739,7 +1739,7 @@ body.sidebar-collapsed .main-content {
 }
 
 .cal-day-cell.today {
-    background-color: #fefce8;
+    background-color: #fef08a;
 }
 
 .cal-day-cell.today .cal-day-num {
@@ -2741,7 +2741,7 @@ body.sidebar-collapsed .main-content {
     margin: 0 auto;
 }
 .edp-day:hover { background: #f1f5f9; }
-.edp-day.today { background: #fef9c3; font-weight: 700; }
+.edp-day.today { background: #fef08a; font-weight: 700; }
 .edp-day.selected { background: #2563eb; color: #fff; font-weight: 700; }
 .edp-day.outside { color: #cbd5e1; }
 

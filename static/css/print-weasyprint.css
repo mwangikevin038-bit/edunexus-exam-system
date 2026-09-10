@@ -359,8 +359,8 @@ html, body {
 .bs-school-name { font-family: "Georgia", "Times New Roman", Times, serif; font-size: 22pt; font-weight: 700; color: #305CDE; letter-spacing: 0.5px; line-height: 1.1; margin: 0 0 3px; text-transform: uppercase; }
 .bs-results-badge { display: inline-block; padding: 8px 18px; border-radius: 20px; background: #305CDE; color: #fff; font-size: 10pt; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 
-.table-analysis { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9pt; font-family: "Times New Roman", Times, serif; color: #000; }
-.table-analysis th, .table-analysis td { border: 1px solid #000; padding: 3px 4px; white-space: nowrap; vertical-align: middle; text-align: center; font-size: 9pt; line-height: 1.2; overflow: hidden; color: #000; }
+.table-analysis { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11.5pt; font-family: "Times New Roman", Times, serif; color: #000; }
+.table-analysis th, .table-analysis td { border: 1px solid #000; padding: 3px 4px; white-space: nowrap; vertical-align: middle; text-align: center; font-size: 11.5pt; line-height: 1.2; overflow: hidden; color: #000; }
 .table-analysis th { font-weight: 800; background: #e2e6ea; }
 .table-analysis tr { page-break-inside: auto; }
 .table-analysis thead { display: table-header-group; }
@@ -391,9 +391,9 @@ html, body {
 .table-analysis tbody tr td.lv-col { background: #EDF4FC; }
 
 .analysis-page-container { page-break-before: always; padding: 12px; margin-top: 0; background: #fff; border: none; }
-.summary-table { width: 100%; border-collapse: collapse; font-size: 12pt; font-family: "Times New Roman", Times, serif; border: 1px solid #000; }
+.summary-table { width: 100%; border-collapse: collapse; font-size: 11.5pt; font-family: "Times New Roman", Times, serif; border: 1px solid #000; }
 .summary-table th { background-color: #B6B6B5; color: #000; font-weight: 800; text-transform: uppercase; border: 1px solid #000; padding: 6px 5px; white-space: nowrap; }
-.summary-table td { border: 1px solid #000; text-align: center; padding: 5px; font-weight: 600; font-size: 12pt; white-space: nowrap; }
+.summary-table td { border: 1px solid #000; text-align: center; padding: 5px; font-weight: 600; font-size: 11.5pt; white-space: nowrap; }
 .summary-table td.sub-lbl { text-align: left; font-weight: 800; padding-left: 10px; }
 .summary-table td.teacher-col { text-align: left; font-weight: 600; padding-left: 8px; white-space: nowrap; }
 .summary-table tr { page-break-inside: avoid; }
@@ -414,9 +414,9 @@ html, body {
 .pdf-heading-copy .pdf-subtitle { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #374151; margin: 2px 0 0; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .pdf-heading-copy .pdf-year { display: inline-block; background: #0f1727; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 7px; border-radius: 20px; margin-left: 4px; }
 
-.register-table { width: 100%; min-width: 0; border-collapse: collapse; border: 1px solid #000; font-family: "Times New Roman", Times, serif; font-size: 12pt; table-layout: fixed; }
+.register-table { width: 100%; min-width: 0; border-collapse: collapse; border: 1px solid #000; font-family: "Times New Roman", Times, serif; font-size: 11.5pt; table-layout: fixed; }
 .register-table th { background: #e2e6ea; color: #000; font-weight: 900; font-size: 12pt; padding: 5px 8px; border: 1px solid #000; text-transform: uppercase; text-align: left; line-height: 1.2; }
-.register-table td { padding: 4px 8px; border: 1px solid #000; color: #000; font-weight: 400; font-size: 12pt; line-height: 1.2; vertical-align: middle; }
+.register-table td { padding: 4px 8px; border: 1px solid #000; color: #000; font-weight: 400; font-size: 11.5pt; line-height: 1.2; vertical-align: middle; }
 .register-table tr { page-break-inside: avoid; }
 .register-table thead { display: table-header-group; }
 .col-adm { width: 6.5%; }
