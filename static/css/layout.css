@@ -2441,14 +2441,22 @@ body.sidebar-collapsed .main-content {
     max-width: 90vw;
     text-align: center;
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 .en-toast.visible {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
+.en-toast .toast-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+}
 .en-toast-error { background: #dc2626; }
 .en-toast-success { background: #16a34a; }
 .en-toast-warning { background: #d97706; }
+.en-toast-info { background: #1e293b; }
 
 /* ═══════════════════════════════════════════════════════════════
    Add Event Modal — matches reference design

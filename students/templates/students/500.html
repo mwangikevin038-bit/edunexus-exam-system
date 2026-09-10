@@ -1,0 +1,64 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Error — EduNexus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh;display:flex;background:#f8fafc;-webkit-font-smoothing:antialiased}
+        .err-panel{flex:0 0 42%;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;text-align:center;position:relative;overflow:hidden}
+        .err-panel::before{content:'';position:absolute;top:-80px;left:-80px;width:280px;height:280px;border-radius:50%;background:rgba(76,175,80,0.08)}
+        .err-panel::after{content:'';position:absolute;bottom:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(76,175,80,0.05)}
+        .err-panel .logo{position:relative;z-index:2;margin-bottom:32px}
+        .err-panel .logo img{width:72px;height:72px;border-radius:16px;background:rgba(255,255,255,0.08);padding:12px}
+        .err-panel .code{font-size:120px;font-weight:900;color:#fff;line-height:1;position:relative;z-index:2;text-shadow:0 4px 24px rgba(0,0,0,0.3)}
+        .err-panel .label{font-size:16px;font-weight:600;color:rgba(255,255,255,0.7);margin-top:12px;position:relative;z-index:2;letter-spacing:1px;text-transform:uppercase}
+        .main-panel{flex:1;display:flex;align-items:center;justify-content:center;padding:60px}
+        .main-content{max-width:440px}
+        .main-content h1{font-size:28px;font-weight:800;color:#0f172a;margin-bottom:12px;line-height:1.2}
+        .main-content p{font-size:15px;color:#64748b;line-height:1.7;margin-bottom:32px}
+        .err-actions{display:flex;gap:12px;flex-wrap:wrap}
+        .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;transition:all 0.25s cubic-bezier(0.16,1,0.3,1);cursor:pointer;border:none;font-family:inherit}
+        .btn-primary{background:#4CAF50;color:#fff;box-shadow:0 2px 8px rgba(76,175,80,0.3)}
+        .btn-primary:hover{background:#43A047;transform:translateY(-1px);box-shadow:0 6px 20px rgba(76,175,80,0.35)}
+        .btn-outline{background:transparent;color:#475569;border:1.5px solid #e2e8f0}
+        .btn-outline:hover{background:#f1f5f9;border-color:#cbd5e1}
+        .help-text{margin-top:24px;font-size:13px;color:#94a3b8}
+        .help-text a{color:#4CAF50;text-decoration:none;font-weight:600}
+        .help-text a:hover{text-decoration:underline}
+        @media(max-width:768px){
+            body{flex-direction:column}
+            .err-panel{flex:none;padding:40px 24px}
+            .err-panel .code{font-size:80px}
+            .main-panel{padding:40px 24px}
+        }
+    </style>
+</head>
+<body>
+    <div class="err-panel">
+        <div class="logo">
+            <img src="{% static 'images/edunexus_logo_192.png' %}" alt="EduNexus">
+        </div>
+        <div class="code">500</div>
+        <div class="label">Server Error</div>
+    </div>
+    <div class="main-panel">
+        <div class="main-content">
+            <h1>Something went wrong</h1>
+            <p>We're experiencing a technical issue. Our team has been notified and is working on a fix. Please try again in a few moments.</p>
+            <div class="err-actions">
+                <a href="/dashboard/" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Go to Dashboard
+                </a>
+                <a href="javascript:location.reload()" class="btn btn-outline">Try Again</a>
+            </div>
+            <p class="help-text">Need help? <a href="mailto:support@edunexus.net">Contact Support</a></p>
+        </div>
+    </div>
+</body>
+</html>

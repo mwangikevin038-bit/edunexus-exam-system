@@ -32,6 +32,8 @@ from .auth import (  # noqa: F401
     login_view,
     switch_workspace,
     custom_password_change,
+    custom_404,
+    custom_500,
 )
 
 # ── Health check (no auth required) ──────────────────────────────────────────

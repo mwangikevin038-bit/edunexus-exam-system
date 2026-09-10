@@ -414,10 +414,11 @@ STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
 
-# Dev: disable WhiteNoise static file caching
-WHITENOISE_MAX_AGE = 0
+# WhiteNoise static file serving
+WHITENOISE_MAX_AGE = 604800  # 1 week browser cache
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_AUTOREFRESH = DEBUG  # Auto-refresh in dev only
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

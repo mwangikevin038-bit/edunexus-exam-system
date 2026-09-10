@@ -308,3 +308,11 @@ def custom_password_change(request):
         'form': form,
         'force_password_change': force_password_change,
     })
+
+
+def custom_404(request, exception):
+    return render(request, 'students/404.html', status=404)
+
+
+def custom_500(request):
+    return render(request, 'students/500.html', status=500)
