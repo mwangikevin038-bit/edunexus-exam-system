@@ -7,10 +7,12 @@ individual submission reviews, and assessment lock management.
 
 import datetime
 import json
+import logging
 import re
 import time
 
-import bleach
+logger = logging.getLogger("students.exams")
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -22,6 +24,7 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .helpers import invalidate_report_caches
 
@@ -436,40 +439,40 @@ def select_exam(request):
                         batch_size=250,
                     )
 
-            # ============================================================
-            # PHASE 3 — Post-atomic side effects (inside transaction)
-            # ============================================================
-            if religion_student_ids:
-                Student.objects.filter(id__in=religion_student_ids).update(religion=religion_tag)
+                # ============================================================
+                # PHASE 3 — Post-atomic side effects (inside transaction)
+                # ============================================================
+                if religion_student_ids:
+                    Student.objects.filter(id__in=religion_student_ids).update(religion=religion_tag)
 
-            if opposite_religion and opposite_religion_student_ids:
-                Mark.all_objects.filter(
+                if opposite_religion and opposite_religion_student_ids:
+                    Mark.all_objects.filter(
+                        school=school,
+                        student_id__in=opposite_religion_student_ids,
+                        subject=opposite_religion,
+                        term=selected_exam.term,
+                        exam_type=selected_exam.name,
+                        year=selected_exam.year,
+                        school_section=selected_assignment.school_section,
+                    ).delete()
+
+                MarkSubmission.objects.update_or_create(
                     school=school,
-                    student_id__in=opposite_religion_student_ids,
-                    subject=opposite_religion,
+                    teacher=teacher,
+                    subject=selected_assignment.subject,
+                    class_name=selected_assignment.class_name,
+                    stream=selected_assignment.stream,
+                    exam_name=selected_exam.name,
                     term=selected_exam.term,
-                    exam_type=selected_exam.name,
                     year=selected_exam.year,
                     school_section=selected_assignment.school_section,
-                ).delete()
-
-            MarkSubmission.objects.update_or_create(
-                school=school,
-                teacher=teacher,
-                subject=selected_assignment.subject,
-                class_name=selected_assignment.class_name,
-                stream=selected_assignment.stream,
-                exam_name=selected_exam.name,
-                term=selected_exam.term,
-                year=selected_exam.year,
-                school_section=selected_assignment.school_section,
-                defaults={
-                    "status": "submitted",
-                    "admin_note": "",
-                    "reviewed_at": None,
-                    "published_at": None,
-                }
-            )
+                    defaults={
+                        "status": "submitted",
+                        "admin_note": "",
+                        "reviewed_at": None,
+                        "published_at": None,
+                    }
+                )
 
             messages.success(request, f"{saved_count} learner records submitted successfully." + (f" {deleted_count} mark(s) cleared." if deleted_count else ""))
             invalidate_report_caches(
@@ -832,11 +835,29 @@ def manage_exams(request):
 
         if action_type == "delete_exam":
             exam_id = request.POST.get("exam_id")
-            exam = get_school_object_or_403(Exam, request, id=exam_id)
+            exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
+            if not exam:
+                messages.error(request, "Assessment not found.")
+                return redirect(reverse('manage_exams') + '?tab=manage')
             exam.is_deleted = True
             exam.deleted_at = timezone.now()
             exam.deleted_by = request.user
             exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
+
+            Mark.all_objects.filter(
+                school=school, exam_type=exam.name,
+                term=exam.term, year=exam.year,
+            ).update(is_deleted=True)
+
+            MarkSubmission.objects.filter(
+                school=school, exam_name=exam.name,
+                term=exam.term, year=exam.year,
+            ).update(is_deleted=True)
+
+            ExamSummary.all_objects.filter(
+                school=school, exam_name=exam.name,
+                term=exam.term, year=exam.year,
+            ).delete()
 
             messages.success(request, "Assessment has been deleted.")
             post_sub = request.POST.get("sub", "").strip().upper()
@@ -1158,7 +1179,7 @@ def manage_exams(request):
         all_submissions = list(MarkSubmission.all_objects.filter(
             school=school,
             year=selected_year,
-        ).select_related('teacher', 'teacher__user', 'subject').order_by('-submitted_at'))
+        ).select_related('teacher', 'teacher__user', 'subject', 'published_by').order_by('-submitted_at'))
 
         for sub in all_submissions:
             sub._normalized_exam_name = _normalize_exam_name(sub.exam_name)
@@ -1211,7 +1232,7 @@ def manage_exams(request):
             if returned > 0:
                 return 'Returned'
             if submitted + approved + published == total:
-                return 'Pending'
+                return 'Pending Publishing'
             return 'In Progress'
 
         for exam in all_year_exams:
@@ -1237,7 +1258,9 @@ def manage_exams(request):
                 updated_on = exam.created_at
                 if last_sub_entry:
                     last_sub, updated_on = last_sub_entry
-                    if last_sub.teacher and last_sub.teacher.user:
+                    if last_sub.published_by:
+                        updated_by = last_sub.published_by.get_full_name() or last_sub.published_by.username
+                    elif last_sub.teacher and last_sub.teacher.user:
                         updated_by = last_sub.teacher.user.get_full_name() or last_sub.teacher.user.username
 
                 status_display = _compute_class_status(exam._normalized_name, exam.term, sub.class_name)
@@ -2091,8 +2114,6 @@ def review_stream_submission(request):
     exam_section_filter = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
 
     exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first() if exam_id else None
-    if exam and exam.school_section != exam_section_filter:
-        exam = None
     if not exam:
         exam = Exam.all_objects.filter(school=school, status="active", school_section=exam_section_filter, is_deleted=False).order_by("-year", "term", "name").first()
     if not exam:
@@ -2142,20 +2163,21 @@ def review_stream_submission(request):
                 "totals": totals,
             })
 
-    context = {
-        "exam": exam,
-        "exams": exams,
-        "stream_cards": stream_cards,
-        "section": section,
-        "active_sub": active_sub,
-    }
-    if section == 'PRIMARY':
-        lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER', is_deleted=False).count()
-        upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER', is_deleted=False).count()
-        context["lower_exam_count"] = lower_count
-        context["upper_exam_count"] = upper_count
-    return render(request, "students/stream_review_list.html", context)
+        context = {
+            "exam": exam,
+            "exams": exams,
+            "stream_cards": stream_cards,
+            "section": section,
+            "active_sub": active_sub,
+        }
+        if section == 'PRIMARY':
+            lower_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='LOWER', is_deleted=False).count()
+            upper_count = Exam.all_objects.filter(school=school, school_section='PRIMARY', sub_section='UPPER', is_deleted=False).count()
+            context["lower_exam_count"] = lower_count
+            context["upper_exam_count"] = upper_count
+        return render(request, "students/stream_review_list.html", context)
 
+    # ── Detail view: class_name + stream provided ────────────────────
     section = get_request_school_section(request)
     valid_pairs = set(
         SubjectAssignment.all_objects.filter(school=school, is_active=True)
@@ -2168,7 +2190,52 @@ def review_stream_submission(request):
 
     rows, totals = get_stream_submission_summary(class_name, stream, exam)
 
+    # ── Split rows: submitted (has MarkSubmission) vs in-progress ─────
+    submitted_rows = []
+    not_started_rows = []
+    for row in rows:
+        has_marks = row["captured_count"] > 0
+        has_submission = row["submission"] is not None
+        sub = row["submission"]
+
+        # Compute display status
+        if sub and sub.status == "published":
+            row["display_status"] = "Published"
+            row["status_color"] = "green"
+        elif sub and sub.status == "approved":
+            row["display_status"] = "Pending publishing by Admin"
+            row["status_color"] = "blue"
+        elif sub and sub.status == "submitted":
+            row["display_status"] = "Pending publishing by Admin"
+            row["status_color"] = "blue"
+        elif sub and sub.status == "returned":
+            row["display_status"] = "Returned for correction"
+            row["status_color"] = "red"
+        elif has_marks and row["status_key"] == "ready":
+            row["display_status"] = "Pending publishing by Subject Teacher"
+            row["status_color"] = "orange"
+        elif has_marks:
+            row["display_status"] = "Pending publishing by Subject Teacher"
+            row["status_color"] = "orange"
+        elif row["status_key"] == "not_started":
+            row["display_status"] = "Pending publishing by Subject Teacher"
+            row["status_color"] = "orange"
+        else:
+            row["display_status"] = row["status_label"]
+            row["status_color"] = "gray"
+
+        # Split: only subjects with a formal submission go to upper table
+        if has_submission:
+            without = row["missing_count"]
+            total = row["total_students"]
+            row["student_without_marks"] = f"{without} / {total} Don't have marks"
+            submitted_rows.append(row)
+        else:
+            row["student_without_marks"] = f"{row['missing_count']} / {row['total_students']} Don't have marks"
+            not_started_rows.append(row)
+
     if request.method == "POST":
+        import bleach
         action_type = request.POST.get("action_type")
         admin_note = bleach.clean(request.POST.get("admin_note", "").strip())
         submissions = [
@@ -2246,6 +2313,12 @@ def review_stream_submission(request):
             if not totals["can_publish"]:
                 messages.error(request, "Approve all subject sheets in this stream before publishing.")
                 return redirect(f"{request.path}?exam_id={exam.id}&class_name={class_name}&stream={stream}")
+
+            # Get assignment details for populate_exam_summaries
+            first_assignment = next(
+                (row["assignment"] for row in rows if row.get("assignment")), None
+            )
+
             for row in rows:
                 submission = row["submission"]
                 if not submission:
@@ -2253,18 +2326,44 @@ def review_stream_submission(request):
                 submission.status = "published"
                 submission.admin_note = admin_note
                 submission.published_at = timezone.now()
+                submission.published_by = request.user
                 if not submission.reviewed_at:
                     submission.reviewed_at = timezone.now()
                 submission.save()
+
+            # ── Rebuild ExamSummary snapshots for this grade ───────────
+            from students.tasks import populate_exam_summaries
+            if first_assignment:
+                populate_exam_summaries.delay(
+                    school_id=school.pk,
+                    grade=class_name,
+                    year=exam.year,
+                    term=exam.term,
+                    exam_name=exam.name,
+                    school_section=first_assignment.school_section,
+                    sub_section=first_assignment.sub_section,
+                )
+
+            # ── Build report card snapshot for this stream ─────────────
+            from students.views.helpers import build_exam_result_snapshot
+            build_exam_result_snapshot(
+                school=school,
+                exam=exam,
+                class_name=class_name,
+                stream=stream,
+            )
+
             messages.success(request, f"{class_name} {stream} results have been published.")
 
         return redirect(f"{request.path}?exam_id={exam.id}&class_name={class_name}&stream={stream}")
 
-    return render(request, "students/review_stream_submission.html", {
+    return render(request, "students/stream_subject_detail.html", {
         "exam": exam,
         "class_name": class_name,
         "stream": stream,
         "rows": rows,
+        "submitted_rows": submitted_rows,
+        "not_started_rows": not_started_rows,
         "totals": totals,
     })
 
@@ -2282,16 +2381,33 @@ def review_submission(request):
     assignment_id = request.GET.get("assignment_id") or request.POST.get("assignment_id")
     exam_id = request.GET.get("exam_id") or request.POST.get("exam_id")
 
-    assignment = get_school_object_or_403(
-        SubjectAssignment,
-        request,
-        id=assignment_id,
-    )
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "School context required.")
+        return redirect("manage_exams")
 
-    exam = get_school_object_or_403(Exam, request, id=exam_id)
+    assignment = SubjectAssignment.all_objects.filter(
+        id=assignment_id,
+        school=school,
+        is_active=True,
+    ).select_related("teacher_profile", "teacher_profile__user", "subject").first()
+
+    if not assignment:
+        messages.error(request, "Subject assignment not found.")
+        return redirect("manage_exams")
+
+    exam = Exam.all_objects.filter(
+        id=exam_id,
+        school=school,
+        is_deleted=False,
+    ).first()
+
+    if not exam:
+        messages.error(request, "Exam not found.")
+        return redirect("manage_exams")
 
     submission = MarkSubmission.objects.filter(
-        school=get_request_school(request),
+        school=school,
         teacher=assignment.teacher_profile,
         subject=assignment.subject,
         class_name=assignment.class_name,
@@ -2303,14 +2419,10 @@ def review_submission(request):
     ).first()
 
     if request.method == "POST":
+        import bleach
         action_type = request.POST.get("action_type")
         admin_note = bleach.clean(request.POST.get("admin_note", "").strip())
-
-        if not submission:
-            messages.error(request, "This marksheet has not been submitted yet.")
-            return redirect(
-                f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
-            )
+        school = get_request_school(request)
 
         if action_type == "save_admin_scores":
             if not user_has_main_school_admin_override(request.user):
@@ -2336,8 +2448,6 @@ def review_submission(request):
                 assignment.stream,
                 assignment.subject,
             )
-
-            school = get_request_school(request)
 
             # ── BULK READ: fetch existing marks in ONE query (fixes N+1) ──
             existing_marks = Mark.all_objects.filter(
@@ -2451,12 +2561,13 @@ def review_submission(request):
                         sub_section=assignment.sub_section,
                     ).delete()
 
-            submission.admin_note = admin_note
-            if submission.status != "published":
-                submission.status = "submitted"
-                submission.published_at = None
-            submission.reviewed_at = timezone.now()
-            submission.save()
+            if submission:
+                submission.admin_note = admin_note
+                if submission.status != "published":
+                    submission.status = "submitted"
+                    submission.published_at = None
+                submission.reviewed_at = timezone.now()
+                submission.save()
 
             # ── Rebuild ExamSummary snapshots for this grade ───────────
             from students.tasks import populate_exam_summaries
@@ -2473,6 +2584,11 @@ def review_submission(request):
             messages.success(request, f"{corrected_count} learner score correction(s) saved.")
 
         elif action_type == "return_submission":
+            if not submission:
+                messages.error(request, "This marksheet has not been submitted yet.")
+                return redirect(
+                    f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+                )
             with transaction.atomic():
                 submission.status = "returned"
                 submission.admin_note = admin_note
@@ -2491,6 +2607,11 @@ def review_submission(request):
             messages.success(request, "Assessment sheet has been returned to the teacher for correction.")
 
         elif action_type == "approve_submission":
+            if not submission:
+                messages.error(request, "This marksheet has not been submitted yet.")
+                return redirect(
+                    f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+                )
             total_students = get_religion_aware_student_count(
                 assignment.class_name,
                 assignment.stream,
@@ -2525,6 +2646,11 @@ def review_submission(request):
             messages.success(request, "Assessment sheet has been approved.")
 
         elif action_type == "publish_submission":
+            if not submission:
+                messages.error(request, "This marksheet has not been submitted yet.")
+                return redirect(
+                    f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+                )
             total_students = get_religion_aware_student_count(
                 assignment.class_name,
                 assignment.stream,
@@ -2554,6 +2680,7 @@ def review_submission(request):
             submission.status = "published"
             submission.admin_note = admin_note
             submission.published_at = timezone.now()
+            submission.published_by = request.user
 
             if not submission.reviewed_at:
                 submission.reviewed_at = timezone.now()
@@ -2570,6 +2697,15 @@ def review_submission(request):
                 exam_name=exam.name,
                 school_section=assignment.school_section,
                 sub_section=assignment.sub_section,
+            )
+
+            # ── Build report card snapshot for this stream ─────────────
+            from students.views.helpers import build_exam_result_snapshot
+            build_exam_result_snapshot(
+                school=school,
+                exam=exam,
+                class_name=assignment.class_name,
+                stream=assignment.stream,
             )
 
             messages.success(request, "Assessment sheet has been published.")
@@ -2616,6 +2752,7 @@ def review_submission(request):
                 percentage_display = f"{mark.score}%"
                 performance_level, points_display = get_performance_level(mark.score)
                 row_status = "Captured"
+            updated_on = mark.updated_at.strftime("%d/%m/%Y") if mark.updated_at else "-"
         else:
             score_display = "-"
             editable_score = ""
@@ -2623,6 +2760,7 @@ def review_submission(request):
             performance_level = "Missing"
             points_display = "-"
             row_status = "Missing"
+            updated_on = "-"
 
         learner_rows.append({
             "student_id": student.id,
@@ -2634,9 +2772,11 @@ def review_submission(request):
             "performance_level": performance_level,
             "points_display": points_display,
             "row_status": row_status,
+            "updated_by": assignment.teacher_profile.get_full_title() if mark else "-",
+            "updated_on": updated_on,
         })
 
-    total_students = students.count()
+    total_students = len(students)
     captured_count = marks_qs.count()
     absent_count = marks_qs.filter(is_absent=True).count()
     missing_count = max(total_students - captured_count, 0)
@@ -3358,7 +3498,10 @@ def save_mark(request):
     if not all([student_id, assignment_id, exam_id]):
         return JsonResponse({'error': 'Missing parameters'}, status=400)
 
-    school = get_request_school(request)
+    try:
+        school = get_request_school(request)
+    except Exception:
+        return JsonResponse({'error': 'School context required'}, status=400)
 
     try:
         assignment = SubjectAssignment.objects.get(id=assignment_id, school=school, teacher_profile=teacher)
@@ -3396,14 +3539,21 @@ def save_mark(request):
     ).exists():
         return JsonResponse({'error': 'Assessment is locked by admin'}, status=403)
 
-    existing_mark = Mark.objects.filter(
-        school=school, student=student, subject=assignment.subject,
-        term=exam.term, exam_type=exam.name, year=exam.year,
-    ).first()
+    try:
+        existing_mark = Mark.all_objects.filter(
+            school=school, student=student, subject=assignment.subject,
+            term=exam.term, exam_type=exam.name, year=exam.year,
+        ).first()
+    except Exception:
+        existing_mark = None
+
     try:
         maximum_marks = int(request.POST.get('maximum_marks', '100'))
     except (ValueError, TypeError):
         maximum_marks = existing_mark.maximum_marks if existing_mark else 100
+
+    if maximum_marks <= 0:
+        maximum_marks = 100
 
     # ── CLEAR: empty score → delete mark ──────────────────────────────────
     if not score_value:
@@ -3414,6 +3564,17 @@ def save_mark(request):
             sub_section=assignment.sub_section,
         ).delete()
         return JsonResponse({'ok': True, 'cleared': True})
+
+    try:
+        return _save_mark_score(request, school, teacher, assignment, exam, student, score_value, maximum_marks, submission)
+    except Exception as exc:
+        import logging
+        logging.getLogger("students.exams").exception("save_mark failed for student_id=%s assignment_id=%s", student_id, assignment_id)
+        return JsonResponse({'error': f'Save failed: {str(exc)}'}, status=500)
+
+
+def _save_mark_score(request, school, teacher, assignment, exam, student, score_value, maximum_marks, submission):
+    """Inner helper for save_mark — separated so the outer function can catch all exceptions."""
 
     # ── Shared lookup for religion handling ────────────────────────────────
     _mark_filter = dict(
@@ -3461,6 +3622,7 @@ def save_mark(request):
             year=exam.year,
             exam_type=exam.name,
         )
+        invalidate_report_caches(school.pk, assignment.class_name, assignment.stream, exam.year, exam.term, exam.name)
         return JsonResponse({'ok': True, 'absent': True, 'mark_id': mark_id})
 
     # ── NUMERIC SCORE → upsert with computed grading ──────────────────────
@@ -3471,6 +3633,9 @@ def save_mark(request):
 
     if raw_score < 0 or raw_score > maximum_marks:
         return JsonResponse({'error': 'Score exceeds total marks'}, status=400)
+
+    if maximum_marks <= 0:
+        return JsonResponse({'error': 'Maximum marks must be greater than zero'}, status=400)
 
     percentage = round((raw_score / maximum_marks) * 100)
 
@@ -3709,6 +3874,8 @@ def batch_save_marks(request):
                         and existing.points == perf_points):
                     skipped_unchanged += 1
                     continue
+                existing._old_raw_score = existing.raw_score
+                existing._old_score = existing.score
                 existing.raw_score = raw_score
                 existing.maximum_marks = maximum_marks
                 existing.score = score
@@ -3761,9 +3928,11 @@ def batch_save_marks(request):
                 )
                 updated_count += rows
             if updated_count < len(marks_to_update):
+                version_conflicts = len(marks_to_update) - updated_count
+                saved_count -= version_conflicts
                 logger.warning(
                     "[batch_save] %d/%d marks had version conflicts (concurrent edit detected)",
-                    len(marks_to_update) - updated_count, len(marks_to_update),
+                    version_conflicts, len(marks_to_update),
                 )
 
         # Audit trail: log all mark changes
@@ -3988,3 +4157,447 @@ def return_mark_sheet(request):
     submission.save()
 
     return JsonResponse({'ok': True})
+
+
+@login_required(login_url='login')
+def publish_results_overview(request):
+    """
+    Publish Results overview: shows all streams for a class with their
+    submission status. Admin clicks 'View' to go to stream-level review.
+    """
+    if not user_has_main_school_admin_override(request.user):
+        messages.error(request, "You are not allowed to publish results.")
+        return redirect("manage_exams")
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "School context is required.")
+        return redirect("welcome_page")
+
+    exam_id = request.GET.get("exam_id")
+    class_name = request.GET.get("class_name", "").strip()
+
+    if not exam_id:
+        messages.error(request, "Exam is required.")
+        return redirect("manage_exams")
+
+    exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
+    if not exam:
+        messages.error(request, "Exam not found.")
+        return redirect("manage_exams")
+
+    if not class_name or class_name == '-':
+        first_class = (
+            SubjectAssignment.all_objects.filter(school=school, is_active=True)
+            .values_list("class_name", flat=True)
+            .distinct()
+            .first()
+        )
+        if first_class:
+            class_name = first_class
+        else:
+            messages.error(request, "No classes found.")
+            return redirect("manage_exams")
+
+    all_exams = Exam.all_objects.filter(
+        school=school, is_deleted=False,
+        school_section=exam.school_section,
+    ).order_by("-year", "term", "name")
+
+    pairs = (
+        SubjectAssignment.all_objects.filter(
+            school=school, class_name=class_name, is_active=True
+        )
+        .values("stream")
+        .distinct()
+        .order_by("stream")
+    )
+
+    stream_data = []
+    for pair in pairs:
+        stream = pair["stream"]
+        rows, totals = get_stream_submission_summary(class_name, stream, exam)
+        total_subjects = totals.get("subjects", 0)
+        published = totals.get("published", 0)
+        submitted = totals.get("submitted", 0)
+        approved = totals.get("approved", 0)
+        returned = totals.get("returned", 0)
+        ready_count = published + submitted + approved
+
+        if total_subjects == 0:
+            status_key = "no_assignments"
+            status_label = "No subject assignments"
+            status_icon = "x"
+            status_color = "red"
+        elif published == total_subjects:
+            status_key = "all_published"
+            status_label = "All subjects published"
+            status_icon = "check"
+            status_color = "green"
+        elif published > 0 and published + approved == total_subjects:
+            status_key = "all_approved_or_published"
+            status_label = "All subjects approved/published"
+            status_icon = "check"
+            status_color = "green"
+        elif published > 0 or approved > 0:
+            status_key = "partial"
+            status_label = "Some subjects don't have results"
+            status_icon = "x"
+            status_color = "orange"
+        elif submitted > 0 and submitted + approved == total_subjects:
+            status_key = "all_submitted"
+            status_label = "All subjects submitted, awaiting review"
+            status_icon = "x"
+            status_color = "orange"
+        elif submitted > 0:
+            status_key = "partial_submitted"
+            status_label = "Some subjects don't have results"
+            status_icon = "x"
+            status_color = "orange"
+        else:
+            status_key = "not_started"
+            status_label = "All subjects don't have results"
+            status_icon = "x"
+            status_color = "red"
+
+        stream_data.append({
+            "stream": stream,
+            "display_name": f"{class_name} {stream}",
+            "status_key": status_key,
+            "status_label": status_label,
+            "status_icon": status_icon,
+            "status_color": status_color,
+            "total_subjects": total_subjects,
+            "published": published,
+            "submitted": submitted,
+            "approved": approved,
+            "returned": returned,
+        })
+
+    min_subjects = exam.min_subjects
+
+    context = {
+        "exam": exam,
+        "all_exams": all_exams,
+        "class_name": class_name,
+        "stream_data": stream_data,
+        "min_subjects": min_subjects,
+    }
+    return render(request, "students/publish_results_overview.html", context)
+
+
+@require_POST
+@login_required
+def save_exam_min_subjects(request):
+    """AJAX endpoint: save min_subjects for an exam."""
+    if not user_has_main_school_admin_override(request.user):
+        return JsonResponse({"success": False, "error": "Permission denied."}, status=403)
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({"success": False, "error": "School context required."}, status=400)
+
+    exam_id = request.POST.get("exam_id")
+    min_subjects = request.POST.get("min_subjects")
+
+    if not exam_id:
+        return JsonResponse({"success": False, "error": "Exam ID required."}, status=400)
+
+    try:
+        min_subjects = int(min_subjects)
+        if min_subjects < 1:
+            raise ValueError
+    except (TypeError, ValueError):
+        return JsonResponse({"success": False, "error": "Minimum subjects must be a positive integer."}, status=400)
+
+    exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
+    if not exam:
+        return JsonResponse({"success": False, "error": "Exam not found."}, status=404)
+
+    exam.min_subjects = min_subjects
+    exam.save(update_fields=["min_subjects", "integrity_checksum"])
+
+    return JsonResponse({"success": True, "min_subjects": exam.min_subjects})
+
+
+@login_required(login_url='login')
+def upload_results(request):
+    """
+    Admin/teacher mark entry screen for a specific subject.
+    Shows students without results and allows direct score entry.
+    """
+    if not user_has_main_school_admin_override(request.user):
+        messages.error(request, "You are not allowed to upload results.")
+        return redirect("manage_exams")
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "School context required.")
+        return redirect("manage_exams")
+
+    assignment_id = request.GET.get("assignment_id") or request.POST.get("assignment_id")
+    exam_id = request.GET.get("exam_id") or request.POST.get("exam_id")
+
+    assignment = SubjectAssignment.all_objects.filter(
+        id=assignment_id,
+        school=school,
+        is_active=True,
+    ).select_related("teacher_profile", "teacher_profile__user", "subject").first()
+
+    if not assignment:
+        messages.error(request, "Subject assignment not found.")
+        return redirect("manage_exams")
+
+    exam = Exam.all_objects.filter(
+        id=exam_id,
+        school=school,
+        is_deleted=False,
+    ).first()
+
+    if not exam:
+        messages.error(request, "Exam not found.")
+        return redirect("manage_exams")
+
+    submission = MarkSubmission.objects.filter(
+        school=school,
+        teacher=assignment.teacher_profile,
+        subject=assignment.subject,
+        class_name=assignment.class_name,
+        stream=assignment.stream,
+        exam_name=exam.name,
+        term=exam.term,
+        year=exam.year,
+        school_section=assignment.school_section,
+    ).first()
+
+    students = get_subject_students(
+        assignment.class_name,
+        assignment.stream,
+        assignment.subject,
+    )
+
+    marks_qs = get_subject_marks(
+        assignment.class_name,
+        assignment.stream,
+        assignment.subject,
+        exam.term,
+        exam.name,
+        exam.year,
+    ).select_related("student")
+
+    marks_by_student = {mark.student_id: mark for mark in marks_qs}
+
+    if request.method == "POST":
+        import bleach
+        action_type = request.POST.get("action_type")
+        admin_note = bleach.clean(request.POST.get("admin_note", "").strip())
+
+        if action_type == "save_scores":
+            if submission and submission.status in ('submitted', 'approved', 'published'):
+                messages.error(request, "This sheet has been submitted and cannot be modified. Ask the admin to return it first.")
+                return redirect(f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}")
+
+            if AssessmentLock.objects.filter(
+                school=school, year=exam.year, term=exam.term,
+                grade=assignment.class_name, exam_type=exam.name, is_locked=True,
+            ).exists():
+                messages.error(request, "This assessment is locked by the school admin.")
+                return redirect(f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}")
+
+            try:
+                maximum_marks = int(request.POST.get("maximum_marks") or 100)
+            except ValueError:
+                maximum_marks = 100
+
+            if maximum_marks <= 0:
+                maximum_marks = 100
+
+            existing_marks = Mark.all_objects.filter(
+                student__in=students,
+                subject=assignment.subject,
+                term=exam.term,
+                exam_type=exam.name,
+                year=exam.year,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
+            )
+            existing_map = {m.student_id: m for m in existing_marks}
+
+            marks_to_delete_ids = []
+            marks_to_create = []
+            corrected_count = 0
+
+            from .helpers import get_subject_level_fast
+            from .grading_engine import resolve_scale_fast
+            scale_data = resolve_scale_fast(school.pk, assignment.school_section, assignment.sub_section, subject_id=assignment.subject_id if assignment.subject else None)
+
+            for student in students:
+                raw_value = request.POST.get(f"score_{student.id}", "")
+                value = raw_value.strip().upper() if raw_value else ""
+                if not value:
+                    continue
+
+                _adm_lookup = dict(
+                    school=school,
+                    student=student,
+                    subject=assignment.subject,
+                    term=exam.term,
+                    exam_type=exam.name,
+                    year=exam.year,
+                    school_section=assignment.school_section,
+                    sub_section=assignment.sub_section,
+                )
+
+                if value == "AB":
+                    marks_to_create.append(Mark(
+                        **_adm_lookup,
+                        raw_score=None,
+                        maximum_marks=maximum_marks,
+                        score=0,
+                        is_absent=True,
+                        performance_level='AB',
+                        points=0,
+                        primary_raw_score='AB',
+                        primary_performance_point='AB',
+                        primary_descriptor='AB',
+                    ))
+                    if student.id in existing_map:
+                        marks_to_delete_ids.append(existing_map[student.id].id)
+                    corrected_count += 1
+                    continue
+
+                try:
+                    raw_score = int(value)
+                except (ValueError, TypeError):
+                    messages.error(request, f"Invalid score for {student.name}. Use a number or AB.")
+                    return redirect(
+                        f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+                    )
+
+                if raw_score < 0 or raw_score > maximum_marks:
+                    messages.error(request, f"{student.name}'s score exceeds the total marks.")
+                    return redirect(
+                        f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+                    )
+
+                percentage = round((raw_score / maximum_marks) * 100)
+                if scale_data:
+                    perf_level, perf_points = get_subject_level_fast(percentage, scale_data)
+                else:
+                    perf_level, perf_points = '-', 0
+
+                marks_to_create.append(Mark(
+                    **_adm_lookup,
+                    raw_score=raw_score,
+                    maximum_marks=maximum_marks,
+                    score=percentage,
+                    is_absent=False,
+                    performance_level=perf_level,
+                    points=perf_points if perf_points else 0,
+                    primary_raw_score=str(raw_score),
+                    primary_performance_point=str(perf_points) if perf_points else '',
+                    primary_descriptor=perf_level,
+                ))
+                if student.id in existing_map:
+                    marks_to_delete_ids.append(existing_map[student.id].id)
+                corrected_count += 1
+
+            with transaction.atomic():
+                if marks_to_delete_ids:
+                    Mark.all_objects.filter(id__in=marks_to_delete_ids).delete()
+                if marks_to_create:
+                    Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
+
+            messages.success(request, f"{corrected_count} learner score(s) saved.")
+
+        elif action_type == "submit_sheet":
+            if not submission:
+                submission = MarkSubmission.objects.create(
+                    school=school,
+                    teacher=assignment.teacher_profile,
+                    subject=assignment.subject,
+                    class_name=assignment.class_name,
+                    stream=assignment.stream,
+                    exam_name=exam.name,
+                    term=exam.term,
+                    year=exam.year,
+                    school_section=assignment.school_section,
+                    sub_section=assignment.sub_section,
+                    status="submitted",
+                    reviewed_at=None,
+                )
+            else:
+                submission.status = "submitted"
+                submission.reviewed_at = timezone.now()
+                submission.save()
+
+            from students.tasks import populate_exam_summaries
+            populate_exam_summaries.delay(
+                school_id=school.pk,
+                grade=assignment.class_name,
+                year=exam.year,
+                term=exam.term,
+                exam_name=exam.name,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
+            )
+
+            messages.success(request, "Assessment sheet has been submitted for review.")
+
+        return redirect(
+            f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+        )
+
+    marks_by_student = {mark.student_id: mark for mark in marks_qs}
+
+    learner_rows = []
+    for student in students:
+        mark = marks_by_student.get(student.id)
+        if mark:
+            if mark.is_absent:
+                editable_score = "AB"
+            else:
+                editable_score = mark.raw_score if mark.raw_score is not None else mark.score
+            updated_on = mark.updated_at.strftime("%d/%m/%Y") if mark.updated_at else "-"
+        else:
+            editable_score = ""
+            updated_on = "-"
+
+        learner_rows.append({
+            "student_id": student.id,
+            "admission_no": student.admission_no,
+            "name": student.name,
+            "editable_score": editable_score,
+            "updated_by": assignment.teacher_profile.get_full_title() if mark else "-",
+            "updated_on": updated_on,
+            "has_mark": mark is not None,
+        })
+
+    total_students = len(students)
+    captured_count = marks_qs.count()
+    missing_count = total_students - captured_count
+    current_maximum_marks = marks_qs.first().maximum_marks if marks_qs.first() else 100
+
+    context = {
+        "assignment": assignment,
+        "exam": exam,
+        "learner_rows": learner_rows,
+        "total_students": total_students,
+        "captured_count": captured_count,
+        "missing_count": missing_count,
+        "current_maximum_marks": current_maximum_marks,
+        "submission": submission,
+    }
+
+    from .grading_engine import resolve_scale_fast
+    scale_data = resolve_scale_fast(school.pk, assignment.school_section, assignment.sub_section, subject_id=assignment.subject_id if assignment.subject else None)
+    if scale_data:
+        context["grading_scale_json"] = json.dumps(scale_data)
+    else:
+        from ..models import GradingConfig
+        if assignment.school_section in ('LOWER_PRIMARY', 'PRIMARY'):
+            context["grading_scale_json"] = json.dumps(GradingConfig.get_default_subject_scale(assignment.school_section))
+        else:
+            context["grading_scale_json"] = json.dumps(GradingConfig.get_default_subject_scale('JSS'))
+
+    return render(request, "students/upload_results.html", context)

@@ -661,41 +661,26 @@ def school_admin_dashboard(request):
     if latest_exam:
         exam_label = f"{latest_exam.name.upper()} - ({latest_exam.year} TERM {latest_exam.term})"
 
-    # Helper: compute per-grade stats for a given exam
-    def _compute_grade_stats(exam):
-        if not exam:
+    # Helper: compute per-grade stats for given exams (combined into one query)
+    def _compute_grade_stats_multi(exams):
+        if not exams:
             return {}
-        published_subs = submission_qs.filter(
-            exam_name=exam.name, term=exam.term, year=exam.year, status="published",
-        )
-        tuples = set()
-        for sub in published_subs:
-            tuples.add((sub.class_name, sub.stream, sub.subject_id))
-        if tuples:
-            class_names = [cls for cls, strm, sid in tuples]
-            streams = [strm for cls, strm, sid in tuples]
-            subject_ids = [sid for cls, strm, sid in tuples]
-            exam_mark_filter = (
-                Q(student__class_name__in=class_names) &
-                Q(student__stream__in=streams) &
-                Q(subject_id__in=subject_ids) &
-                Q(exam_type=exam.name, term=exam.term, year=exam.year)
-            )
-        else:
-            # No submissions — fall back to direct marks lookup
-            exam_mark_filter = Q(
-                student__school=school, exam_type=exam.name, term=exam.term, year=exam.year,
-            )
-        marks = mark_qs.filter(exam_mark_filter)
+        exam_filters = Q()
+        for exam in exams:
+            exam_filters |= Q(exam_type=exam.name, term=exam.term, year=exam.year)
+        marks = mark_qs.filter(exam_filters)
         stats = {}
-        for item in marks.values('student__class_name').annotate(
+        for item in marks.values('exam_type', 'term', 'year', 'student__class_name').annotate(
             avg_score=Avg('score'), avg_points=Avg('points'), student_count=Count('student', distinct=True)
         ):
+            exam_key = (item['exam_type'], item['term'], item['year'])
             g = item['student__class_name']
             avg_sc = round(item['avg_score'] or 0, 2)
             avg_pts = round(item['avg_points'] or 0, 4)
             sk = _section_key_for_grade(g)
-            stats[g] = {
+            if exam_key not in stats:
+                stats[exam_key] = {}
+            stats[exam_key][g] = {
                 'mean_score': avg_sc,
                 'mean_points': avg_pts,
                 'mean_grade': _mean_grade_from_score(avg_sc, sk),
@@ -703,8 +688,10 @@ def school_admin_dashboard(request):
             }
         return stats
 
-    current_stats = _compute_grade_stats(latest_exam)
-    previous_stats = _compute_grade_stats(previous_exam)
+    exams_to_fetch = [e for e in [latest_exam, previous_exam] if e]
+    all_stats = _compute_grade_stats_multi(exams_to_fetch)
+    current_stats = all_stats.get((latest_exam.name, latest_exam.term, latest_exam.year), {}) if latest_exam else {}
+    previous_stats = all_stats.get((previous_exam.name, previous_exam.term, previous_exam.year), {}) if previous_exam else {}
 
     # Build performance cards list
     grade_performance_cards = []

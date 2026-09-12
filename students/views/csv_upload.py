@@ -54,7 +54,6 @@ def premium_csv_upload_fragment(request):
     })
 
 
-@csrf_exempt
 @_json_safe_view
 @require_POST
 def csv_upload_api(request):

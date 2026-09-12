@@ -1,0 +1,626 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block sub_tabs %}
+<nav class="sub-nav-bar dm-subnav">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=manage" class="sub-nav-link active">
+        <i class="ph ph-gear-six"></i>
+        Manage Exams
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=create" class="sub-nav-link">
+        <i class="ph ph-plus-circle"></i>
+        Create Exam
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=grading" class="sub-nav-link">
+        <i class="ph ph-chart-line-up"></i>
+        Grading Systems
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=deleted" class="sub-nav-link">
+        <i class="ph ph-trash"></i>
+        Deleted Exams
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+<style>
+    .main-content {
+        padding: 0 !important;
+        max-width: calc(100% - var(--sidebar-width)) !important;
+        margin-left: var(--sidebar-width) !important;
+    }
+
+    .app-content {
+        background: #f6f8fb;
+    }
+
+    .pub-page {
+        min-height: 100vh;
+        background: #f6f8fb;
+        padding: 30px 36px;
+    }
+
+    .pub-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #0f172a !important;
+        margin: 0 0 20px 0;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 14px 28px;
+    }
+
+    .pub-field-label {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 8px;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-exam-select-wrap {
+        position: relative;
+    }
+
+    .pub-exam-select {
+        width: 100%;
+        height: 38px;
+        border: 1.5px solid #b8d84a;
+        border-radius: 6px;
+        background: #f4fce8;
+        color: #334155;
+        font-size: 14px;
+        font-weight: 500;
+        padding: 0 70px 0 14px;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-exam-select:focus {
+        outline: none;
+        border-color: #84cc16;
+        box-shadow: 0 0 0 3px rgba(132, 204, 22, 0.12);
+    }
+
+    .pub-select-clear {
+        position: absolute;
+        right: 36px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #94a3b8;
+        font-size: 16px;
+        line-height: 1;
+        background: none;
+        border: none;
+        padding: 0;
+    }
+
+    .pub-select-clear:hover {
+        color: #64748b;
+    }
+
+    .pub-select-arrow {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #94a3b8;
+    }
+
+    .pub-section-heading {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 24px 0 14px 0;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin-bottom: 24px;
+        border: none !important;
+    }
+
+    .pub-table thead th {
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        color: #374151 !important;
+        padding: 10px 14px !important;
+        text-align: left !important;
+        border-top: 1px solid #d1d5db !important;
+        border-bottom: 1px solid #d1d5db !important;
+        background: transparent !important;
+        border-left: 1px solid #d1d5db !important;
+        border-right: 1px solid #d1d5db !important;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-table thead th:last-child {
+        border-right: 1px solid #d1d5db !important;
+    }
+
+    .pub-table tbody td {
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        color: #334155 !important;
+        padding: 10px 14px !important;
+        border-bottom: 1px solid #d1d5db !important;
+        border-right: 1px solid #d1d5db !important;
+        vertical-align: middle !important;
+        border-top: none !important;
+        border-left: none !important;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-table tbody td:first-child {
+        border-left: 1px solid #d1d5db !important;
+    }
+
+    .pub-table tbody td:last-child {
+        border-right: 1px solid #d1d5db !important;
+    }
+
+    .pub-table tbody tr:last-child td {
+        border-bottom: 1px solid #d1d5db !important;
+    }
+
+    .pub-status-cell {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .pub-status-icon {
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .pub-status-icon.red {
+        color: #dc2626;
+    }
+
+    .pub-status-icon.orange {
+        color: #ea580c;
+    }
+
+    .pub-status-icon.green {
+        color: #16a34a;
+    }
+
+    .pub-status-label {
+        color: #6b7280;
+        font-size: 13.5px;
+        font-weight: 500;
+    }
+
+    .pub-view-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px 16px;
+        font-size: 12.5px;
+        font-weight: 600;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        background: #e2e8f0;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+
+    .pub-view-btn:hover {
+        background: #cbd5e1;
+        color: #334155;
+    }
+
+    .pub-empty-row td {
+        text-align: center;
+        color: #9ca3af;
+        padding: 36px 12px !important;
+        font-style: italic;
+    }
+
+    .pub-min-subjects {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-top: 4px;
+    }
+
+    .pub-min-subjects-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #64748b;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        white-space: nowrap;
+        margin-right: 16px;
+    }
+
+    .pub-min-subjects-input-wrap {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0;
+    }
+
+    .pub-min-subjects-input {
+        flex: 1;
+        height: 38px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 0 14px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #0f172a;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        background: #fff;
+    }
+
+    .pub-min-subjects-input:focus {
+        outline: none;
+        border-color: #84cc16;
+    }
+
+    .pub-min-subjects-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 10px;
+    }
+
+    .pub-edit-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #d1d5db;
+        white-space: nowrap;
+        height: 38px;
+    }
+
+    .pub-edit-btn:hover {
+        background: #e2e8f0;
+    }
+
+    .pub-cancel-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        background: #e2e8f0;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+        white-space: nowrap;
+        height: 38px;
+    }
+
+    .pub-cancel-btn:hover {
+        background: #cbd5e1;
+    }
+
+    .pub-save-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        background: #16a34a;
+        color: #ffffff;
+        border: none;
+        white-space: nowrap;
+        height: 38px;
+    }
+
+    .pub-save-btn:hover {
+        background: #15803d;
+    }
+
+    .pub-actions-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .pub-back-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 6px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        background: #166534;
+        color: #ffffff;
+        border: none;
+        gap: 4px;
+    }
+
+    .pub-back-btn:hover {
+        background: #14532d;
+    }
+
+    .pub-action-wrap {
+        position: relative;
+        display: inline-block;
+    }
+
+    .pub-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #d1d5db;
+        gap: 4px;
+    }
+
+    .pub-action-btn:hover {
+        background: #e2e8f0;
+    }
+
+    .pub-action-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        margin-top: 4px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        min-width: 200px;
+        z-index: 100;
+        overflow: hidden;
+    }
+
+    .pub-action-menu.show {
+        display: block;
+    }
+
+    .pub-action-menu a {
+        display: block;
+        padding: 10px 16px;
+        text-align: left;
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151;
+        text-decoration: none;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-action-menu a:hover {
+        background: #f1f5f9;
+    }
+
+    @media (max-width: 960px) {
+        .pub-page { padding: 16px; }
+        .pub-title { font-size: 16px; }
+        .pub-table { display: none; }
+        .pub-min-subjects { flex-wrap: wrap; }
+        .pub-min-subjects-label { width: 100%; margin-bottom: 8px; }
+    }
+</style>
+
+<div class="pub-page">
+    <h1 class="pub-title">Publish Results – {{ class_name }}</h1>
+
+    <div class="pub-card">
+        <div class="pub-field-label">Exam</div>
+        <div class="pub-exam-select-wrap">
+            <select class="pub-exam-select" id="pubExamSelect" onchange="switchExam(this.value)">
+                {% for ex in all_exams %}
+                <option value="{{ ex.id }}" {% if ex.id == exam.id %}selected{% endif %}>
+                    {{ ex.name }}{% if ex.term %} - {{ ex.term }}{% endif %} ({{ ex.year }})
+                </option>
+                {% endfor %}
+            </select>
+            <button type="button" class="pub-select-clear" onclick="clearExamSelect()" title="Clear">&times;</button>
+            <span class="pub-select-arrow">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.646 5.646a.5.5 0 0 1 .708 0L8 8.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z"/></svg>
+            </span>
+        </div>
+
+        <h2 class="pub-section-heading">Status of class results</h2>
+
+        <table class="pub-table">
+            <thead>
+                <tr>
+                    <th style="width: 30%;">Class</th>
+                    <th>Status</th>
+                    <th style="width: 12%; text-align: right;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in stream_data %}
+                <tr>
+                    <td>{{ s.display_name }}</td>
+                    <td>
+                        <div class="pub-status-cell">
+                            <span class="pub-status-icon {{ s.status_color }}">
+                                {% if s.status_icon == 'check' %}&#10003;{% else %}&#10007;{% endif %}
+                            </span>
+                            <span class="pub-status-label">({{ s.status_label }})</span>
+                        </div>
+                    </td>
+                    <td style="text-align: right;">
+                        <a href="{% url 'review_stream_submission' %}?exam_id={{ exam.id }}&class_name={{ class_name|urlencode }}&stream={{ s.stream|urlencode }}" class="pub-view-btn">View</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="pub-empty-row">
+                    <td colspan="3">No streams found for this class.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="pub-min-subjects">
+            <span class="pub-min-subjects-label">Minimum number of Subjects that can be taken</span>
+            <div class="pub-min-subjects-input-wrap">
+                <input type="number" class="pub-min-subjects-input" value="{{ min_subjects }}" id="pubMinSubjects" readonly>
+                <div class="pub-min-subjects-actions" id="pubMinSubjectsActions">
+                    <button class="pub-edit-btn" id="pubEditBtn" onclick="editMinSubjects()">Edit</button>
+                </div>
+                <div class="pub-min-subjects-actions" id="pubMinSubjectsSaveActions" style="display:none;">
+                    <button class="pub-cancel-btn" onclick="cancelEdit()">Cancel</button>
+                    <button class="pub-save-btn" onclick="saveMinSubjects()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="pub-actions-bar">
+        <a href="{% url 'manage_exams' %}?tab=manage" class="pub-back-btn">
+            <i class="ph ph-arrow-left" style="font-size:14px;"></i> Back
+        </a>
+        <div class="pub-action-wrap">
+            <button class="pub-action-btn" onclick="togglePubActionMenu()">
+                Action <i class="ph ph-caret-down" style="font-size:13px;"></i>
+            </button>
+            <div class="pub-action-menu" id="pubActionMenu">
+                <a href="#">Download Results</a>
+                <a href="#">Send Reminders</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+window._lastSavedMinSubjects = {{ min_subjects }};
+
+function switchExam(examId) {
+    const url = new URL(window.location);
+    url.searchParams.set('exam_id', examId);
+    window.location.href = url.toString();
+}
+
+function clearExamSelect() {
+    var sel = document.getElementById('pubExamSelect');
+    sel.selectedIndex = 0;
+    switchExam(sel.value);
+}
+
+function togglePubActionMenu() {
+    document.getElementById('pubActionMenu').classList.toggle('show');
+}
+
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('pubActionMenu');
+    if (!e.target.closest('.pub-action-wrap')) {
+        menu.classList.remove('show');
+    }
+});
+
+function editMinSubjects() {
+    var input = document.getElementById('pubMinSubjects');
+    input.readOnly = false;
+    input.focus();
+    input.select();
+    document.getElementById('pubMinSubjectsActions').style.display = 'none';
+    document.getElementById('pubMinSubjectsSaveActions').style.display = 'flex';
+}
+
+function cancelEdit() {
+    var input = document.getElementById('pubMinSubjects');
+    input.readOnly = true;
+    input.value = window._lastSavedMinSubjects !== undefined ? window._lastSavedMinSubjects : '{{ min_subjects }}';
+    document.getElementById('pubMinSubjectsActions').style.display = 'flex';
+    document.getElementById('pubMinSubjectsSaveActions').style.display = 'none';
+}
+
+function saveMinSubjects() {
+    var input = document.getElementById('pubMinSubjects');
+    var val = parseInt(input.value, 10);
+    if (!val || val < 1) {
+        input.style.borderColor = '#dc2626';
+        setTimeout(function() { input.style.borderColor = ''; }, 1500);
+        return;
+    }
+    var btn = document.querySelector('.pub-save-btn');
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+    fetch("{% url 'save_exam_min_subjects' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'exam_id={{ exam.id }}&min_subjects=' + val,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.textContent = 'Save';
+        btn.disabled = false;
+        if (data.success) {
+            input.readOnly = true;
+            window._lastSavedMinSubjects = data.min_subjects;
+            input.value = data.min_subjects;
+            document.getElementById('pubMinSubjectsActions').style.display = 'flex';
+            document.getElementById('pubMinSubjectsSaveActions').style.display = 'none';
+        } else {
+            input.style.borderColor = '#dc2626';
+            setTimeout(function() { input.style.borderColor = ''; }, 2000);
+        }
+    })
+    .catch(function() {
+        btn.textContent = 'Save';
+        btn.disabled = false;
+        input.style.borderColor = '#dc2626';
+        setTimeout(function() { input.style.borderColor = ''; }, 2000);
+    });
+}
+</script>
+
+{% endblock %}

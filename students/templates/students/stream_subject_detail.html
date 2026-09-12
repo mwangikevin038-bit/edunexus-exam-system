@@ -1,0 +1,452 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block sub_tabs %}
+<nav class="sub-nav-bar dm-subnav">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=manage" class="sub-nav-link active">
+        <i class="ph ph-gear-six"></i>
+        Manage Exams
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=create" class="sub-nav-link">
+        <i class="ph ph-plus-circle"></i>
+        Create Exam
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=grading" class="sub-nav-link">
+        <i class="ph ph-chart-line-up"></i>
+        Grading Systems
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=deleted" class="sub-nav-link">
+        <i class="ph ph-trash"></i>
+        Deleted Exams
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+    .main-content {
+        padding: 0 !important;
+        max-width: calc(100% - var(--sidebar-width)) !important;
+        margin-left: var(--sidebar-width) !important;
+    }
+
+    .app-content {
+        background: #e4e8ee;
+    }
+
+    .pub-detail-page {
+        min-height: 100vh;
+        background: #e4e8ee;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-detail-main {
+        padding: 28px 34px 0;
+    }
+
+    .pub-detail-title {
+        font-size: 18px;
+        font-weight: 900;
+        color: #0f172a;
+        margin: 0 0 18px;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-detail-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+
+    .pub-detail-exam-label {
+        font-size: 15px;
+        font-weight: 900;
+        color: #0f172a;
+        margin: 0 0 14px;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-detail-exam-label span {
+        font-weight: 400;
+        color: #64748b;
+    }
+
+    .pub-detail-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #e5e7eb;
+    }
+
+    .pub-detail-table th {
+        background: #f1f5f9;
+        color: #1e293b;
+        font-size: 12.5px;
+        font-weight: 900;
+        text-align: left;
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .pub-detail-table td {
+        padding: 7px 12px;
+        font-size: 13px;
+        color: #334155;
+        border: 1px solid #e5e7eb;
+        font-weight: 400;
+    }
+
+    .pub-detail-table tbody tr:nth-child(even) {
+        background: #f0f1f4;
+    }
+
+    .pub-detail-section-title {
+        font-size: 16px;
+        font-weight: 900;
+        color: #0f172a;
+        margin: 24px 0 12px;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .pub-status-text {
+        font-size: 13px;
+        font-weight: 400;
+        white-space: nowrap;
+    }
+
+    .pub-status-text.green { color: #16a34a; }
+    .pub-status-text.blue { color: #2563eb; }
+    .pub-status-text.orange { color: #ea580c; }
+    .pub-status-text.red { color: #dc2626; }
+    .pub-status-text.gray { color: #64748b; }
+
+    .pub-role-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .pub-role-tag.green {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .pub-role-tag.blue {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .pub-role-tag.orange {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .pub-role-tag.red {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .pub-role-tag.gray {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    td.pub-status-cell {
+        white-space: nowrap;
+    }
+
+    .pub-view-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px 16px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #475569;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.15s;
+    }
+
+    .pub-view-btn:hover {
+        background: #e2e8f0;
+    }
+
+    .pub-upload-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 14px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #2563eb;
+        background: transparent;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.15s;
+        white-space: nowrap;
+    }
+
+    .pub-upload-btn:hover {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .pub-detail-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 0 0;
+    }
+
+    .pub-detail-actions-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .pub-back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.15s;
+    }
+
+    .pub-back-btn:hover {
+        background: #e2e8f0;
+    }
+
+    .pub-action-wrap {
+        position: relative;
+        display: inline-block;
+    }
+
+    .pub-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        background: #16a34a;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .pub-action-btn:hover {
+        background: #15803d;
+    }
+
+    .pub-action-menu {
+        display: none;
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        min-width: 180px;
+        z-index: 50;
+        margin-bottom: 6px;
+    }
+
+    .pub-action-menu.show {
+        display: block;
+    }
+
+    .pub-action-menu a {
+        display: block;
+        padding: 9px 14px;
+        font-size: 13px;
+        color: #334155;
+        text-decoration: none;
+        transition: background 0.12s;
+    }
+
+    .pub-action-menu a:hover {
+        background: #f8fafc;
+    }
+
+    .pub-publish-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 20px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        background: #0d9488;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.15s;
+    }
+
+    .pub-publish-btn:hover {
+        background: #0f766e;
+    }
+
+    .pub-empty-msg {
+        padding: 14px;
+        color: #94a3b8;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    @media (max-width: 768px) {
+        .pub-detail-main { padding: 16px; }
+        .pub-detail-card { padding: 14px; }
+        .pub-detail-actions { flex-direction: column; gap: 10px; align-items: stretch; }
+        .pub-detail-actions-left { justify-content: center; }
+        .pub-publish-btn { align-self: center; }
+    }
+</style>
+
+<div class="pub-detail-page">
+    <div class="pub-detail-main">
+        <h1 class="pub-detail-title">Exam Publishing – {{ class_name }} {{ stream }}</h1>
+
+        <div class="pub-detail-card">
+            <p class="pub-detail-exam-label">{{ exam.name }} <span>– ({{ exam.year }} {{ exam.term }})</span></p>
+
+            {% if submitted_rows %}
+            <table class="pub-detail-table">
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Subject</th>
+                        <th>Subject Teacher</th>
+                        <th>Student Without Marks</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in submitted_rows %}
+                    <tr>
+                        <td>{{ class_name }} {{ stream }}</td>
+                        <td>{{ row.subject_name }}</td>
+                        <td>{{ row.teacher_name }}</td>
+                        <td>{{ row.student_without_marks }}</td>
+                        <td class="pub-status-cell">
+                            <span class="pub-role-tag {{ row.status_color }}">{{ row.display_status }}</span>
+                        </td>
+                        <td>
+                            {% if row.submission %}
+                            <a href="{% url 'review_submission' %}?exam_id={{ exam.id }}&assignment_id={{ row.assignment.id }}" class="pub-view-btn">View</a>
+                            {% else %}
+                            <span class="pub-view-btn" style="opacity:0.5; cursor:default;">View</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            {% if not_started_rows %}
+            <div style="margin-top: {% if submitted_rows %}24px{% else %}0{% endif %};">
+                <p class="pub-detail-section-title">Subject without results</p>
+                <table class="pub-detail-table">
+                    <thead>
+                        <tr>
+                            <th>Class</th>
+                            <th>Subject</th>
+                            <th>Subject Teacher</th>
+                            <th>Student Without Marks</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in not_started_rows %}
+                        <tr>
+                            <td>{{ class_name }} {{ stream }}</td>
+                            <td>{{ row.subject_name }}</td>
+                            <td>{{ row.teacher_name }}</td>
+                            <td>{{ row.student_without_marks }}</td>
+                            <td class="pub-status-cell">
+                                <span class="pub-role-tag {{ row.status_color }}">{{ row.display_status }}</span>
+                            </td>
+                            <td style="text-align:right;">
+                                <a href="{% url 'upload_results' %}?exam_id={{ exam.id }}&assignment_id={{ row.assignment.id }}" class="pub-upload-btn">Upload Results</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            {% if not submitted_rows and not not_started_rows %}
+            <p class="pub-empty-msg">No subjects are assigned to this stream.</p>
+            {% endif %}
+        </div>
+
+        <div class="pub-detail-actions">
+            <div class="pub-detail-actions-left">
+                <a href="{% url 'publish_results_overview' %}?exam_id={{ exam.id }}&class_name={{ class_name|urlencode }}" class="pub-back-btn">
+                    Back
+                </a>
+                <div class="pub-action-wrap">
+                    <button class="pub-action-btn" onclick="togglePubActionMenu()">
+                        Action <i class="ph ph-caret-down" style="font-size:13px;"></i>
+                    </button>
+                    <div class="pub-action-menu" id="pubActionMenu">
+                        <a href="#">Download Results</a>
+                        <a href="#">Send Reminders</a>
+                    </div>
+                </div>
+            </div>
+            <a href="#" class="pub-publish-btn">
+                Publish Results
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePubActionMenu() {
+    document.getElementById('pubActionMenu').classList.toggle('show');
+}
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('pubActionMenu');
+    if (!e.target.closest('.pub-action-wrap')) {
+        menu.classList.remove('show');
+    }
+});
+</script>
+{% endblock %}

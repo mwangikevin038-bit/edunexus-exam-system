@@ -771,12 +771,9 @@
             }
             if (!keys.length) return;
 
-            showToast('Back online — resyncing ' + keys.length + ' draft(s)...', 'info');
-
             var idx = 0;
             function flushOne() {
                 if (idx >= keys.length) {
-                    showToast('Drafts resynced successfully.', 'success');
                     return;
                 }
                 var k = keys[idx++];
@@ -813,7 +810,6 @@
                         flushOne();
                     }).catch(function() {
                         // Network still flaky — leave draft in localStorage, stop retrying
-                        showToast('Sync interrupted — drafts preserved for next retry.', 'error');
                     });
                 } catch(ignored) {
                     localStorage.removeItem(k);

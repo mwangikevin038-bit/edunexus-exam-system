@@ -57,6 +57,21 @@ def invalidate_report_caches(school_id, class_name, stream, year, term, assessme
     cache.delete(_leaderboard_cache_key(school_id, class_name, stream, year, term, assessment))
     cache.delete(_class_avg_cache_key(school_id, class_name, stream, year, term, assessment))
 
+    # Also invalidate the exam result snapshot
+    from ..models import ExamResultSnapshot, School
+    try:
+        school = School.objects.get(pk=school_id)
+        ExamResultSnapshot.objects.filter(
+            school=school,
+            term=term,
+            year=year,
+            exam_name=assessment,
+            class_name=class_name,
+            stream=stream,
+        ).delete()
+    except School.DoesNotExist:
+        pass
+
 
 def get_cached_class_averages(school, class_name, stream, year, term, assessment, published_subjects_qs):
     """
@@ -176,22 +191,64 @@ def get_published_contexts_for_user(user, require_class_teacher=False, sub_secti
 def get_stream_submission_summary(class_name, stream, exam):
     """
     Build a per-stream assessment summary used by admin review/publish screens.
-    Religion-aware: CRE/IRE missing counts only check tagged students.
-    Works for all grades (7, 8, 9) and all streams universally.
+    Optimized: batch-fetches marks and submissions to minimize DB queries.
     """
     school = get_current_school()
     assignment_filters = dict(class_name=class_name, stream=stream)
     if school:
         assignment_filters['school'] = school
 
-    assignments = (
+    assignments = list(
         SubjectAssignment.all_objects.filter(is_active=True, **assignment_filters)
         .select_related("teacher_profile", "teacher_profile__user", "subject")
         .order_by("subject__code")
     )
+
+    # Batch-fetch ALL marks for this class/stream/exam in ONE query
+    all_marks = Mark.all_objects.filter(
+        student__class_name=class_name,
+        student__stream=stream,
+        term=exam.term,
+        exam_type=exam.name,
+        year=exam.year,
+    )
+    if school:
+        all_marks = all_marks.filter(school=school)
+    marks_by_subject = {}
+    for m in all_marks.select_related('student').values('subject_id', 'is_absent'):
+        sid = m['subject_id']
+        if sid not in marks_by_subject:
+            marks_by_subject[sid] = {'count': 0, 'absent': 0}
+        marks_by_subject[sid]['count'] += 1
+        if m['is_absent']:
+            marks_by_subject[sid]['absent'] += 1
+
+    # Batch-fetch ALL submissions for this class/stream/exam in ONE query
+    submission_filters = dict(
+        class_name=class_name, stream=stream,
+        exam_name=exam.name, term=exam.term, year=exam.year,
+    )
+    if school:
+        submission_filters['school'] = school
+    all_submissions = {
+        s.subject_id: s
+        for s in MarkSubmission.all_objects.filter(**submission_filters).select_related('teacher')
+    }
+
+    # Batch-fetch student counts per subject (for religion-aware counting)
+    all_students = Student.all_objects.filter(
+        class_name=class_name, stream=stream, is_active=True
+    )
+    if school:
+        all_students = all_students.filter(school=school)
+    total_student_count = all_students.count()
+    religion_students = {}
+    for rel in all_students.values('religion').annotate(cnt=Count('id')):
+        religion_students[rel['religion']] = rel['cnt']
+
     rows = []
     totals = {
-        "subjects": assignments.count(),
+        "subjects": len(assignments),
         "submitted": 0,
         "approved": 0,
         "published": 0,
@@ -204,42 +261,25 @@ def get_stream_submission_summary(class_name, stream, exam):
     }
 
     for assignment in assignments:
-        # submission_filters is built here, inside the loop, so
-        # assignment.subject is always defined when accessed.
-        submission_filters = dict(
-            subject=assignment.subject,
-            class_name=class_name,
-            stream=stream,
-            exam_name=exam.name,
-            term=exam.term,
-            year=exam.year,
-            school_section=assignment.school_section,
-            sub_section=assignment.sub_section,
-        )
-        if school:
-            submission_filters['school'] = school
+        subject = assignment.subject
+        sid = subject.id
+        subject_code = subject.code if subject else ''
 
-        expected_count = get_religion_aware_student_count(
-            class_name,
-            stream,
-            assignment.subject,
-        )
-        marks_qs = get_subject_marks(
-            class_name,
-            stream,
-            assignment.subject,
-            exam.term,
-            exam.name,
-            exam.year,
-        )
-        captured_count = marks_qs.count()
-        absent_count = marks_qs.filter(is_absent=True).count()
+        # Get expected count (religion-aware)
+        if subject_code in RELIGION_SUBJECTS:
+            religion_tag = RELIGION_TAG.get(subject_code, '')
+            expected_count = religion_students.get(religion_tag, 0)
+        else:
+            expected_count = total_student_count
+
+        # Get captured count from batch-fetched data
+        marks_data = marks_by_subject.get(sid, {'count': 0, 'absent': 0})
+        captured_count = marks_data['count']
+        absent_count = marks_data['absent']
         missing_count = max(expected_count - captured_count, 0)
 
-        submission = MarkSubmission.all_objects.filter(
-            teacher=assignment.teacher_profile,
-            **submission_filters,
-        ).first()
+        # Get submission from batch-fetched data
+        submission = all_submissions.get(sid)
 
         if submission:
             totals[submission.status] = totals.get(submission.status, 0) + 1
@@ -263,7 +303,7 @@ def get_stream_submission_summary(class_name, stream, exam):
 
         rows.append({
             "assignment": assignment,
-            "subject_name": assignment.subject.name,
+            "subject_name": subject.name if subject else '',
             "teacher_name": assignment.teacher_profile.get_full_title(),
             "captured_count": captured_count,
             "total_students": expected_count,
@@ -368,32 +408,35 @@ def get_learner_contexts_for_user(user):
     return contexts
 
 
-_teacher_user_cache = {}  # user_pk -> Teacher or None
-
-
 def clear_teacher_cache(user_pk=None):
     """Invalidate the teacher cache. Call after updating a teacher profile."""
     if user_pk is not None:
-        _teacher_user_cache.pop(user_pk, None)
+        cache.delete(f"teacher_user:{user_pk}")
     else:
-        _teacher_user_cache.clear()
+        # Can't clear all Redis keys easily, but the TTL handles cleanup
+        pass
 
 
 def get_teacher_for_user(user):
     """Return the Teacher instance linked to the given user, or None.
-    Cached per user_pk to avoid repeated DB hits in the same request."""
+    Cached in Redis for 1 hour to avoid DB hits across all workers."""
     if not user.is_authenticated:
         return None
     pk = user.pk
-    if pk not in _teacher_user_cache:
-        _teacher_user_cache[pk] = Teacher.objects.filter(user=user).first()
-    return _teacher_user_cache[pk]
+    cache_key = f"teacher_user:{pk}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached if cached != 'NONE' else None
+    teacher = Teacher.objects.filter(user=user).first()
+    cache.set(cache_key, teacher if teacher else 'NONE', 3600)
+    return teacher
 
 
 def get_class_teacher_scope(teacher):
     """
     Use the existing assigned_task field, e.g. "Class Teacher Grade 7 Yellow",
     to determine a class teacher's permitted class stream.
+    Cached for 1 hour to avoid 2 DB queries per request.
     """
     if not teacher or not teacher.assigned_task:
         return None
@@ -407,17 +450,28 @@ def get_class_teacher_scope(teacher):
     if not school:
         return None
 
-    all_grades = Grade.all_objects.filter(school=school).values_list("name", flat=True)
-    all_streams = Stream.all_objects.filter(school=school).values_list("name", flat=True)
+    cache_key = f"ct_scope:{school.pk}:{teacher.pk}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached if cached != 'NONE' else None
+
+    all_grades = list(Grade.all_objects.filter(school=school).values_list("name", flat=True))
+    all_streams = list(Stream.all_objects.filter(school=school).values_list("name", flat=True))
 
     # Use exact matching — "Class Teacher" + space + grade + space + stream
     prefix = "Class Teacher "
     remainder = task[len(prefix):] if task.startswith(prefix) else task
+    result = None
     for grade in all_grades:
         for stream in all_streams:
             if remainder == f"{grade} {stream}":
-                return grade, stream
-    return None
+                result = (grade, stream)
+                break
+        if result:
+            break
+
+    cache.set(cache_key, result if result else 'NONE', 3600)
+    return result
 
 
 def user_can_access_class_stream(user, grade, stream, require_class_teacher=False):
@@ -466,9 +520,6 @@ def user_can_edit_learner_profile(user, student):
         student.stream,
         require_class_teacher=True,
     )
-
-
-_grading_config_cache = {}  # Kept for backward compat — delegates to grading_engine
 
 
 
@@ -946,6 +997,277 @@ def get_student_totals_with_rank(school, class_name, stream, year, term, assessm
             ),
         )
         .order_by('rank', '-total_points')
+    )
+
+
+# ── Exam result snapshot builder ─────────────────────────────────────────────
+
+def build_exam_result_snapshot(school, exam, class_name, stream):
+    """
+    Build and save a snapshot of exam results for one stream.
+
+    This snapshot stores:
+    - Per-student totals, ranks, positions, PLVs (from ExamSummary)
+    - Per-subject class averages, teacher names
+    - Analysis data (gender counts, stream average)
+
+    The snapshot is used by broadsheet views. Report card views still use
+    build_report_card_context which reads from ExamSummary directly.
+    """
+    from django.utils import timezone
+    from ..models import ExamResultSnapshot, ExamSummary, Mark, Subject, SubjectAssignment
+
+    # 1. Get students
+    students = list(
+        Student.all_objects.filter(
+            school=school,
+            class_name=class_name,
+            stream=stream,
+            is_active=True,
+        ).order_by('admission_no')
+    )
+
+    if not students:
+        return None
+
+    sample = students[0]
+
+    # 2. Get published subject codes
+    published_subject_codes = get_published_subject_codes(
+        class_name, stream, exam.year, exam.term, exam.name,
+        sub_section=sample.sub_section if sample.school_section == 'PRIMARY' else None,
+        is_admin=True,
+    )
+
+    # 3. Get Subject objects
+    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+
+    # 4. Get all marks for this stream in one query
+    all_marks = Mark.all_objects.filter(
+        school=school,
+        student__class_name=class_name,
+        student__stream=stream,
+        term=exam.term,
+        exam_type=exam.name,
+        year=exam.year,
+        subject__in=published_subjects_qs,
+    ).select_related('subject')
+
+    # Group marks by student
+    marks_by_student = {}
+    for mark in all_marks:
+        marks_by_student.setdefault(mark.student_id, []).append(mark)
+
+    # 5. Get ExamSummary for all students (pre-computed rankings)
+    summaries = {
+        s.student_id: s
+        for s in ExamSummary.all_objects.filter(
+            school=school,
+            term=exam.term,
+            year=exam.year,
+            exam_name=exam.name,
+            student__class_name=class_name,
+            student__stream=stream,
+        )
+    }
+
+    # 6. Get subject assignments for teacher names
+    assignments = {
+        a.subject.code: a
+        for a in SubjectAssignment.all_objects.filter(
+            school=school,
+            class_name=class_name,
+            stream=stream,
+            is_active=True,
+        ).select_related('teacher_profile', 'teacher_profile__user', 'subject')
+        if a.subject
+    }
+
+    # 7. Compute class averages per subject
+    class_averages = {}
+    for sub_code in published_subject_codes:
+        sub_marks = [m for m in all_marks if m.subject.code == sub_code]
+        valid_scores = [m.score for m in sub_marks if not m.is_absent and m.score is not None]
+        if valid_scores:
+            class_averages[sub_code] = round(sum(valid_scores) / len(valid_scores), 1)
+        else:
+            class_averages[sub_code] = 0
+
+    # 8. Build per-student data
+    student_data = {}
+    for student in students:
+        summary = summaries.get(student.id)
+        student_marks = marks_by_student.get(student.id, [])
+
+        # Compute totals from marks if no summary
+        total_marks = 0
+        total_points = 0
+        subject_count = 0
+        for mark in student_marks:
+            if not mark.is_absent and mark.score is not None:
+                total_marks += mark.score
+                total_points += mark.points or 0
+                subject_count += 1
+
+        student_data[student.id] = {
+            'student_id': student.id,
+            'name': student.name,
+            'admission_no': student.admission_no,
+            'gender': student.gender,
+            'total_marks': summary.total_marks if summary else total_marks,
+            'total_points': summary.total_points if summary else total_points,
+            'subject_count': summary.subject_count if summary else subject_count,
+            'mean_points': float(summary.mean_points) if summary else 0,
+            'overall_plv': summary.overall_plv if summary else '-',
+            'stream_rank': summary.stream_rank if summary else 0,
+            'grade_rank': summary.grade_rank if summary else 0,
+        }
+
+    # 9. Build subject summary data
+    subject_data = {}
+    for sub_code in published_subject_codes:
+        assignment = assignments.get(sub_code)
+        sub_marks = [m for m in all_marks if m.subject.code == sub_code]
+        valid_scores = [m.score for m in sub_marks if not m.is_absent and m.score is not None]
+
+        subject_data[sub_code] = {
+            'subject_name': sub_marks[0].subject.name if sub_marks else '',
+            'subject_code': sub_code,
+            'teacher_name': assignment.teacher_profile.get_full_title() if assignment and assignment.teacher_profile else '',
+            'class_average': class_averages.get(sub_code, 0),
+            'highest': max(valid_scores) if valid_scores else 0,
+            'lowest': min(valid_scores) if valid_scores else 0,
+            'student_count': len(valid_scores),
+            'absent_count': sum(1 for m in sub_marks if m.is_absent),
+        }
+
+    # 10. Build analysis data
+    analysis = {
+        'total_students': len(students),
+        'boys_count': sum(1 for s in students if s.gender == 'Male'),
+        'girls_count': sum(1 for s in students if s.gender == 'Female'),
+        'stream_average': round(sum(class_averages.values()) / len(class_averages), 1) if class_averages else 0,
+    }
+
+    # 11. Save snapshot
+    snapshot = ExamResultSnapshot(
+        school=school,
+        term=exam.term,
+        year=exam.year,
+        exam_name=exam.name,
+        class_name=class_name,
+        stream=stream,
+        school_section=sample.school_section,
+        sub_section=sample.sub_section,
+        report_card_data=student_data,
+        broadsheet_data=subject_data,
+        analysis_data=analysis,
+        student_count=len(students),
+        published_by=None,
+    )
+    snapshot.save()
+
+    return snapshot
+
+
+def invalidate_exam_snapshots(school, exam, class_name=None, stream=None):
+    """
+    Delete snapshots when marks change or results are unpublished.
+    If class_name/stream are provided, only delete that specific snapshot.
+    Otherwise, delete all snapshots for the exam.
+    """
+    from ..models import ExamResultSnapshot
+
+    qs = ExamResultSnapshot.objects.filter(
+        school=school,
+        term=exam.term,
+        year=exam.year,
+        exam_name=exam.name,
+    )
+    if class_name:
+        qs = qs.filter(class_name=class_name)
+    if stream:
+        qs = qs.filter(stream=stream)
+
+    count = qs.count()
+    qs.delete()
+    return count
+
+
+def get_exam_snapshot(school, exam, class_name, stream):
+    """
+    Get the latest snapshot for a given combination.
+    Returns None if no snapshot exists.
+    """
+    from ..models import ExamResultSnapshot
+
+    return ExamResultSnapshot.get_latest(
+        school=school,
+        term=exam.term,
+        year=exam.year,
+        exam_name=exam.name,
+        class_name=class_name,
+        stream=stream,
+    )
+
+
+# ── Snapshot-based report-card context builder ───────────────────────────────
+
+def build_report_card_context_from_snapshot(
+    school,
+    grade,
+    stream,
+    exam_id,
+    *,
+    student_ids=None,
+    include_chart_svg=True,
+    is_admin=False,
+):
+    """
+    Build report card context.
+
+    Report cards require Mark objects with decorated attributes that can't be
+    stored in a snapshot. This function always delegates to the live
+    build_report_card_context which reads from ExamSummary (already cached
+    by Celery on publish).
+
+    The snapshot is used only by broadsheet/results views where the data
+    format is simpler.
+    """
+    return build_report_card_context(
+        school, grade, stream, exam_id,
+        student_ids=student_ids,
+        include_chart_svg=include_chart_svg,
+        is_admin=is_admin,
+    )
+
+
+# ── Snapshot-based broadsheet data builder ───────────────────────────────────
+
+def get_broadsheet_from_snapshot(school, grade, stream, year, term, exam_name):
+    """
+    Get broadsheet data from a pre-computed snapshot.
+
+    Returns (student_data, subject_data, analysis_data) or None if no snapshot.
+    """
+    from ..models import ExamResultSnapshot
+
+    snapshot = ExamResultSnapshot.get_latest(
+        school=school,
+        term=term,
+        year=year,
+        exam_name=exam_name,
+        class_name=grade,
+        stream=stream,
+    )
+
+    if not snapshot:
+        return None
+
+    return (
+        snapshot.report_card_data or {},
+        snapshot.broadsheet_data or {},
+        snapshot.analysis_data or {},
     )
 
 

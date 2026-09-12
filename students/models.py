@@ -1,6 +1,7 @@
 import bisect
 import datetime
 import logging
+import uuid
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -1042,6 +1043,11 @@ class MarkSubmission(SchoolScopedModel):
     admin_note = models.TextField(blank=True, default='')
     reviewed_at = models.DateTimeField(null=True, blank=True)
     published_at = models.DateTimeField(null=True, blank=True)
+    published_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='published_submissions',
+        help_text="Admin who published these results"
+    )
 
     submitted_at = models.DateTimeField(auto_now_add=True)
 
@@ -1205,6 +1211,10 @@ class Exam(SchoolScopedModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     integrity_checksum = models.CharField(max_length=64, editable=False, blank=True, default="")
+    min_subjects = models.PositiveIntegerField(
+        default=7,
+        help_text="Minimum number of subjects a student must have published results for",
+    )
 
     class Meta:
         unique_together = ('school', 'name', 'term', 'year', 'school_section', 'sub_section')
@@ -1888,6 +1898,137 @@ class ExamSummary(SchoolScopedModel):
             f"{self.student.name} — {self.exam_name} {self.term} {self.year}: "
             f"{self.total_marks} marks, rank {self.grade_rank}"
         )
+
+
+class ExamResultSnapshot(SchoolScopedModel):
+    """
+    Full report-card data snapshot for one (grade, stream, exam) combination.
+
+    Created when admin publishes results. All report card views, broadsheet
+    displays, and PDF generation read from this table instead of recomputing
+    marks, grades, positions, and comments on every request.
+
+    The snapshot stores:
+    - Per-student data (marks, grades, PLVs, positions, totals, comments)
+    - Per-subject data (class averages, teacher names, distribution)
+    - Global data (stream averages, grade averages, ranking info)
+
+    Invalidated when:
+    - New marks are entered after publish
+    - Admin unpublishes results
+    - Admin re-publishes results (snapshot is rebuilt)
+
+    The snapshot_id field links to a unique identifier so multiple snapshots
+    for the same (grade, stream, exam) can coexist with different versions.
+    """
+    SECTION_CHOICES = [
+        ('PRIMARY', 'Primary'),
+        ('JSS', 'Junior Secondary'),
+    ]
+
+    # ── Snapshot identification ────────────────────────────────────────
+    snapshot_id = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        help_text="Unique snapshot identifier",
+    )
+
+    # ── Exam identification ────────────────────────────────────────────
+    term = models.CharField(max_length=20, choices=Student.TERM_CHOICES)
+    year = models.IntegerField(default=current_year)
+    exam_name = models.CharField(max_length=100)
+    class_name = models.CharField(max_length=20)
+    stream = models.CharField(max_length=20)
+    school_section = models.CharField(
+        max_length=10,
+        choices=SECTION_CHOICES,
+        default='JSS',
+    )
+    sub_section = models.CharField(
+        max_length=10,
+        choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
+        null=True,
+        blank=True,
+    )
+
+    # ── Snapshot data (JSON) ───────────────────────────────────────────
+    # Full report card context — identical to what build_report_card_context returns
+    report_card_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Complete report card context for all students in this stream",
+    )
+
+    # Broadsheet data — identical to what results_list computes
+    broadsheet_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Broadsheet data for results list display",
+    )
+
+    # Analysis data — subject distributions, grade breakdowns, etc.
+    analysis_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Analysis report data (subject distributions, trends)",
+    )
+
+    # ── Metadata ───────────────────────────────────────────────────────
+    student_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of students in this snapshot",
+    )
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='result_snapshots',
+    )
+    published_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (
+            'school',
+            'term',
+            'year',
+            'exam_name',
+            'class_name',
+            'stream',
+        )
+        indexes = [
+            models.Index(fields=['school', 'term', 'year', 'exam_name'], name='snapshot_exam_idx'),
+            models.Index(fields=['school', 'class_name', 'stream'], name='snapshot_class_idx'),
+            models.Index(fields=['snapshot_id'], name='snapshot_uuid_idx'),
+        ]
+        ordering = ['-published_at']
+        verbose_name = 'Exam Result Snapshot'
+        verbose_name_plural = 'Exam Result Snapshots'
+
+    def __str__(self):
+        return (
+            f"Snapshot {self.snapshot_id.hex[:8]} — "
+            f"{self.class_name} {self.stream} {self.exam_name} "
+            f"{self.term} {self.year} ({self.student_count} students)"
+        )
+
+    def invalidate(self):
+        """Delete this snapshot (marks changed, results unpublished)."""
+        self.delete()
+
+    @classmethod
+    def get_latest(cls, school, term, year, exam_name, class_name, stream):
+        """Get the most recent snapshot for a given combination."""
+        return cls.all_objects.filter(
+            school=school,
+            term=term,
+            year=year,
+            exam_name=exam_name,
+            class_name=class_name,
+            stream=stream,
+        ).order_by('-published_at').first()
 
 
 # -------------------- Removed Student Model --------------------

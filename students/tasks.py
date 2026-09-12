@@ -482,10 +482,15 @@ def populate_exam_summaries(
         'school': school,
         'class_name': grade,
     }
-    if school_section == 'PRIMARY' and sub_section:
-        student_filter['sub_section'] = sub_section
+    if school_section == 'PRIMARY':
+        if sub_section:
+            student_filter['sub_section'] = sub_section
+        else:
+            student_filter['school_section'] = 'PRIMARY'
     elif school_section == 'JSS':
         student_filter['school_section'] = 'JSS'
+    else:
+        student_filter['school_section'] = school_section
 
     all_students = list(Student.all_objects.filter(**student_filter))
     student_ids = [s.id for s in all_students]
@@ -526,19 +531,6 @@ def populate_exam_summaries(
             stream_ranks[sid] = rank
 
     # ── 4. Resolve PLV and frozen comments per student ─────────────────
-    # Fetch grading config once
-    grading_config = None
-    config_lookup = {'school': school, 'school_section': school_section}
-    if sub_section:
-        config_lookup['sub_section'] = sub_section
-    else:
-        config_lookup['sub_section__isnull'] = True
-    grading_config = GradingConfig.all_objects.filter(**config_lookup).first()
-    if not grading_config and sub_section:
-        grading_config = GradingConfig.all_objects.filter(
-            school=school, school_section=school_section,
-        ).first()
-
     # Fetch the most recent mark per student for frozen comment snapshot
     latest_marks = (
         Mark.all_objects.filter(

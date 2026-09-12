@@ -1,20 +1,19 @@
 {% extends 'students/base.html' %}
 {% load static %}
 
+{% block extra_head %}
+<style>
+    .sidebar, .premium-sidebar, .sidebar-nav, .hamburger-btn, .sidebar-overlay,
+    .mobile-topbar, .bottom-nav, .mobile-menu-sheet,
+    .topbar, .global-loader-overlay,
+    .global-header, .mobile-global-header, .sub-nav-bar, .dm-subnav { display: none !important; }
+    .app-content { width: 100% !important; max-width: none !important; margin-left: 0 !important; margin-top: 0 !important; padding: 0 !important; }
+    .main-content { padding: 0 !important; max-width: none !important; margin-left: 0 !important; }
+    body { background: #f8fafc !important; }
+</style>
+{% endblock %}
+
 {% block content %}
-<script>
-    const _ws = document.createElement('style');
-    _ws.innerHTML = `
-        .sidebar, .premium-sidebar, .sidebar-nav, .hamburger-btn, .sidebar-overlay,
-        .mobile-topbar, .bottom-nav, .mobile-menu-sheet,
-        .topbar, .global-loader-overlay,
-        .global-header, .mobile-global-header, .sub-nav-bar, .dm-subnav { display: none !important; }
-        .app-content { width: 100% !important; max-width: none !important; margin-left: 0 !important; margin-top: 0 !important; padding: 0 !important; }
-        .main-content { padding: 0 !important; max-width: none !important; margin-left: 0 !important; }
-        body { background: #f8fafc !important; }
-    `;
-    document.head.appendChild(_ws);
-</script>
 
 <link rel="stylesheet" href="/static/css/bootstrap-icons.min.css">
 

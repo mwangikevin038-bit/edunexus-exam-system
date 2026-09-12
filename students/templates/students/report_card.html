@@ -859,6 +859,7 @@
             animation: none !important;
         }
 
+        /* Hide everything except report cards */
         #reportCardsContainer .global-header, #reportCardsContainer .mobile-global-header,
         #reportCardsContainer .premium-sidebar, #reportCardsContainer .sidebar, #reportCardsContainer .sidebar-overlay,
         #reportCardsContainer .sub-nav-bar,
@@ -875,6 +876,13 @@
             visibility: hidden !important;
             height: 0 !important;
             overflow: hidden !important;
+        }
+
+        body, html, .app-content, .main-content {
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
         }
 
         #reportCardsContainer {
@@ -905,20 +913,24 @@
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
-        #reportCardsContainer .rc-card-scroll + .rc-card-scroll,
-        #reportCardsContainer .rv-card-container + .rv-card-container {
-            page-break-before: always !important;
+        .report-card + .report-card { page-break-before: always !important; }
+        .report-card:last-child { page-break-after: auto !important; }
+
+        /* Accent bar */
+        .report-card::before {
+            content: '' !important;
+            display: block !important;
+            position: absolute !important;
+            left: 14px !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            width: 19px !important;
+            background: var(--section-accent, #305CDE) !important;
+            border-radius: 0 20px 20px 0 !important;
+            z-index: 1 !important;
         }
 
-        #reportCardsContainer .report-content {
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            flex: 1 !important;
-            gap: 6px !important;
-        }
+        .report-content { width: 100% !important; margin: 0 !important; padding: 0 !important; }
 
         #reportCardsContainer .rc-header {
             display: flex !important;
@@ -933,25 +945,12 @@
         #reportCardsContainer .rc-header::after { display: none !important; }
         #reportCardsContainer .report-logo, #reportCardsContainer .rc-logo-placeholder { width: 80px !important; height: 80px !important; border-radius: 8px !important; object-fit: contain !important; flex-shrink: 0 !important; }
         #reportCardsContainer .rc-logo-spacer { width: 80px !important; flex-shrink: 0 !important; }
-        #reportCardsContainer .rc-schoolinfo { flex: 1 !important; text-align: center !important; }
-        #reportCardsContainer .rc-schoolinfo h1 { font-size: 16pt !important; font-weight: 900 !important; margin: 0 0 4px !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; line-height: 1.1 !important; }
-        #reportCardsContainer .rc-schoolinfo .rc-address { font-size: 10pt !important; font-weight: 600 !important; margin-bottom: 2px !important; }
-        #reportCardsContainer .rc-schoolinfo .rc-contact-line { font-size: 10pt !important; font-weight: 500 !important; margin: 0 !important; }
+        .rc-schoolinfo { text-align: center !important; margin: 0 100px !important; }
+        .rc-schoolinfo h1 { font-size: 16pt !important; font-weight: 900 !important; margin: 0 0 4px !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; line-height: 1.1 !important; }
+        .rc-schoolinfo .rc-address { font-size: 10pt !important; font-weight: 600 !important; margin-bottom: 2px !important; }
+        .rc-schoolinfo .rc-contact-line { font-size: 10pt !important; font-weight: 500 !important; margin: 0 !important; }
 
-        #reportCardsContainer .report-card::before {
-            content: '' !important;
-            display: block !important;
-            position: absolute !important;
-            left: 14px !important;
-            top: 0 !important;
-            bottom: 0 !important;
-            width: 19px !important;
-            height: auto !important;
-            background: var(--section-accent) !important;
-            border-radius: 0 20px 20px 0 !important;
-            z-index: 1 !important;
-        }
-
+        /* Banner */
         #reportCardsContainer .rc-banner {
             padding: 5px 14px !important;
             font-size: 10pt !important;
@@ -999,28 +998,28 @@
         #reportCardsContainer .rc-chart-svg { width: 100% !important; margin: 6px 0 !important; }
         #reportCardsContainer .rc-chart-svg svg { max-height: 44mm !important; }
         #reportCardsContainer .rc-chart-img { width: 100% !important; max-height: 44mm !important; object-fit: contain !important; }
-
-        #reportCardsContainer .rc-stats { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 8px !important; width: 100% !important; }
         #reportCardsContainer .rc-stat { border: 1px solid #E2E8F0 !important; border-top: 3px solid var(--section-accent) !important; border-radius: 10px !important; padding: 12px 10px !important; text-align: center !important; background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important; }
         #reportCardsContainer .rc-stat-label { display: block !important; font-size: 8pt !important; font-weight: 800 !important; color: var(--section-accent) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; margin-bottom: 6px !important; }
         #reportCardsContainer .rc-stat-value { display: block !important; font-size: 15pt !important; font-weight: 800 !important; color: #1E293B !important; line-height: 1.2 !important; }
         #reportCardsContainer .rc-stat-value small { font-size: 10pt !important; font-weight: 600 !important; color: #94A3B8 !important; }
+        .rc-stat-value small { font-size: 10pt !important; font-weight: 600 !important; color: #94A3B8 !important; }
 
-        #reportCardsContainer .table-scroll { width: 100% !important; overflow: visible !important; }
-        #reportCardsContainer .rc-table { width: 100% !important; min-width: 0 !important; border-collapse: collapse !important; table-layout: fixed !important; }
-        #reportCardsContainer .rc-table colgroup .col-subj { width: 32% !important; }
-        #reportCardsContainer .rc-table colgroup .col-marks { width: 13% !important; }
-        #reportCardsContainer .rc-table colgroup .col-dev { width: 18% !important; }
-        #reportCardsContainer .rc-table colgroup .col-grade { width: 12% !important; }
-        #reportCardsContainer .rc-table colgroup .col-teacher { width: 25% !important; }
-        #reportCardsContainer .rc-table thead th { padding: 6px 8px !important; font-size: 9pt !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.03em !important; border: 1px solid #000 !important; background: #E9ECF0 !important; color: #1E293B !important; white-space: nowrap !important; }
-        #reportCardsContainer .rc-table thead th:first-child { text-align: left !important; }
-        #reportCardsContainer .rc-table tbody tr { page-break-inside: avoid !important; }
-        #reportCardsContainer .rc-table tbody td { padding: 5px 8px !important; font-size: 11pt !important; border: 1px solid #000 !important; }
-        #reportCardsContainer .rc-subj { font-weight: 700 !important; text-align: left !important; white-space: nowrap !important; }
-        #reportCardsContainer .rc-center { text-align: center !important; }
-        #reportCardsContainer .rc-grade { font-weight: 800 !important; color: #2563EB !important; }
-        #reportCardsContainer .rc-teacher { font-style: italic !important; font-weight: 600 !important; padding-left: 10px !important; text-align: left !important; font-size: 11pt !important; }
+        /* Table */
+        .table-scroll { width: 100% !important; overflow: visible !important; }
+        .rc-table { width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; }
+        .rc-table colgroup .col-subj { width: 32% !important; }
+        .rc-table colgroup .col-marks { width: 13% !important; }
+        .rc-table colgroup .col-dev { width: 18% !important; }
+        .rc-table colgroup .col-grade { width: 12% !important; }
+        .rc-table colgroup .col-teacher { width: 25% !important; }
+        .rc-table thead th { padding: 4px 6px !important; font-size: 9pt !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.03em !important; border: 1px solid #000 !important; background: #E9ECF0 !important; color: #1E293B !important; white-space: nowrap !important; }
+        .rc-table thead th:first-child { text-align: left !important; }
+        .rc-table tbody tr { page-break-inside: avoid !important; }
+        .rc-table tbody td { padding: 3px 6px !important; font-size: 10pt !important; border: 1px solid #000 !important; }
+        .rc-subj { font-weight: 700 !important; text-align: left !important; white-space: nowrap !important; }
+        .rc-center { text-align: center !important; }
+        .rc-grade { font-weight: 800 !important; color: #2563EB !important; }
+        .rc-teacher { font-style: italic !important; font-weight: 600 !important; padding-left: 10px !important; text-align: left !important; font-size: 11pt !important; }
 
         #reportCardsContainer .rc-comments-header {
             padding: 5px 14px !important;
@@ -1035,11 +1034,23 @@
             box-decoration-break: clone !important;
             -webkit-box-decoration-break: clone !important;
         }
-        #reportCardsContainer .rc-remarks-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; padding: 14px !important; background: #F8FAFC !important; border-radius: 0 0 8px 8px !important; margin-left: -20px !important; margin-right: 20px !important; }
-        #reportCardsContainer .rc-remark-box { padding: 14px 16px !important; border: 1px solid #E2E8F0 !important; border-radius: 10px !important; background: #fff !important; display: flex !important; flex-direction: column !important; }
-        #reportCardsContainer .rc-remark-title { font-size: 11pt !important; font-weight: 800 !important; color: #1E293B !important; margin-bottom: 10px !important; border-bottom: none !important; }
-        #reportCardsContainer .rc-remark-text { font-size: 11pt !important; line-height: 1.5 !important; margin-bottom: 10px !important; flex-grow: 1 !important; }
-        #reportCardsContainer .rc-signature { font-size: 9pt !important; font-weight: 600 !important; color: #64748B !important; border-top: 1px dashed #CBD5E1 !important; padding-top: 6px !important; margin-top: auto !important; }
+        .rc-remarks-grid {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-left: -20px !important;
+            margin-right: 20px !important;
+            margin-top: 0 !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 14px !important;
+            padding: 14px !important;
+            background: #F8FAFC !important;
+            border-radius: 0 0 8px 8px !important;
+        }
+        .rc-remark-box { padding: 14px 16px !important; border: 1px solid #E2E8F0 !important; border-radius: 10px !important; background: #fff !important; display: flex !important; flex-direction: column !important; }
+        .rc-remark-title { font-size: 11pt !important; font-weight: 800 !important; color: #1E293B !important; margin-bottom: 10px !important; border-bottom: none !important; }
+        .rc-remark-text { font-size: 11pt !important; line-height: 1.5 !important; margin-bottom: 10px !important; flex-grow: 1 !important; }
+        .rc-signature { font-size: 9pt !important; font-weight: 600 !important; color: #64748B !important; border-top: 1px dashed #CBD5E1 !important; padding-top: 6px !important; margin-top: auto !important; }
 
         #reportCardsContainer .rc-descriptors { margin-top: 10px !important; width: 100% !important; }
         #reportCardsContainer .rc-descriptors-title { font-size: 9pt !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; margin-bottom: 4px !important; padding-bottom: 4px !important; border-bottom: 2px solid var(--section-accent) !important; }

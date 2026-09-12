@@ -2963,7 +2963,7 @@ def teacher_report_forms_display(request):
     """
     from django.core.cache import cache
     from .helpers import (
-        build_report_card_context,
+        build_report_card_context_from_snapshot,
         get_report_forms_cache_key,
     )
     from ..models import Exam, Grade, Stream
@@ -3005,7 +3005,7 @@ def teacher_report_forms_display(request):
         return redirect('teacher_report_forms')
 
     try:
-        ctx = build_report_card_context(
+        ctx = build_report_card_context_from_snapshot(
             school, grade_name, stream_name, exam_id,
             is_admin=False,
         )
@@ -4562,7 +4562,7 @@ def report_forms_display(request):
     """
     from django.core.cache import cache
     from .helpers import (
-        build_report_card_context,
+        build_report_card_context_from_snapshot,
         get_report_forms_cache_key,
     )
     from ..models import Exam, Grade, Stream
@@ -4613,7 +4613,7 @@ def report_forms_display(request):
 
     # ── Unified data build (shared with the bulk PDF path) ────────────────────
     try:
-        ctx = build_report_card_context(
+        ctx = build_report_card_context_from_snapshot(
             school, grade_name, stream_name, exam_id,
             is_admin=is_admin_view,
         )

@@ -102,7 +102,7 @@
 .rs-body {
     flex: 1;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     padding: 16px 16px calc(16px + var(--rs-safe-bottom));
     padding-bottom: calc(92px + var(--rs-safe-bottom));
@@ -964,6 +964,20 @@
 
     .app-content {
         overflow: visible !important;
+    }
+
+    /* Fix horizontal scroll for tables */
+    .analysis-page-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .analysis-page-container .summary-table {
+        min-width: 700px !important;
+    }
+
+    .analysis-page-container .streams-table {
+        min-width: 500px !important;
     }
 }
 

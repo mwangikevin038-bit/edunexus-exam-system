@@ -1059,6 +1059,7 @@ def download_individual_report_pdf(request, student_id):
             'closing_date': closing_date,
             'opening_date': opening_date,
             'position': position, 'class_count': class_count,
+            'position_display': f"{position}/{class_count}" if position > 0 else "-",
         }],
     }, request=request)
 
@@ -1388,7 +1389,7 @@ def download_bulk_report_pdf(request):
     if not school:
         return JsonResponse({'error': 'School context is required.'}, status=400)
 
-    from .helpers import build_report_card_context
+    from .helpers import build_report_card_context_from_snapshot
 
     is_admin_view = user_has_main_school_admin_override(request.user)
 
@@ -1414,7 +1415,7 @@ def download_bulk_report_pdf(request):
             return JsonResponse({'error': 'Exam not found.'}, status=404)
         db_assessment = _exam.name
         # Pre-fetch the student IDs that belong to this grade/stream/section.
-        _resolved = build_report_card_context(
+        _resolved = build_report_card_context_from_snapshot(
             school, grade_name, stream_name, exam_id,
             include_chart_svg=False,
             is_admin=is_admin_view,
@@ -1441,7 +1442,7 @@ def download_bulk_report_pdf(request):
 
     # ── Unified data build ────────────────────────────────────────────────────
     try:
-        ctx = build_report_card_context(
+        ctx = build_report_card_context_from_snapshot(
             school, sample.class_name, sample.stream, db_assessment,
             student_ids=student_ids,
             include_chart_svg=True,
@@ -1577,7 +1578,7 @@ def start_bulk_report_pdf(request):
         return JsonResponse({'error': 'grade, stream, and exam_id are required.'}, status=400)
 
     # Resolve student IDs (same logic as synchronous view)
-    from .helpers import build_report_card_context
+    from .helpers import build_report_card_context_from_snapshot
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
 
     is_admin_view = user_has_main_school_admin_override(request.user)
@@ -1590,7 +1591,7 @@ def start_bulk_report_pdf(request):
     db_assessment = _exam.name
 
     try:
-        _resolved = build_report_card_context(
+        _resolved = build_report_card_context_from_snapshot(
             school, grade_name, stream_name, exam_id,
             include_chart_svg=False,
             is_admin=is_admin_view,

@@ -11,8 +11,6 @@
     --en-green-glow: rgba(36, 229, 94, 0.30);
     --en-green-ring: rgba(36, 229, 94, 0.18);
     --en-bg: #F2F5F3;
-    --en-surface: #FFFFFF;
-    --en-surface-elevated: #FFFFFF;
     --en-border: rgba(0, 0, 0, 0.05);
     --en-border-strong: rgba(0, 0, 0, 0.10);
     --en-border-input: rgba(0, 0, 0, 0.08);
@@ -854,6 +852,11 @@
 
 /* ── Mobile — Hide base elements ────────────────────────────── */
 @media (max-width: 768px) {
+    :root {
+        --en-surface: #FFFFFF;
+        --en-surface-elevated: #FFFFFF;
+    }
+
     .mobile-topbar,
     .global-header,
     .header-brand,

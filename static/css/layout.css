@@ -2860,9 +2860,3 @@ body.sidebar-collapsed .main-content {
     transition: background .12s, color .12s;
 }
 .event-btn-save:hover { background: #14b8a6; color: #fff; }
-    font-weight: 600;
-    color: #fff;
-    cursor: pointer;
-    transition: background .12s;
-}
-.event-btn-save:hover { background: #1d4ed8; }

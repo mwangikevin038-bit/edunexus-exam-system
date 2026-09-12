@@ -159,16 +159,8 @@
     .exam-list-table {
         width: 100%;
         border-collapse: collapse;
-        table-layout: fixed;
+        table-layout: auto;
     }
-
-    .exam-list-table colgroup col:nth-child(1) { width: 13%; }
-    .exam-list-table colgroup col:nth-child(2) { width: 9%; }
-    .exam-list-table colgroup col:nth-child(3) { width: 14%; }
-    .exam-list-table colgroup col:nth-child(4) { width: 13%; }
-    .exam-list-table colgroup col:nth-child(5) { width: 15%; }
-    .exam-list-table colgroup col:nth-child(6) { width: 16%; }
-    .exam-list-table colgroup col:nth-child(7) { width: 20%; }
 
     .exam-list-table th {
         background: #ffffff;
@@ -237,6 +229,11 @@
         color: #1e40af;
     }
 
+    .status-pending-publishing {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
     .status-returned {
         background: #fee2e2;
         color: #991b1b;
@@ -271,13 +268,13 @@
         align-items: center;
     }
 
-    .btn-action {
+    .exam-list-table .btn-action {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 5px;
-        padding: 8px 12px;
-        font-size: 13px;
+        gap: 4px;
+        padding: 6px 10px;
+        font-size: 12px;
         font-weight: 600;
         border-radius: 6px;
         text-decoration: none;
@@ -285,41 +282,90 @@
         transition: all 0.15s ease;
         white-space: nowrap;
         font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
-        width: 100%;
     }
 
-    .btn-action i {
-        font-size: 16px;
+    .exam-list-table .btn-action i {
+        font-size: 14px;
     }
 
-    .btn-edit {
+    .exam-list-table button.btn-action {
+        border: none;
+    }
+
+    .exam-list-table .btn-edit {
         background: #f9fafb;
         color: #374151;
         border: 1px solid #d1d5db;
     }
 
-    .btn-edit:hover {
+    .exam-list-table .btn-edit:hover {
         background: #f3f4f6;
     }
 
-    .btn-analyze {
+    .exam-list-table .btn-subject-papers {
+        background: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #7dd3fc;
+    }
+
+    .exam-list-table .btn-subject-papers:hover {
+        background: #bae6fd;
+    }
+
+    .exam-list-table .btn-publish-results {
+        background: #0f172a;
+        color: #ffffff;
+        border: 1px solid #0f172a;
+    }
+
+    .exam-list-table .btn-publish-results:hover {
+        background: #1e293b;
+    }
+
+    .exam-list-table .btn-analyze {
         background: #0ea5e9;
         color: #ffffff;
         border: 1px solid #0ea5e9;
     }
 
-    .btn-analyze:hover {
+    .exam-list-table .btn-analyze:hover {
         background: #0284c7;
     }
 
-    .btn-withdraw {
+    .exam-list-table .btn-withdraw {
         background: #ffffff;
         color: #f97316;
         border: 1px solid #f97316;
     }
 
-    .btn-withdraw:hover {
+    .exam-list-table .btn-withdraw:hover {
         background: #fff7ed;
+    }
+
+    .exam-list-table .btn-delete-exam {
+        background: #ffffff;
+        color: #dc2626;
+        border: 1px solid #dc2626 !important;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .exam-list-table .btn-delete-exam i {
+        font-size: 14px;
+    }
+
+    .exam-list-table .btn-delete-exam:hover {
+        background: #fef2f2;
     }
 
     .empty-state {
@@ -650,8 +696,10 @@
         }
 
         .btn-edit { background: #f1f5f9 !important; color: #334155 !important; border: 1.5px solid #e2e8f0 !important; }
-        .btn-analyze { background: linear-gradient(145deg, #22c55e 0%, #16a34a 100%) !important; color: #fff !important; border: none !important; }
-        .btn-withdraw { background: #fef3c7 !important; color: #92400e !important; border: 1.5px solid #fde68a !important; }
+        .btn-subject-papers { background: #e0f2fe !important; color: #0369a1 !important; border: 1.5px solid #7dd3fc !important; }
+        .btn-publish-results { background: #0f172a !important; color: #ffffff !important; border: 1.5px solid #0f172a !important; }
+        .btn-analyze { background: #0ea5e9 !important; color: #fff !important; border: 1px solid #0ea5e9 !important; }
+        .btn-withdraw { background: #ffffff !important; color: #f97316 !important; border: 1.5px solid #f97316 !important; }
 
         /* ═══ GRADING TAB — Premium Mobile ═══ */
         .gs-page {
@@ -1211,17 +1259,30 @@
                         <div class="exam-mob-class">{{ class_row.class_name }}</div>
                         <div class="exam-mob-meta">
                             <span class="exam-mob-date">{{ class_row.updated_on|date:"d/m/Y" }}</span>
+                            <span class="exam-mob-by">{{ class_row.updated_by|default:"-" }}</span>
                         </div>
                         <div class="exam-mob-actions">
                             <a href="{% url 'edit_exam' %}?exam_id={{ class_row.exam_id }}" class="btn-action btn-edit">
                                 <i class="ph ph-pencil-simple"></i> Edit Exam
                             </a>
+                            {% if class_row.status == 'Published' %}
                             <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
                                 <i class="ph ph-chart-bar"></i> Analyse Exam
                             </a>
                             <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}" class="btn-action btn-withdraw">
                                 <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
                             </a>
+                            {% else %}
+                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-subject-papers">
+                                <i class="ph ph-users"></i> Subject Papers
+                            </a>
+                            <a href="{% url 'publish_results_overview' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-publish-results">
+                                <i class="ph ph-chart-bar"></i> Publish Results
+                            </a>
+                            {% endif %}
+                            <button type="button" class="btn-action btn-delete-exam" onclick="openDeleteModal({{ class_row.exam_id }}, '{{ exam.name|escapejs }}')">
+                                <i class="ph ph-trash"></i> Delete
+                            </button>
                         </div>
                     </div>
                     {% endfor %}
@@ -1230,13 +1291,145 @@
         </div>
 </div>
 
+<style>
+    .delete-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(4px);
+    }
+    .delete-modal-overlay.active { display: flex; }
+    .delete-modal {
+        background: #fff;
+        border-radius: 16px;
+        padding: 0;
+        width: 420px;
+        max-width: 90vw;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        animation: modalSlideIn 0.2s ease;
+        overflow: hidden;
+    }
+    @keyframes modalSlideIn {
+        from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .delete-modal-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 20px 24px 0;
+    }
+    .delete-modal-icon {
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        background: #fef2f2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .delete-modal-icon i {
+        font-size: 22px;
+        color: #dc2626;
+    }
+    .delete-modal-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .delete-modal-body {
+        padding: 16px 24px;
+    }
+    .delete-modal-body p {
+        font-size: 14px;
+        color: #6b7280;
+        margin: 0;
+        line-height: 1.6;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .delete-modal-body .exam-name-highlight {
+        font-weight: 700;
+        color: #111827;
+    }
+    .delete-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 16px 24px 20px;
+    }
+    .delete-modal-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        transition: all 0.15s ease;
+    }
+    .delete-modal-btn-cancel {
+        background: #f3f4f6;
+        color: #374151;
+    }
+    .delete-modal-btn-cancel:hover { background: #e5e7eb; }
+    .delete-modal-btn-delete {
+        background: #dc2626;
+        color: #ffffff;
+    }
+    .delete-modal-btn-delete:hover { background: #b91c1c; }
+</style>
+
+<div class="delete-modal-overlay" id="deleteModalOverlay" onclick="closeDeleteModal(event)">
+    <div class="delete-modal" onclick="event.stopPropagation()">
+        <div class="delete-modal-header">
+            <div class="delete-modal-icon">
+                <i class="ph ph-warning"></i>
+            </div>
+            <h3 class="delete-modal-title">Delete Assessment</h3>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to delete <span class="exam-name-highlight" id="deleteModalExamName"></span>?<br><br>It will be moved to Deleted Exams where it can be recovered.</p>
+        </div>
+        <div class="delete-modal-footer">
+            <button class="delete-modal-btn delete-modal-btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+            <button class="delete-modal-btn delete-modal-btn-delete" id="deleteModalConfirmBtn" onclick="document.getElementById('deleteExamForm').submit();">Delete</button>
+        </div>
+    </div>
+</div>
+
 <script>
 function toggleSelectAll(checkbox) {
     document.querySelectorAll('.ce-classes-list input[type="checkbox"]').forEach(cb => {
         cb.checked = checkbox.checked;
     });
 }
+
+function openDeleteModal(examId, examName) {
+    document.getElementById('deleteModalExamName').textContent = examName;
+    document.getElementById('deleteModalExamId').value = examId;
+    document.getElementById('deleteModalOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDeleteModal(e) {
+    if (!e || e.target === document.getElementById('deleteModalOverlay')) {
+        document.getElementById('deleteModalOverlay').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
 </script>
+
+<form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" id="deleteExamForm" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="delete_exam">
+    <input type="hidden" name="exam_id" id="deleteModalExamId" value="">
+</form>
 
 {% elif active_tab == 'grading' %}
 
@@ -1801,22 +1994,14 @@ function gsAutofill() {
             </div>
             <div class="exam-list-table-wrap">
                 <table class="exam-list-table">
-                    <colgroup>
-                        <col>
-                        <col>
-                        <col>
-                        <col>
-                        <col>
-                        <col>
-                        <col>
-                    </colgroup>
                     <thead>
                         <tr>
                             <th>Exam</th>
                             <th>Class</th>
                             <th>Status</th>
+                            <th>Updated By</th>
                             <th>Updated On</th>
-                            <th colspan="3" style="text-align: center;">Action</th>
+                            <th colspan="4" style="text-align: center;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1830,12 +2015,14 @@ function gsAutofill() {
                                 <td>
                                     <span class="status-pill status-{{ class_row.status|slugify }}">{{ class_row.status }}</span>
                                 </td>
+                                <td>{{ class_row.updated_by|default:"-" }}</td>
                                 <td>{{ class_row.updated_on|date:"d/m/Y" }}</td>
                                 <td style="text-align: center;">
                                     <a href="{% url 'edit_exam' %}?exam_id={{ class_row.exam_id }}" class="btn-action btn-edit">
                                         <i class="ph ph-pencil-simple"></i> Edit Exam
                                     </a>
                                 </td>
+                                {% if class_row.status == 'Published' %}
                                 <td style="text-align: center;">
                                     <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
                                         <i class="ph ph-chart-bar"></i> Analyse Exam
@@ -1845,6 +2032,28 @@ function gsAutofill() {
                                     <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}" class="btn-action btn-withdraw">
                                         <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
                                     </a>
+                                </td>
+                                {% else %}
+                                <td style="text-align: center;">
+                                    <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-subject-papers">
+                                        <i class="ph ph-users"></i> Subject Papers
+                                    </a>
+                                </td>
+                                <td style="text-align: center;">
+                                    <a href="{% url 'publish_results_overview' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-publish-results">
+                                        <i class="ph ph-chart-bar"></i> Publish Results
+                                    </a>
+                                </td>
+                                {% endif %}
+                                <td style="text-align: center;">
+                                    <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Delete this assessment? It will be moved to Deleted Exams where it can be recovered.');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action_type" value="delete_exam">
+                                        <input type="hidden" name="exam_id" value="{{ class_row.exam_id }}">
+                                        <button type="submit" class="btn-action btn-delete-exam">
+                                            <i class="ph ph-trash"></i> Delete
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -1865,17 +2074,30 @@ function gsAutofill() {
                         <div class="exam-mob-class">{{ class_row.class_name }}</div>
                         <div class="exam-mob-meta">
                             <span class="exam-mob-date">{{ class_row.updated_on|date:"d/m/Y" }}</span>
+                            <span class="exam-mob-by">{{ class_row.updated_by|default:"-" }}</span>
                         </div>
                         <div class="exam-mob-actions">
                             <a href="{% url 'edit_exam' %}?exam_id={{ class_row.exam_id }}" class="btn-action btn-edit">
                                 <i class="ph ph-pencil-simple"></i> Edit Exam
                             </a>
+                            {% if class_row.status == 'Published' %}
                             <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
                                 <i class="ph ph-chart-bar"></i> Analyse Exam
                             </a>
                             <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}" class="btn-action btn-withdraw">
                                 <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
                             </a>
+                            {% else %}
+                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-subject-papers">
+                                <i class="ph ph-users"></i> Subject Papers
+                            </a>
+                            <a href="{% url 'publish_results_overview' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-publish-results">
+                                <i class="ph ph-chart-bar"></i> Publish Results
+                            </a>
+                            {% endif %}
+                            <button type="button" class="btn-action btn-delete-exam" onclick="openDeleteModal({{ class_row.exam_id }}, '{{ exam.name|escapejs }}')">
+                                <i class="ph ph-trash"></i> Delete
+                            </button>
                         </div>
                     </div>
                     {% endfor %}

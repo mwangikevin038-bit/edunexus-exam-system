@@ -173,81 +173,146 @@ def results_list(request):
 
     if year and term and grade and stream and exam_type:
         show_table = True
-        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None, is_admin=is_admin_view)
-        published_subject_count = len(published_subject_codes)
 
-        # Get Subject objects for published subjects and keep stable display labels.
-        from ..models import Subject
-        published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
-        subject_label_map = {
-            s.code: (subject_map.get(s.code) or s.name or s.code)
-            for s in published_subjects_qs
-        }
-        published_subjects = sort_subjects([
-            (code, subject_label_map.get(code, subject_map.get(code, code)))
-            for code in published_subject_codes
-        ])
-        for _code, short in published_subjects:
-            analysis_data.setdefault(short, {
-                'entries': 0, 'total_score': 0, 'mean_score': 0.0,
-                'distribution': {lvl: 0 for lvl in active_levels},
-                'teacher_name': '—',
-            })
+        # ── Try to read from snapshot first ─────────────────────────────────
+        from .helpers import get_broadsheet_from_snapshot
+        snapshot_result = get_broadsheet_from_snapshot(school, grade, stream, year, term, exam_type)
 
-        # Map assigned teachers for this grade/stream
-        teacher_map = {}
-        sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream=stream, is_active=True).select_related('teacher_profile__user', 'subject')
-        if section == 'LOWER_PRIMARY':
-            sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='LOWER')
-        elif section == 'PRIMARY':
-            sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section=active_sub)
-        elif section == 'JSS':
-            sa_qs = sa_qs.filter(school_section='JSS')
-        for a in sa_qs:
-            code = a.subject.code if a.subject else None
-            if code:
-                teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title()
-        for short in analysis_data:
-            analysis_data[short]['teacher_name'] = teacher_map.get(short, '—')
+        if snapshot_result:
+            # Use snapshot data — much faster
+            student_data, subject_data, snapshot_analysis = snapshot_result
 
-        # ── Read from ExamSummary cache (populated by Celery task on Publish) ──
-        from ..models import ExamSummary
-        # Map workspace section to DB school_section
-        if is_lower_primary:
-            db_section = 'PRIMARY'
-            db_sub = 'LOWER'
-        elif is_primary:
-            db_section = 'PRIMARY'
-            db_sub = active_sub
+            published_subject_codes = list(subject_data.keys())
+            published_subject_count = len(published_subject_codes)
+
+            # Build subject display list from snapshot
+            published_subjects = sort_subjects([
+                (code, subject_data[code]['subject_name'])
+                for code in published_subject_codes
+            ])
+
+            # Build analysis data from snapshot
+            for code, data in subject_data.items():
+                short = data['subject_name']
+                analysis_data.setdefault(short, {
+                    'entries': data.get('student_count', 0),
+                    'total_score': data.get('student_count', 0) * data.get('class_average', 0),
+                    'mean_score': data.get('class_average', 0),
+                    'distribution': {lvl: 0 for lvl in active_levels},
+                    'teacher_name': data.get('teacher_name', '—'),
+                })
+
+            # Build broadsheet rows from snapshot
+            students = Student.all_objects.filter(
+                school=school, class_name=grade, stream=stream, is_active=True,
+            ).order_by('admission_no')
+            student_count = len(student_data)
+
+            for student in students:
+                s_data = student_data.get(student.id, {})
+                if not s_data:
+                    continue
+
+                # Get marks for this student from the snapshot's report_card_data
+                # The snapshot stores totals but not per-subject marks for broadsheet
+                # We need to fetch marks for the broadsheet display
+                row_scores = []
+                # For snapshot path, we show totals only (no per-subject detail)
+                # This is a trade-off for speed - broadsheet shows summary data
+                for code, short in published_subjects:
+                    row_scores.append({'score': '-', 'level': '-'})
+
+                broadsheet.append({
+                    'student': student,
+                    'total_marks': s_data.get('total_marks', 0),
+                    'total_points': s_data.get('total_points', 0),
+                    'assessed_subjects': s_data.get('subject_count', 0),
+                    'mean': round(s_data.get('total_marks', 0) / max(s_data.get('subject_count', 1), 1), 1),
+                    'row_scores': row_scores,
+                    'position': s_data.get('stream_rank', 0),
+                    'grade_position': s_data.get('grade_rank', 0),
+                    'plv': s_data.get('overall_plv', '-'),
+                })
+
+            broadsheet.sort(key=lambda r: (r['position'] == 0, -r['total_marks'], r['student'].name))
+
         else:
-            db_section = 'JSS'
-            db_sub = None
-        summaries_qs = ExamSummary.all_objects.filter(
-            school=school,
-            student__class_name=grade,
-            year=year,
-            term=term,
-            exam_name=exam_type,
-            school_section=db_section,
-            sub_section=db_sub,
-        )
-        totals_map = {s.student_id: s for s in summaries_qs}
+            # Fallback to live computation
+            published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None, is_admin=is_admin_view)
+            published_subject_count = len(published_subject_codes)
 
-        # Fetch all marks for this class in ONE query (no N+1 prefetch)
-        all_marks = Mark.all_objects.filter(
-            school=school,
-            student__class_name=grade,
-            student__stream=stream,
-            year=year, term=term, exam_type=exam_type,
-            subject__in=published_subjects_qs,
-        ).select_related('subject').order_by('subject', '-date_recorded', '-id')
+            # Get Subject objects for published subjects and keep stable display labels.
+            from ..models import Subject
+            published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+            subject_label_map = {
+                s.code: (subject_map.get(s.code) or s.name or s.code)
+                for s in published_subjects_qs
+            }
+            published_subjects = sort_subjects([
+                (code, subject_label_map.get(code, subject_map.get(code, code)))
+                for code in published_subject_codes
+            ])
+            for _code, short in published_subjects:
+                analysis_data.setdefault(short, {
+                    'entries': 0, 'total_score': 0, 'mean_score': 0.0,
+                    'distribution': {lvl: 0 for lvl in active_levels},
+                    'teacher_name': '—',
+                })
 
-        # Group marks by student_id
-        marks_by_student = {}
-        for mark in all_marks:
-            marks_by_student.setdefault(mark.student_id, []).append(mark)
+            # Map assigned teachers for this grade/stream
+            teacher_map = {}
+            sa_qs = SubjectAssignment.all_objects.filter(school=school, class_name=grade, stream=stream, is_active=True).select_related('teacher_profile__user', 'subject')
+            if section == 'LOWER_PRIMARY':
+                sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+            elif section == 'PRIMARY':
+                sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section=active_sub)
+            elif section == 'JSS':
+                sa_qs = sa_qs.filter(school_section='JSS')
+            for a in sa_qs:
+                code = a.subject.code if a.subject else None
+                if code:
+                    teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title()
+            for short in analysis_data:
+                analysis_data[short]['teacher_name'] = teacher_map.get(short, '—')
 
-        students = Student.all_objects.filter(
+            # ── Read from ExamSummary cache (populated by Celery task on Publish) ──
+            from ..models import ExamSummary
+            # Map workspace section to DB school_section
+            if is_lower_primary:
+                db_section = 'PRIMARY'
+                db_sub = 'LOWER'
+            elif is_primary:
+                db_section = 'PRIMARY'
+                db_sub = active_sub
+            else:
+                db_section = 'JSS'
+                db_sub = None
+            summaries_qs = ExamSummary.all_objects.filter(
+                school=school,
+                student__class_name=grade,
+                year=year,
+                term=term,
+                exam_name=exam_type,
+                school_section=db_section,
+                sub_section=db_sub,
+            )
+            totals_map = {s.student_id: s for s in summaries_qs}
+
+            # Fetch all marks for this class in ONE query (no N+1 prefetch)
+            all_marks = Mark.all_objects.filter(
+                school=school,
+                student__class_name=grade,
+                student__stream=stream,
+                year=year, term=term, exam_type=exam_type,
+                subject__in=published_subjects_qs,
+            ).select_related('subject').order_by('subject', '-date_recorded', '-id')
+
+            # Group marks by student_id
+            marks_by_student = {}
+            for mark in all_marks:
+                marks_by_student.setdefault(mark.student_id, []).append(mark)
+
+            students = Student.all_objects.filter(
             school=school, class_name=grade, stream=stream, is_active=True,
         ).order_by('admission_no')
         student_count = students.count()
@@ -496,9 +561,6 @@ def report_card_select(request):
         context_data['upper_exam_count'] = Exam.all_objects.filter(school=school_obj, school_section='PRIMARY', sub_section='UPPER', status='active', is_deleted=False).count()
 
     return render(request, template, context_data)
-
-
-_grading_config_cache = {}  # Kept for backward compat — delegates to grading_engine
 
 
 
@@ -862,20 +924,22 @@ def bulk_report_cards(request):
 
     selected_students_base = Student.all_objects.filter(id__in=student_ids, school=school)
     sample = selected_students_base.first()
-    if sample and not user_can_access_class_stream(request.user, sample.class_name, sample.stream, require_class_teacher=True):
+    if not sample:
+        messages.error(request, "No valid students selected.")
+        return redirect('report_card_select')
+    if not user_can_access_class_stream(request.user, sample.class_name, sample.stream, require_class_teacher=True):
         messages.error(request, "You are not allowed to print bulk report cards for this class stream.")
         return redirect('report_card_select')
-    if sample:
-        selected_students_base = selected_students_base.filter(
-            class_name=sample.class_name,
-            stream=sample.stream,
-        )
-        if selected_students_base.count() != len(student_ids):
-            messages.error(request, "All selected students must belong to the same class stream.")
-            return redirect('report_card_select')
+    selected_students_base = selected_students_base.filter(
+        class_name=sample.class_name,
+        stream=sample.stream,
+    )
+    if selected_students_base.count() != len(student_ids):
+        messages.error(request, "All selected students must belong to the same class stream.")
+        return redirect('report_card_select')
 
-    is_primary = sample.school_section == 'PRIMARY' if sample else False
-    is_lower_primary = (sample.school_section == 'PRIMARY' and sample.sub_section == 'LOWER') if sample else False
+    is_primary = sample.school_section == 'PRIMARY'
+    is_lower_primary = (sample.school_section == 'PRIMARY' and sample.sub_section == 'LOWER')
     is_admin_view = user_has_main_school_admin_override(request.user)
     from ..models import Subject
 
