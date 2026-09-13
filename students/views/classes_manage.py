@@ -219,6 +219,9 @@ def manage_classes(request):
             assigned_task__icontains=grade.name,
         ).filter(
             assigned_task__icontains='Class Teacher'
+        ).filter(
+            school_section=grade.school_section,
+            sub_section=grade.sub_section,
         ).first()
         if ct:
             supervisor = ct.get_full_title()
@@ -351,6 +354,9 @@ def manage_streams(request, grade_id):
             assigned_task__icontains=stream.name,
         ).filter(
             assigned_task__icontains='Class Teacher',
+        ).filter(
+            school_section=grade.school_section,
+            sub_section=grade.sub_section,
         ).first()
         if ct:
             supervisor = ct.get_full_title()

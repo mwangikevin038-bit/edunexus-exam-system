@@ -108,13 +108,21 @@ def generate_default_password():
 
 def get_published_subject_codes(class_name, stream, year, term, exam_name, sub_section=None, is_admin=False):
     """
-    Return subject codes that have been formally published by the school admin.
-    Official analysis and report cards should only use these finalized sheets.
-    Admin users see all sections; teachers are scoped by their workspace section.
+    Return subject codes that should appear on report cards.
+    
+    A subject appears if EITHER:
+      1. Its MarkSubmission has been formally published, OR
+      2. Marks exist for that subject (teacher saved them, even if not submitted)
+    
+    This ensures marks are NEVER invisible — if a teacher entered them, they show.
+    The publish workflow still controls official publication status, but does NOT
+    gate mark visibility.
     """
     school = get_current_school()
     section = get_current_school_section()
-    filters = dict(
+
+    # ── 1. Published submission subject codes ──────────────────────────
+    pub_filters = dict(
         class_name=class_name,
         stream=stream,
         year=year,
@@ -123,25 +131,56 @@ def get_published_subject_codes(class_name, stream, year, term, exam_name, sub_s
         status="published",
     )
     if school:
-        filters['school'] = school
+        pub_filters['school'] = school
     if not is_admin:
         if sub_section == 'LOWER':
-            filters['school_section'] = 'PRIMARY'
-            filters['sub_section'] = 'LOWER'
+            pub_filters['school_section'] = 'PRIMARY'
+            pub_filters['sub_section'] = 'LOWER'
         elif sub_section == 'UPPER':
-            filters['school_section'] = 'PRIMARY'
-            filters['sub_section'] = 'UPPER'
+            pub_filters['school_section'] = 'PRIMARY'
+            pub_filters['sub_section'] = 'UPPER'
         elif section == 'LOWER_PRIMARY':
-            filters['school_section'] = 'PRIMARY'
-            filters['sub_section'] = 'LOWER'
+            pub_filters['school_section'] = 'PRIMARY'
+            pub_filters['sub_section'] = 'LOWER'
         elif section == 'PRIMARY':
-            filters['school_section'] = 'PRIMARY'
-            filters['sub_section'] = 'UPPER'
+            pub_filters['school_section'] = 'PRIMARY'
+            pub_filters['sub_section'] = 'UPPER'
         elif section == 'JSS':
-            filters['school_section'] = 'JSS'
-    return set(
-        MarkSubmission.all_objects.filter(**filters).values_list("subject__code", flat=True)
+            pub_filters['school_section'] = 'JSS'
+    published_codes = set(
+        MarkSubmission.all_objects.filter(**pub_filters).values_list("subject__code", flat=True)
     )
+
+    # ── 2. Subjects that have marks entered (even if not published) ────
+    mark_filters = dict(
+        student__class_name=class_name,
+        student__stream=stream,
+        year=year,
+        term=term,
+        exam_type=exam_name,
+    )
+    if school:
+        mark_filters['school'] = school
+    if not is_admin:
+        if sub_section == 'LOWER':
+            mark_filters['school_section'] = 'PRIMARY'
+            mark_filters['sub_section'] = 'LOWER'
+        elif sub_section == 'UPPER':
+            mark_filters['school_section'] = 'PRIMARY'
+            mark_filters['sub_section'] = 'UPPER'
+        elif section == 'LOWER_PRIMARY':
+            mark_filters['school_section'] = 'PRIMARY'
+            mark_filters['sub_section'] = 'LOWER'
+        elif section == 'PRIMARY':
+            mark_filters['school_section'] = 'PRIMARY'
+            mark_filters['sub_section'] = 'UPPER'
+        elif section == 'JSS':
+            mark_filters['school_section'] = 'JSS'
+    marks_codes = set(
+        Mark.all_objects.filter(**mark_filters).values_list("subject__code", flat=True).distinct()
+    )
+
+    return published_codes | marks_codes
 
 
 def get_published_contexts_for_user(user, require_class_teacher=False, sub_section=None):
@@ -304,7 +343,7 @@ def get_stream_submission_summary(class_name, stream, exam):
         rows.append({
             "assignment": assignment,
             "subject_name": subject.name if subject else '',
-            "teacher_name": assignment.teacher_profile.get_full_title(),
+            "teacher_name": assignment.teacher_profile.get_full_title() if assignment.teacher_profile else "—",
             "captured_count": captured_count,
             "total_students": expected_count,
             "absent_count": absent_count,
@@ -1453,7 +1492,7 @@ def build_report_card_context(
 
     # ── 9. Subject teacher map ────────────────────────────────────────────────
     teacher_map = {
-        a.subject.code: a.teacher_profile.get_full_title()
+        a.subject.code: (a.teacher_profile.get_full_title() if a.teacher_profile else '—')
         for a in SubjectAssignment.all_objects.filter(
             school=school, class_name=grade, stream=stream, is_active=True,
         ).select_related('teacher_profile__user', 'subject')

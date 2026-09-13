@@ -326,12 +326,284 @@
         font-weight: 500;
     }
 
+    /* Desktop: hide mobile subject cards */
+    .pub-subject-cards { display: none; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       STREAM SUBJECT DETAIL — Premium Mobile (iOS 17 / Zeraki)
+       ═══════════════════════════════════════════════════════════════ */
     @media (max-width: 768px) {
-        .pub-detail-main { padding: 16px; }
-        .pub-detail-card { padding: 14px; }
-        .pub-detail-actions { flex-direction: column; gap: 10px; align-items: stretch; }
-        .pub-detail-actions-left { justify-content: center; }
-        .pub-publish-btn { align-self: center; }
+        .main-content {
+            padding: 0 !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+        }
+
+        .app-content { background: linear-gradient(180deg, #C8E6C9 0%, #E8F5E9 40%, #f5f5f5 100%); }
+
+        .pub-detail-page { min-height: 100vh !important; background: transparent !important; }
+
+        .pub-detail-main {
+            padding: 16px !important;
+            padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 24px) !important;
+        }
+
+        /* ── Title ── */
+        .pub-detail-title {
+            font-size: 22px !important;
+            font-weight: 800 !important;
+            color: #1C1C1E !important;
+            letter-spacing: -0.02em !important;
+            margin-bottom: 16px !important;
+            line-height: 1.2 !important;
+        }
+
+        /* ── Main Card ── */
+        .pub-detail-card {
+            background: rgba(255, 255, 255, 0.85) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+            border: none !important;
+            border-radius: 16px !important;
+            padding: 18px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 4px 12px rgba(0,0,0,0.04) !important;
+            margin-bottom: 16px !important;
+        }
+
+        /* ── Exam label ── */
+        .pub-detail-exam-label {
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            color: #1C1C1E !important;
+            margin-bottom: 14px !important;
+            line-height: 1.3 !important;
+        }
+
+        .pub-detail-exam-label span {
+            font-weight: 500 !important;
+            color: #6B7280 !important;
+        }
+
+        /* ── Hide desktop table ── */
+        .pub-detail-table { display: none !important; }
+
+        /* ── Mobile subject cards ── */
+        .pub-subject-cards {
+            display: block !important;
+        }
+
+        .pub-subject-card {
+            background: #F2F2F7 !important;
+            border-radius: 12px !important;
+            padding: 14px 16px !important;
+            margin-bottom: 8px !important;
+        }
+
+        .pub-subject-card:last-child { margin-bottom: 0 !important; }
+
+        .pub-subject-card--missing {
+            background: rgba(239,68,68,0.04) !important;
+            border: 1px solid rgba(239,68,68,0.1) !important;
+        }
+
+        .pub-subject-card-top {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
+            margin-bottom: 8px !important;
+        }
+
+        .pub-subject-name {
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            color: #1C1C1E !important;
+            flex: 1 !important;
+            min-width: 0 !important;
+        }
+
+        .pub-role-tag {
+            padding: 3px 10px !important;
+            border-radius: 20px !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+        }
+
+        .pub-role-tag.green { background: linear-gradient(135deg, rgba(36,229,94,0.12), rgba(25,158,65,0.08)) !important; color: #15803D !important; }
+        .pub-role-tag.blue { background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(37,99,235,0.08)) !important; color: #1D4ED8 !important; }
+        .pub-role-tag.orange { background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.08)) !important; color: #92400E !important; }
+        .pub-role-tag.red { background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(220,38,38,0.08)) !important; color: #991B1B !important; }
+        .pub-role-tag.gray { background: rgba(0,0,0,0.04) !important; color: #6B7280 !important; }
+
+        .pub-subject-meta {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 4px !important;
+            margin-bottom: 12px !important;
+        }
+
+        .pub-subject-teacher,
+        .pub-subject-missing {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 5px !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            color: #6B7280 !important;
+        }
+
+        .pub-subject-teacher i,
+        .pub-subject-missing i { font-size: 14px !important; }
+
+        .pub-subject-missing { color: #EA580C !important; }
+
+        .pub-subject-view {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            width: 100% !important;
+            height: 42px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            text-decoration: none !important;
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
+            color: #fff !important;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.25) !important;
+        }
+
+        .pub-subject-view:active { background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important; }
+
+        .pub-subject-view i { font-size: 15px !important; }
+
+        .pub-subject-upload {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            width: 100% !important;
+            height: 42px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            text-decoration: none !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.22), 0 8px 32px rgba(34,197,94,0.12) !important;
+        }
+
+        .pub-subject-upload:active { background: linear-gradient(135deg, #199E41 0%, #0F8A34 100%) !important; }
+
+        .pub-subject-upload i { font-size: 15px !important; }
+
+        /* ── Section title ── */
+        .pub-detail-section-title {
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.04em !important;
+            color: #6B7280 !important;
+            margin: 20px 0 10px !important;
+        }
+
+        /* ── Empty state ── */
+        .pub-empty-msg {
+            text-align: center !important;
+            padding: 32px 16px !important;
+            color: #8E8E93 !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+        }
+
+        /* ── Actions Bar ── */
+        .pub-detail-actions {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+            padding: 0 !important;
+        }
+
+        .pub-detail-actions-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            width: 100% !important;
+        }
+
+        .pub-back-btn {
+            flex: 1 !important;
+            height: 44px !important;
+            border-radius: 12px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            justify-content: center !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            color: #1C1C1E !important;
+            border: 1.5px solid rgba(0,0,0,0.08) !important;
+            gap: 6px !important;
+        }
+
+        .pub-back-btn:active { background: rgba(0,0,0,0.04) !important; }
+
+        .pub-action-wrap { flex: 1 !important; }
+
+        .pub-action-btn {
+            width: 100% !important;
+            height: 44px !important;
+            border-radius: 12px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            justify-content: center !important;
+            background: linear-gradient(135deg, #64748B 0%, #475569 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(100,116,139,0.25) !important;
+        }
+
+        .pub-action-btn:active { background: linear-gradient(135deg, #475569 0%, #334155 100%) !important; }
+
+        .pub-action-menu {
+            position: fixed !important;
+            bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px) !important;
+            left: 16px !important;
+            right: 16px !important;
+            top: auto !important;
+            border-radius: 16px !important;
+            box-shadow: 0 8px 32px -4px rgba(0,0,0,0.15) !important;
+            border: none !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .pub-action-menu a {
+            padding: 16px 18px !important;
+            font-size: 15px !important;
+            font-weight: 500 !important;
+            border-bottom: 1px solid rgba(60,60,67,0.06) !important;
+        }
+
+        .pub-action-menu a:last-child { border-bottom: none !important; }
+        .pub-action-menu a:active { background: #F2F2F7 !important; }
+
+        .pub-publish-btn {
+            width: 100% !important;
+            height: 48px !important;
+            border-radius: 12px !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            justify-content: center !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.22), 0 8px 32px rgba(34,197,94,0.12) !important;
+        }
+
+        .pub-publish-btn:active { background: linear-gradient(135deg, #199E41 0%, #0F8A34 100%) !important; }
+
+        .bottom-nav { display: flex !important; }
     }
 </style>
 
@@ -375,6 +647,25 @@
                     {% endfor %}
                 </tbody>
             </table>
+
+            <!-- Mobile subject cards -->
+            <div class="pub-subject-cards">
+                {% for row in submitted_rows %}
+                <div class="pub-subject-card">
+                    <div class="pub-subject-card-top">
+                        <span class="pub-subject-name">{{ row.subject_name }}</span>
+                        <span class="pub-role-tag {{ row.status_color }}">{{ row.display_status }}</span>
+                    </div>
+                    <div class="pub-subject-meta">
+                        <span class="pub-subject-teacher"><i class="ph ph-user"></i> {{ row.teacher_name }}</span>
+                        <span class="pub-subject-missing"><i class="ph ph-warning"></i> {{ row.student_without_marks }}</span>
+                    </div>
+                    <a href="{% url 'review_submission' %}?exam_id={{ exam.id }}&assignment_id={{ row.assignment.id }}" class="pub-subject-view">
+                        View <i class="ph ph-arrow-right"></i>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
             {% endif %}
 
             {% if not_started_rows %}
@@ -408,6 +699,25 @@
                         {% endfor %}
                     </tbody>
                 </table>
+
+                <!-- Mobile subject cards -->
+                <div class="pub-subject-cards">
+                    {% for row in not_started_rows %}
+                    <div class="pub-subject-card pub-subject-card--missing">
+                        <div class="pub-subject-card-top">
+                            <span class="pub-subject-name">{{ row.subject_name }}</span>
+                            <span class="pub-role-tag {{ row.status_color }}">{{ row.display_status }}</span>
+                        </div>
+                        <div class="pub-subject-meta">
+                            <span class="pub-subject-teacher"><i class="ph ph-user"></i> {{ row.teacher_name }}</span>
+                            <span class="pub-subject-missing"><i class="ph ph-warning"></i> {{ row.student_without_marks }}</span>
+                        </div>
+                        <a href="{% url 'upload_results' %}?exam_id={{ exam.id }}&assignment_id={{ row.assignment.id }}" class="pub-subject-upload">
+                            Upload Results <i class="ph ph-arrow-up"></i>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
             {% endif %}
 

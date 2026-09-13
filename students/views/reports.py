@@ -271,7 +271,7 @@ def results_list(request):
             for a in sa_qs:
                 code = a.subject.code if a.subject else None
                 if code:
-                    teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title()
+                    teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title() if a.teacher_profile else '—'
             for short in analysis_data:
                 analysis_data[short]['teacher_name'] = teacher_map.get(short, '—')
 
@@ -692,7 +692,7 @@ def individual_report(request, student_id):
     else:
         subject_mapping = {s.code: s.name for s in published_subjects_qs}
     teacher_map = {
-        a.subject.code: a.teacher_profile.get_full_title()
+        a.subject.code: (a.teacher_profile.get_full_title() if a.teacher_profile else '—')
         for a in SubjectAssignment.all_objects.filter(
             school=school,
             class_name=student.class_name, stream=student.stream, is_active=True
@@ -1021,7 +1021,7 @@ def bulk_report_cards(request):
 
     # Teacher map for this class
     teacher_map = {
-        a.subject.code: a.teacher_profile.get_full_title()
+        a.subject.code: (a.teacher_profile.get_full_title() if a.teacher_profile else '—')
         for a in SubjectAssignment.all_objects.filter(
             school=school,
             class_name=sample.class_name, stream=sample.stream, is_active=True
@@ -1449,7 +1449,7 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
     for a in sa_qs:
         code = a.subject.code if a.subject else None
         if code:
-            teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title()
+            teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title() if a.teacher_profile else '—'
     for short in analysis_data:
         analysis_data[short]['teacher_name'] = teacher_map.get(short, '—')
 

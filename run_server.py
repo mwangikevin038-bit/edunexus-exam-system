@@ -1,6 +1,6 @@
 """
-Waitress production server for EduNexus Exam System (Windows).
-Starts Redis, Celery worker, and the Waitress web server together.
+EduNexus Production Server (Windows).
+Starts Redis, Celery workers, and Waitress together with health checks.
 
 Usage:
     python run_server.py
@@ -10,56 +10,94 @@ import sys
 import subprocess
 import signal
 import time
+import socket
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'school.settings')
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
-# ── Find executables ────────────────────────────────────────────────────────
-REDIS_SERVER = None
-for candidate in [
-    r"C:\Users\1030 G3\AppData\Local\Microsoft\WinGet\Packages\taizod1024.redis-windows-fork_Microsoft.Winget.Source_8wekyb3d8bbwe\Redis-8.8.0-Windows-x64-msys2\redis-server.exe",
-    r"C:\Users\1030 G3\AppData\Local\Microsoft\WinGet\Packages\taizod1024.redis-windows-fork_Microsoft.Winget.Source_8wekyb3d8bbwe\redis-server.exe",
-    "redis-server",
-]:
-    if os.path.isfile(candidate):
-        REDIS_SERVER = candidate
-        break
-
-CELERY_EXE = None
-for candidate in [
-    os.path.join(sys.prefix, "Scripts", "celery.exe"),
-    os.path.join(sys.prefix, "bin", "celery"),
-    "celery",
-]:
-    if os.path.isfile(candidate):
-        CELERY_EXE = candidate
-        break
-
+# ── Config ──────────────────────────────────────────────────────────────────
 REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
 CELERY_APP = os.environ.get("CELERY_APP", "school")
 CELERY_LOGLEVEL = os.environ.get("CELERY_LOGLEVEL", "info")
+WAITRESS_HOST = os.environ.get('WAITRESS_HOST', '0.0.0.0')
+WAITRESS_PORT = int(os.environ.get('WAITRESS_PORT', '8000'))
+WAITRESS_THREADS = int(os.environ.get('WAITRESS_THREADS', str(min(16, (os.cpu_count() or 4) * 4))))
 
-# ── Track child processes ───────────────────────────────────────────────────
-_child_procs = []
+# ── Colors ──────────────────────────────────────────────────────────────────
+class C:
+    RESET  = "\033[0m"
+    BOLD   = "\033[1m"
+    DIM    = "\033[2m"
+    RED    = "\033[91m"
+    GREEN  = "\033[92m"
+    YELLOW = "\033[93m"
+    BLUE   = "\033[94m"
+    CYAN   = "\033[96m"
+    WHITE  = "\033[97m"
+    GRAY   = "\033[90m"
 
+def log(icon, msg, color=C.WHITE):
+    print(f"  {color}{icon}{C.RESET} {C.DIM}{msg}{C.RESET}")
 
-def _start_redis():
-    """Start Redis server if not already running."""
-    import socket
+def ok(msg):   log("✓", msg, C.GREEN)
+def warn(msg): log("⚠", msg, C.YELLOW)
+def err(msg):  log("✗", msg, C.RED)
+def info(msg): log("→", msg, C.CYAN)
+
+# ── Find executables ────────────────────────────────────────────────────────
+def _find_redis():
+    for candidate in [
+        r"C:\Users\1030 G3\AppData\Local\Microsoft\WinGet\Packages\taizod1024.redis-windows-fork_Microsoft.Winget.Source_8wekyb3d8bbwe\Redis-8.8.0-Windows-x64-msys2\redis-server.exe",
+        r"C:\Users\1030 G3\AppData\Local\Microsoft\WinGet\Packages\taizod1024.redis-windows-fork_Microsoft.Winget.Source_8wekyb3d8bbwe\redis-server.exe",
+        "redis-server",
+    ]:
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+def _find_celery():
+    for candidate in [
+        os.path.join(sys.prefix, "Scripts", "celery.exe"),
+        os.path.join(sys.prefix, "bin", "celery"),
+        "celery",
+    ]:
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+REDIS_SERVER = _find_redis()
+CELERY_EXE = _find_celery()
+
+# ── Process tracking ────────────────────────────────────────────────────────
+_children = []
+
+def _is_port_open(port, host="127.0.0.1"):
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        sock.connect(("127.0.0.1", REDIS_PORT))
-        sock.close()
-        print(f"  [redis]  Already running on port {REDIS_PORT}")
-        return None
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        s.connect((host, port))
+        s.close()
+        return True
     except (ConnectionRefusedError, OSError, TimeoutError):
-        pass
+        return False
+
+def _wait_for_port(port, retries=10, delay=0.5):
+    for _ in range(retries):
+        if _is_port_open(port):
+            return True
+        time.sleep(delay)
+    return False
+
+# ── Service starters ────────────────────────────────────────────────────────
+def start_redis():
+    if _is_port_open(REDIS_PORT):
+        ok(f"Redis already running on port {REDIS_PORT}")
+        return None
 
     if not REDIS_SERVER:
-        print("  [redis]  WARNING: redis-server not found, skipping")
+        warn("redis-server not found — skipping (background tasks disabled)")
         return None
 
     redis_dir = os.path.join(PROJECT_ROOT, "redis_data")
@@ -72,68 +110,80 @@ def _start_redis():
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    print(f"  [redis]  Started (PID {proc.pid}) on port {REDIS_PORT}")
-    time.sleep(1)
-    return proc
 
+    if _wait_for_port(REDIS_PORT, retries=15, delay=0.3):
+        ok(f"Redis started (PID {proc.pid}) on port {REDIS_PORT}")
+        return proc
+    else:
+        err("Redis started but port not responding — check redis-server")
+        return proc
 
-def _start_celery():
-    """Start Celery worker."""
+def start_celery_workers():
+    procs = []
     if not CELERY_EXE:
-        print("  [celery] WARNING: celery not found, skipping")
-        return []
+        warn("celery not found — skipping (background tasks disabled)")
+        return procs
 
-    # Worker 1: PDF generation (CPU-intensive, needs dedicated process)
-    proc_pdf = subprocess.Popen(
-        [CELERY_EXE, "-A", CELERY_APP, "worker",
-         "-l", CELERY_LOGLEVEL,
-         "-P", "prefork",
-         "--concurrency=4",
-         "--max-tasks-per-child=20",
-         "-Q", "pdf_generation",
-         "-n", "pdf_worker@%%h"],
-        cwd=PROJECT_ROOT,
-        creationflags=subprocess.CREATE_NO_WINDOW,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    queues = [
+        ("pdf_worker",   "pdf_generation",         4, 20),
+        ("default_worker", "default,csv_upload",   4, 200),
+    ]
 
-    # Worker 2: CSV uploads + default tasks (I/O-bound)
-    proc_default = subprocess.Popen(
-        [CELERY_EXE, "-A", CELERY_APP, "worker",
-         "-l", CELERY_LOGLEVEL,
-         "-P", "prefork",
-         "--concurrency=4",
-         "--max-tasks-per-child=200",
-         "-Q", "default,csv_upload",
-         "-n", "default_worker@%%h"],
-        cwd=PROJECT_ROOT,
-        creationflags=subprocess.CREATE_NO_WINDOW,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    for name, queues_str, concurrency, max_tasks in queues:
+        proc = subprocess.Popen(
+            [CELERY_EXE, "-A", CELERY_APP, "worker",
+             "-l", CELERY_LOGLEVEL,
+             "-P", "prefork",
+             f"--concurrency={concurrency}",
+             f"--max-tasks-per-child={max_tasks}",
+             "-Q", queues_str,
+             "-n", f"{name}@%%h"],
+            cwd=PROJECT_ROOT,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        procs.append(proc)
+        ok(f"Celery {name} started (PID {proc.pid}) — queues: {queues_str}")
 
-    return [proc_pdf, proc_default]
-    print(f"  [celery] Started (PID {proc.pid})")
-    return proc
-
+    return procs
 
 def _shutdown_all(procs):
-    """Gracefully shut down child processes."""
     for p in procs:
         if p and p.poll() is None:
             try:
                 p.terminate()
-                p.wait(timeout=5)
-            except Exception:
+                p.wait(timeout=3)
+            except subprocess.TimeoutExpired:
                 try:
                     p.kill()
                 except Exception:
                     pass
+            except Exception:
+                pass
 
+def _check_port_available(port):
+    if _is_port_open(port):
+        err(f"Port {port} is already in use!")
+        info("Another server may be running. Stop it first or change WAITRESS_PORT.")
+        return False
+    return True
 
+# ── Banner ──────────────────────────────────────────────────────────────────
+def print_banner(host, port, threads):
+    w = 60
+    print()
+    print(f"  {C.GREEN}{'━' * w}{C.RESET}")
+    print(f"  {C.GREEN}{C.BOLD}  ⚡ EDUNEXUS Production Server{C.RESET}")
+    print(f"  {C.GREEN}{'━' * w}{C.RESET}")
+    print(f"  {C.WHITE}  URL:      {C.CYAN}http://{host}:{port}{C.RESET}")
+    print(f"  {C.WHITE}  Threads:  {C.CYAN}{threads}{C.RESET}")
+    print(f"  {C.WHITE}  Redis:    {C.CYAN}port {REDIS_PORT}{C.RESET}")
+    print(f"  {C.GREEN}{'━' * w}{C.RESET}")
+    print()
+
+# ── Main ────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    # ── Activate Django ──────────────────────────────────────────────────────
     import django
     django.setup()
 
@@ -142,30 +192,31 @@ if __name__ == '__main__':
 
     application = get_wsgi_application()
 
-    host = os.environ.get('WAITRESS_HOST', '0.0.0.0')
-    port = int(os.environ.get('WAITRESS_PORT', '8000'))
-    threads = int(os.environ.get('WAITRESS_THREADS', str(min(16, (os.cpu_count() or 4) * 4))))
+    # Check port availability first
+    if not _check_port_available(WAITRESS_PORT):
+        sys.exit(1)
 
-    print(f"=" * 60)
-    print(f"  EDUNEXUS Production Server")
-    print(f"  Listening on: http://{host}:{port}")
-    print(f"  Threads: {threads}")
-    print(f"=" * 60)
+    print_banner(WAITRESS_HOST, WAITRESS_PORT, WAITRESS_THREADS)
 
-    # ── Start Redis & Celery ─────────────────────────────────────────────────
-    print(f"  Starting services...")
-    redis_proc = _start_redis()
-    celery_procs = _start_celery()
-    _child_procs = [redis_proc] + celery_procs
+    # Start services
+    info("Starting services...")
+    redis_proc = start_redis()
+    celery_procs = start_celery_workers()
+    _children = [redis_proc] + celery_procs
 
-    print(f"=" * 60)
-    print(f"  All services running. Press CTRL-BREAK to stop.")
-    print(f"=" * 60)
+    # Filter out None (skipped services)
+    _children = [p for p in _children if p is not None]
 
-    # ── Handle shutdown ──────────────────────────────────────────────────────
+    print()
+    ok("All services running. Press CTRL+C to stop.")
+    print()
+
+    # Handle shutdown
     def _signal_handler(sig, frame):
-        print("\n  Shutting down...")
-        _shutdown_all(_child_procs)
+        print()
+        info("Shutting down...")
+        _shutdown_all(_children)
+        ok("Server stopped.")
         sys.exit(0)
 
     signal.signal(signal.SIGINT, _signal_handler)
@@ -174,9 +225,9 @@ if __name__ == '__main__':
     try:
         serve(
             application,
-            host=host,
-            port=port,
-            threads=threads,
+            host=WAITRESS_HOST,
+            port=WAITRESS_PORT,
+            threads=WAITRESS_THREADS,
             channel_timeout=1200,
             cleanup_interval=30,
             max_request_body_size=10 * 1024 * 1024,
@@ -185,4 +236,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     finally:
-        _shutdown_all(_child_procs)
+        _shutdown_all(_children)

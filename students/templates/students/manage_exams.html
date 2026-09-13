@@ -387,155 +387,297 @@
         font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
     }
 
+    /* ═══════════════════════════════════════════════════════════════
+       MANAGE EXAMS — Premium Mobile (iOS 17 / Zeraki-quality)
+       All phone sizes · Uses dm-* design tokens from dashboard-mobile
+       ═══════════════════════════════════════════════════════════════ */
     @media (max-width: 768px) {
-        /* Fix sidebar offset on mobile */
+        /* ── Layout reset ── */
         .main-content {
             padding: 0 !important;
             max-width: 100% !important;
             margin-left: 0 !important;
         }
 
-        .manage-exams-page {
-            padding: 12px;
-            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px);
-        }
+        .app-content { background: linear-gradient(180deg, #C8E6C9 0%, #E8F5E9 40%, #f5f5f5 100%); }
 
-        .create-exam-page {
-            padding: 12px;
-            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px);
-        }
-
+        /* ── Page containers ── */
+        .manage-exams-page,
+        .create-exam-page,
         .deleted-exams-wrap {
-            padding: 12px;
-            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px);
+            padding: 16px !important;
+            padding-top: 16px !important;
+            padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 24px) !important;
+            background: transparent !important;
+            min-height: 100vh !important;
         }
 
         .page-header h1 {
-            font-size: 20px;
-            margin-bottom: 12px;
+            font-size: 22px !important;
+            font-weight: 800 !important;
+            letter-spacing: -0.02em !important;
+            margin-bottom: 16px !important;
         }
 
+        /* ── Year Filter Card ── */
         .year-filter-card {
-            padding: 16px;
-            margin-bottom: 16px;
-            border-radius: 12px;
+            background: var(--dm-surface, #fff) !important;
+            border: none !important;
+            border-radius: var(--dm-radius, 16px) !important;
+            padding: 20px 18px !important;
+            margin-bottom: 16px !important;
+            box-shadow: var(--dm-shadow, 0 2px 12px -1px rgba(0,0,0,0.06)) !important;
         }
 
         .year-filter-card label {
-            font-size: 13px;
-            margin-bottom: 8px;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.06em !important;
+            text-transform: uppercase !important;
+            color: var(--dm-text-secondary, #6B7280) !important;
+            margin-bottom: 8px !important;
         }
 
         .year-filter-card select {
-            height: 42px;
-            font-size: 13px;
-            border-radius: 8px;
+            width: 100% !important;
+            height: 48px !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
+            font-size: 15px !important;
+            font-weight: 600 !important;
+            border: 1.5px solid var(--dm-separator-opaque, #E5E5EA) !important;
+            background: var(--dm-bg, #F2F2F7) !important;
+            color: var(--dm-text, #1C1C1E) !important;
+            padding: 0 40px 0 14px !important;
+            -webkit-appearance: none !important;
+            appearance: none !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236B7280' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 14px center !important;
+            background-size: 16px !important;
         }
 
+        /* ── Term Section Card ── */
         .exam-list-card {
-            border-radius: 12px;
-            margin-bottom: 16px;
-            overflow: hidden;
+            background: rgba(255, 255, 255, 0.85) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+            border: none !important;
+            border-radius: var(--dm-radius, 16px) !important;
+            margin-bottom: 16px !important;
+            overflow: visible !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 4px 12px rgba(0,0,0,0.04) !important;
         }
 
         .exam-list-card-header {
-            padding: 12px 16px;
-            border-radius: 12px 12px 0 0;
+            padding: 16px 18px !important;
+            border-radius: var(--dm-radius, 16px) var(--dm-radius, 16px) 0 0 !important;
+            border-bottom: 1px solid var(--dm-separator, rgba(60,60,67,0.06)) !important;
+            background: linear-gradient(135deg, rgba(36,229,94,0.04) 0%, rgba(25,158,65,0.02) 100%) !important;
         }
 
         .exam-list-card-header h3 {
-            font-size: 14px;
-            font-weight: 700;
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            color: var(--dm-text, #1C1C1E) !important;
+            letter-spacing: -0.01em !important;
+            margin: 0 !important;
         }
 
-        /* Hide the desktop table on mobile */
-        .exam-list-table-wrap {
-            display: none;
-        }
+        /* Hide desktop table */
+        .exam-list-table-wrap { display: none !important; }
 
-        /* Show mobile card layout instead */
+        /* Show mobile cards */
         .exam-mobile-cards {
             display: block !important;
-            padding: 12px;
+            padding: 14px !important;
         }
 
+        /* ── Exam Mobile Card ── */
         .exam-mobile-card {
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 14px;
-            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.85) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+            border: none !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
+            padding: 16px !important;
+            margin-bottom: 10px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 4px 12px rgba(0,0,0,0.04) !important;
+            transition: transform 0.15s ease;
         }
 
-        .exam-mobile-card:last-child {
-            margin-bottom: 0;
-        }
+        .exam-mobile-card:last-child { margin-bottom: 0 !important; }
 
+        .exam-mobile-card:active { transform: scale(0.985); }
+
+        /* Header row: name + pill */
         .exam-mob-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            gap: 8px;
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
+            margin-bottom: 8px !important;
         }
 
         .exam-mob-name {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1e293b;
-            line-height: 1.3;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            color: var(--dm-text, #1C1C1E) !important;
+            line-height: 1.3 !important;
+            flex: 1 !important;
+            min-width: 0 !important;
+            letter-spacing: -0.01em !important;
         }
 
+        /* Status pill */
+        .status-pill {
+            padding: 4px 10px !important;
+            border-radius: 20px !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.01em !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+        }
+
+        .status-not-started { background: var(--dm-bg, #F2F2F7) !important; color: var(--dm-text-secondary, #6B7280) !important; }
+        .status-in-progress  { background: var(--dm-amber-subtle, rgba(245,158,11,0.08)) !important; color: #92400e !important; }
+        .status-pending,
+        .status-pending-publishing { background: var(--dm-blue-subtle, rgba(59,130,246,0.08)) !important; color: #1e40af !important; }
+        .status-returned     { background: rgba(239,68,68,0.08) !important; color: #991b1b !important; }
+        .status-approved,
+        .status-published,
+        .status-Released     { background: linear-gradient(135deg, rgba(36,229,94,0.12) 0%, rgba(25,158,65,0.08) 100%) !important; color: var(--dm-green-dark, #15803D) !important; }
+        .status-closed       { background: rgba(239,68,68,0.08) !important; color: #991b1b !important; }
+        .status-draft        { background: var(--dm-bg, #F2F2F7) !important; color: var(--dm-text-secondary, #6B7280) !important; }
+
+        /* Class name */
         .exam-mob-class {
-            font-size: 13px;
-            font-weight: 500;
-            color: #475569;
-            margin-bottom: 6px;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            color: var(--dm-text-secondary, #6B7280) !important;
+            margin-bottom: 6px !important;
         }
 
+        /* Meta row: date + updated by */
         .exam-mob-meta {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            gap: 8px;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            margin-bottom: 14px !important;
+            gap: 8px !important;
         }
 
         .exam-mob-date {
-            font-size: 12px;
-            color: #64748b;
+            font-size: 12px !important;
+            color: var(--dm-text-muted, #8E8E93) !important;
+            font-weight: 500 !important;
         }
 
+        .exam-mob-by {
+            font-size: 12px !important;
+            color: var(--dm-text-muted, #8E8E93) !important;
+            font-weight: 500 !important;
+        }
+
+        /* ── Action Buttons — Premium Grid ── */
         .exam-mob-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
         }
 
         .exam-mob-actions .btn-action {
-            width: 100%;
-            padding: 10px 12px;
-            font-size: 13px;
-            border-radius: 8px;
-            justify-content: center;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            height: 42px !important;
+            border-radius: var(--dm-radius-sm, 10px) !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            padding: 0 12px !important;
+            text-decoration: none !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+            white-space: nowrap !important;
+            border: none !important;
+            -webkit-tap-highlight-color: transparent !important;
         }
 
         .exam-mob-actions .btn-action i {
-            font-size: 15px;
+            font-size: 15px !important;
+            flex-shrink: 0 !important;
         }
 
-        /* ═══ CREATE EXAM — iOS 17 Premium ═══ */
-        .create-exam-card {
-            padding: 20px 16px !important;
-            border-radius: 16px !important;
+        /* Full-width span for the last odd button */
+        .exam-mob-actions .btn-action:last-child:nth-child(odd) {
+            grid-column: 1 / -1 !important;
+        }
+
+        /* Button variants — all solid, clearly visible */
+        .btn-edit {
+            background: linear-gradient(135deg, #64748B 0%, #475569 100%) !important;
+            color: #fff !important;
             border: none !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+            box-shadow: 0 2px 8px rgba(100,116,139,0.25) !important;
+        }
+        .btn-edit:active { background: linear-gradient(135deg, #475569 0%, #334155 100%) !important; }
+
+        .btn-subject-papers {
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.25) !important;
+        }
+        .btn-subject-papers:active { background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important; }
+
+        .btn-publish-results {
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.22), 0 8px 32px rgba(34,197,94,0.12) !important;
+        }
+        .btn-publish-results:active { background: linear-gradient(135deg, #199E41 0%, #0F8A34 100%) !important; }
+
+        .btn-analyze {
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 4px 16px rgba(59,130,246,0.22), 0 8px 32px rgba(59,130,246,0.12) !important;
+        }
+        .btn-analyze:active { background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important; }
+
+        .btn-withdraw {
+            background: linear-gradient(135deg, #F97316 0%, #EA580C 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(249,115,22,0.25) !important;
+        }
+        .btn-withdraw:active { background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%) !important; }
+
+        .btn-delete-exam {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(239,68,68,0.25) !important;
+        }
+        .btn-delete-exam:active { background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important; }
+
+        /* ═══ CREATE EXAM — Premium Mobile ═══ */
+        .create-exam-card {
+            background: var(--dm-surface, #fff) !important;
+            border: none !important;
+            border-radius: var(--dm-radius, 16px) !important;
+            padding: 24px 18px !important;
+            box-shadow: var(--dm-shadow, 0 2px 12px -1px rgba(0,0,0,0.06)) !important;
         }
 
         .create-exam-title {
             font-size: 20px !important;
-            margin-bottom: 20px !important;
+            font-weight: 800 !important;
             letter-spacing: -0.02em !important;
+            margin-bottom: 24px !important;
+            color: var(--dm-text, #1C1C1E) !important;
         }
 
         .ce-field-row {
@@ -549,32 +691,43 @@
             font-weight: 700 !important;
             letter-spacing: 0.06em !important;
             text-transform: uppercase !important;
-            margin-bottom: 4px !important;
+            color: var(--dm-text-secondary, #6B7280) !important;
+            margin-bottom: 6px !important;
         }
 
         .ce-field input[type="text"],
         .ce-field select {
-            height: 46px !important;
-            border-radius: 12px !important;
+            width: 100% !important;
+            height: 48px !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
             font-size: 15px !important;
-            border: 1.5px solid #e2e8f0 !important;
-            background: #f8fafc !important;
+            font-weight: 500 !important;
+            border: 1.5px solid var(--dm-separator-opaque, #E5E5EA) !important;
+            background: var(--dm-bg, #F2F2F7) !important;
+            color: var(--dm-text, #1C1C1E) !important;
+            padding: 0 14px !important;
+            -webkit-appearance: none !important;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
         }
 
         .ce-field input:focus,
         .ce-field select:focus {
-            border-color: #16a34a !important;
-            box-shadow: 0 0 0 3px rgba(22,163,74,0.12) !important;
+            border-color: var(--dm-green, #22C55E) !important;
+            box-shadow: 0 0 0 3px rgba(34,197,94,0.12) !important;
+            outline: none !important;
         }
 
         .ce-divider {
             font-size: 14px !important;
-            margin: 12px 0 12px !important;
+            font-weight: 700 !important;
+            color: var(--dm-text-secondary, #6B7280) !important;
+            margin: 16px 0 12px !important;
         }
 
         .ce-select-all {
-            padding: 12px 0 !important;
+            padding: 14px 0 !important;
             margin-bottom: 4px !important;
+            border-bottom: 1px solid var(--dm-separator, rgba(60,60,67,0.06)) !important;
         }
 
         .ce-class-row {
@@ -584,127 +737,41 @@
 
         .ce-class-row .ce-class-name {
             font-size: 14px !important;
+            font-weight: 600 !important;
             min-width: 0 !important;
             flex: 1 !important;
+            color: var(--dm-text, #1C1C1E) !important;
         }
 
         .ce-class-row .ce-badge {
             font-size: 10px !important;
             padding: 3px 8px !important;
+            border-radius: 20px !important;
         }
 
         .ce-btn-row {
-            margin-top: 20px !important;
+            margin-top: 24px !important;
         }
 
         .ce-btn-create {
             width: 100% !important;
-            height: 46px !important;
-            border-radius: 12px !important;
-            font-size: 14px !important;
+            height: 48px !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
             justify-content: center !important;
-        }
-
-        /* ═══ MANAGE TAB — Premium Mobile Cards ═══ */
-        .manage-exams-page {
-            padding: 12px !important;
-            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
-        }
-
-        .year-filter-card {
-            padding: 16px !important;
-            border-radius: 16px !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
             border: none !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
-            margin-bottom: 16px !important;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.22), 0 8px 32px rgba(34,197,94,0.12) !important;
         }
-
-        .year-filter-card label {
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            letter-spacing: 0.06em !important;
-            text-transform: uppercase !important;
-            margin-bottom: 4px !important;
-        }
-
-        .year-filter-card select {
-            height: 46px !important;
-            border-radius: 12px !important;
-            font-size: 15px !important;
-            border: 1.5px solid #e2e8f0 !important;
-        }
-
-        .exam-list-card {
-            border-radius: 16px !important;
-            border: none !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
-            margin-bottom: 12px !important;
-            overflow: hidden !important;
-        }
-
-        .exam-list-card-header {
-            padding: 14px 16px !important;
-            border-radius: 16px 16px 0 0 !important;
-        }
-
-        .exam-list-card-header h3 {
-            font-size: 14px !important;
-            font-weight: 700 !important;
-        }
-
-        .exam-mobile-card {
-            background: #f8fafc !important;
-            border: 1.5px solid #e5e7eb !important;
-            border-radius: 14px !important;
-            padding: 16px !important;
-            margin-bottom: 10px !important;
-        }
-
-        .exam-mob-header {
-            margin-bottom: 10px !important;
-        }
-
-        .exam-mob-name {
-            font-size: 15px !important;
-            font-weight: 700 !important;
-        }
-
-        .status-pill {
-            padding: 4px 10px !important;
-            border-radius: 8px !important;
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            letter-spacing: 0.02em !important;
-        }
-
-        .exam-mob-class {
-            font-size: 13px !important;
-            margin-bottom: 6px !important;
-        }
-
-        .exam-mob-actions {
-            gap: 8px !important;
-        }
-
-        .exam-mob-actions .btn-action {
-            height: 40px !important;
-            border-radius: 10px !important;
-            font-size: 13px !important;
-            font-weight: 600 !important;
-            padding: 0 16px !important;
-            gap: 6px !important;
-        }
-
-        .btn-edit { background: #f1f5f9 !important; color: #334155 !important; border: 1.5px solid #e2e8f0 !important; }
-        .btn-subject-papers { background: #e0f2fe !important; color: #0369a1 !important; border: 1.5px solid #7dd3fc !important; }
-        .btn-publish-results { background: #0f172a !important; color: #ffffff !important; border: 1.5px solid #0f172a !important; }
-        .btn-analyze { background: #0ea5e9 !important; color: #fff !important; border: 1px solid #0ea5e9 !important; }
-        .btn-withdraw { background: #ffffff !important; color: #f97316 !important; border: 1.5px solid #f97316 !important; }
 
         /* ═══ GRADING TAB — Premium Mobile ═══ */
         .gs-page {
-            padding: 12px !important;
-            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
+            padding: 16px !important;
+            padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 24px) !important;
+            background: var(--dm-bg, #F2F2F7) !important;
+            min-height: 100vh !important;
         }
 
         .gs-header {
@@ -716,68 +783,83 @@
 
         .gs-header h2 {
             font-size: 20px !important;
+            font-weight: 800 !important;
+            letter-spacing: -0.02em !important;
         }
 
         .gs-btn-create {
             width: 100% !important;
-            height: 46px !important;
-            border-radius: 12px !important;
+            height: 48px !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
             font-size: 14px !important;
+            font-weight: 700 !important;
             justify-content: center !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.22), 0 8px 32px rgba(34,197,94,0.12) !important;
         }
 
         .gs-card {
-            border-radius: 16px !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+            background: var(--dm-surface, #fff) !important;
+            border-radius: var(--dm-radius, 16px) !important;
+            box-shadow: var(--dm-shadow, 0 2px 12px -1px rgba(0,0,0,0.06)) !important;
+            border: none !important;
         }
 
         .gs-list-table-wrap,
-        .gs-list-table {
-            width: 100% !important;
-        }
+        .gs-list-table { width: 100% !important; }
 
         .gs-list-table th {
             padding: 12px 16px !important;
-            font-size: 12px !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.04em !important;
+            color: var(--dm-text-secondary, #6B7280) !important;
         }
 
         .gs-list-table td {
             padding: 14px 16px !important;
             font-size: 14px !important;
+            font-weight: 500 !important;
+            color: var(--dm-text, #1C1C1E) !important;
         }
 
-        .gs-list-table th:last-child {
-            width: auto !important;
-        }
+        .gs-list-table th:last-child { width: auto !important; }
 
         .gs-action-cell {
             flex-direction: column !important;
-            gap: 6px !important;
+            gap: 8px !important;
         }
 
         .gs-btn-view,
         .gs-btn-delete {
             width: 100% !important;
             justify-content: center !important;
-            height: 38px !important;
-            border-radius: 10px !important;
+            height: 40px !important;
+            border-radius: var(--dm-radius-sm, 10px) !important;
             font-size: 13px !important;
+            font-weight: 600 !important;
         }
 
-        /* ═══ Grading Grid — Fix cramped inputs ═══ */
+        /* Grading Grid */
         .gs-grid-wrap {
             margin: 0 -4px !important;
             padding: 0 4px !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
+            overflow: hidden !important;
         }
 
-        .gs-grid-table {
-            min-width: 100% !important;
-        }
+        .gs-grid-table { min-width: 100% !important; }
 
         .gs-grid-table th {
             padding: 10px 8px !important;
             font-size: 10px !important;
+            font-weight: 700 !important;
             text-align: center !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.04em !important;
         }
 
         .gs-grid-table th:first-child { width: 30px !important; }
@@ -794,11 +876,19 @@
 
         .gs-grid-input {
             width: 100% !important;
-            height: 40px !important;
-            border-radius: 10px !important;
+            height: 42px !important;
+            border-radius: var(--dm-radius-xs, 8px) !important;
             font-size: 14px !important;
             text-align: center !important;
             padding: 0 6px !important;
+            border: 1.5px solid var(--dm-separator-opaque, #E5E5EA) !important;
+            background: var(--dm-bg, #F2F2F7) !important;
+        }
+
+        .gs-grid-input:focus {
+            border-color: var(--dm-green, #22C55E) !important;
+            box-shadow: 0 0 0 2px rgba(34,197,94,0.1) !important;
+            outline: none !important;
         }
 
         .gs-grid-input.grade-input {
@@ -807,21 +897,23 @@
             font-weight: 700 !important;
         }
 
-        .gs-actions-cell {
-            gap: 4px !important;
-        }
+        .gs-actions-cell { gap: 4px !important; }
 
         .gs-btn-add,
         .gs-btn-remove {
             padding: 6px 10px !important;
             font-size: 11px !important;
-            border-radius: 8px !important;
+            border-radius: var(--dm-radius-xs, 8px) !important;
             height: 34px !important;
+            font-weight: 600 !important;
         }
 
+        /* Scale card */
         .gs-scale-card {
-            border-radius: 16px !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06) !important;
+            background: var(--dm-surface, #fff) !important;
+            border-radius: var(--dm-radius, 16px) !important;
+            box-shadow: var(--dm-shadow, 0 2px 12px -1px rgba(0,0,0,0.06)) !important;
+            border: none !important;
         }
 
         .gs-scale-header {
@@ -834,8 +926,8 @@
         .gs-btn-close {
             width: 100% !important;
             justify-content: center !important;
-            height: 40px !important;
-            border-radius: 10px !important;
+            height: 42px !important;
+            border-radius: var(--dm-radius-sm, 10px) !important;
         }
 
         .gs-scale-table th,
@@ -846,7 +938,7 @@
 
         /* Grading Form */
         .gs-card[style*="32px"] {
-            padding: 16px !important;
+            padding: 18px !important;
         }
 
         .gs-card[style*="32px"] .gs-form-group {
@@ -855,14 +947,22 @@
 
         .gs-card[style*="32px"] .gs-form-group label {
             font-size: 11px !important;
+            font-weight: 700 !important;
             text-transform: uppercase !important;
             letter-spacing: 0.06em !important;
+            color: var(--dm-text-secondary, #6B7280) !important;
         }
 
         .gs-form-input {
-            height: 46px !important;
-            border-radius: 12px !important;
+            height: 48px !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
             font-size: 15px !important;
+            border: 1.5px solid var(--dm-separator-opaque, #E5E5EA) !important;
+        }
+
+        .gs-form-input:focus {
+            border-color: var(--dm-green, #22C55E) !important;
+            box-shadow: 0 0 0 3px rgba(34,197,94,0.12) !important;
         }
 
         .gs-card[style*="32px"] > form > div[style*="grid"] {
@@ -870,26 +970,9 @@
             gap: 12px !important;
         }
 
-        .gs-grid-wrap {
-            border-radius: 12px !important;
-            overflow: hidden !important;
-        }
-
-        .gs-grid-input {
-            height: 42px !important;
-            border-radius: 10px !important;
-            font-size: 14px !important;
-        }
-
-        .gs-btn-add,
-        .gs-btn-remove {
-            height: 34px !important;
-            border-radius: 8px !important;
-            font-size: 11px !important;
-        }
-
         .gs-sample-toggle {
             font-size: 13px !important;
+            font-weight: 600 !important;
         }
 
         .gs-sample-tabs {
@@ -900,7 +983,9 @@
         .gs-sample-tab {
             padding: 10px 14px !important;
             font-size: 13px !important;
+            font-weight: 600 !important;
             white-space: nowrap !important;
+            border-radius: var(--dm-radius-sm, 10px) !important;
         }
 
         .gs-btn-row {
@@ -911,92 +996,142 @@
         .gs-btn-autofill {
             width: 100% !important;
             justify-content: center !important;
-            height: 42px !important;
-            border-radius: 10px !important;
+            height: 44px !important;
+            border-radius: var(--dm-radius-sm, 10px) !important;
         }
 
-        .gs-save-row {
-            margin-top: 16px !important;
-        }
+        .gs-save-row { margin-top: 16px !important; }
 
         .gs-btn-save {
             width: 100% !important;
-            height: 46px !important;
-            border-radius: 12px !important;
+            height: 48px !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
             justify-content: center !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.22), 0 8px 32px rgba(34,197,94,0.12) !important;
         }
 
         .gs-back-btn {
             width: 100% !important;
             justify-content: center !important;
-            height: 42px !important;
-            border-radius: 10px !important;
+            height: 44px !important;
+            border-radius: var(--dm-radius-sm, 10px) !important;
         }
 
         .gs-empty {
-            padding: 32px 16px !important;
+            padding: 40px 18px !important;
         }
 
         /* ═══ DELETED TAB — Premium Mobile ═══ */
-        .deleted-exams-wrap {
-            padding: 12px !important;
-            padding-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
-        }
-
         .deleted-exams-title {
             font-size: 20px !important;
             font-weight: 800 !important;
             letter-spacing: -0.02em !important;
             padding-bottom: 12px !important;
+            color: var(--dm-text, #1C1C1E) !important;
         }
 
         .deleted-year-select {
-            height: 46px !important;
-            border-radius: 12px !important;
+            width: 100% !important;
+            height: 48px !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
             font-size: 15px !important;
-            border: 1.5px solid #e2e8f0 !important;
-            background: #f8fafc !important;
+            font-weight: 600 !important;
+            border: 1.5px solid var(--dm-separator-opaque, #E5E5EA) !important;
+            background: var(--dm-surface, #fff) !important;
+            color: var(--dm-text, #1C1C1E) !important;
             margin-bottom: 16px !important;
+            padding: 0 40px 0 14px !important;
+            -webkit-appearance: none !important;
+            appearance: none !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236B7280' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 14px center !important;
+            background-size: 16px !important;
+            box-shadow: var(--dm-shadow-sm, 0 1px 3px rgba(0,0,0,0.04)) !important;
         }
 
         .deleted-section-header {
+            background: var(--dm-surface, #fff) !important;
             padding: 12px 16px !important;
-            border-radius: 12px !important;
+            border-radius: var(--dm-radius-md, 12px) !important;
             font-size: 13px !important;
             font-weight: 700 !important;
             margin-bottom: 8px !important;
+            color: var(--dm-text, #1C1C1E) !important;
+            box-shadow: var(--dm-shadow-sm, 0 1px 3px rgba(0,0,0,0.04)) !important;
         }
 
         .deleted-exam-table {
-            border-radius: 0 0 12px 12px !important;
+            background: var(--dm-surface, #fff) !important;
+            border-radius: 0 0 var(--dm-radius-md, 12px) var(--dm-radius-md, 12px) !important;
             overflow: hidden !important;
             display: block !important;
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch !important;
+            box-shadow: var(--dm-shadow-sm, 0 1px 3px rgba(0,0,0,0.04)) !important;
         }
 
         .deleted-exam-table th {
             padding: 10px 12px !important;
             font-size: 10px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.04em !important;
+            color: var(--dm-text-secondary, #6B7280) !important;
             white-space: nowrap !important;
         }
 
         .deleted-exam-table td {
-            padding: 12px 12px !important;
+            padding: 12px !important;
             font-size: 13px !important;
+            font-weight: 500 !important;
+            color: var(--dm-text, #1C1C1E) !important;
             white-space: nowrap !important;
         }
 
         .btn-recover {
-            padding: 8px 14px !important;
-            border-radius: 10px !important;
+            padding: 8px 16px !important;
+            border-radius: var(--dm-radius-sm, 10px) !important;
             font-size: 12px !important;
+            font-weight: 600 !important;
             white-space: nowrap !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(34,197,94,0.18) !important;
         }
 
+        .btn-recover:active { background: rgba(34,197,94,0.16) !important; }
+
         .deleted-empty {
-            padding: 32px 16px !important;
+            padding: 40px 18px !important;
+            color: var(--dm-text-muted, #8E8E93) !important;
         }
+
+        /* ── Empty state ── */
+        .empty-state {
+            padding: 48px 18px !important;
+        }
+
+        .empty-state i {
+            font-size: 40px !important;
+            margin-bottom: 12px !important;
+            color: var(--dm-text-muted, #8E8E93) !important;
+        }
+
+        .empty-state p {
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            color: var(--dm-text-muted, #8E8E93) !important;
+        }
+
+        /* ── Bottom-nav safe area ── */
+        .bottom-nav { display: flex !important; }
     }
 
     /* Desktop: hide mobile cards */
@@ -1269,7 +1404,7 @@
                             <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
                                 <i class="ph ph-chart-bar"></i> Analyse Exam
                             </a>
-                            <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}" class="btn-action btn-withdraw">
+                            <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-withdraw" onclick="return confirm('Withdraw all published results for {{ class_row.class_name }}? This will revert published submissions back to submitted.')">
                                 <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
                             </a>
                             {% else %}
@@ -2029,7 +2164,7 @@ function gsAutofill() {
                                     </a>
                                 </td>
                                 <td style="text-align: center;">
-                                    <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}" class="btn-action btn-withdraw">
+                                    <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-withdraw" onclick="return confirm('Withdraw all published results for {{ class_row.class_name }}? This will revert published submissions back to submitted.')">
                                         <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
                                     </a>
                                 </td>
@@ -2084,7 +2219,7 @@ function gsAutofill() {
                             <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
                                 <i class="ph ph-chart-bar"></i> Analyse Exam
                             </a>
-                            <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}" class="btn-action btn-withdraw">
+                            <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-withdraw" onclick="return confirm('Withdraw all published results for {{ class_row.class_name }}? This will revert published submissions back to submitted.')">
                                 <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
                             </a>
                             {% else %}

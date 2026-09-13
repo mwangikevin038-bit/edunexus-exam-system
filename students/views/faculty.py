@@ -585,7 +585,25 @@ def manage_faculty_matrix(request):
                     teacher.employee_number = request.POST.get('employee_number', teacher.employee_number).strip()
                     teacher.bio            = request.POST.get('bio', teacher.bio).strip()
                     if 'assigned_task' in request.POST:
-                        teacher.assigned_task = request.POST.get('assigned_task', teacher.assigned_task)
+                        new_task = request.POST.get('assigned_task', teacher.assigned_task)
+                        if new_task.startswith('Class Teacher'):
+                            conflict_list = list(Teacher.all_objects.filter(
+                                school=school, is_active=True, assigned_task=new_task,
+                            ).exclude(pk=teacher.pk))
+                            for conflict in conflict_list:
+                                conflict.assigned_task = 'Teacher'
+                                conflict.save(update_fields=['assigned_task'])
+                                clear_teacher_cache(conflict.user_id)
+                                try:
+                                    from django.core.cache import cache
+                                    cache.delete(f"ct_scope:{school.pk}:{conflict.pk}")
+                                except Exception:
+                                    pass
+                            if conflict_list:
+                                names = ', '.join(c.get_full_title() for c in conflict_list)
+                                messages.warning(request,
+                                    f"{names} was/were replaced as {new_task}.")
+                        teacher.assigned_task = new_task
                     if request.FILES.get('signature'):
                         teacher.signature = request.FILES['signature']
                     teacher.save()
@@ -617,6 +635,106 @@ def manage_faculty_matrix(request):
                 logger = logging.getLogger(__name__)
                 logger.exception("Profile deletion failed for teacher_id=%s", request.POST.get('teacher_id'))
                 messages.error(request, "An error occurred while deleting the profile. Please try again.")
+            return redirect('manage_faculty_matrix')
+
+        # --- Reassign teacher to a different section/sub-section ---
+        elif action_type == 'reassign_section':
+            school = get_request_school(request)
+            try:
+                import re
+                from django.core.cache import cache
+                with transaction.atomic():
+                    teacher = Teacher.all_objects.get(id=request.POST.get('teacher_id'), school=school)
+                    new_section_token = (request.POST.get('new_section') or '').strip()
+
+                    section_map = {
+                        'LOWER_PRIMARY': ('PRIMARY', 'LOWER'),
+                        'PRIMARY':       ('PRIMARY', 'UPPER'),
+                        'JSS':           ('JSS', None),
+                    }
+                    if new_section_token not in section_map:
+                        messages.error(request, "Invalid target section.")
+                        return redirect('manage_faculty_matrix')
+
+                    new_db_section, new_db_sub = section_map[new_section_token]
+                    old_label = teacher.get_full_title()
+
+                    if teacher.school_section == new_db_section and teacher.sub_section == new_db_sub:
+                        messages.info(request, f"{old_label} is already in that section.")
+                        return redirect('manage_faculty_matrix')
+
+                    task_changed = False
+                    displaced_teacher_name = None
+                    if teacher.assigned_task and teacher.assigned_task.startswith('Class Teacher'):
+                        m = re.search(r'Grade\s+(\d+)', teacher.assigned_task)
+                        if m:
+                            grade_num = int(m.group(1))
+                            if new_db_section == 'PRIMARY' and new_db_sub == 'LOWER':
+                                valid = grade_num in (1, 2, 3)
+                            elif new_db_section == 'PRIMARY' and new_db_sub == 'UPPER':
+                                valid = grade_num in (4, 5, 6)
+                            elif new_db_section == 'JSS':
+                                valid = grade_num in (7, 8, 9)
+                            else:
+                                valid = False
+
+                            if not valid:
+                                teacher.assigned_task = 'Teacher'
+                                task_changed = True
+                            else:
+                                old_task = teacher.assigned_task
+                                conflict = Teacher.all_objects.filter(
+                                    school=school,
+                                    is_active=True,
+                                    assigned_task=old_task,
+                                ).exclude(pk=teacher.pk).first()
+                                if conflict:
+                                    displaced_teacher_name = conflict.get_full_title()
+                                    conflict.assigned_task = 'Teacher'
+                                    conflict.save(update_fields=['assigned_task'])
+                                    cache.delete(f"ct_scope:{school.pk}:{conflict.pk}")
+
+                    teacher.school_section = new_db_section
+                    teacher.sub_section    = new_db_sub
+                    teacher.save()
+
+                    SubjectAssignment.objects.filter(
+                        school=school, teacher_profile=teacher
+                    ).update(
+                        school_section=new_db_section,
+                        sub_section=new_db_sub,
+                    )
+
+                    _refresh_teacher_summary(teacher)
+
+                clear_teacher_cache(teacher.user_id)
+                try:
+                    cache.delete(f"user_school_section:{teacher.user_id}")
+                    if task_changed:
+                        cache.delete(f"ct_scope:{school.pk}:{teacher.pk}")
+                except Exception:
+                    pass
+
+                new_label = (
+                    'Lower Primary' if new_section_token == 'LOWER_PRIMARY'
+                    else 'Upper Primary' if new_section_token == 'PRIMARY'
+                    else 'Junior Secondary'
+                )
+                msg = f"{old_label} has been reassigned to {new_label}."
+                if task_changed:
+                    msg += " Class teacher designation was cleared (grade not in new section)."
+                elif displaced_teacher_name:
+                    msg += f" {displaced_teacher_name} was replaced as class teacher for the same grade."
+                else:
+                    msg += " Their account will reflect the change on next page load."
+                messages.success(request, msg)
+            except Teacher.DoesNotExist:
+                messages.error(request, "Teacher record not found.")
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.exception("Section reassignment failed for teacher_id=%s", request.POST.get('teacher_id'))
+                messages.error(request, "An error occurred while reassigning the teacher. Please try again.")
             return redirect('manage_faculty_matrix')
 
         # --- Assign subject to teacher ---

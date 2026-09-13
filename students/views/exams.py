@@ -49,6 +49,8 @@ from .helpers import (
 from ..models import (
     AssessmentLock,
     Exam,
+    ExamResultSnapshot,
+    ExamSummary,
     Grade,
     GradingConfig,
     Mark,
@@ -847,12 +849,12 @@ def manage_exams(request):
             Mark.all_objects.filter(
                 school=school, exam_type=exam.name,
                 term=exam.term, year=exam.year,
-            ).update(is_deleted=True)
+            ).delete()
 
             MarkSubmission.objects.filter(
                 school=school, exam_name=exam.name,
                 term=exam.term, year=exam.year,
-            ).update(is_deleted=True)
+            ).delete()
 
             ExamSummary.all_objects.filter(
                 school=school, exam_name=exam.name,
@@ -881,6 +883,61 @@ def manage_exams(request):
             exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
             messages.success(request, "Exam has been recovered.")
             return redirect(reverse('manage_exams') + '?tab=deleted')
+
+    # -----------------------------
+    # Withdraw published results (GET)
+    # -----------------------------
+    withdraw_exam_id = request.GET.get("withdraw")
+    withdraw_class = request.GET.get("class_name", "").strip()
+    if withdraw_exam_id:
+        withdraw_exam = Exam.all_objects.filter(school=school, id=withdraw_exam_id, is_deleted=False).first()
+        if not withdraw_exam:
+            messages.error(request, "Assessment not found.")
+            return redirect(reverse('manage_exams') + '?tab=manage')
+
+        with transaction.atomic():
+            # Revert published submissions to submitted for this class
+            sub_filter = dict(
+                school=school,
+                exam_name=withdraw_exam.name,
+                term=withdraw_exam.term,
+                year=withdraw_exam.year,
+                status='published',
+            )
+            if withdraw_class:
+                sub_filter['class_name'] = withdraw_class
+
+            reverted = MarkSubmission.objects.filter(**sub_filter).update(
+                status='submitted',
+                published_at=None,
+                published_by=None,
+            )
+
+            # Delete ExamSummaries for this exam/class
+            summary_filter = dict(
+                school=school,
+                exam_name=withdraw_exam.name,
+                term=withdraw_exam.term,
+                year=withdraw_exam.year,
+            )
+            if withdraw_class:
+                summary_filter['student__class_name'] = withdraw_class
+            ExamSummary.all_objects.filter(**summary_filter).delete()
+
+            # Invalidate ExamResultSnapshots for this exam/class
+            snapshot_filter = dict(
+                school=school,
+                exam_name=withdraw_exam.name,
+                term=withdraw_exam.term,
+                year=withdraw_exam.year,
+            )
+            if withdraw_class:
+                snapshot_filter['class_name'] = withdraw_class
+            ExamResultSnapshot.all_objects.filter(**snapshot_filter).delete()
+
+        label = withdraw_class if withdraw_class else "all classes"
+        messages.success(request, f"Withdrawn {reverted} published submission(s) for {label}. Results are now editable again.")
+        return redirect(reverse('manage_exams') + '?tab=manage')
 
     # -----------------------------
     # Exam registry
@@ -1118,7 +1175,7 @@ def manage_exams(request):
                 "exam_id": selected_exam.id,
                 "subject_code": assignment.subject,
                 "subject_name": assignment.subject.name,
-                "teacher_name": assignment.teacher_profile.get_full_title(),
+                "teacher_name": assignment.teacher_profile.get_full_title() if assignment.teacher_profile else "—",
                 "captured_count": captured_count,
                 "total_students": total_students,
                 "absent_count": absent_count,
@@ -2505,12 +2562,16 @@ def review_submission(request):
                 try:
                     raw_score = int(value)
                 except ValueError:
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return JsonResponse({"success": False, "error": f"Invalid score for {student.name}. Use a number or AB."})
                     messages.error(request, f"Invalid score for {student.name}. Use a number or AB.")
                     return redirect(
                         f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
                     )
 
                 if raw_score < 0 or raw_score > maximum_marks:
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return JsonResponse({"success": False, "error": f"{student.name}'s score exceeds the total marks."})
                     messages.error(request, f"{student.name}'s score exceeds the total marks.")
                     return redirect(
                         f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
@@ -2582,6 +2643,9 @@ def review_submission(request):
             )
 
             messages.success(request, f"{corrected_count} learner score correction(s) saved.")
+
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse({"success": True, "corrected_count": corrected_count})
 
         elif action_type == "return_submission":
             if not submission:
@@ -2772,7 +2836,7 @@ def review_submission(request):
             "performance_level": performance_level,
             "points_display": points_display,
             "row_status": row_status,
-            "updated_by": assignment.teacher_profile.get_full_title() if mark else "-",
+            "updated_by": (assignment.teacher_profile.get_full_title() if assignment.teacher_profile else "—") if mark else "-",
             "updated_on": updated_on,
         })
 
@@ -4508,6 +4572,18 @@ def upload_results(request):
                 if marks_to_create:
                     Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
 
+            # ── Rebuild ExamSummary so report cards always have fresh data ──
+            from students.tasks import populate_exam_summaries
+            populate_exam_summaries.delay(
+                school_id=school.pk,
+                grade=assignment.class_name,
+                year=exam.year,
+                term=exam.term,
+                exam_name=exam.name,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
+            )
+
             messages.success(request, f"{corrected_count} learner score(s) saved.")
 
         elif action_type == "submit_sheet":
@@ -4568,7 +4644,7 @@ def upload_results(request):
             "admission_no": student.admission_no,
             "name": student.name,
             "editable_score": editable_score,
-            "updated_by": assignment.teacher_profile.get_full_title() if mark else "-",
+            "updated_by": (assignment.teacher_profile.get_full_title() if assignment.teacher_profile else "—") if mark else "-",
             "updated_on": updated_on,
             "has_mark": mark is not None,
         })

@@ -657,22 +657,22 @@
 </div>
 
 <!-- ═══ Split Stream Modal ═══ -->
-<div id="splitModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:16px;width:560px;max-width:94vw;max-height:90vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.25);display:flex;flex-direction:column;">
+<div id="splitModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:rgba(255,255,255,0.95);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-radius:20px;width:560px;max-width:94vw;max-height:90vh;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.25),0 0 0 1px rgba(255,255,255,0.2) inset;display:flex;flex-direction:column;">
         <!-- Header -->
         <div style="padding:20px 24px 0;flex-shrink:0;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
                 <h3 style="margin:0;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:18px;font-weight:700;color:#111827;">Split Stream</h3>
-                <button type="button" onclick="closeSplitModal()" style="background:none;border:none;cursor:pointer;padding:4px;color:#94a3b8;">
-                    <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <button type="button" onclick="closeSplitModal()" style="background:rgba(0,0,0,0.05);border:none;cursor:pointer;padding:6px;border-radius:8px;color:#94a3b8;transition:all 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.1)'" onmouseout="this.style.background='rgba(0,0,0,0.05)'">
+                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <p style="margin:0 0 16px;font-size:13px;color:#64748b;font-family:'Plus Jakarta Sans','Inter',sans-serif;">
-                Split <strong id="splitStreamName"></strong> (<span id="splitStudentCount"></span> students) into multiple streams.
+                Split <strong style="color:#111827;" id="splitStreamName"></strong> (<span id="splitStudentCount"></span> students) into multiple streams.
             </p>
             <!-- Step indicators -->
             <div style="display:flex;gap:0;margin-bottom:0;">
-                <div class="split-step-dot" data-step="1" style="flex:1;text-align:center;padding:10px 0;font-size:12px;font-weight:700;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#E65100;border-bottom:3px solid #E65100;cursor:pointer;">1. Streams</div>
+                <div class="split-step-dot" data-step="1" style="flex:1;text-align:center;padding:10px 0;font-size:12px;font-weight:700;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#199E41;border-bottom:3px solid #199E41;cursor:pointer;">1. Streams</div>
                 <div class="split-step-dot" data-step="2" style="flex:1;text-align:center;padding:10px 0;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#94a3b8;border-bottom:3px solid #e2e8f0;">2. Balance</div>
                 <div class="split-step-dot" data-step="3" style="flex:1;text-align:center;padding:10px 0;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#94a3b8;border-bottom:3px solid #e2e8f0;">3. Confirm</div>
             </div>
@@ -706,7 +706,7 @@
             <!-- Step 2: Preview balance -->
             <div id="splitStep2" style="padding:20px 24px;flex:1;overflow-y:auto;display:none;">
                 <div id="splitPreviewLoading" style="text-align:center;padding:30px 0;">
-                    <div style="display:inline-block;width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#E65100;border-radius:50%;animation:splitSpin 0.8s linear infinite;"></div>
+                    <div style="display:inline-block;width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#22C55E;border-radius:50%;animation:splitSpin 0.8s linear infinite;"></div>
                     <p style="margin:12px 0 0;font-size:13px;color:#64748b;font-family:'Plus Jakarta Sans','Inter',sans-serif;">Calculating smart balance...</p>
                 </div>
                 <div id="splitPreviewContent" style="display:none;"></div>
@@ -718,11 +718,11 @@
             </div>
 
             <!-- Footer -->
-            <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
-                <button type="button" id="splitBackBtn" onclick="splitGoBack()" style="display:none;padding:10px 20px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#475569;">Back</button>
-                <button type="button" id="splitCancelBtn" onclick="closeSplitModal()" style="padding:10px 20px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#475569;">Cancel</button>
-                <button type="button" id="splitNextBtn" onclick="splitGoNext()" style="padding:10px 24px;border:none;border-radius:8px;background:#E65100;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;">Next</button>
-                <button type="submit" id="splitApplyBtn" style="display:none;padding:10px 24px;border:none;border-radius:8px;background:#2E7D32;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;box-shadow:0 2px 8px rgba(46,125,50,0.3);">
+            <div style="padding:16px 24px;border-top:1px solid rgba(0,0,0,0.06);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+                <button type="button" id="splitBackBtn" onclick="splitGoBack()" style="display:none;padding:10px 20px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#475569;transition:all 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">Back</button>
+                <button type="button" id="splitCancelBtn" onclick="closeSplitModal()" style="padding:10px 20px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;color:#475569;transition:all 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">Cancel</button>
+                <button type="button" id="splitNextBtn" onclick="splitGoNext()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#22C55E 0%,#199E41 100%);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;box-shadow:0 2px 8px rgba(34,197,94,0.3);transition:all 0.15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(34,197,94,0.4)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(34,197,94,0.3)';this.style.transform='none'">Next</button>
+                <button type="submit" id="splitApplyBtn" style="display:none;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#22C55E 0%,#199E41 100%);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;box-shadow:0 2px 8px rgba(34,197,94,0.3);transition:all 0.15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(34,197,94,0.4)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(34,197,94,0.3)';this.style.transform='none'">
                     <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg>
                     Apply Split
                 </button>
@@ -739,13 +739,18 @@
     background: #fff; cursor: pointer; transition: all 0.2s;
     font-family: 'Plus Jakarta Sans','Inter',sans-serif; min-width: 80px;
 }
-.split-num-btn:hover { border-color: #E65100; background: #FFF7ED; }
-.split-num-btn.active { border-color: #E65100; background: #FFF7ED; color: #E65100; }
-.split-num-btn.active span:first-child { color: #E65100; }
+.split-num-btn:hover { border-color: #22C55E; background: #f0fdf4; }
+.split-num-btn.active { border-color: #22C55E; background: #f0fdf4; color: #199E41; }
+.split-num-btn.active span:first-child { color: #199E41; }
 @media (max-width: 768px) {
-    #splitModal > div { width: 96vw; border-radius: 16px; max-height: 92vh; }
+    #splitModal > div {
+        width: 96vw; border-radius: 20px; max-height: 92vh;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    }
+    #splitModal { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(0,0,0,0.5); }
     .split-num-btn { padding: 12px 16px; min-width: 70px; }
     .split-num-btn span:first-child { font-size: 18px !important; }
+    #splitStep1, #splitStep2, #splitStep3 { padding: 16px 16px !important; }
 }
 </style>
 
@@ -907,8 +912,8 @@ function updateSplitStep() {
     document.querySelectorAll('.split-step-dot').forEach(function(dot) {
         var s = parseInt(dot.getAttribute('data-step'));
         if (s <= splitStep) {
-            dot.style.color = '#E65100';
-            dot.style.borderBottomColor = '#E65100';
+            dot.style.color = '#199E41';
+            dot.style.borderBottomColor = '#199E41';
             dot.style.fontWeight = '700';
         } else {
             dot.style.color = '#94a3b8';
@@ -923,17 +928,25 @@ function updateSplitStep() {
     var nextBtn = document.getElementById('splitNextBtn');
     var applyBtn = document.getElementById('splitApplyBtn');
 
-    backBtn.style.display = splitStep > 1 ? 'inline-block' : 'none';
-    cancelBtn.textContent = splitStep === 1 ? 'Cancel' : 'Back';
-    cancelBtn.onclick = splitStep === 1 ? closeSplitModal : splitGoBack;
-
-    if (splitStep === 3) {
+    if (splitStep === 1) {
+        backBtn.style.display = 'none';
+        cancelBtn.style.display = 'inline-block';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.onclick = closeSplitModal;
+        nextBtn.style.display = 'inline-block';
+        nextBtn.textContent = 'Preview Balance';
+        applyBtn.style.display = 'none';
+    } else if (splitStep === 2) {
+        backBtn.style.display = 'inline-block';
+        cancelBtn.style.display = 'none';
+        nextBtn.style.display = 'inline-block';
+        nextBtn.textContent = 'Confirm';
+        applyBtn.style.display = 'none';
+    } else if (splitStep === 3) {
+        backBtn.style.display = 'inline-block';
+        cancelBtn.style.display = 'none';
         nextBtn.style.display = 'none';
         applyBtn.style.display = 'inline-flex';
-    } else {
-        nextBtn.style.display = 'inline-block';
-        nextBtn.textContent = splitStep === 1 ? 'Preview Balance' : 'Confirm';
-        applyBtn.style.display = 'none';
     }
 }
 
@@ -945,8 +958,8 @@ function setSplitNum(num, el) {
         b.style.background = '#fff';
     });
     el.classList.add('active');
-    el.style.borderColor = '#E65100';
-    el.style.background = '#FFF7ED';
+    el.style.borderColor = '#22C55E';
+    el.style.background = '#f0fdf4';
 
     var container = document.getElementById('splitNamesContainer');
     container.innerHTML = '';
@@ -960,7 +973,7 @@ function setSplitNum(num, el) {
             'background:' + ['#EEF2FF','#ECFDF5','#FFFBEB','#FEF2F2'][i-1] + ';color:' + ['#4F46E5','#059669','#D97706','#DC2626'][i-1] + ';">' + i + '</div>' +
             '<input type="text" name="split_names" value="' + def + '" required placeholder="e.g. ' + def + '"' +
             ' style="flex:1;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;font-family:Plus Jakarta Sans,Inter,sans-serif;box-sizing:border-box;transition:border-color 0.15s;"' +
-            ' onfocus="this.style.borderColor=\'#E65100\'" onblur="this.style.borderColor=\'#d1d5db\'">';
+            ' onfocus="this.style.borderColor=\'#22C55E\'" onblur="this.style.borderColor=\'#d1d5db\'">';
         container.appendChild(row);
     }
 }
@@ -997,18 +1010,17 @@ function loadSplitPreview() {
             html += '</div>';
 
             var colorSchemes = [
-                { bg: '#EEF2FF', border: '#C7D2FE', accent: '#4F46E5', light: '#E0E7FF' },
-                { bg: '#ECFDF5', border: '#A7F3D0', accent: '#059669', light: '#D1FAE5' },
-                { bg: '#FFFBEB', border: '#FDE68A', accent: '#D97706', light: '#FEF3C7' },
-                { bg: '#FEF2F2', border: '#FECACA', accent: '#DC2626', light: '#FEE2E2' },
+                { bg: 'linear-gradient(135deg,#ECFDF5 0%,#D1FAE5 100%)', border: '#A7F3D0', accent: '#059669', light: '#D1FAE5' },
+                { bg: 'linear-gradient(135deg,#EEF2FF 0%,#E0E7FF 100%)', border: '#C7D2FE', accent: '#4F46E5', light: '#E0E7FF' },
+                { bg: 'linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%)', border: '#FDE68A', accent: '#D97706', light: '#FEF3C7' },
+                { bg: 'linear-gradient(135deg,#FEF2F2 0%,#FEE2E2 100%)', border: '#FECACA', accent: '#DC2626', light: '#FEE2E2' },
             ];
 
             var idx = 0;
             for (var name in data.groups) {
                 var g = data.groups[name];
                 var c = colorSchemes[idx % colorSchemes.length];
-                var avgDeviation = Math.abs(g.avg_marks - (data.total_students > 0 ? Object.values(data.groups).reduce(function(a,b){return a+b.avg_marks*b.count},0)/data.total_students : 0));
-                html += '<div style="padding:14px 16px;border:2px solid ' + c.border + ';border-radius:12px;background:' + c.bg + ';margin-bottom:10px;">';
+                html += '<div style="padding:14px 16px;border:1.5px solid ' + c.border + ';border-radius:14px;background:' + c.bg + ';margin-bottom:10px;">';
                 html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
                 html += '<span style="font-size:15px;font-weight:700;color:' + c.accent + ';font-family:Plus Jakarta Sans,Inter,sans-serif;">' + name + '</span>';
                 html += '<span style="font-size:20px;font-weight:800;color:' + c.accent + ';font-family:Plus Jakarta Sans,Inter,sans-serif;">' + g.count + '</span>';
@@ -1041,17 +1053,19 @@ function renderSplitConfirm() {
     var data = splitPreviewData;
     var html = '';
     html += '<div style="text-align:center;padding:8px 0 16px;">';
-    html += '<svg viewBox="0 0 24 24" style="width:48px;height:48px;stroke:#2E7D32;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
-    html += '<h4 style="margin:8px 0 4px;font-size:16px;font-weight:700;color:#111827;font-family:Plus Jakarta Sans,Inter,sans-serif;">Ready to Split</h4>';
+    html += '<div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#22C55E 0%,#199E41 100%);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(34,197,94,0.3);">';
+    html += '<svg viewBox="0 0 24 24" style="width:28px;height:28px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;"><polyline points="20 6 9 17 4 12"/></svg>';
+    html += '</div>';
+    html += '<h4 style="margin:12px 0 4px;font-size:16px;font-weight:700;color:#111827;font-family:Plus Jakarta Sans,Inter,sans-serif;">Ready to Split</h4>';
     html += '<p style="margin:0;font-size:13px;color:#64748b;font-family:Plus Jakarta Sans,Inter,sans-serif;">' + splitTargetStream + ' → ' + data.total_students + ' students into ' + Object.keys(data.groups).length + ' streams</p>';
     html += '</div>';
 
-    var colorSchemes = ['#4F46E5','#059669','#D97706','#DC2626'];
+    var colorSchemes = ['#199E41','#4F46E5','#D97706','#DC2626'];
     var idx = 0;
     for (var name in data.groups) {
         var g = data.groups[name];
         var c = colorSchemes[idx % colorSchemes.length];
-        html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;">';
+        html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;background:#fff;">';
         html += '<div style="width:8px;height:40px;border-radius:4px;background:' + c + ';flex-shrink:0;"></div>';
         html += '<div style="flex:1;">';
         html += '<div style="font-size:14px;font-weight:700;color:#1e293b;font-family:Plus Jakarta Sans,Inter,sans-serif;">' + name + '</div>';
@@ -1061,8 +1075,8 @@ function renderSplitConfirm() {
         idx++;
     }
 
-    html += '<div style="margin-top:16px;padding:12px;background:#FFF7ED;border:1px solid #fed7aa;border-radius:8px;">';
-    html += '<p style="margin:0;font-size:12px;color:#92400e;font-family:Plus Jakarta Sans,Inter,sans-serif;">';
+    html += '<div style="margin-top:16px;padding:12px;background:linear-gradient(135deg,#ECFDF5 0%,#D1FAE5 100%);border:1px solid #A7F3D0;border-radius:12px;">';
+    html += '<p style="margin:0;font-size:12px;color:#065F46;font-family:Plus Jakarta Sans,Inter,sans-serif;">';
     html += '<strong>What happens:</strong> Students are moved to new streams. SubjectAssignments are auto-created. Class teacher of ' + splitTargetStream + ' is released. You can assign teachers later in Manage Subjects.</p>';
     html += '</div>';
 

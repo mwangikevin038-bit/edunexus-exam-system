@@ -556,7 +556,7 @@ def download_broadsheet_pdf(request):
                     'distribution': {lvl: 0 for lvl in active_levels},
                     'teacher_name': '—',
                 })
-                analysis_data[short]['teacher_name'] = a.teacher_profile.get_full_title()
+                analysis_data[short]['teacher_name'] = a.teacher_profile.get_full_title() if a.teacher_profile else '—'
 
         marks_prefetch = Prefetch(
             'marks',
@@ -860,7 +860,7 @@ def download_individual_report_pdf(request, student_id):
         subject_mapping = {s.code: s.name for s in published_subjects_qs}
 
     teacher_map = {
-        a.subject.code: a.teacher_profile.get_full_title()
+        a.subject.code: (a.teacher_profile.get_full_title() if a.teacher_profile else '—')
         for a in SubjectAssignment.all_objects.filter(
             school=school, class_name=student.class_name, stream=student.stream, is_active=True
         ).select_related('teacher_profile__user', 'subject')
@@ -1167,7 +1167,7 @@ def individual_report_print_html(request, student_id):
         subject_mapping = {s.code: s.name for s in published_subjects_qs}
 
     teacher_map = {
-        a.subject.code: a.teacher_profile.get_full_title()
+        a.subject.code: (a.teacher_profile.get_full_title() if a.teacher_profile else '—')
         for a in SubjectAssignment.all_objects.filter(
             school=school, class_name=student.class_name, stream=student.stream, is_active=True
         ).select_related('teacher_profile__user', 'subject')

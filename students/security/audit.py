@@ -22,18 +22,15 @@ def register_audit_model(model, fields=None):
 
 def _client_ip_from_request():
     try:
-        from django.contrib.auth.middleware import get_user
-        from django.utils.functional import SimpleLazyObject
-
         request = getattr(_pre_save_cache, "request", None)
         if request is None:
-            return "system"
+            return None
         forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
         if forwarded:
             return forwarded.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR", "unknown")
+        return request.META.get("REMOTE_ADDR")
     except Exception:
-        return "system"
+        return None
 
 
 def bind_request_for_audit(request):
@@ -94,7 +91,7 @@ def _audit_action(instance, action, changes=None):
     payload = {
         "actor": actor,
         "actor_id_snapshot": actor.pk if actor else None,
-        "client_ip": _client_ip_from_request() if request else getattr(instance, "_audit_ip", "system"),
+        "client_ip": _client_ip_from_request() if request else getattr(instance, "_audit_ip", None),
         "action": action,
         "target_model": model_name,
         "target_id": str(instance.pk) if instance.pk else "pending",

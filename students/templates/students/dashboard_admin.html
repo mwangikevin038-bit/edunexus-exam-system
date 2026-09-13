@@ -437,6 +437,7 @@
                 <div class="dash-events-head-actions">
                     <button class="dash-events-cal-btn" onclick="setCalView('list',null)"><i class="ph ph-list-bullets"></i></button>
                     <button class="dash-events-cal-btn active" onclick="setCalView('month',null)"><i class="ph ph-calendar"></i></button>
+                    <button class="dash-add-event-btn" onclick="openEventModal()"><i class="ph ph-plus"></i> <span>Add Event</span></button>
                 </div>
             </div>
             <div class="dash-events-nav">
@@ -591,8 +592,26 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
         return evDates;
     }
 
+    function getVisibleViewport(){
+        var els = document.querySelectorAll('#eventsViewport');
+        for(var i=0;i<els.length;i++){
+            if(els[i].offsetParent !== null) return els[i];
+        }
+        return els[0]||null;
+    }
+    function getVisibleCalGrid(){
+        var vp = getVisibleViewport();
+        if(!vp) return null;
+        var g = vp.querySelector('.cal-grid');
+        if(!g){
+            vp.innerHTML = '<div class="cal-grid" id="calGrid"></div>';
+            g = vp.querySelector('.cal-grid');
+        }
+        return g;
+    }
+
     function renderCalendarGrid(){
-        var grid = document.getElementById('calGrid');
+        var grid = getVisibleCalGrid();
         if(!grid) return;
         var now = new Date();
         now.setHours(0,0,0,0);
@@ -633,7 +652,7 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
     }
 
     function renderWeekView(){
-        var vp = document.getElementById('eventsViewport');
+        var vp = getVisibleViewport();
         if(!vp) return;
         var now = new Date();
         var ref = new Date(now);
@@ -654,7 +673,7 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
     }
 
     function renderDayView(){
-        var vp = document.getElementById('eventsViewport');
+        var vp = getVisibleViewport();
         if(!vp) return;
         var now = new Date();
         var ref = new Date(now);
@@ -685,7 +704,7 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
     }
 
     function renderListView(){
-        var vp = document.getElementById('eventsViewport');
+        var vp = getVisibleViewport();
         if(!vp) return;
         var now = new Date();
         now.setHours(0,0,0,0);
@@ -728,33 +747,34 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
     function renderDateText(){
         var now = new Date();
         var ref = new Date(now);
-        var mainEl = document.getElementById('calMain');
-        var subEl = document.getElementById('calSub');
-        if(!mainEl || !subEl) return;
-        mainEl.textContent = '';
-        subEl.textContent = '';
+        var mainEls = document.querySelectorAll('#calMain');
+        var subEls = document.querySelectorAll('#calSub');
+        if(mainEls.length===0) return;
+        var mainText = '', subText = '';
 
         if(view==='month'){
             ref.setMonth(now.getMonth() + offset);
-            mainEl.textContent = FULL_MONTHS[ref.getMonth()];
-            subEl.textContent = ref.getFullYear();
+            mainText = FULL_MONTHS[ref.getMonth()];
+            subText = ''+ref.getFullYear();
         } else if(view==='week'){
             ref.setDate(now.getDate() + offset*7);
             var ws = startOfWeek(ref), we = endOfWeek(ref);
-            mainEl.textContent = ws.getDate()+' '+MONTHS[ws.getMonth()]+' – '+we.getDate()+' '+MONTHS[we.getMonth()];
-            subEl.textContent = we.getFullYear();
+            mainText = ws.getDate()+' '+MONTHS[ws.getMonth()]+' – '+we.getDate()+' '+MONTHS[we.getMonth()];
+            subText = ''+we.getFullYear();
         } else if(view==='day'){
             ref.setDate(now.getDate() + offset);
-            mainEl.textContent = ref.getDate()+' '+MONTHS[ref.getMonth()];
-            subEl.textContent = ref.getFullYear();
+            mainText = ref.getDate()+' '+MONTHS[ref.getMonth()];
+            subText = ''+ref.getFullYear();
         } else {
-            mainEl.textContent = 'Upcoming Events';
-            subEl.textContent = '';
+            mainText = 'Upcoming Events';
+            subText = '';
         }
+        for(var i=0;i<mainEls.length;i++){mainEls[i].textContent=mainText;}
+        for(var i=0;i<subEls.length;i++){subEls[i].textContent=subText;}
     }
 
     function renderViewport(){
-        var vp = document.getElementById('eventsViewport');
+        var vp = getVisibleViewport();
         if(!vp) return;
         if(view==='month'){
             vp.innerHTML = '<div class="cal-grid" id="calGrid"></div>';
@@ -776,10 +796,10 @@ document.querySelectorAll('.sub-tab-bar .tab-link').forEach(function(link) {
     window.calNav = function(dir){ offset+=dir; render(); };
     window.setCalView = function(v, btn){
         view = v; offset = 0;
-        document.querySelectorAll('.view-filter-pills .view-pill').forEach(function(p){p.classList.remove('active');});
+        document.querySelectorAll('.view-filter-pills .view-pill, .dash-events-pills .dash-pill').forEach(function(p){p.classList.remove('active');});
         if(btn) btn.classList.add('active');
         else {
-            document.querySelectorAll('.view-filter-pills .view-pill').forEach(function(p){
+            document.querySelectorAll('.view-filter-pills .view-pill, .dash-events-pills .dash-pill').forEach(function(p){
                 if(p.textContent.trim().toLowerCase() === v) p.classList.add('active');
             });
         }

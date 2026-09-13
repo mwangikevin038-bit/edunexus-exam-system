@@ -493,15 +493,352 @@
         flex-wrap: wrap;
     }
 
+    /* ═══════════════════════════════════════════════════════════════
+       EDIT RESULTS — Premium Mobile (iOS 17 / Zeraki)
+       Table visible like desktop · Gradient system applied
+       ═══════════════════════════════════════════════════════════════ */
     @media (max-width: 768px) {
-        .edit-results-fields {
-            grid-template-columns: 1fr;
+        .main-content {
+            padding: 0 !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
         }
 
-        .edit-results-footer {
-            flex-direction: column;
-            gap: 12px;
+        .edit-results-page {
+            background: linear-gradient(180deg, #C8E6C9 0%, #E8F5E9 40%, #f5f5f5 100%) !important;
+            min-height: 100vh !important;
+            padding: 16px !important;
+            padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 24px) !important;
         }
+
+        /* ── Title ── */
+        .edit-results-title {
+            font-size: 22px !important;
+            font-weight: 800 !important;
+            color: #1C1C1E !important;
+            letter-spacing: -0.02em !important;
+            margin-bottom: 16px !important;
+            line-height: 1.2 !important;
+        }
+
+        .edit-results-title span { color: #6B7280 !important; }
+
+        /* ── Main Card ── */
+        .edit-results-card {
+            background: rgba(255, 255, 255, 0.85) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+            border: none !important;
+            border-radius: 16px !important;
+            padding: 18px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 4px 12px rgba(0,0,0,0.04) !important;
+        }
+
+        /* ── Back button ── */
+        .back-btn-row {
+            justify-content: flex-end !important;
+            margin-bottom: 14px !important;
+        }
+
+        .back-btn {
+            height: 40px !important;
+            border-radius: 10px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            padding: 0 16px !important;
+            gap: 6px !important;
+            background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(99,102,241,0.25) !important;
+        }
+
+        .back-btn:active { background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important; }
+
+        /* ── Fields grid → stack ── */
+        .edit-results-fields {
+            grid-template-columns: 1fr !important;
+            gap: 14px !important;
+            margin-bottom: 18px !important;
+        }
+
+        .edit-field-label {
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.06em !important;
+            text-transform: uppercase !important;
+            color: #6B7280 !important;
+            margin-bottom: 6px !important;
+        }
+
+        .edit-field-input {
+            height: 46px !important;
+            border-radius: 10px !important;
+            font-size: 15px !important;
+            border: 1.5px solid rgba(0,0,0,0.08) !important;
+            background: #F2F2F7 !important;
+            color: #1C1C1E !important;
+        }
+
+        .edit-field-input:focus {
+            border-color: #22C55E !important;
+            box-shadow: 0 0 0 3px rgba(34,197,94,0.12) !important;
+        }
+
+        .edit-field-input[readonly] {
+            background: #F2F2F7 !important;
+        }
+
+        .edit-btn {
+            height: 46px !important;
+            border-radius: 0 10px 10px 0 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            padding: 0 18px !important;
+            background: linear-gradient(135deg, #64748B 0%, #475569 100%) !important;
+            color: #fff !important;
+        }
+
+        .max-marks-joined .cancel-btn {
+            height: 46px !important;
+            font-size: 14px !important;
+            padding: 0 14px !important;
+            border-radius: 0 !important;
+            background: rgba(0,0,0,0.06) !important;
+            color: #1C1C1E !important;
+        }
+
+        .max-marks-joined .save-btn {
+            height: 46px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            padding: 0 18px !important;
+            border-radius: 0 10px 10px 0 !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
+            box-shadow: 0 2px 8px rgba(34,197,94,0.25) !important;
+        }
+
+        /* ── Table — horizontal scroll, visible like desktop ── */
+        .edit-results-table-wrap {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            margin: 0 -4px !important;
+            padding: 0 4px !important;
+            border-radius: 12px !important;
+        }
+
+        .edit-results-table {
+            min-width: 640px !important;
+            border-collapse: collapse !important;
+            border: 1px solid rgba(0,0,0,0.06) !important;
+            border-radius: 12px !important;
+            overflow: hidden !important;
+        }
+
+        .edit-results-table th {
+            background: rgba(0,0,0,0.03) !important;
+            color: #6B7280 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.04em !important;
+            padding: 10px 12px !important;
+            border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+            border-right: none !important;
+            white-space: nowrap !important;
+        }
+
+        .edit-results-table td {
+            padding: 8px 12px !important;
+            font-size: 14px !important;
+            color: #1C1C1E !important;
+            border-bottom: 1px solid rgba(0,0,0,0.04) !important;
+            border-right: none !important;
+            font-weight: 500 !important;
+        }
+
+        .edit-results-table tbody tr:nth-child(even) {
+            background: rgba(0,0,0,0.02) !important;
+        }
+
+        .edit-results-table tbody tr:active {
+            background: rgba(34,197,94,0.04) !important;
+        }
+
+        .edit-results-table .row-num {
+            color: #8E8E93 !important;
+            font-weight: 600 !important;
+        }
+
+        .edit-results-table .score-display {
+            padding: 6px 12px !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            color: #1C1C1E !important;
+            background: rgba(0,0,0,0.03) !important;
+            border-radius: 8px !important;
+            min-width: 50px !important;
+            text-align: center !important;
+            display: inline-block !important;
+        }
+
+        .score-input {
+            width: 52px !important;
+            height: 36px !important;
+            border-radius: 8px 0 0 8px !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            border: 2px solid #22C55E !important;
+            background: #F0FDF4 !important;
+            text-align: center !important;
+            padding: 0 4px !important;
+            flex-shrink: 0 !important;
+        }
+
+        .score-gear-icon {
+            width: 36px !important;
+            height: 36px !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            border-radius: 0 !important;
+            flex-shrink: 0 !important;
+        }
+
+        .edit-row-btn {
+            padding: 6px 14px !important;
+            border-radius: 8px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            background: rgba(0,0,0,0.06) !important;
+            color: #1C1C1E !important;
+            white-space: nowrap !important;
+        }
+
+        .save-row-btn {
+            padding: 6px 12px !important;
+            border-radius: 0 8px 8px 0 !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+        }
+
+        .cancel-row-btn {
+            padding: 6px 10px !important;
+            border-radius: 8px 0 0 8px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            background: #fff !important;
+            border: 1px solid rgba(0,0,0,0.1) !important;
+            border-right: none !important;
+            color: #1C1C1E !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+        }
+
+        .edit-results-table tr.editing {
+            background: rgba(34,197,94,0.04) !important;
+        }
+
+        /* ── Footer ── */
+        .edit-results-footer {
+            flex-direction: column !important;
+            gap: 12px !important;
+            margin-top: 18px !important;
+        }
+
+        .actions-dropdown-btn {
+            width: 100% !important;
+            height: 44px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            justify-content: center !important;
+            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(15,23,42,0.25) !important;
+        }
+
+        .actions-dropdown-btn:active { background: linear-gradient(135deg, #0F172A 0%, #020617 100%) !important; }
+
+        .actions-dropdown-menu {
+            position: fixed !important;
+            bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px) !important;
+            left: 16px !important;
+            right: 16px !important;
+            top: auto !important;
+            border-radius: 16px !important;
+            box-shadow: 0 8px 32px -4px rgba(0,0,0,0.15) !important;
+            border: none !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .actions-dropdown-menu a {
+            padding: 16px 18px !important;
+            font-size: 15px !important;
+            font-weight: 500 !important;
+            border-bottom: 1px solid rgba(60,60,67,0.06) !important;
+        }
+
+        .actions-dropdown-menu a:last-child { border-bottom: none !important; }
+        .actions-dropdown-menu a:active { background: #F2F2F7 !important; }
+
+        .decision-buttons {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            width: 100% !important;
+        }
+
+        .return-btn {
+            width: 100% !important;
+            height: 44px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            justify-content: center !important;
+            background: linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(220,38,38,0.04) 100%) !important;
+            color: #DC2626 !important;
+            border: 1.5px solid rgba(239,68,68,0.2) !important;
+        }
+
+        .return-btn:active { background: rgba(239,68,68,0.12) !important; }
+
+        .approve-btn {
+            width: 100% !important;
+            height: 44px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            justify-content: center !important;
+            background: linear-gradient(135deg, #24E55E 0%, #199E41 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.22), 0 8px 32px rgba(34,197,94,0.12) !important;
+        }
+
+        .approve-btn:active { background: linear-gradient(135deg, #199E41 0%, #0F8A34 100%) !important; }
+
+        .publish-btn {
+            width: 100% !important;
+            height: 44px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            justify-content: center !important;
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 4px 16px rgba(239,68,68,0.22) !important;
+        }
+
+        .publish-btn:active { background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important; }
+
+        .bottom-nav { display: flex !important; }
     }
 </style>
 
@@ -553,6 +890,7 @@
             <input type="hidden" name="admin_note" value="{{ submission.admin_note|default:'' }}">
             <input type="hidden" name="maximum_marks" id="maxMarksHidden" value="{{ current_maximum_marks }}">
 
+            <div class="edit-results-table-wrap">
             <table class="edit-results-table">
                 <thead>
                     <tr>
@@ -607,6 +945,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </form>
 
         <div class="edit-results-footer">
@@ -688,8 +1027,55 @@
         var row = document.getElementById('row_' + id);
         var scoreDisplay = row.querySelector('.score-display');
         var scoreInput = row.querySelector('.score-input');
-        scoreDisplay.textContent = scoreInput.value || '-';
-        row.classList.remove('editing');
+        var saveBtn = row.querySelector('.save-row-btn');
+        var newVal = scoreInput.value.trim();
+
+        if (!newVal) {
+            scoreInput.style.borderColor = '#EF4444';
+            setTimeout(function() { scoreInput.style.borderColor = ''; }, 1200);
+            return;
+        }
+
+        saveBtn.textContent = '...';
+        saveBtn.disabled = true;
+
+        var formData = new URLSearchParams();
+        formData.append('csrfmiddlewaretoken', document.querySelector('input[name="csrfmiddlewaretoken"]').value);
+        formData.append('assignment_id', '{{ assignment.id }}');
+        formData.append('exam_id', '{{ exam.id }}');
+        formData.append('action_type', 'save_admin_scores');
+        formData.append('admin_note', '');
+        formData.append('maximum_marks', document.getElementById('maxMarksHidden').value);
+        formData.append('score_' + id, newVal);
+
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData.toString(),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            saveBtn.textContent = 'Save';
+            saveBtn.disabled = false;
+            if (data.success) {
+                scoreDisplay.textContent = newVal;
+                scoreInput.value = newVal;
+                row.classList.remove('editing');
+                scoreInput.style.borderColor = '';
+            } else {
+                scoreInput.style.borderColor = '#EF4444';
+                setTimeout(function() { scoreInput.style.borderColor = ''; }, 1500);
+            }
+        })
+        .catch(function() {
+            saveBtn.textContent = 'Save';
+            saveBtn.disabled = false;
+            scoreInput.style.borderColor = '#EF4444';
+            setTimeout(function() { scoreInput.style.borderColor = ''; }, 1500);
+        });
     }
 
     function cancelRow(id) {

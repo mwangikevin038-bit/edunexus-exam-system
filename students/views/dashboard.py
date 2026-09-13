@@ -18,6 +18,7 @@ from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE
 from .helpers import get_teacher_for_user, get_class_teacher_scope, get_published_contexts_for_user
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
 from ..models import (
+    Event,
     Exam,
     GradingConfig,
     Mark,
@@ -322,6 +323,20 @@ def dashboard(request):
             'end': td.end_date.isoformat(),
         })
 
+    # --- School events for calendar ---
+    school_events_qs = Event.objects.filter(school=school).order_by('event_date', 'time') if school else Event.objects.none()
+    school_events = []
+    for ev in school_events_qs:
+        school_events.append({
+            'id': ev.id,
+            'name': ev.name,
+            'date_mode': ev.date_mode,
+            'start': ev.event_date.isoformat(),
+            'end': ev.end_date.isoformat() if ev.end_date else ev.event_date.isoformat(),
+            'time': ev.time.strftime('%H:%M') if ev.time else '',
+            'participants': ev.participants,
+        })
+
     # --- Section-scoped grade choices ---
     if section == 'JSS':
         section_grades = JSS_GRADE_CHOICES
@@ -494,6 +509,7 @@ def dashboard(request):
         'current_year': datetime.date.today().year,
         'section': section,
         'term_events_json': _json.dumps(term_events),
+        'school_events_json': _json.dumps(school_events),
         'grade_performance_cards': grade_performance_cards,
         'exam_label': exam_label,
     })
@@ -582,11 +598,14 @@ def school_admin_dashboard(request):
         submission = submission_map.get(sub_key)
 
         if not submission or submission.status in ["returned"]:
+            tp = assignment.teacher_profile
+            if not tp:
+                continue
             missing_entries_feed.append({
-                'teacher_name': assignment.teacher_profile.get_full_title(),
+                'teacher_name': tp.get_full_title(),
                 'subject_name': assignment.subject.name if assignment.subject else '—',
                 'target_class': f"{assignment.class_name} {assignment.stream}",
-                'phone':        assignment.teacher_profile.phone_number,
+                'phone':        tp.phone_number,
                 'status':       submission.get_status_display() if submission else "Not Started",
             })
 
