@@ -1193,7 +1193,13 @@ def learner_profile(request, student_id):
         elif is_primary:
             level_value, points_value = _get_primary_performance(mark.score or 0, school=student.school, section=student.school_section, sub_section=student.sub_section)
         else:
-            level_value, points_value = get_performance_level(mark.score)
+            level_value, points_value = get_performance_level(
+                mark.score,
+                subject_id=mark.subject_id,
+                section=student.school_section,
+                sub_section=student.sub_section,
+                school=student.school,
+            )
         exam_groups[key]["marks"].append({
             "subject": subject_mapping.get(mark.subject.code, mark.subject.name),
             "short": short_mapping.get(mark.subject.code, mark.subject.code),

@@ -26,7 +26,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .helpers import invalidate_report_caches
+from .helpers import get_performance_level, invalidate_report_caches
 
 from .constants import (
     ASSESSMENT_MAP,
@@ -38,6 +38,7 @@ from .constants import (
     TERM_CHOICES,
 )
 from .helpers import (
+    build_analysis_from_snapshot,
     get_performance_level,
     get_religion_aware_student_count,
     get_stream_submission_summary,
@@ -430,9 +431,43 @@ def select_exam(request):
                     saved_count += 1
 
                 if ids_to_delete:
+                    from ..security.protection import backup_marks_before_delete
+                    backup_marks_before_delete(
+                        Mark.all_objects.filter(id__in=ids_to_delete),
+                        reason="select_exam_primary: marks replaced by teacher submission",
+                        request=request,
+                    )
+                    # Audit: log deletes
+                    from students.models import MarkAuditLog
+                    _del_marks = list(Mark.all_objects.filter(id__in=ids_to_delete).values(
+                        'student_id', 'subject_id', 'score', 'raw_score', 'is_absent', 'term', 'year', 'exam_type',
+                    ))
+                    _audit_entries = [
+                        MarkAuditLog(
+                            actor=request.user if request.user.is_authenticated else None,
+                            school=school, action='delete',
+                            student_id=m['student_id'], subject_id=m['subject_id'],
+                            term=m['term'], year=m['year'], exam_type=m['exam_type'] or '',
+                            old_raw_score=m['raw_score'], old_score=m['score'], old_is_absent=m['is_absent'],
+                        ) for m in _del_marks
+                    ]
                     Mark.all_objects.filter(id__in=ids_to_delete).delete()
                 if marks_to_create:
                     Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
+                    # Audit: log creates
+                    from students.models import MarkAuditLog
+                    _audit_entries = getattr(transaction, '_mark_audit_entries', [])
+                    _audit_entries += [
+                        MarkAuditLog(
+                            actor=request.user if request.user.is_authenticated else None,
+                            school=school, action='create',
+                            student_id=m.student_id, subject_id=m.subject_id,
+                            term=m.term, year=m.year, exam_type=m.exam_type or '',
+                            new_raw_score=m.raw_score, new_score=m.score, new_is_absent=m.is_absent,
+                            new_performance_level=m.performance_level,
+                        ) for m in marks_to_create
+                    ]
+                    MarkAuditLog.objects.bulk_create(_audit_entries, batch_size=250)
                 if marks_to_update:
                     Mark.all_objects.bulk_update(
                         marks_to_update,
@@ -841,6 +876,34 @@ def manage_exams(request):
             if not exam:
                 messages.error(request, "Assessment not found.")
                 return redirect(reverse('manage_exams') + '?tab=manage')
+
+            from ..security.protection import backup_marks_before_delete
+            exam_marks_qs = Mark.all_objects.filter(
+                school=school, exam_type=exam.name,
+                term=exam.term, year=exam.year,
+            )
+            backup_marks_before_delete(
+                exam_marks_qs,
+                reason=f"delete_exam: exam '{exam.name}' deleted",
+                request=request,
+            )
+
+            # Audit: log all marks being deleted
+            from students.models import MarkAuditLog
+            _del_marks = list(exam_marks_qs.values(
+                'student_id', 'subject_id', 'score', 'raw_score', 'is_absent', 'term', 'year', 'exam_type',
+            ))
+            if _del_marks:
+                _audit_del = [
+                    MarkAuditLog(
+                        actor=request.user, school=school, action='delete',
+                        student_id=m['student_id'], subject_id=m['subject_id'],
+                        term=m['term'], year=m['year'], exam_type=m['exam_type'] or '',
+                        old_raw_score=m['raw_score'], old_score=m['score'], old_is_absent=m['is_absent'],
+                    ) for m in _del_marks
+                ]
+                MarkAuditLog.objects.bulk_create(_audit_del, batch_size=250)
+
             exam.is_deleted = True
             exam.deleted_at = timezone.now()
             exam.deleted_by = request.user
@@ -857,6 +920,11 @@ def manage_exams(request):
             ).delete()
 
             ExamSummary.all_objects.filter(
+                school=school, exam_name=exam.name,
+                term=exam.term, year=exam.year,
+            ).delete()
+
+            ExamResultSnapshot.all_objects.filter(
                 school=school, exam_name=exam.name,
                 term=exam.term, year=exam.year,
             ).delete()
@@ -1648,37 +1716,47 @@ def analyse_exam(request):
         breakdown_levels = [ld.get('level', '-') for ld in grading_scale_obj.total_scale if ld.get('level')]
 
     total_students = all_students.count()
-    students_who_sat = summaries.values('student_id').distinct().count()
-    student_ids = list(summaries.values_list('student_id', flat=True).distinct())
 
-    streams = list(
-        summaries.values_list('student__stream', flat=True).distinct().order_by('student__stream')
-    )
-    grade_name = summaries.values_list('student__class_name', flat=True).first() or exam.name
+    snapshot_ctx = build_analysis_from_snapshot(school, exam)
+    if snapshot_ctx:
+        streams = snapshot_ctx['streams']
+        students_who_sat = snapshot_ctx['students_who_sat']
+        student_ids = snapshot_ctx['student_ids']
+        grade_name = snapshot_ctx['grade_name']
+    else:
+        students_who_sat = summaries.values('student_id').distinct().count()
+        student_ids = list(summaries.values_list('student_id', flat=True).distinct())
+        streams = list(
+            summaries.values_list('student__stream', flat=True).distinct().order_by('student__stream')
+        )
+        grade_name = summaries.values_list('student__class_name', flat=True).first() or exam.name
 
-    subjects = Subject.all_objects.filter(school=school)
+    if snapshot_ctx:
+        subject_perf = snapshot_ctx['subject_perf']
+    else:
+        subjects = Subject.all_objects.filter(school=school)
 
-    all_marks = Mark.all_objects.filter(
-        student__school=school,
-        student_id__in=student_ids,
-        term=exam.term,
-        year=exam.year,
-        exam_type=exam.name,
-        school_section=section,
-    ).select_related('subject', 'student')
+        all_marks = Mark.all_objects.filter(
+            student__school=school,
+            student_id__in=student_ids,
+            term=exam.term,
+            year=exam.year,
+            exam_type=exam.name,
+            school_section=section,
+        ).select_related('subject', 'student')
 
-    subject_perf = {}
-    for mark in all_marks:
-        if mark.subject_id and mark.subject:
-            subj_name = mark.subject.name
-            if subj_name not in subject_perf:
-                subject_perf[subj_name] = {'total_points': 0, 'count': 0, 'total_score': 0, 'plv_counts': {}, 'changes': []}
-            subject_perf[subj_name]['total_points'] += mark.points
-            subject_perf[subj_name]['total_score'] += mark.score
-            subject_perf[subj_name]['count'] += 1
-            plv = (mark.performance_level or '').strip()
-            if plv and plv != '-':
-                subject_perf[subj_name]['plv_counts'][plv] = subject_perf[subj_name]['plv_counts'].get(plv, 0) + 1
+        subject_perf = {}
+        for mark in all_marks:
+            if mark.subject_id and mark.subject:
+                subj_name = mark.subject.name
+                if subj_name not in subject_perf:
+                    subject_perf[subj_name] = {'total_points': 0, 'count': 0, 'total_score': 0, 'plv_counts': {}, 'changes': []}
+                subject_perf[subj_name]['total_points'] += mark.points
+                subject_perf[subj_name]['total_score'] += mark.score
+                subject_perf[subj_name]['count'] += 1
+                plv = (mark.performance_level or '').strip()
+                if plv and plv != '-':
+                    subject_perf[subj_name]['plv_counts'][plv] = subject_perf[subj_name]['plv_counts'].get(plv, 0) + 1
 
     PLV_LABELS = {
         'EE1': 'Exceeding Expectations', 'EE2': 'Exceeding Expectations',
@@ -1717,32 +1795,40 @@ def analyse_exam(request):
 
     subject_rows.sort(key=lambda x: x['points'], reverse=True)
 
-    stream_stats = {}
-    total_all_pts = 0
-    total_all_marks_sum = 0
-    total_all_count = 0
-    for s in streams:
-        s_ids = list(summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct())
-        s_marks = all_marks.filter(student_id__in=s_ids)
-        s_count = s_marks.count()
-        total_pts = sum(m.points for m in s_marks)
-        total_marks_sum = sum(m.score for m in s_marks)
-        mean_pts = total_pts / s_count if s_count else 0
-        mean_marks = total_marks_sum / s_count if s_count else 0
-        stream_stats[s] = {
-            'mean_points': round(mean_pts, 4),
-            'mean_marks': round(mean_marks, 1),
-            'entries': len(s_ids),
-            '_total_pts': total_pts,
-            '_total_marks': total_marks_sum,
-            '_count': s_count,
-        }
-        total_all_pts += total_pts
-        total_all_marks_sum += total_marks_sum
-        total_all_count += s_count
+    if snapshot_ctx:
+        overall_mean_points = round(
+            sum(s.get('_total_pts', 0) for s in stream_stats.values()) /
+            max(sum(s.get('_count', 0) for s in stream_stats.values()), 1), 4)
+        overall_mean_marks = round(
+            sum(s.get('_total_marks', 0) for s in stream_stats.values()) /
+            max(sum(s.get('_count', 0) for s in stream_stats.values()), 1), 1)
+    else:
+        stream_stats = {}
+        total_all_pts = 0
+        total_all_marks_sum = 0
+        total_all_count = 0
+        for s in streams:
+            s_ids = list(summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct())
+            s_marks = all_marks.filter(student_id__in=s_ids)
+            s_count = s_marks.count()
+            total_pts = sum(m.points for m in s_marks)
+            total_marks_sum = sum(m.score for m in s_marks)
+            mean_pts = total_pts / s_count if s_count else 0
+            mean_marks = total_marks_sum / s_count if s_count else 0
+            stream_stats[s] = {
+                'mean_points': round(mean_pts, 4),
+                'mean_marks': round(mean_marks, 1),
+                'entries': len(s_ids),
+                '_total_pts': total_pts,
+                '_total_marks': total_marks_sum,
+                '_count': s_count,
+            }
+            total_all_pts += total_pts
+            total_all_marks_sum += total_marks_sum
+            total_all_count += s_count
 
-    overall_mean_points = round(total_all_pts / total_all_count, 4) if total_all_count else 0
-    overall_mean_marks = round(total_all_marks_sum / total_all_count, 1) if total_all_count else 0
+        overall_mean_points = round(total_all_pts / total_all_count, 4) if total_all_count else 0
+        overall_mean_marks = round(total_all_marks_sum / total_all_count, 1) if total_all_count else 0
 
     TERM_ORDER = {'Term 1': 1, 'Term 2': 2, 'Term 3': 3}
     current_term_num = TERM_ORDER.get(exam.term, 0)
@@ -1878,119 +1964,125 @@ def analyse_exam(request):
         else:
             row['change'] = None
 
-    overall_plv = '-'
-    grade_breakdown = []
-    for s in streams:
-        s_ids = summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
-        s_summaries = summaries.filter(student__stream=s)
-        row = {'form': f"{grade_name} {s}", 'X': 0, 'Y': 0, 'entries': s_ids.count()}
-        for lvl in breakdown_levels:
-            row[lvl] = 0
-        row.update({
-            'mean_marks': stream_stats.get(s, {}).get('mean_marks', 0),
-            'mm_dev': 0,
-            'mean_points': stream_stats.get(s, {}).get('mean_points', 0),
-            'mp_dev': 0,
-            'performance_level': '-',
-        })
-        for summ in s_summaries:
-            raw_plv = (summ.overall_plv or '').strip()
-            if raw_plv in row:
-                row[raw_plv] += 1
-
-        row['mean_marks'] = stream_stats.get(s, {}).get('mean_marks', 0)
-        row['mm_dev'] = round(row['mean_marks'] - overall_mean_marks, 4)
-        row['mean_points'] = stream_stats.get(s, {}).get('mean_points', 0)
-        row['mp_dev'] = round(row['mean_points'] - overall_mean_points, 4)
-
-        stream_plvs = [(summ.overall_plv or '').strip() for summ in s_summaries if (summ.overall_plv or '').strip()]
-        if stream_plvs:
-            from collections import Counter
-            row['performance_level'] = Counter(stream_plvs).most_common(1)[0][0]
-
-        grade_breakdown.append(row)
-
-    all_summ_plvs = [(summ.overall_plv or '').strip() for summ in summaries if (summ.overall_plv or '').strip()]
-    if all_summ_plvs:
-        from collections import Counter
-        overall_plv = Counter(all_summ_plvs).most_common(1)[0][0]
-
-    total_row = {
-        'form': grade_name,
-        'X': 0, 'Y': 0,
-        'entries': sum(r['entries'] for r in grade_breakdown),
-        'mean_marks': overall_mean_marks,
-        'mm_dev': 0,
-        'mean_points': overall_mean_points,
-        'mp_dev': 0,
-        'performance_level': overall_plv,
-    }
-    for lvl in breakdown_levels:
-        total_row[lvl] = sum(r.get(lvl, 0) for r in grade_breakdown)
-
-    subject_breakdowns = {}
-    for subj_name, data in sorted(subject_perf.items()):
-        if data['count'] == 0:
-            continue
-        subj_rows = []
-        all_subj_pts = 0
-        all_subj_score = 0
-        all_subj_count = 0
+    if snapshot_ctx:
+        overall_plv = snapshot_ctx['overall_plv']
+        grade_breakdown = snapshot_ctx['grade_breakdown']
+        total_row = snapshot_ctx['total_row']
+        subject_breakdowns = snapshot_ctx['subject_breakdowns']
+    else:
+        overall_plv = '-'
+        grade_breakdown = []
         for s in streams:
-            s_ids_list = summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
-            subj_marks = all_marks.filter(student_id__in=s_ids_list, subject__name=subj_name)
-            row = {'form': f"{grade_name} {s}", 'X': 0, 'Y': 0, 'entries': 0}
+            s_ids = summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+            s_summaries = summaries.filter(student__stream=s)
+            row = {'form': f"{grade_name} {s}", 'X': 0, 'Y': 0, 'entries': s_ids.count()}
             for lvl in breakdown_levels:
                 row[lvl] = 0
-            total_pts = 0
-            total_score = 0
-            count = 0
-            for m in subj_marks:
-                total_pts += m.points
-                total_score += m.score
-                count += 1
-                plv_key = (m.performance_level or '').strip()
-                if plv_key in row:
-                    row[plv_key] += 1
-            mean_pts = total_pts / count if count else 0
-            row['mean_marks'] = round(total_score / count, 1) if count else 0
+            row.update({
+                'mean_marks': stream_stats.get(s, {}).get('mean_marks', 0),
+                'mm_dev': 0,
+                'mean_points': stream_stats.get(s, {}).get('mean_points', 0),
+                'mp_dev': 0,
+                'performance_level': '-',
+            })
+            for summ in s_summaries:
+                raw_plv = (summ.overall_plv or '').strip()
+                if raw_plv in row:
+                    row[raw_plv] += 1
+
+            row['mean_marks'] = stream_stats.get(s, {}).get('mean_marks', 0)
             row['mm_dev'] = round(row['mean_marks'] - overall_mean_marks, 4)
-            row['mean_points'] = round(mean_pts, 4)
-            row['mp_dev'] = round(mean_pts - overall_mean_points, 4)
-            row['performance_level'] = '-'
-            plv_counts = {}
-            for m in subj_marks:
-                plv = (m.performance_level or '').strip()
-                if plv and plv != '-':
-                    plv_counts[plv] = plv_counts.get(plv, 0) + 1
-            if plv_counts:
-                row['performance_level'] = max(plv_counts, key=plv_counts.get)
-            row['entries'] = count
-            subj_rows.append(row)
-            all_subj_pts += total_pts
-            all_subj_score += total_score
-            all_subj_count += count
-        overall_subj_mean_pts = all_subj_pts / all_subj_count if all_subj_count else 0
-        overall_subj_mean_marks = all_subj_score / all_subj_count if all_subj_count else 0
-        subj_total = {
-            'form': grade_name, 'X': 0, 'Y': 0,
-            'entries': all_subj_count,
-            'mean_marks': round(overall_subj_mean_marks, 1),
+            row['mean_points'] = stream_stats.get(s, {}).get('mean_points', 0)
+            row['mp_dev'] = round(row['mean_points'] - overall_mean_points, 4)
+
+            stream_plvs = [(summ.overall_plv or '').strip() for summ in s_summaries if (summ.overall_plv or '').strip()]
+            if stream_plvs:
+                from collections import Counter
+                row['performance_level'] = Counter(stream_plvs).most_common(1)[0][0]
+
+            grade_breakdown.append(row)
+
+        all_summ_plvs = [(summ.overall_plv or '').strip() for summ in summaries if (summ.overall_plv or '').strip()]
+        if all_summ_plvs:
+            from collections import Counter
+            overall_plv = Counter(all_summ_plvs).most_common(1)[0][0]
+
+        total_row = {
+            'form': grade_name,
+            'X': 0, 'Y': 0,
+            'entries': sum(r['entries'] for r in grade_breakdown),
+            'mean_marks': overall_mean_marks,
             'mm_dev': 0,
-            'mean_points': round(overall_subj_mean_pts, 4),
+            'mean_points': overall_mean_points,
             'mp_dev': 0,
-            'performance_level': '-',
+            'performance_level': overall_plv,
         }
-        all_subj_plvs = {}
-        for r in subj_rows:
-            for lvl in breakdown_levels:
-                if r.get(lvl, 0) > 0:
-                    all_subj_plvs[lvl] = all_subj_plvs.get(lvl, 0) + r[lvl]
-        if all_subj_plvs:
-            subj_total['performance_level'] = max(all_subj_plvs, key=all_subj_plvs.get)
         for lvl in breakdown_levels:
-            subj_total[lvl] = sum(r.get(lvl, 0) for r in subj_rows)
-        subject_breakdowns[subj_name] = {'rows': subj_rows, 'total': subj_total}
+            total_row[lvl] = sum(r.get(lvl, 0) for r in grade_breakdown)
+
+        subject_breakdowns = {}
+        for subj_name, data in sorted(subject_perf.items()):
+            if data['count'] == 0:
+                continue
+            subj_rows = []
+            all_subj_pts = 0
+            all_subj_score = 0
+            all_subj_count = 0
+            for s in streams:
+                s_ids_list = summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
+                subj_marks = all_marks.filter(student_id__in=s_ids_list, subject__name=subj_name)
+                row = {'form': f"{grade_name} {s}", 'X': 0, 'Y': 0, 'entries': 0}
+                for lvl in breakdown_levels:
+                    row[lvl] = 0
+                total_pts = 0
+                total_score = 0
+                count = 0
+                for m in subj_marks:
+                    total_pts += m.points
+                    total_score += m.score
+                    count += 1
+                    plv_key = (m.performance_level or '').strip()
+                    if plv_key in row:
+                        row[plv_key] += 1
+                mean_pts = total_pts / count if count else 0
+                row['mean_marks'] = round(total_score / count, 1) if count else 0
+                row['mm_dev'] = round(row['mean_marks'] - overall_mean_marks, 4)
+                row['mean_points'] = round(mean_pts, 4)
+                row['mp_dev'] = round(mean_pts - overall_mean_points, 4)
+                row['performance_level'] = '-'
+                plv_counts = {}
+                for m in subj_marks:
+                    plv = (m.performance_level or '').strip()
+                    if plv and plv != '-':
+                        plv_counts[plv] = plv_counts.get(plv, 0) + 1
+                if plv_counts:
+                    row['performance_level'] = max(plv_counts, key=plv_counts.get)
+                row['entries'] = count
+                subj_rows.append(row)
+                all_subj_pts += total_pts
+                all_subj_score += total_score
+                all_subj_count += count
+            overall_subj_mean_pts = all_subj_pts / all_subj_count if all_subj_count else 0
+            overall_subj_mean_marks = all_subj_score / all_subj_count if all_subj_count else 0
+            subj_total = {
+                'form': grade_name, 'X': 0, 'Y': 0,
+                'entries': all_subj_count,
+                'mean_marks': round(overall_subj_mean_marks, 1),
+                'mm_dev': 0,
+                'mean_points': round(overall_subj_mean_pts, 4),
+                'mp_dev': 0,
+                'performance_level': '-',
+            }
+            all_subj_plvs = {}
+            for r in subj_rows:
+                for lvl in breakdown_levels:
+                    if r.get(lvl, 0) > 0:
+                        all_subj_plvs[lvl] = all_subj_plvs.get(lvl, 0) + r[lvl]
+            if all_subj_plvs:
+                subj_total['performance_level'] = max(all_subj_plvs, key=all_subj_plvs.get)
+            for lvl in breakdown_levels:
+                subj_total[lvl] = sum(r.get(lvl, 0) for r in subj_rows)
+            subject_breakdowns[subj_name] = {'rows': subj_rows, 'total': subj_total}
 
     subject_names = sorted(subject_perf.keys())
 
@@ -2426,6 +2518,7 @@ def review_stream_submission(request):
 
 
 @login_required(login_url='login')
+@school_admin_required
 def review_submission(request):
     """
     Admin review screen for one assessment sheet.
@@ -2437,6 +2530,8 @@ def review_submission(request):
 
     assignment_id = request.GET.get("assignment_id") or request.POST.get("assignment_id")
     exam_id = request.GET.get("exam_id") or request.POST.get("exam_id")
+
+    from ..security.integrity import compute_mark_checksum
 
     school = get_request_school(request)
     if not school:
@@ -2541,13 +2636,20 @@ def review_submission(request):
                 )
 
                 if value.upper() == "AB":
-                    marks_to_create.append(Mark(
+                    _adm_ab = Mark(
                         **_adm_lookup,
                         raw_score=None,
                         maximum_marks=maximum_marks,
                         score=0,
                         is_absent=True,
-                    ))
+                        performance_level='AB',
+                        points=0,
+                        primary_raw_score='AB',
+                        primary_performance_point='AB',
+                        primary_descriptor='AB',
+                    )
+                    _adm_ab.integrity_checksum = compute_mark_checksum(_adm_ab)
+                    marks_to_create.append(_adm_ab)
                     if student.id in existing_map:
                         marks_to_delete_ids.append(existing_map[student.id].id)
                     corrected_count += 1
@@ -2577,13 +2679,27 @@ def review_submission(request):
                         f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
                     )
 
-                marks_to_create.append(Mark(
+                pct = round((raw_score / maximum_marks) * 100)
+                adm_perf_level, adm_perf_points = get_performance_level(
+                    pct,
+                    subject_id=assignment.subject_id if assignment else None,
+                    section=assignment.school_section if assignment else None,
+                    sub_section=assignment.sub_section if assignment else None,
+                )
+                _adm_num = Mark(
                     **_adm_lookup,
                     raw_score=raw_score,
                     maximum_marks=maximum_marks,
-                    score=round((raw_score / maximum_marks) * 100),
+                    score=pct,
                     is_absent=False,
-                ))
+                    performance_level=adm_perf_level,
+                    points=adm_perf_points,
+                    primary_raw_score=str(raw_score),
+                    primary_performance_point=str(adm_perf_points),
+                    primary_descriptor=adm_perf_level,
+                )
+                _adm_num.integrity_checksum = compute_mark_checksum(_adm_num)
+                marks_to_create.append(_adm_num)
                 if student.id in existing_map:
                     marks_to_delete_ids.append(existing_map[student.id].id)
                 corrected_count += 1
@@ -2597,10 +2713,39 @@ def review_submission(request):
             # ── PHASE 2: Atomic bulk write — all deletes + creates in one transaction ──
             with transaction.atomic():
                 if marks_to_delete_ids:
+                    from ..security.protection import backup_marks_before_delete
+                    backup_marks_before_delete(
+                        Mark.all_objects.filter(id__in=marks_to_delete_ids),
+                        reason="save_admin_scores: admin overriding published scores",
+                        request=request,
+                    )
+                    from students.models import MarkAuditLog
+                    _del_marks = list(Mark.all_objects.filter(id__in=marks_to_delete_ids).values(
+                        'student_id', 'subject_id', 'score', 'raw_score', 'is_absent', 'term', 'year', 'exam_type',
+                    ))
+                    _audit_del = [
+                        MarkAuditLog(
+                            actor=request.user, school=school, action='delete',
+                            student_id=m['student_id'], subject_id=m['subject_id'],
+                            term=m['term'], year=m['year'], exam_type=m['exam_type'] or '',
+                            old_raw_score=m['raw_score'], old_score=m['score'], old_is_absent=m['is_absent'],
+                        ) for m in _del_marks
+                    ]
                     Mark.all_objects.filter(id__in=marks_to_delete_ids).delete()
 
                 if marks_to_create:
                     Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
+                    _audit_creates = [
+                        MarkAuditLog(
+                            actor=request.user, school=school, action='create',
+                            student_id=m.student_id, subject_id=m.subject_id,
+                            term=m.term, year=m.year, exam_type=m.exam_type or '',
+                            new_raw_score=m.raw_score, new_score=m.score, new_is_absent=m.is_absent,
+                            new_performance_level=m.performance_level,
+                        ) for m in marks_to_create
+                    ]
+                    _all_audit = _audit_del + _audit_creates if 'mark_audit_del' in dir() else _audit_creates
+                    MarkAuditLog.objects.bulk_create(_all_audit, batch_size=250)
 
                 if religion_student_updates:
                     student_ids = [sid for sid, _ in religion_student_updates]
@@ -2640,6 +2785,11 @@ def review_submission(request):
                 exam_name=exam.name,
                 school_section=assignment.school_section,
                 sub_section=assignment.sub_section,
+            )
+
+            invalidate_report_caches(
+                school.pk, assignment.class_name, assignment.stream,
+                exam.year, exam.term, exam.name,
             )
 
             messages.success(request, f"{corrected_count} learner score correction(s) saved.")
@@ -3027,6 +3177,8 @@ def select_exam_primary(request):
     assignment_id = request.GET.get('assignment_id') or request.POST.get('assignment_id')
     exam_id = request.GET.get('exam_id') or request.POST.get('exam_id')
 
+    from ..security.integrity import compute_mark_checksum
+
     school = get_request_school(request)
     section = get_request_school_section(request)
 
@@ -3194,8 +3346,6 @@ def select_exam_primary(request):
 
                 if not value:
                     missing_students.append(student.name)
-                    if student.id in existing_map:
-                        marks_to_delete_ids.append(existing_map[student.id].id)
                     continue
 
                 _mark_lookup = dict(
@@ -3210,16 +3360,20 @@ def select_exam_primary(request):
                 )
 
                 if value.upper() == "AB":
-                    marks_to_create.append(Mark(
+                    _ab_mark = Mark(
                         **_mark_lookup,
                         raw_score=None,
                         maximum_marks=maximum_marks,
                         score=0,
                         is_absent=True,
+                        performance_level='AB',
+                        points=0,
                         primary_raw_score='AB',
                         primary_performance_point='AB',
                         primary_descriptor='AB',
-                    ))
+                    )
+                    _ab_mark.integrity_checksum = compute_mark_checksum(_ab_mark)
+                    marks_to_create.append(_ab_mark)
                     if student.id in existing_map:
                         marks_to_delete_ids.append(existing_map[student.id].id)
                     saved_count += 1
@@ -3251,16 +3405,20 @@ def select_exam_primary(request):
                 percentage = round((raw_score / maximum_marks) * 100)
                 descriptor, points = _get_primary_performance(percentage, school=school, section=section, sub_section=exam_sub_section)
 
-                marks_to_create.append(Mark(
+                _num_mark = Mark(
                     **_mark_lookup,
                     raw_score=raw_score,
                     maximum_marks=maximum_marks,
                     score=percentage,
                     is_absent=False,
+                    performance_level=descriptor,
+                    points=points,
                     primary_raw_score=str(raw_score),
                     primary_performance_point=str(points),
                     primary_descriptor=descriptor,
-                ))
+                )
+                _num_mark.integrity_checksum = compute_mark_checksum(_num_mark)
+                marks_to_create.append(_num_mark)
                 if student.id in existing_map:
                     marks_to_delete_ids.append(existing_map[student.id].id)
                 saved_count += 1
@@ -3284,6 +3442,12 @@ def select_exam_primary(request):
             with transaction.atomic():
                 # Bulk delete old marks
                 if marks_to_delete_ids:
+                    from ..security.protection import backup_marks_before_delete
+                    backup_marks_before_delete(
+                        Mark.all_objects.filter(id__in=marks_to_delete_ids),
+                        reason="select_exam_admin: marks replaced by admin submission",
+                        request=request,
+                    )
                     Mark.all_objects.filter(id__in=marks_to_delete_ids).delete()
                     deleted_count = len(marks_to_delete_ids)
 
@@ -3890,6 +4054,9 @@ def batch_save_marks(request):
                     existing.is_absent = True
                     existing.performance_level = 'AB'
                     existing.points = 0
+                    existing.primary_raw_score = 'AB'
+                    existing.primary_performance_point = 'AB'
+                    existing.primary_descriptor = 'AB'
                     existing.version = F('version') + 1
                     existing.integrity_checksum = compute_mark_checksum(existing)
                     marks_to_update.append(existing)
@@ -3906,6 +4073,9 @@ def batch_save_marks(request):
                         raw_score=None, maximum_marks=maximum_marks,
                         score=0, is_absent=True,
                         performance_level='AB', points=0,
+                        primary_raw_score='AB',
+                        primary_performance_point='AB',
+                        primary_descriptor='AB',
                     )
                     new_mark.integrity_checksum = compute_mark_checksum(new_mark)
                     marks_to_create.append(new_mark)
@@ -3946,6 +4116,9 @@ def batch_save_marks(request):
                 existing.is_absent = False
                 existing.performance_level = perf_level
                 existing.points = perf_points
+                existing.primary_raw_score = str(raw_score)
+                existing.primary_performance_point = str(perf_points) if perf_points else ''
+                existing.primary_descriptor = perf_level
                 existing.version = F('version') + 1
                 existing.integrity_checksum = compute_mark_checksum(existing)
                 marks_to_update.append(existing)
@@ -3962,6 +4135,9 @@ def batch_save_marks(request):
                     raw_score=raw_score, maximum_marks=maximum_marks,
                     score=score, is_absent=False,
                     performance_level=perf_level, points=perf_points,
+                    primary_raw_score=str(raw_score),
+                    primary_performance_point=str(perf_points) if perf_points else '',
+                    primary_descriptor=perf_level,
                 )
                 new_mark.integrity_checksum = compute_mark_checksum(new_mark)
                 marks_to_create.append(new_mark)
@@ -3987,6 +4163,9 @@ def batch_save_marks(request):
                     is_absent=m.is_absent,
                     performance_level=m.performance_level,
                     points=m.points,
+                    primary_raw_score=m.primary_raw_score,
+                    primary_performance_point=m.primary_performance_point,
+                    primary_descriptor=m.primary_descriptor,
                     integrity_checksum=m.integrity_checksum,
                     version=F('version') + 1,
                 )
@@ -4033,6 +4212,12 @@ def batch_save_marks(request):
                 ))
             if audit_entries:
                 MarkAuditLog.objects.bulk_create(audit_entries, batch_size=250)
+
+        if saved_count > 0:
+            invalidate_report_caches(
+                school.pk, assignment.class_name, assignment.stream,
+                exam.year, exam.term, exam.name,
+            )
 
     return JsonResponse({'ok': True, 'saved': saved_count, 'skipped': skipped_unchanged})
 
@@ -4160,6 +4345,10 @@ def update_maximum_marks(request):
                 marks_to_update,
                 ['maximum_marks', 'score', 'raw_score', 'performance_level', 'points', 'integrity_checksum'],
                 batch_size=250,
+            )
+            invalidate_report_caches(
+                school.pk, assignment.class_name, assignment.stream,
+                exam.year, exam.term, exam.name,
             )
 
     return JsonResponse({'ok': True, 'updated': len(marks_to_update), 'new_maximum': new_maximum})
@@ -4394,6 +4583,8 @@ def upload_results(request):
         messages.error(request, "You are not allowed to upload results.")
         return redirect("manage_exams")
 
+    from ..security.integrity import compute_mark_checksum
+
     school = get_request_school(request)
     if not school:
         messages.error(request, "School context required.")
@@ -4513,7 +4704,7 @@ def upload_results(request):
                 )
 
                 if value == "AB":
-                    marks_to_create.append(Mark(
+                    _up_ab = Mark(
                         **_adm_lookup,
                         raw_score=None,
                         maximum_marks=maximum_marks,
@@ -4524,7 +4715,9 @@ def upload_results(request):
                         primary_raw_score='AB',
                         primary_performance_point='AB',
                         primary_descriptor='AB',
-                    ))
+                    )
+                    _up_ab.integrity_checksum = compute_mark_checksum(_up_ab)
+                    marks_to_create.append(_up_ab)
                     if student.id in existing_map:
                         marks_to_delete_ids.append(existing_map[student.id].id)
                     corrected_count += 1
@@ -4550,7 +4743,7 @@ def upload_results(request):
                 else:
                     perf_level, perf_points = '-', 0
 
-                marks_to_create.append(Mark(
+                _up_num = Mark(
                     **_adm_lookup,
                     raw_score=raw_score,
                     maximum_marks=maximum_marks,
@@ -4561,16 +4754,36 @@ def upload_results(request):
                     primary_raw_score=str(raw_score),
                     primary_performance_point=str(perf_points) if perf_points else '',
                     primary_descriptor=perf_level,
-                ))
+                )
+                _up_num.integrity_checksum = compute_mark_checksum(_up_num)
+                marks_to_create.append(_up_num)
                 if student.id in existing_map:
                     marks_to_delete_ids.append(existing_map[student.id].id)
                 corrected_count += 1
 
             with transaction.atomic():
                 if marks_to_delete_ids:
+                    from ..security.protection import backup_marks_before_delete
+                    backup_marks_before_delete(
+                        Mark.all_objects.filter(id__in=marks_to_delete_ids),
+                        reason="batch_save_marks: marks replaced by batch upload",
+                        request=request,
+                    )
                     Mark.all_objects.filter(id__in=marks_to_delete_ids).delete()
                 if marks_to_create:
                     Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
+                    from students.models import MarkAuditLog
+                    _audit_entries = [
+                        MarkAuditLog(
+                            actor=request.user if request.user.is_authenticated else None,
+                            school=school, action='create',
+                            student_id=m.student_id, subject_id=m.subject_id,
+                            term=m.term, year=m.year, exam_type=m.exam_type or '',
+                            new_raw_score=m.raw_score, new_score=m.score, new_is_absent=m.is_absent,
+                            new_performance_level=m.performance_level,
+                        ) for m in marks_to_create
+                    ]
+                    MarkAuditLog.objects.bulk_create(_audit_entries, batch_size=250)
 
             # ── Rebuild ExamSummary so report cards always have fresh data ──
             from students.tasks import populate_exam_summaries
@@ -4582,6 +4795,11 @@ def upload_results(request):
                 exam_name=exam.name,
                 school_section=assignment.school_section,
                 sub_section=assignment.sub_section,
+            )
+
+            invalidate_report_caches(
+                school.pk, assignment.class_name, assignment.stream,
+                exam.year, exam.term, exam.name,
             )
 
             messages.success(request, f"{corrected_count} learner score(s) saved.")

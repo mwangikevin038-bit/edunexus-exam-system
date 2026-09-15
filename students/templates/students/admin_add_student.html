@@ -990,7 +990,7 @@
 
           <div class="form-group">
             <label class="form-label">Form / Grade <span class="req">*</span></label>
-            <select name="class_name" class="form-select" required>
+            <select name="class_name" class="form-select" required onchange="onGradeChange(this)">
               <option value="">Select Form / Grade</option>
               {% for grade in grades %}
               <option value="{{ grade }}">{{ grade }}</option>
@@ -1000,7 +1000,7 @@
 
           <div class="form-group">
             <label class="form-label">Stream <span class="req">*</span></label>
-            <select name="stream" class="form-select" required>
+            <select name="stream" id="stream_select" class="form-select" required>
               <option value="">Select Stream</option>
               {% for s in streams %}
               <option value="{{ s }}">{{ s }}</option>
@@ -1448,15 +1448,38 @@ function switchSection(section) {
       // Update grade dropdown
       var gradeSelect = document.querySelector('select[name="class_name"]');
       if (gradeSelect) {
-        var current = gradeSelect.value;
         gradeSelect.innerHTML = '<option value="">Select Form / Grade</option>';
         data.grades.forEach(function(g) {
           var opt = document.createElement('option');
           opt.value = g; opt.textContent = g;
-          if (g === current) opt.selected = true;
           gradeSelect.appendChild(opt);
         });
       }
+      // Clear stream dropdown
+      var streamSelect = document.getElementById('stream_select');
+      if (streamSelect) {
+        streamSelect.innerHTML = '<option value="">Select Stream</option>';
+      }
+    });
+}
+
+function onGradeChange(el) {
+  var grade = el.value;
+  var section = document.getElementById('school_section_field').value;
+  var streamSelect = document.getElementById('stream_select');
+  if (!grade) {
+    streamSelect.innerHTML = '<option value="">Select Stream</option>';
+    return;
+  }
+  fetch('{% url "get_streams_for_grade" %}?grade=' + encodeURIComponent(grade) + '&section=' + section)
+    .then(r => r.json())
+    .then(data => {
+      streamSelect.innerHTML = '<option value="">Select Stream</option>';
+      data.streams.forEach(function(s) {
+        var opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        streamSelect.appendChild(opt);
+      });
     });
 }
 </script>

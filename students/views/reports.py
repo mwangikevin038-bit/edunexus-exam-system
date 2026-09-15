@@ -1232,10 +1232,325 @@ def report_card_poll_status(request):
     })
 
 
-def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
+def _build_merit_list_from_snapshots(
+    request, school, grade, stream, exam,
+    snapshots, actual_streams, is_combined,
+):
+    """Build merit list context from pre-computed snapshots (fast path).
+
+    Matches the live computation path exactly:
+    - PLV recomputed from total_marks (not read from ExamSummary)
+    - Gender analysis merged across all snapshots for combined streams
+    - Grade breakdown computed from snapshot student_data (no DB hit)
+    - total_score uses raw accumulated sum
+    - active_sub resolved identically to live path
+    """
+    from .constants import (
+        ORDERED_LEVELS, PRIMARY_PERF_LEVELS,
+        PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_SHORT_MAP,
+        LOWER_PRIMARY_SUBJECT_SHORT_MAP, sort_subjects,
+    )
+    from .helpers import get_performance_level
+    from .exams import _get_primary_performance
+    from ..models import Student, ExamResultSnapshot, Stream
+
+    section = exam.school_section or 'JSS'
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
+
+    # Resolve active_sub identically to live path
+    if is_lower_primary:
+        active_sub = 'LOWER'
+    elif is_primary:
+        active_sub = exam.sub_section or 'UPPER'
+        if active_sub not in ('LOWER', 'UPPER'):
+            active_sub = 'UPPER'
+    else:
+        active_sub = None
+
+    if is_lower_primary or (is_primary and active_sub == 'LOWER'):
+        subject_map = LOWER_PRIMARY_SUBJECT_SHORT_MAP
+    elif is_primary:
+        subject_map = PRIMARY_SUBJECT_SHORT_MAP
+    else:
+        subject_map = SUBJECT_SHORT_MAP
+
+    active_levels = PRIMARY_PERF_LEVELS if is_primary else ORDERED_LEVELS
+
+    # ── Load ALL snapshots for this grade (not just current stream) ─────
+    # Grade breakdown and gender analysis need data from all streams.
+    all_streams = sorted(set(
+        Stream.all_objects.filter(school=school, grade__name=grade)
+        .values_list('name', flat=True)
+    )) if not actual_streams else actual_streams
+    # For single-stream view, still load all streams for grade breakdown
+    all_snapshots = []
+    for s_name in all_streams:
+        snap = ExamResultSnapshot.get_latest(
+            school, exam.term, exam.year, exam.name, grade, s_name,
+        )
+        if snap:
+            all_snapshots.append(snap)
+
+    # Merge published subjects across all snapshots
+    merged_subjects = {}
+    for snap in all_snapshots:
+        for code, data in snap.broadsheet_data.items():
+            if code not in merged_subjects:
+                merged_subjects[code] = data
+
+    published_subjects = sort_subjects([
+        (code, subject_map.get(code, data.get('subject_name', code)))
+        for code, data in merged_subjects.items()
+    ])
+
+    # Merge student data across all snapshots (for grade breakdown)
+    # JSON serialization stores keys as strings; convert to int for lookup
+    all_student_data = {}
+    for snap in all_snapshots:
+        for k, v in snap.report_card_data.items():
+            all_student_data[int(k)] = v
+
+    # ── Broadsheet rows (filtered to current stream only) ──────────────
+    students = Student.all_objects.filter(
+        school=school, class_name=grade,
+        stream__in=actual_streams if is_combined else [stream],
+        is_active=True,
+    ).order_by('admission_no')
+
+    broadsheet = []
+    for student in students:
+        s_data = all_student_data.get(student.id, {})
+        if not s_data:
+            continue
+
+        total_marks = s_data.get('total_marks', 0)
+
+        # Recompute PLV from total_marks (matches live path exactly)
+        total_level, total_pts = get_performance_level(
+            total_marks,
+            sub_section=active_sub,
+            is_total_calculation=True,
+            school=school,
+            section=section,
+        )
+
+        marks = s_data.get('marks', {})
+        row_scores = []
+        for code, short in published_subjects:
+            m = marks.get(code)
+            if m:
+                row_scores.append({'score': m['score'], 'level': m['level'], 'subject_id': m.get('subject_id')})
+            else:
+                row_scores.append({'score': '-', 'level': '-', 'subject_id': None})
+
+        broadsheet.append({
+            'student': student,
+            'scores': row_scores,
+            'tps': s_data.get('total_points', 0),
+            'total': total_marks,
+            'plv': total_level,
+        })
+
+    broadsheet.sort(key=lambda x: (-x['total'], -x['tps']))
+    for i, row in enumerate(broadsheet, start=1):
+        row['position'] = i
+
+    # ── Analysis rows from snapshot subject_data ───────────────────────
+    analysis_rows = []
+    for code, short in published_subjects:
+        data = merged_subjects.get(code, {})
+        analysis_rows.append({
+            'short': short,
+            'entries': data.get('student_count', 0),
+            'total_score': data.get('total_score', 0),
+            'mean_score': data.get('mean_score', data.get('class_average', 0)),
+            'mean_points': data.get('mean_points', 0),
+            'performance_text': '—',
+            'distribution': data.get('distribution', {lvl: 0 for lvl in active_levels}),
+            'teacher_name': data.get('teacher_name', '—'),
+        })
+        if analysis_rows[-1]['entries'] > 0:
+            if is_primary:
+                txt, pts = _get_primary_performance(
+                    analysis_rows[-1]['mean_score'], school=school, section=section,
+                    sub_section=active_sub,
+                )
+            else:
+                txt, pts = get_performance_level(
+                    analysis_rows[-1]['mean_score'],
+                    sub_section=active_sub,
+                    school=school, section=section,
+                )
+            analysis_rows[-1]['performance_text'] = txt
+            analysis_rows[-1]['mean_points'] = round(pts, 4)
+
+    # ── Grade breakdown from snapshot student_data (no DB hit) ─────────
+    grade_breakdown_rows = []
+    seen_streams = sorted(set(
+        s_data.get('stream', '') for s_data in all_student_data.values()
+    ))
+    ov_entries = 0
+    ov_total_marks = 0
+    ov_total_subj_count = 0
+    ov_dist = {lvl: 0 for lvl in active_levels}
+
+    for s_name in seen_streams:
+        entries = 0
+        total_marks = 0
+        total_subj_count = 0
+        dist = {lvl: 0 for lvl in active_levels}
+        for s_data in all_student_data.values():
+            if s_data.get('stream', '') != s_name:
+                continue
+            tm = s_data.get('total_marks', 0)
+            tp = s_data.get('total_points', 0)
+            if tm == 0 and tp == 0:
+                continue
+            entries += 1
+            total_marks += tm
+            total_subj_count += s_data.get('subject_count', 0)
+            plv = (s_data.get('overall_plv') or '-').strip().upper()
+            if plv in dist:
+                dist[plv] += 1
+
+        mean_m = round(total_marks / total_subj_count, 1) if total_subj_count else 0
+        mean_p = round(
+            sum(s_data.get('mean_points', 0) for s_data in all_student_data.values()
+                if s_data.get('stream', '') == s_name
+                and (s_data.get('total_marks', 0) != 0 or s_data.get('total_points', 0) != 0))
+            / entries, 4
+        ) if entries else 0
+        if entries:
+            if is_primary:
+                plv_txt, _ = _get_primary_performance(mean_m, school=school, section=section, sub_section=active_sub)
+            else:
+                plv_txt, _ = get_performance_level(mean_m, sub_section=active_sub, school=school, section=section)
+        else:
+            plv_txt = '—'
+        grade_breakdown_rows.append({
+            'label': f'{grade} {s_name}', 'dist': dist, 'entries': entries,
+            'mean_score': mean_m, 'mean_points': mean_p, 'performance_text': plv_txt,
+        })
+        ov_entries += entries
+        ov_total_marks += total_marks
+        ov_total_subj_count += total_subj_count
+        for lvl in active_levels:
+            ov_dist[lvl] += dist[lvl]
+
+    ov_mean = round(ov_total_marks / ov_total_subj_count, 1) if ov_total_subj_count else 0
+    ov_pts = round(
+        sum(s_data.get('mean_points', 0) for s_data in all_student_data.values()
+            if (s_data.get('total_marks', 0) != 0 or s_data.get('total_points', 0) != 0))
+        / ov_entries, 4
+    ) if ov_entries else 0
+    if ov_entries:
+        if is_primary:
+            ov_plv, _ = _get_primary_performance(ov_mean, school=school, section=section, sub_section=active_sub)
+        else:
+            ov_plv, _ = get_performance_level(ov_mean, sub_section=active_sub, school=school, section=section)
+    else:
+        ov_plv = '—'
+    grade_breakdown_rows.append({
+        'label': grade, 'dist': ov_dist, 'entries': ov_entries,
+        'mean_score': ov_mean, 'mean_points': ov_pts, 'performance_text': ov_plv, 'is_overall': True,
+    })
+
+    # ── Gender rows — merged across ALL snapshots ──────────────────────
+    merged_gender = {}
+    for snap in all_snapshots:
+        for gender_label in ['Girls', 'Boys']:
+            gd = snap.analysis_data.get('gender_analysis', {}).get(gender_label, {})
+            if gender_label not in merged_gender:
+                merged_gender[gender_label] = {
+                    'dist': {lvl: 0 for lvl in active_levels},
+                    'entries': 0,
+                    'total_marks': 0,
+                    'total_subj_count': 0,
+                    'pts_sum': 0,
+                }
+            mg = merged_gender[gender_label]
+            mg['entries'] += gd.get('entries', 0)
+            for lvl in active_levels:
+                mg['dist'][lvl] += gd.get('dist', {}).get(lvl, 0)
+
+    gender_rows = []
+    for gender_label in ['Girls', 'Boys']:
+        mg = merged_gender.get(gender_label, {'dist': {lvl: 0 for lvl in active_levels}, 'entries': 0})
+        g_mean = 0
+        g_plv = '—'
+        # Recompute from student_data for accuracy
+        g_entries = 0
+        g_total_marks = 0
+        g_total_subj_count = 0
+        g_dist = {lvl: 0 for lvl in active_levels}
+        for s_data in all_student_data.values():
+            g_key = 'Female' if gender_label == 'Girls' else 'Male'
+            if s_data.get('gender', '') != g_key:
+                continue
+            tm = s_data.get('total_marks', 0)
+            tp = s_data.get('total_points', 0)
+            if tm == 0 and tp == 0:
+                continue
+            g_entries += 1
+            g_total_marks += tm
+            g_total_subj_count += s_data.get('subject_count', 0)
+            plv = (s_data.get('overall_plv') or '-').strip().upper()
+            if plv in g_dist:
+                g_dist[plv] += 1
+        g_mean = round(g_total_marks / g_total_subj_count, 1) if g_total_subj_count else 0
+        g_pts = round(
+            sum(s_data.get('mean_points', 0) for s_data in all_student_data.values()
+                if s_data.get('gender', '') == ('Female' if gender_label == 'Girls' else 'Male')
+                and (s_data.get('total_marks', 0) != 0 or s_data.get('total_points', 0) != 0))
+            / g_entries, 4
+        ) if g_entries else 0
+        if g_entries:
+            if is_primary:
+                g_plv, _ = _get_primary_performance(g_mean, school=school, section=section, sub_section=active_sub)
+            else:
+                g_plv, _ = get_performance_level(g_mean, sub_section=active_sub, school=school, section=section)
+        gender_rows.append({
+            'label': gender_label,
+            'dist': g_dist,
+            'entries': g_entries,
+            'mean_score': g_mean,
+            'mean_points': g_pts,
+            'performance_text': g_plv,
+        })
+
+    # Section accent
+    section_colors = {'JSS': '#305CDE', 'PRIMARY': '#00674F', 'LOWER_PRIMARY': '#B45309'}
+    sec = exam.school_section or 'JSS'
+    if sec == 'PRIMARY' and exam.sub_section == 'LOWER':
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif sec == 'PRIMARY':
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors.get(sec, '#305CDE')
+
+    return {
+        'broadsheet': broadsheet,
+        'published_subjects': published_subjects,
+        'ordered_levels': active_levels,
+        'student_count': len(broadsheet),
+        'selected_year': exam.year,
+        'selected_term': exam.term,
+        'selected_exam': exam.name,
+        'is_primary': is_primary,
+        'analysis_rows': analysis_rows,
+        'grade_breakdown_rows': grade_breakdown_rows,
+        'gender_rows': gender_rows,
+        'section_accent': section_accent,
+    }
+
+
+def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_live=False):
     """
     Build the broadsheet data for the inline merit list display.
     Returns dict with broadsheet, published_subjects, ordered_levels, etc.
+    Tries the snapshot first for speed; falls back to live computation.
+    Set force_live=True to skip snapshot and always use live computation.
     """
     from .constants import (
         ORDERED_LEVELS,
@@ -1251,9 +1566,10 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
         calculate_primary_plv,
         get_performance_level,
         get_published_subject_codes,
+        get_broadsheet_from_snapshot,
         user_has_main_school_admin_override,
     )
-    from ..models import ExamSummary, Subject
+    from ..models import ExamSummary, Subject, ExamResultSnapshot
 
     is_admin_view = user_has_main_school_admin_override(request.user)
     section = exam.school_section or 'JSS'
@@ -1269,6 +1585,25 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam):
             Stream.all_objects.filter(school=school, grade__name=grade)
             .values_list('name', flat=True).order_by('name')
         )
+
+    # ── Try snapshot path first (much faster) ──────────────────────────
+    if not force_live:
+        snapshot_streams = actual_streams if is_combined else [stream]
+        all_snapshots = []
+        for s_name in snapshot_streams:
+            snap = ExamResultSnapshot.get_latest(
+                school, exam.term, exam.year, exam.name, grade, s_name,
+            )
+            if snap:
+                all_snapshots.append(snap)
+
+        if all_snapshots and len(all_snapshots) == len(snapshot_streams):
+            return _build_merit_list_from_snapshots(
+                request, school, grade, stream, exam,
+                all_snapshots, actual_streams, is_combined,
+            )
+
+    # ── Fallback: live computation ─────────────────────────────────────
 
     # Map workspace section to active_sub for Primary
     if is_lower_primary:

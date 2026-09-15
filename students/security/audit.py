@@ -118,7 +118,7 @@ def _audit_action(instance, action, changes=None):
 
 
 def connect_audit_signals():
-    from students.models import Exam, Mark
+    from students.models import Exam, Mark, Student
 
     register_audit_model(
         Mark,
@@ -142,12 +142,17 @@ def connect_audit_signals():
         fields=["name", "term", "year", "status", "integrity_checksum"],
     )
     register_audit_model(
+        Student,
+        fields=["name", "stream", "class_name", "admission_no", "is_active"],
+    )
+    register_audit_model(
         User,
         fields=["username", "email", "first_name", "last_name", "is_active", "is_staff", "is_superuser"],
     )
 
     @receiver(pre_save, sender=Mark)
     @receiver(pre_save, sender=Exam)
+    @receiver(pre_save, sender=Student)
     @receiver(pre_save, sender=User)
     def capture_pre_save_state(sender, instance, **kwargs):
         if not instance.pk:
@@ -155,13 +160,14 @@ def connect_audit_signals():
             return
         tracked = AUDITED_MODELS.get(sender)
         try:
-            previous = sender.objects.get(pk=instance.pk)
+            previous = sender.all_objects.get(pk=instance.pk) if hasattr(sender, 'all_objects') else sender.objects.get(pk=instance.pk)
             instance._audit_previous = model_to_dict(previous, fields=tracked)
         except sender.DoesNotExist:
             instance._audit_previous = {}
 
     @receiver(post_save, sender=Mark)
     @receiver(post_save, sender=Exam)
+    @receiver(post_save, sender=Student)
     @receiver(post_save, sender=User)
     def audit_post_save(sender, instance, created, **kwargs):
         tracked = AUDITED_MODELS.get(sender)
@@ -179,6 +185,7 @@ def connect_audit_signals():
 
     @receiver(post_delete, sender=Mark)
     @receiver(post_delete, sender=Exam)
+    @receiver(post_delete, sender=Student)
     @receiver(post_delete, sender=User)
     def audit_post_delete(sender, instance, **kwargs):
         _audit_action(instance, "delete")

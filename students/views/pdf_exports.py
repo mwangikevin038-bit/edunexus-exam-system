@@ -524,98 +524,168 @@ def download_broadsheet_pdf(request):
     published_subjects      = []
 
     if year and term and grade and stream and exam_type:
-        published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None, is_admin=is_admin_view)
-        published_subject_count = len(published_subject_codes)
-        from ..models import Subject
-        published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+        # ── Try snapshot first (zero DB queries) ──────────────────────────
+        from ..models import ExamResultSnapshot, Exam
+        _exam_obj = Exam.all_objects.filter(
+            school=school, name=exam_type, term=term, year=year,
+        ).first()
+        _snap = ExamResultSnapshot.get_latest(
+            school, term, year, exam_type, grade, stream,
+        ) if _exam_obj else None
 
-        # Always show ALL subjects as columns (even without marks yet).
-        subject_label_map = {
-            s.code: (subject_map.get(s.code) or s.name or s.code)
-            for s in published_subjects_qs
-        }
-        published_subjects = sort_subjects([
-            (code, subject_label_map.get(code, subject_map.get(code, code)))
-            for code in published_subject_codes
-        ])
-        for _code, short in published_subjects:
-            analysis_data.setdefault(short, {
-                'entries': 0, 'total_score': 0, 'mean_score': 0.0,
-                'distribution': {lvl: 0 for lvl in active_levels},
-                'teacher_name': '—',
-            })
+        if _snap and _snap.report_card_data and _snap.broadsheet_data:
+            # Read everything from snapshot
+            _merged_subjects = _snap.broadsheet_data
+            published_subject_codes = list(_merged_subjects.keys())
+            published_subject_count = len(published_subject_codes)
 
-        for a in SubjectAssignment.all_objects.filter(
-            school=school, class_name=grade, stream=stream, is_active=True
-        ).select_related('teacher_profile__user', 'subject'):
-            code = a.subject.code if a.subject else None
-            if code:
-                short = subject_label_map.get(code, subject_map.get(code, code))
+            from ..models import Subject
+            published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+            subject_label_map = {
+                s.code: (subject_map.get(s.code) or s.name or s.code)
+                for s in published_subjects_qs
+            }
+            published_subjects = sort_subjects([
+                (code, subject_label_map.get(code, subject_map.get(code, code)))
+                for code in published_subject_codes
+            ])
+
+            # Build analysis data from snapshot subject_data
+            for code, short in published_subjects:
+                data = _merged_subjects.get(code, {})
+                analysis_data[short] = {
+                    'entries': data.get('student_count', 0),
+                    'total_score': data.get('total_score', 0),
+                    'mean_score': data.get('mean_score', data.get('class_average', 0)),
+                    'distribution': data.get('distribution', {lvl: 0 for lvl in active_levels}),
+                    'teacher_name': data.get('teacher_name', '—'),
+                }
+
+            # Build broadsheet rows from snapshot student_data
+            _student_data = _snap.report_card_data
+            students = Student.all_objects.filter(
+                school=school, class_name=grade, stream=stream, is_active=True,
+            ).order_by('admission_no')
+            student_count = students.count()
+
+            for student in students:
+                s_data = _student_data.get(str(student.id)) or _student_data.get(student.id, {})
+                if not s_data:
+                    continue
+                marks = s_data.get('marks', {})
+                row_scores = []
+                for code, short in published_subjects:
+                    m = marks.get(code)
+                    if m:
+                        row_scores.append({'score': m['score'], 'level': m['level']})
+                    else:
+                        row_scores.append({'score': '-', 'level': '-'})
+                broadsheet.append({
+                    'student': student,
+                    'scores': row_scores,
+                    'tps': s_data.get('total_points', 0),
+                    'total': s_data.get('total_marks', 0),
+                    'plv': s_data.get('overall_plv', '-'),
+                })
+
+            broadsheet.sort(key=lambda x: (-x['total'], -x['tps']))
+            analysis_rows = [
+                {'short': short, **analysis_data[short]} for code, short in published_subjects
+            ]
+        else:
+            # ── Fallback: live computation from Mark queries ──────────────
+            published_subject_codes = get_published_subject_codes(grade, stream, year, term, exam_type, sub_section=active_sub if is_primary else None, is_admin=is_admin_view)
+            published_subject_count = len(published_subject_codes)
+            from ..models import Subject
+            published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
+
+            # Always show ALL subjects as columns (even without marks yet).
+            subject_label_map = {
+                s.code: (subject_map.get(s.code) or s.name or s.code)
+                for s in published_subjects_qs
+            }
+            published_subjects = sort_subjects([
+                (code, subject_label_map.get(code, subject_map.get(code, code)))
+                for code in published_subject_codes
+            ])
+            for _code, short in published_subjects:
                 analysis_data.setdefault(short, {
                     'entries': 0, 'total_score': 0, 'mean_score': 0.0,
                     'distribution': {lvl: 0 for lvl in active_levels},
                     'teacher_name': '—',
                 })
-                analysis_data[short]['teacher_name'] = a.teacher_profile.get_full_title() if a.teacher_profile else '—'
 
-        marks_prefetch = Prefetch(
-            'marks',
-            queryset=Mark.all_objects.filter(
-                school=school,
-                year=year, term=term, exam_type=exam_type,
-                subject__in=published_subjects_qs,
-            ).order_by('subject', '-date_recorded', '-id'),
-            to_attr='cached_marks',
-        )
-        students      = Student.all_objects.filter(school=school, class_name=grade, stream=stream, is_active=True).prefetch_related(marks_prefetch)
-        student_count = students.count()
+            for a in SubjectAssignment.all_objects.filter(
+                school=school, class_name=grade, stream=stream, is_active=True
+            ).select_related('teacher_profile__user', 'subject'):
+                code = a.subject.code if a.subject else None
+                if code:
+                    short = subject_label_map.get(code, subject_map.get(code, code))
+                    analysis_data.setdefault(short, {
+                        'entries': 0, 'total_score': 0, 'mean_score': 0.0,
+                        'distribution': {lvl: 0 for lvl in active_levels},
+                        'teacher_name': '—',
+                    })
+                    analysis_data[short]['teacher_name'] = a.teacher_profile.get_full_title() if a.teacher_profile else '—'
 
-        for student in students:
-            marks_dict   = {}
-            for mark in student.cached_marks:
-                marks_dict.setdefault(mark.subject.code, mark)
-            row_scores   = []
-            total_marks  = 0
-            total_points = 0
-            assessed_subjects = 0
+            marks_prefetch = Prefetch(
+                'marks',
+                queryset=Mark.all_objects.filter(
+                    school=school,
+                    year=year, term=term, exam_type=exam_type,
+                    subject__in=published_subjects_qs,
+                ).order_by('subject', '-date_recorded', '-id'),
+                to_attr='cached_marks',
+            )
+            students      = Student.all_objects.filter(school=school, class_name=grade, stream=stream, is_active=True).prefetch_related(marks_prefetch)
+            student_count = students.count()
 
-            for code, short in published_subjects:
-                m = marks_dict.get(code)
-                if m and m.score is not None:
-                    if m.is_absent:
-                        row_scores.append({'score': 'AB', 'level': 'AB'})
+            for student in students:
+                marks_dict   = {}
+                for mark in student.cached_marks:
+                    marks_dict.setdefault(mark.subject.code, mark)
+                row_scores   = []
+                total_marks  = 0
+                total_points = 0
+                assessed_subjects = 0
+
+                for code, short in published_subjects:
+                    m = marks_dict.get(code)
+                    if m and m.score is not None:
+                        if m.is_absent:
+                            row_scores.append({'score': 'AB', 'level': 'AB'})
+                        else:
+                            level, points = _get_primary_performance(m.score, school=school, section=section, sub_section=active_sub if is_primary else None) if is_primary else get_performance_level(m.score)
+                            row_scores.append({'score': m.score, 'level': level})
+                            total_marks  += m.score
+                            total_points += points
+                            assessed_subjects += 1
+                        if not m.is_absent:
+                            analysis_data[short]['entries']     += 1
+                            analysis_data[short]['total_score'] += m.score
+                            if level in analysis_data[short]['distribution']:
+                                analysis_data[short]['distribution'][level] += 1
                     else:
-                        level, points = _get_primary_performance(m.score, school=school, section=section, sub_section=active_sub if is_primary else None) if is_primary else get_performance_level(m.score)
-                        row_scores.append({'score': m.score, 'level': level})
-                        total_marks  += m.score
-                        total_points += points
-                        assessed_subjects += 1
-                    if not m.is_absent:
-                        analysis_data[short]['entries']     += 1
-                        analysis_data[short]['total_score'] += m.score
-                        if level in analysis_data[short]['distribution']:
-                            analysis_data[short]['distribution'][level] += 1
-                else:
-                    row_scores.append({'score': '-', 'level': '-'})
+                        row_scores.append({'score': '-', 'level': '-'})
 
-            broadsheet.append({
-                'student': student,
-                'scores':  row_scores,
-                'tps':     total_points,
-                'total':   total_marks,
-                'plv':     calculate_primary_plv(total_marks, assessed_subjects, sub_section=active_sub if is_primary else None, school=school, section=section) if is_primary else calculate_broadsheet_plv(total_marks, total_points),
-            })
+                broadsheet.append({
+                    'student': student,
+                    'scores':  row_scores,
+                    'tps':     total_points,
+                    'total':   total_marks,
+                    'plv':     calculate_primary_plv(total_marks, assessed_subjects, sub_section=active_sub if is_primary else None, school=school, section=section) if is_primary else calculate_broadsheet_plv(total_marks, total_points),
+                })
 
-        broadsheet.sort(key=lambda x: (-x['total'], -x['tps']))
+            broadsheet.sort(key=lambda x: (-x['total'], -x['tps']))
 
-        for short, data in analysis_data.items():
-            if data['entries'] > 0:
-                data['mean_score'] = round(data['total_score'] / data['entries'], 2)
+            for short, data in analysis_data.items():
+                if data['entries'] > 0:
+                    data['mean_score'] = round(data['total_score'] / data['entries'], 2)
 
-        # Build ordered analysis rows for only published subjects, in display order
-        analysis_rows = [
-            {'short': short, **analysis_data[short]} for code, short in published_subjects
-        ]
+            # Build ordered analysis rows for only published subjects, in display order
+            analysis_rows = [
+                {'short': short, **analysis_data[short]} for code, short in published_subjects
+            ]
     else:
         analysis_rows = []
 

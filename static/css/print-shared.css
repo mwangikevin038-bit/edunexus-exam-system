@@ -763,20 +763,20 @@ html, body {
 }
 .summary-table {
     width: 100% !important;
-    table-layout: fixed !important;
+    table-layout: auto !important;
     border-collapse: collapse !important;
-    font-size: 12pt !important;
+    font-size: 11.5pt !important;
     font-family: "Times New Roman", Times, serif !important;
     border: 1px solid #000 !important;
     border-radius: 0 !important;
     overflow: visible !important;
 }
 .summary-table th {
-    background-color: #B6B6B5 !important;
+    background-color: #e2e8f0 !important;
     color: #000 !important;
     font-weight: 800 !important;
     text-transform: uppercase !important;
-    font-size: 12pt !important;
+    font-size: 11.5pt !important;
     border: 1px solid #000 !important;
     padding: 6px 5px !important;
     white-space: nowrap !important;
@@ -786,8 +786,17 @@ html, body {
     text-align: center !important;
     padding: 5px 5px !important;
     font-weight: 600 !important;
-    font-size: 12pt !important;
+    font-size: 11.5pt !important;
     white-space: nowrap !important;
+}
+.summary-table td:last-child,
+.summary-table th:last-child {
+    white-space: normal !important;
+    word-break: break-word !important;
+}
+.summary-table td:nth-last-child(2),
+.summary-table th:nth-last-child(2) {
+    white-space: normal !important;
 }
 .summary-table td.sub-lbl {
     text-align: left !important;

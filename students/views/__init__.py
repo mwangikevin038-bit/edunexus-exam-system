@@ -73,6 +73,7 @@ from .students_mgmt import (  # noqa: F401
     teacher_report_forms,
     teacher_report_forms_display,
     get_section_info,
+    get_streams_for_grade,
     printouts_hub,
     class_list_printout,
     api_streams_for_grade_printout,

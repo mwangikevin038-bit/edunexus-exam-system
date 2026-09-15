@@ -76,13 +76,31 @@ def invalidate_report_caches(school_id, class_name, stream, year, term, assessme
 def get_cached_class_averages(school, class_name, stream, year, term, assessment, published_subjects_qs):
     """
     Return {subject_code: avg_score} for a class/stream, cached in Redis.
-    Only hits the DB on cache miss.
+    Tries the snapshot first (zero DB); falls back to Mark aggregation.
     """
     key = _class_avg_cache_key(school.pk, class_name, stream, year, term, assessment)
     cached = cache.get(key)
     if cached is not None:
         return cached
 
+    # ── Try snapshot first ──────────────────────────────────────────────
+    from ..models import ExamResultSnapshot, Exam
+    exam_obj = Exam.all_objects.filter(
+        school=school, name=assessment, term=term, year=year,
+    ).first()
+    if exam_obj:
+        snap = ExamResultSnapshot.get_latest(school, term, year, assessment, class_name, stream)
+        if snap and snap.broadsheet_data:
+            avg_map = {
+                code: data.get('class_average', data.get('mean_score', 0))
+                for code, data in snap.broadsheet_data.items()
+                if data.get('student_count', 0) > 0
+            }
+            if avg_map:
+                cache.set(key, avg_map, _CACHE_TTL)
+                return avg_map
+
+    # ── Fallback: live Mark aggregation ─────────────────────────────────
     class_subject_avgs = (
         Mark.all_objects.filter(
             school=school,
@@ -1047,14 +1065,20 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
 
     This snapshot stores:
     - Per-student totals, ranks, positions, PLVs (from ExamSummary)
+    - Per-student per-subject marks with levels (for merit list broadsheet)
     - Per-subject class averages, teacher names
     - Analysis data (gender counts, stream average)
 
-    The snapshot is used by broadsheet views. Report card views still use
-    build_report_card_context which reads from ExamSummary directly.
+    The snapshot is used by broadsheet views and the merit list. Report card
+    views still use build_report_card_context which reads from ExamSummary directly.
     """
     from django.utils import timezone
     from ..models import ExamResultSnapshot, ExamSummary, Mark, Subject, SubjectAssignment
+    from .exams import _get_primary_performance
+    from .grading_engine import prefetch_school_grading
+
+    # Ensure grading cache is populated before resolving levels
+    prefetch_school_grading(school)
 
     # 1. Get students
     students = list(
@@ -1110,15 +1134,36 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
         )
     }
 
-    # 6. Get subject assignments for teacher names
+    # Resolve section and sub_section early (needed by teacher query + grading)
+    section = sample.school_section or 'JSS'
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY'
+
+    if is_lower_primary:
+        sub_section = 'LOWER'
+    elif is_primary:
+        sub_section = exam.sub_section or 'UPPER'
+        if sub_section not in ('LOWER', 'UPPER'):
+            sub_section = 'UPPER'
+    else:
+        sub_section = None
+
+    # 6. Get subject assignments for teacher names (with section/sub_section filter)
+    sa_qs = SubjectAssignment.all_objects.filter(
+        school=school,
+        class_name=class_name,
+        stream=stream,
+        is_active=True,
+    ).select_related('teacher_profile', 'teacher_profile__user', 'subject')
+    if section == 'LOWER_PRIMARY':
+        sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section='LOWER')
+    elif is_primary:
+        sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section=sub_section)
+    elif section == 'JSS':
+        sa_qs = sa_qs.filter(school_section='JSS')
     assignments = {
         a.subject.code: a
-        for a in SubjectAssignment.all_objects.filter(
-            school=school,
-            class_name=class_name,
-            stream=stream,
-            is_active=True,
-        ).select_related('teacher_profile', 'teacher_profile__user', 'subject')
+        for a in sa_qs
         if a.subject
     }
 
@@ -1132,7 +1177,8 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
         else:
             class_averages[sub_code] = 0
 
-    # 8. Build per-student data
+    # 8. Build per-student data (including per-subject marks for broadsheet)
+
     student_data = {}
     for student in students:
         summary = summaries.get(student.id)
@@ -1148,11 +1194,33 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
                 total_points += mark.points or 0
                 subject_count += 1
 
+        # Build per-subject marks with levels for broadsheet display
+        marks_dict = {}
+        for mark in student_marks:
+            if mark.subject and mark.subject.code not in marks_dict:
+                if mark.is_absent:
+                    marks_dict[mark.subject.code] = {'score': 'AB', 'level': 'AB', 'subject_id': mark.subject_id}
+                elif mark.score is not None:
+                    if is_primary:
+                        lv, _ = _get_primary_performance(
+                            mark.score, school=school, section=section,
+                            sub_section=sub_section, subject_id=mark.subject_id,
+                        )
+                    else:
+                        lv, _ = get_performance_level(
+                            mark.score, sub_section=sub_section,
+                            subject_id=mark.subject_id, school=school, section=section,
+                        )
+                    marks_dict[mark.subject.code] = {'score': mark.score, 'level': lv, 'subject_id': mark.subject_id}
+                else:
+                    marks_dict[mark.subject.code] = {'score': '-', 'level': '-', 'subject_id': mark.subject_id}
+
         student_data[student.id] = {
             'student_id': student.id,
             'name': student.name,
             'admission_no': student.admission_no,
             'gender': student.gender,
+            'stream': student.stream or '',
             'total_marks': summary.total_marks if summary else total_marks,
             'total_points': summary.total_points if summary else total_points,
             'subject_count': summary.subject_count if summary else subject_count,
@@ -1160,32 +1228,110 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
             'overall_plv': summary.overall_plv if summary else '-',
             'stream_rank': summary.stream_rank if summary else 0,
             'grade_rank': summary.grade_rank if summary else 0,
+            'marks': marks_dict,
         }
 
-    # 9. Build subject summary data
+    # 9. Build subject summary data (with distributions for summary tables)
+    from .constants import ORDERED_LEVELS, PRIMARY_PERF_LEVELS
+    active_levels = PRIMARY_PERF_LEVELS if is_primary else ORDERED_LEVELS
+
     subject_data = {}
     for sub_code in published_subject_codes:
         assignment = assignments.get(sub_code)
         sub_marks = [m for m in all_marks if m.subject.code == sub_code]
         valid_scores = [m.score for m in sub_marks if not m.is_absent and m.score is not None]
 
+        # Build distribution for this subject
+        distribution = {lvl: 0 for lvl in active_levels}
+        for mark in sub_marks:
+            if mark.is_absent or mark.score is None:
+                continue
+            if is_primary:
+                lv, _ = _get_primary_performance(
+                    mark.score, school=school, section=section,
+                    sub_section=sub_section, subject_id=mark.subject_id,
+                )
+            else:
+                lv, _ = get_performance_level(
+                    mark.score, sub_section=sub_section,
+                    subject_id=mark.subject_id, school=school, section=section,
+                )
+            if lv in distribution:
+                distribution[lv] += 1
+
+        mean_score = round(sum(valid_scores) / len(valid_scores), 2) if valid_scores else 0
+        mean_points = round(sum(
+            get_performance_level(mark.score, sub_section=sub_section, subject_id=mark.subject_id, school=school, section=section)[1]
+            for mark in sub_marks if not mark.is_absent and mark.score is not None
+        ) / len(valid_scores), 4) if valid_scores else 0
+
         subject_data[sub_code] = {
             'subject_name': sub_marks[0].subject.name if sub_marks else '',
             'subject_code': sub_code,
             'teacher_name': assignment.teacher_profile.get_full_title() if assignment and assignment.teacher_profile else '',
             'class_average': class_averages.get(sub_code, 0),
+            'total_score': sum(valid_scores),
             'highest': max(valid_scores) if valid_scores else 0,
             'lowest': min(valid_scores) if valid_scores else 0,
             'student_count': len(valid_scores),
             'absent_count': sum(1 for m in sub_marks if m.is_absent),
+            'distribution': distribution,
+            'mean_score': mean_score,
+            'mean_points': mean_points,
         }
 
     # 10. Build analysis data
+    # Gender distributions for Gender Summary table
+    marks_by_gender = {'Male': [], 'Female': []}
+    for mark in all_marks:
+        if mark.student_id:
+            for sid, sdata in student_data.items():
+                if sid == mark.student_id:
+                    g = sdata.get('gender', '')
+                    if g in marks_by_gender:
+                        marks_by_gender[g].append(mark)
+                    break
+
+    gender_analysis = {}
+    for gender_label, gender_key in [('Girls', 'Female'), ('Boys', 'Male')]:
+        g_marks = marks_by_gender.get(gender_key, [])
+        g_entries = len([m for m in g_marks if not m.is_absent and m.score is not None])
+        g_total = sum(m.score for m in g_marks if not m.is_absent and m.score is not None)
+        g_dist = {lvl: 0 for lvl in active_levels}
+        g_pts_total = 0
+        for m in g_marks:
+            if m.is_absent or m.score is None:
+                continue
+            if is_primary:
+                lv, pts = _get_primary_performance(m.score, school=school, section=section, sub_section=sub_section, subject_id=m.subject_id)
+            else:
+                lv, pts = get_performance_level(m.score, sub_section=sub_section, subject_id=m.subject_id, school=school, section=section)
+            if lv in g_dist:
+                g_dist[lv] += 1
+            g_pts_total += pts
+        g_mean = round(g_total / g_entries, 1) if g_entries else 0
+        g_pts = round(g_pts_total / g_entries, 4) if g_entries else 0
+        # Determine overall PLV from mean points
+        g_plv = '—'
+        if g_entries > 0:
+            if is_primary:
+                g_plv, _ = _get_primary_performance(g_mean, school=school, section=section, sub_section=sub_section)
+            else:
+                g_plv, _ = get_performance_level(g_mean, sub_section=sub_section, school=school, section=section)
+        gender_analysis[gender_label] = {
+            'dist': g_dist,
+            'entries': g_entries,
+            'mean_score': g_mean,
+            'mean_points': g_pts,
+            'performance_text': g_plv,
+        }
+
     analysis = {
         'total_students': len(students),
         'boys_count': sum(1 for s in students if s.gender == 'Male'),
         'girls_count': sum(1 for s in students if s.gender == 'Female'),
         'stream_average': round(sum(class_averages.values()) / len(class_averages), 1) if class_averages else 0,
+        'gender_analysis': gender_analysis,
     }
 
     # 11. Save snapshot
@@ -1248,6 +1394,175 @@ def get_exam_snapshot(school, exam, class_name, stream):
         class_name=class_name,
         stream=stream,
     )
+
+
+def build_analysis_from_snapshot(school, exam):
+    """
+    Build analysis page data from snapshots for ALL streams in the exam.
+    Returns a dict with keys: streams, students_who_sat, student_ids, grade_name,
+    subject_perf, stream_stats, grade_breakdown, overall_plv, subject_breakdowns,
+    gender_streams, total_girls, total_boys.
+    Returns None if no snapshots exist.
+    """
+    from ..models import ExamResultSnapshot, Student
+    from collections import Counter
+
+    # Find all snapshots for this exam
+    snapshots = list(ExamResultSnapshot.all_objects.filter(
+        school=school, term=exam.term, year=exam.year, exam_name=exam.name,
+    ).order_by('class_name', 'stream'))
+
+    if not snapshots:
+        return None
+
+    # Merge all student data across streams
+    all_student_data = {}
+    for snap in snapshots:
+        for k, v in snap.report_card_data.items():
+            all_student_data[int(k)] = v
+
+    if not all_student_data:
+        return None
+
+    # Get distinct streams and class names
+    streams = sorted(set(s.get('stream', '') for s in all_student_data.values() if s.get('stream')))
+    class_names = sorted(set(snap.class_name for snap in snapshots))
+    grade_name = class_names[0] if class_names else ''
+
+    # Students who sat (have summary data)
+    student_ids = list(all_student_data.keys())
+    students_who_sat = len(student_ids)
+
+    # ── Subject performance from broadsheet_data ────────────────────────
+    merged_subjects = {}
+    for snap in snapshots:
+        for code, data in snap.broadsheet_data.items():
+            if code not in merged_subjects:
+                merged_subjects[code] = data
+
+    # Resolve subject codes to names
+    from ..models import Subject
+    subject_code_to_name = {}
+    for subj in Subject.all_objects.filter(school=school):
+        subject_code_to_name[str(subj.code)] = subj.name
+
+    subject_perf = {}
+    for code, data in merged_subjects.items():
+        subj_name = subject_code_to_name.get(str(code), str(code))
+        subject_perf[subj_name] = {
+            'total_points': data.get('mean_points', 0) * data.get('student_count', 0),
+            'count': data.get('student_count', 0),
+            'total_score': data.get('total_score', 0),
+            'plv_counts': data.get('distribution', {}),
+        }
+
+    # ── Stream stats from per-stream student data ───────────────────────
+    stream_stats = {}
+    for s_name in streams:
+        stream_students = {sid: d for sid, d in all_student_data.items() if d.get('stream') == s_name}
+        entries = len(stream_students)
+        if entries == 0:
+            continue
+        total_pts = sum(d.get('total_points', 0) for d in stream_students.values())
+        total_marks = sum(d.get('total_marks', 0) for d in stream_students.values())
+        # Count total subjects across all students
+        total_subj = sum(d.get('subject_count', 0) for d in stream_students.values())
+        mean_pts = round(total_pts / entries, 4) if entries else 0
+        mean_marks = round(total_marks / total_subj, 1) if total_subj else 0
+        stream_stats[s_name] = {
+            'mean_points': mean_pts,
+            'mean_marks': mean_marks,
+            'entries': entries,
+            '_total_pts': total_pts,
+            '_total_marks': total_marks,
+            '_count': entries,
+        }
+
+    # ── Grade breakdown (per-stream PLV distribution) ───────────────────
+    breakdown_levels = ['EE', 'ME', 'AE', 'BE']
+    grade_breakdown = []
+    total_row = {'form': grade_name, 'entries': 0, 'X': 0, 'Y': 0}
+    total_row.update({lvl: 0 for lvl in breakdown_levels})
+    total_row.update({'mean_marks': 0, 'mm_dev': 0, 'mean_points': 0, 'mp_dev': 0, 'performance_level': '—'})
+
+    for s_name in streams:
+        stream_students = {sid: d for sid, d in all_student_data.items() if d.get('stream') == s_name}
+        entries = len(stream_students)
+        if entries == 0:
+            continue
+        dist = Counter()
+        for d in stream_students.values():
+            plv = (d.get('overall_plv') or '-').strip().upper()
+            dist[plv] += 1
+        total_marks = sum(d.get('total_marks', 0) for d in stream_students.values())
+        total_subj = sum(d.get('subject_count', 0) for d in stream_students.values())
+        total_pts = sum(d.get('total_points', 0) for d in stream_students.values())
+        mean_m = round(total_marks / total_subj, 1) if total_subj else 0
+        mean_p = round(total_pts / entries, 4) if entries else 0
+
+        row = {
+            'form': f'{grade_name} {s_name}',
+            'entries': entries,
+            'X': 0, 'Y': 0,
+            'mean_marks': mean_m,
+            'mean_points': mean_p,
+        }
+        for lvl in breakdown_levels:
+            row[lvl] = dist.get(lvl, 0)
+        grade_breakdown.append(row)
+
+        total_row['entries'] += entries
+        total_row['mean_marks'] += total_marks
+        total_row['mean_points'] += total_pts
+        for lvl in breakdown_levels:
+            total_row[lvl] += row[lvl]
+
+    # Overall row
+    if total_row['entries'] > 0:
+        total_row['mean_marks'] = round(total_row['mean_marks'] / sum(d.get('subject_count', 0) for d in all_student_data.values() or [1]), 1)
+        total_row['mean_points'] = round(total_row['mean_points'] / total_row['entries'], 4)
+
+    # Overall PLV from most common
+    all_plvs = [(d.get('overall_plv') or '-').strip().upper() for d in all_student_data.values()]
+    plv_counter = Counter(all_plvs)
+    overall_plv = plv_counter.most_common(1)[0][0] if plv_counter else '—'
+
+    # ── Subject breakdowns (per-subject, per-stream) ────────────────────
+    subject_breakdowns = {}
+    for code, data in merged_subjects.items():
+        subj_name = subject_code_to_name.get(str(code), str(code))
+        subject_breakdowns[subj_name] = {
+            'rows': [],
+            'total': {'entries': data.get('student_count', 0), 'mean_marks': data.get('mean_score', 0)},
+        }
+
+    # ── Gender streams ──────────────────────────────────────────────────
+    gender_streams = {}
+    total_girls = 0
+    total_boys = 0
+    for s_name in streams:
+        stream_students = {sid: d for sid, d in all_student_data.items() if d.get('stream') == s_name}
+        girls = sum(1 for d in stream_students.values() if d.get('gender') == 'Female')
+        boys = sum(1 for d in stream_students.values() if d.get('gender') == 'Male')
+        gender_streams[s_name] = {'girls': girls, 'boys': boys}
+        total_girls += girls
+        total_boys += boys
+
+    return {
+        'streams': streams,
+        'students_who_sat': students_who_sat,
+        'student_ids': student_ids,
+        'grade_name': grade_name,
+        'subject_perf': subject_perf,
+        'stream_stats': stream_stats,
+        'grade_breakdown': grade_breakdown,
+        'total_row': total_row,
+        'overall_plv': overall_plv,
+        'subject_breakdowns': subject_breakdowns,
+        'gender_streams': gender_streams,
+        'total_girls': total_girls,
+        'total_boys': total_boys,
+    }
 
 
 # ── Snapshot-based report-card context builder ───────────────────────────────

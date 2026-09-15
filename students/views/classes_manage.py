@@ -1042,7 +1042,23 @@ def combine_streams(request, grade_id):
         students = Student.all_objects.filter(
             school=school, class_name=grade.name, stream__in=stream_names, is_active=True,
         )
+        # Audit: capture old streams before update
+        _old_streams = {s.id: s.stream for s in students}
         updated = students.update(previous_stream=models.F('stream'), stream=new_name)
+        # Log the stream changes
+        from students.models import SecurityAuditLog
+        for student_id, old_stream in _old_streams.items():
+            SecurityAuditLog.objects.create(
+                actor=request.user,
+                client_ip=request.META.get('REMOTE_ADDR'),
+                action='update',
+                target_model='students.student',
+                target_id=str(student_id),
+                target_fields=['stream'],
+                old_values={'stream': old_stream},
+                new_values={'stream': new_name},
+                school_id_snapshot=school.pk,
+            )
 
         # 2. Collect unique subjects BEFORE archiving (queryset re-evaluates after update)
         old_assignments = SubjectAssignment.all_objects.filter(
@@ -1290,6 +1306,20 @@ def split_streams(request, grade_id):
         for name in split_names:
             sids = groups[name]
             if sids:
+                # Audit: log stream changes for each student
+                from students.models import SecurityAuditLog
+                for sid in sids:
+                    SecurityAuditLog.objects.create(
+                        actor=request.user,
+                        client_ip=request.META.get('REMOTE_ADDR'),
+                        action='update',
+                        target_model='students.student',
+                        target_id=str(sid),
+                        target_fields=['stream'],
+                        old_values={'stream': target_stream},
+                        new_values={'stream': name},
+                        school_id_snapshot=school.pk,
+                    )
                 Student.all_objects.filter(id__in=sids).update(
                     stream=name, previous_stream=target_stream,
                 )

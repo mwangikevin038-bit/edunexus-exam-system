@@ -1073,8 +1073,9 @@ class MarkSubmission(SchoolScopedModel):
         ]
 
     def __str__(self):
+        subject_code = self.subject.code if self.subject else 'N/A'
         return (
-            f"{self.teacher} - {self.subject.code} - "
+            f"{self.teacher} - {subject_code} - "
             f"{self.class_name} {self.stream} - {self.exam_name} {self.term} {self.year}"
         )
 # -------------------- Class Teacher Master Comments Model --------------------
@@ -2071,3 +2072,78 @@ class RemovedStudent(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.admission_no}) — removed {self.removed_at:%Y-%m-%d}"
+
+
+# ===================== DATA PROTECTION MODELS =====================
+
+class MarkBackup(models.Model):
+    """
+    Immutable snapshot of marks BEFORE they are deleted or bulk-modified.
+    Created automatically before any bulk mark deletion to enable recovery.
+    """
+    school = models.ForeignKey('School', on_delete=models.SET_NULL, null=True, blank=True)
+    snapshot_reason = models.CharField(
+        max_length=100,
+        help_text="Why this backup was created (e.g. 'select_exam_primary bulk delete')",
+    )
+    snapshot_data = models.JSONField(
+        help_text="JSON array of mark records as they were before deletion",
+    )
+    mark_count = models.PositiveIntegerField(default=0)
+    actor = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="User who triggered the operation",
+    )
+    client_ip = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['school', '-created_at'], name='mark_backup_school_idx'),
+        ]
+
+    def __str__(self):
+        return f"Backup {self.mark_count} marks — {self.snapshot_reason} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+    def restore(self):
+        """Restore all backed-up marks. Returns count of restored marks."""
+        from .security.integrity import compute_mark_checksum
+        restored = 0
+        for mark_data in self.snapshot_data:
+            student_id = mark_data.get('student_id')
+            subject_id = mark_data.get('subject_id')
+            if not student_id or not subject_id:
+                continue
+            exists = Mark.all_objects.filter(
+                student_id=student_id,
+                subject_id=subject_id,
+                term=mark_data.get('term', ''),
+                exam_type=mark_data.get('exam_type', ''),
+                year=mark_data.get('year', 0),
+            ).exists()
+            if exists:
+                continue
+            mark = Mark(
+                school_id=self.school_id,
+                student_id=student_id,
+                subject_id=subject_id,
+                score=mark_data.get('score', 0),
+                raw_score=mark_data.get('raw_score'),
+                maximum_marks=mark_data.get('maximum_marks', 100),
+                is_absent=mark_data.get('is_absent', False),
+                performance_level=mark_data.get('performance_level', ''),
+                points=mark_data.get('points', 0),
+                term=mark_data.get('term', ''),
+                year=mark_data.get('year', 0),
+                exam_type=mark_data.get('exam_type', ''),
+                primary_raw_score=mark_data.get('primary_raw_score', ''),
+                primary_performance_point=mark_data.get('primary_performance_point', ''),
+                primary_descriptor=mark_data.get('primary_descriptor', ''),
+                school_section=mark_data.get('school_section', 'JSS'),
+                sub_section=mark_data.get('sub_section'),
+            )
+            mark.integrity_checksum = compute_mark_checksum(mark)
+            mark.save()
+            restored += 1
+        return restored

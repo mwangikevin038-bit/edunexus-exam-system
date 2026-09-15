@@ -130,4 +130,5 @@ urlpatterns = [
     path('api/csv-upload/', views.csv_upload_api, name='csv_upload_api'),
     path('api/csv-upload/progress/', views.csv_upload_progress, name='csv_upload_progress'),
     path('api/section-info/', views.get_section_info, name='get_section_info'),
+    path('api/streams-for-grade/', views.get_streams_for_grade, name='get_streams_for_grade'),
 ]

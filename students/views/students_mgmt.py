@@ -336,7 +336,11 @@ def admin_add_student(request):
     # --------------------------------------------------------------------------
     section = get_request_school_section(request)
     is_admin = user_has_main_school_admin_override(request.user)
-    grades_for_section = GRADE_CHOICES if is_admin else (LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else GRADE_CHOICES)
+    current_section = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
+    if is_admin:
+        grades_for_section = LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES if current_section == 'PRIMARY' else JSS_GRADE_CHOICES
+    else:
+        grades_for_section = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else JSS_GRADE_CHOICES
 
     tab = active_tab
     search_type = request.GET.get('search_type', 'adm_no')
@@ -1118,7 +1122,9 @@ def admin_student_profile_save(request, student_id):
     assessment_raw = request.POST.get('assessment_no', '').strip()
     student.assessment_no = assessment_raw if assessment_raw else None
     student.class_name = request.POST.get('class_name', student.class_name)
+    old_stream = student.stream
     student.stream = request.POST.get('stream', student.stream)
+    new_stream = student.stream
     student.religion = request.POST.get('religion', student.religion)
 
     if Student.objects.filter(school=school, admission_no=student.admission_no, is_active=True).exclude(pk=student.pk).exists():
@@ -1134,6 +1140,20 @@ def admin_student_profile_save(request, student_id):
 
     try:
         student.save()
+        # Audit: log stream change
+        if old_stream != new_stream:
+            from students.models import SecurityAuditLog
+            SecurityAuditLog.objects.create(
+                actor=request.user,
+                client_ip=request.META.get('REMOTE_ADDR'),
+                action='update',
+                target_model='students.student',
+                target_id=str(student.pk),
+                target_fields=['stream'],
+                old_values={'stream': old_stream},
+                new_values={'stream': new_stream},
+                school_id_snapshot=school.pk if school else None,
+            )
     except Exception as e:
         error_html = (
             '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">'
@@ -1352,8 +1372,8 @@ def admin_student_analytics(request, student_id):
             f'  <td style="padding:12px 16px;font-size:13px;color:#475569;">{ex.grade_rank or "—"}</td>'
             f'  <td style="padding:12px 16px;font-size:13px;color:#475569;">{ex.stream_rank or "—"}</td>'
             f'  <td style="padding:12px 16px;font-size:13px;">'
-            f'    <span style="background:{"#dcfce7" if ex.overall_plv in ["EXCELLENT","GOOD","SATISFACTORY"] else "#fef9c3" if ex.overall_plv == "AVERAGE" else "#fee2e2"};'
-            f'    color:{"#166534" if ex.overall_plv in ["EXCELLENT","GOOD","SATISFACTORY"] else "#854d0e" if ex.overall_plv == "AVERAGE" else "#991b1b"};'
+            f'    <span style="background:{"#dcfce7" if ex.overall_plv and (ex.overall_plv.startswith("EE") or ex.overall_plv.startswith("ME")) else "#fef9c3" if ex.overall_plv and ex.overall_plv.startswith("AE") else "#fee2e2"};'
+            f'    color:{"#166534" if ex.overall_plv and (ex.overall_plv.startswith("EE") or ex.overall_plv.startswith("ME")) else "#854d0e" if ex.overall_plv and ex.overall_plv.startswith("AE") else "#991b1b"};'
             f'    padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;">{ex.overall_plv or "—"}</span>'
             '  </td>'
             '</tr>'
@@ -2468,8 +2488,8 @@ def teacher_student_analytics(request, student_id):
             f'  <td style="padding:12px 16px;font-size:13px;color:#475569;">{ex.grade_rank or "—"}</td>'
             f'  <td style="padding:12px 16px;font-size:13px;color:#475569;">{ex.stream_rank or "—"}</td>'
             f'  <td style="padding:12px 16px;font-size:13px;">'
-            f'    <span style="background:{"#dcfce7" if ex.overall_plv in ["EXCELLENT","GOOD","SATISFACTORY"] else "#fef9c3" if ex.overall_plv == "AVERAGE" else "#fee2e2"};'
-            f'    color:{"#166534" if ex.overall_plv in ["EXCELLENT","GOOD","SATISFACTORY"] else "#854d0e" if ex.overall_plv == "AVERAGE" else "#991b1b"};'
+            f'    <span style="background:{"#dcfce7" if ex.overall_plv and (ex.overall_plv.startswith("EE") or ex.overall_plv.startswith("ME")) else "#fef9c3" if ex.overall_plv and ex.overall_plv.startswith("AE") else "#fee2e2"};'
+            f'    color:{"#166534" if ex.overall_plv and (ex.overall_plv.startswith("EE") or ex.overall_plv.startswith("ME")) else "#854d0e" if ex.overall_plv and ex.overall_plv.startswith("AE") else "#991b1b"};'
             f'    padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;">{ex.overall_plv or "—"}</span>'
             '  </td>'
             '</tr>'
@@ -3065,8 +3085,29 @@ def get_section_info(request):
     if section == 'PRIMARY':
         grades = LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES
     else:
-        grades = GRADE_CHOICES
+        grades = JSS_GRADE_CHOICES
     return JsonResponse({'admission_no': next_adm, 'grades': grades})
+
+
+@login_required(login_url='login')
+def get_streams_for_grade(request):
+    """Return stream names for a specific grade and section."""
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'streams': []})
+    grade_name = request.GET.get('grade', '').strip()
+    section = request.GET.get('section', 'JSS').strip()
+    if not grade_name:
+        return JsonResponse({'streams': []})
+    from students.models import Stream, Grade
+    grade_obj = Grade.all_objects.filter(school=school, name=grade_name).first()
+    if not grade_obj:
+        return JsonResponse({'streams': []})
+    streams = list(
+        Stream.all_objects.filter(school=school, grade=grade_obj)
+        .values_list('name', flat=True).distinct().order_by('name')
+    )
+    return JsonResponse({'streams': streams})
 
 
 @login_required(login_url='login')
@@ -3804,7 +3845,7 @@ def api_analysis_data(request):
             subj_name = mark.subject.name
             if subj_name not in subject_perf:
                 subject_perf[subj_name] = {'total_points': 0, 'count': 0, 'scores': [], 'code': mark.subject.code or ''}
-            subject_perf[subj_name]['total_points'] += mark.points
+            subject_perf[subj_name]['total_points'] += mark.points or 0
             subject_perf[subj_name]['count'] += 1
 
     subject_rows = []
@@ -3874,7 +3915,7 @@ def api_analysis_data(request):
             s_ids = prev_summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
             s_marks = prev_all_marks.filter(student_id__in=s_ids)
             count = s_marks.count() if s_marks.count() > 0 else 1
-            prev_stream_pts.append(sum(m.points for m in s_marks) / count)
+            prev_stream_pts.append(sum((m.points or 0) for m in s_marks) / count)
             prev_stream_marks.append(sum(m.score for m in s_marks) / count)
         if prev_stream_marks:
             prev_mean_marks = round(sum(prev_stream_marks) / len(prev_stream_marks), 1)
@@ -3885,7 +3926,7 @@ def api_analysis_data(request):
                 sn = mark.subject.name
                 if sn not in prev_subject_perf:
                     prev_subject_perf[sn] = {'total_points': 0, 'count': 0}
-                prev_subject_perf[sn]['total_points'] += mark.points
+                prev_subject_perf[sn]['total_points'] += mark.points or 0
                 prev_subject_perf[sn]['count'] += 1
 
     for row in subject_rows:
@@ -3898,7 +3939,7 @@ def api_analysis_data(request):
     for s in streams_all:
         s_ids = summaries_all.filter(student__stream=s).values_list('student_id', flat=True).distinct()
         s_marks = all_marks.filter(student_id__in=s_ids)
-        total_pts = sum(m.points for m in s_marks)
+        total_pts = sum((m.points or 0) for m in s_marks)
         count = s_marks.count() if s_marks.count() > 0 else 1
         total_marks_sum = sum(m.score for m in s_marks)
         stream_stats[s] = {
@@ -3955,7 +3996,7 @@ def api_analysis_data(request):
             else:
                 s_marks = all_marks.filter(student_id=summ.student_id)
                 if s_marks.exists():
-                    total_pts = sum(m.points for m in s_marks)
+                    total_pts = sum((m.points or 0) for m in s_marks)
                     total_mks = sum(m.score for m in s_marks)
                     count = s_marks.count()
                     avg_pts = total_pts / count if count else 0
@@ -4049,7 +4090,7 @@ def api_analysis_data(request):
             total_mks = 0
             count = 0
             for m in subj_marks:
-                total_pts += m.points
+                total_pts += m.points or 0
                 total_mks += m.score
                 count += 1
                 plv_key = None
@@ -4123,7 +4164,7 @@ def api_analysis_data(request):
             g_total_mks = 0
             g_count = 0
             for m in g_subj_marks:
-                g_total_pts += m.points
+                g_total_pts += m.points or 0
                 g_total_mks += m.score
                 g_count += 1
                 plv_key = None
@@ -4185,7 +4226,7 @@ def api_analysis_data(request):
     for mark in all_marks:
         st = student_totals[mark.student_id]
         st['total_score'] += mark.score
-        st['total_points'] += mark.points
+        st['total_points'] += mark.points or 0
         st['subject_count'] += 1
         st['student_id'] = mark.student_id
 
@@ -4210,7 +4251,7 @@ def api_analysis_data(request):
             else:
                 s_marks = all_marks.filter(student_id=summ.student_id)
                 if s_marks.exists():
-                    total_pts = sum(m.points for m in s_marks)
+                    total_pts = sum((m.points or 0) for m in s_marks)
                     total_mks = sum(m.score for m in s_marks)
                     cnt = s_marks.count()
                     avg_pts = total_pts / cnt if cnt else 0
@@ -4390,7 +4431,7 @@ def api_analysis_data(request):
         for s in streams_all:
             s_ids = pot_summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
             s_marks = pot_all_marks.filter(student_id__in=s_ids)
-            total_pts = sum(m.points for m in s_marks)
+            total_pts = sum((m.points or 0) for m in s_marks)
             count = s_marks.count() if s_marks.count() > 0 else 1
             pot_streams_data[s].append(round(total_pts / count, 4))
 

@@ -76,7 +76,7 @@
                 {% for row in broadsheet %}
                 <tr>
                     <td class="col-adm" style="font-weight:800; text-align:center;">{{ row.student.admission_no }}</td>
-                    <td class="col-name" style="font-size:10pt;">{{ row.student.name }}</td>
+                    <td class="col-name">{{ row.student.name }}</td>
                     <td class="col-strm" style="text-align:center;">{{ row.student.stream.0|upper }}</td>
                     {% for score_entry in row.scores %}
                         <td class="col-mk">{{ score_entry.score }}</td>
