@@ -57,6 +57,22 @@ def invalidate_report_caches(school_id, class_name, stream, year, term, assessme
     cache.delete(_leaderboard_cache_key(school_id, class_name, stream, year, term, assessment))
     cache.delete(_class_avg_cache_key(school_id, class_name, stream, year, term, assessment))
 
+    # Also invalidate score sheet caches (exams list, analysis data)
+    from .students_mgmt import invalidate_score_sheet_caches
+    invalidate_score_sheet_caches(school_id, class_name)
+
+    # Invalidate merit list cache for this grade — use pattern delete via Redis
+    try:
+        from django.core.cache import cache as _cache
+        from django_redis import get_redis_connection
+        conn = get_redis_connection("default")
+        pattern = f'*merit_list:{school_id}:{class_name}:*'
+        keys = conn.keys(pattern)
+        if keys:
+            conn.delete(*keys)
+    except Exception:
+        pass
+
     # Also invalidate the exam result snapshot
     from ..models import ExamResultSnapshot, School
     try:

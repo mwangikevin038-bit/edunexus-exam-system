@@ -37,7 +37,7 @@ try:
 except ImportError:
     _HAS_PLAYWRIGHT = False
 
-from .constants import ASSESSMENT_MAP, GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_NAMES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_DISPLAY_ORDER, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
+from .constants import ASSESSMENT_MAP, GRADE_CHOICES, JSS_GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_NAMES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_GRADE_CHOICES, PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_DISPLAY_ORDER, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
 from .reports import PRIMARY_ORDERED_LEVELS
 from .exams import _get_primary_performance
 from .helpers import (
@@ -697,7 +697,14 @@ def download_broadsheet_pdf(request):
         'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
-    section_accent = section_colors.get(section, '#305CDE')
+    if grade in LOWER_PRIMARY_GRADE_CHOICES:
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif grade in PRIMARY_GRADE_CHOICES:
+        section_accent = section_colors['PRIMARY']
+    elif grade in JSS_GRADE_CHOICES:
+        section_accent = section_colors['JSS']
+    else:
+        section_accent = section_colors.get(section, '#305CDE')
 
     template_html = render_to_string(template_name, {
         'broadsheet':              broadsheet,

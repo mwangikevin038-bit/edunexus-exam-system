@@ -1,11 +1,11 @@
 {% extends 'students/base.html' %}
-{% load static %}
 
 {% block sub_tabs %}
 <style>
   .app-content{background:#eaecf0!important;min-height:100vh}
   body{background:#eaecf0!important}
 </style>
+{% if view_mode == 'teacher' %}
 <nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
@@ -22,14 +22,26 @@
     </li>
   </ul>
 </nav>
+{% else %}
+<nav class="sub-nav-bar dm-subnav">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'printouts_hub' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Printouts
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
 {% endblock %}
 
 {% block content %}
 <style>
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-
+  .main-content{background:#eaecf0!important}
   .clp-page{max-width:1100px;margin:0 auto;padding:24px 28px 60px}
-  .clp-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,0.05);overflow:hidden}
+  .clp-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:0;box-shadow:0 4px 20px rgba(0,0,0,0.06),0 1px 4px rgba(0,0,0,0.04);overflow:hidden}
   .clp-card-header{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid #f1f5f9}
   .clp-card-header h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:18px;color:#111827;margin:0}
   .clp-toggle{background:none;border:none;cursor:pointer;padding:4px;color:#64748b;transition:color 0.15s}
@@ -44,39 +56,44 @@
   .clp-field select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
   .clp-btn-row{display:flex;justify-content:flex-end;margin-top:0;overflow:hidden;max-height:0;opacity:0;transition:max-height 0.3s ease,opacity 0.3s ease,margin-top 0.3s ease}
   .clp-btn-row.visible{max-height:80px;opacity:1;margin-top:24px}
-  .clp-fetch-btn{display:inline-flex;align-items:center;gap:8px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.2s ease;box-shadow:0 2px 8px rgba(37,99,235,0.3)}
-  .clp-fetch-btn:hover{background:#1d4ed8;box-shadow:0 4px 14px rgba(37,99,235,0.4);transform:translateY(-1px)}
+  .clp-fetch-btn{display:inline-flex;align-items:center;gap:8px;background:#4CAF50;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.2s ease;box-shadow:0 2px 8px rgba(76,175,80,0.3)}
+  .clp-fetch-btn:hover{background:#3d8b40;box-shadow:0 4px 14px rgba(76,175,80,0.4);transform:translateY(-1px)}
   .clp-fetch-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
   .clp-results{margin-top:0;overflow:hidden;max-height:0;opacity:0;transition:max-height 0.5s ease,opacity 0.4s ease,margin-top 0.4s ease}
-  .clp-results.visible{max-height:10000px;opacity:1;margin-top:32px}
-  .clp-results-inner{border-top:1px solid #e5e7eb;padding-top:24px;background:#fff;border-radius:12px;padding:24px 28px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
-  .clp-info-bar{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .clp-results.visible{max-height:10000px;opacity:1;margin-top:28px}
+  .clp-results-inner{border-top:1px solid #e5e7eb;padding-top:24px}
+  .clp-info-bar{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
   .clp-info-badge{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans','Inter',sans-serif}
   .clp-info-badge.total{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
   .clp-info-badge.boys{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8}
   .clp-info-badge.girls{background:#fdf2f8;border:1px solid #f9a8d4;color:#be185d}
-  .sheet-heading{display:flex;align-items:center;justify-content:center;margin-bottom:12px;position:relative;padding:0 130px;min-height:80px}
-  .sheet-logo{position:absolute;left:0;top:50%;transform:translateY(-50%);width:90px;height:90px;object-fit:contain;border-radius:8px}
+  .sheet-heading{display:flex;align-items:center;justify-content:center;margin-bottom:0;position:relative;padding:28px 140px;min-height:120px;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);border-radius:12px 12px 0 0;border:1px solid #e2e8f0;border-bottom:none;box-shadow:0 2px 8px rgba(0,0,0,0.03)}
+  .clp-sheet-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 4px 20px rgba(0,0,0,0.06),0 1px 4px rgba(0,0,0,0.04);overflow:hidden}
+  .clp-sheet-card .sheet-heading{border-radius:12px 12px 0 0;border:none}
+  .clp-sheet-card .clp-table-wrap{border-radius:0 0 12px 12px;margin:0 24px 24px;overflow:hidden}
+  .clp-sheet-card .clp-table-wrap .register-table{border:1.5px solid #111827;border-radius:0 0 11px 11px}
+  .sheet-accent-bar{height:4px;background:{{ section_accent|default:'#305CDE' }};border-radius:2px;margin:0 24px 12px}
+  .sheet-logo{position:absolute;left:24px;top:50%;transform:translateY(-50%);width:100px;height:100px;object-fit:contain;border-radius:10px;border:2px solid #f1f5f9;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
   .sheet-heading-copy{text-align:center}
-  .sheet-heading-copy h2{font-family:'Times New Roman',Times,serif;font-size:24px;font-weight:900;text-transform:uppercase;color:{{ section_accent|default:'#0f1727' }};margin:0}
-  .sheet-heading-copy p{font-family:'Times New Roman',Times,serif;font-size:13px;color:#64748b;margin:2px 0 0;font-weight:700}
+  .sheet-heading-copy h2{font-family:'Times New Roman',Times,serif;font-size:26px;font-weight:900;text-transform:uppercase;color:{{ section_accent|default:'#0f1727' }};margin:0;letter-spacing:0.06em;line-height:1.1}
+  .sheet-heading-copy .sheet-subtitle{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:12px;color:#64748b;margin:6px 0 0;font-weight:600;letter-spacing:0.04em;text-transform:uppercase}
+  .sheet-heading-copy .sheet-year{display:inline-block;background:{{ section_accent|default:'#305CDE' }};color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;margin-left:6px;letter-spacing:0.03em}
   .sheet-addr{font-size:12px;color:#374151;font-weight:600;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
   .sheet-contact{font-size:12px;color:#374151;font-weight:500;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
   .clp-table-wrap{overflow-x:auto}
-  .register-table{width:100%;min-width:850px;border-collapse:collapse;background:#fff;font-family:"Times New Roman",Times,serif;font-size:11.5pt}
-  .register-table th{background:#f8fafc;color:#334155;font-size:11.5pt;font-weight:900;text-transform:uppercase;letter-spacing:0.7px;padding:6px 10px;text-align:left;border:1.5px solid #111827}
-  .register-table td{padding:5px 10px;border:1.5px solid #111827;color:#0f172a;font-weight:400;vertical-align:middle}
+  .register-table{width:100%;border-collapse:collapse;border:none;background:#fff;font-family:"Times New Roman",Times,serif;font-size:12pt;table-layout:fixed}
+  .register-table th{background:#E9ECF0;color:#1E293B;font-size:12pt;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;padding:5px 8px;text-align:left;border:1.5px solid #111827;line-height:1.2}
+  .register-table td{padding:4px 8px;border:1.5px solid #111827;color:#0f172a;font-weight:400;font-size:12pt;vertical-align:middle;line-height:1.2}
   .register-table tr{page-break-inside:avoid;break-inside:avoid}
-  .grid-cell{width:36px;height:34px;background:#f8fafc}
+  .grid-cell{width:28px;height:30px;background:#f8fafc}
   .clp-empty{text-align:center;padding:48px 24px;color:#94a3b8;font-size:14px;font-family:'Plus Jakarta Sans','Inter',sans-serif}
   .clp-empty svg{width:48px;height:48px;stroke:#d1d5db;fill:none;stroke-width:1.5;margin-bottom:12px}
-  .print-watermark{display:none}
-  .clp-actions-top{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+  .clp-actions-top{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
   .clp-top-action{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans','Inter',sans-serif;transition:all 0.2s ease;text-decoration:none}
   .clp-top-action svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2}
   .clp-top-action.print{background:#fff;border:1.5px solid #4CAF50;color:#4CAF50}
   .clp-top-action.print:hover{background:#4CAF50;color:#fff;box-shadow:0 4px 12px rgba(76,175,80,0.3);transform:translateY(-1px)}
-  .clp-top-action.pdf{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff}
+  .clp-top-action.pdf{background:#4CAF50;border:1.5px solid #4CAF50;color:#fff;border-radius:10px;padding:10px 24px}
   .clp-top-action.pdf:hover{background:#3d8b40;border-color:#3d8b40;box-shadow:0 4px 12px rgba(76,175,80,0.35);transform:translateY(-1px)}
   .clp-top-action.pdf:disabled{opacity:1;cursor:wait;transform:none;box-shadow:none;gap:10px}
   .clp-spinner{display:inline-flex;gap:4px;align-items:center;height:18px}
@@ -87,134 +104,80 @@
   .clp-spinner i:nth-child(4){animation-delay:.45s}
   .clp-spinner i:nth-child(5){animation-delay:.6s}
   @keyframes clpBounce{0%,80%,100%{transform:scale(0.4);opacity:.4}40%{transform:scale(1);opacity:1}}
-
-  @media(max-width:768px){
+  @media(max-width:640px) and (screen){.clp-filters{grid-template-columns:1fr}.clp-page{padding:16px 16px 40px}}
+  @media(max-width:768px) and (screen){
     .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
-    .clp-page{padding:12px 12px 100px!important;max-width:100%!important}
-
-    .clp-card{border-radius:16px!important;border:none!important;box-shadow:0 2px 16px rgba(0,0,0,0.07)!important;background:#fff!important}
-    .clp-card-header{padding:16px 18px!important;border-bottom:1px solid rgba(0,0,0,0.04)!important}
-    .clp-card-header h2{font-size:16px!important;color:#1A1D1A!important}
-    .clp-toggle svg{width:22px;height:22px}
-    .clp-card-body{padding:16px 18px 18px!important}
-    .clp-filters{grid-template-columns:1fr!important;gap:14px!important}
-    .clp-field label{font-size:12px!important;text-transform:uppercase;letter-spacing:.5px;color:#4A4D4A!important;margin-bottom:8px!important}
-    .clp-field select{
-      padding:14px 16px!important;border-radius:12px!important;font-size:15px!important;height:48px!important;
-      border:1.5px solid #E0E3E0!important;
-      background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239A9D9A' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center!important;
-      appearance:none!important;-webkit-appearance:none!important;
-      transition:border-color .2s,box-shadow .2s;
-    }
-    .clp-field select:focus{border-color:#24E55E!important;box-shadow:0 0 0 3px rgba(36,229,94,0.2)!important;outline:none!important}
+    .app-content{margin-top:0!important}
+    .clp-page{padding:0 0 calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 16px)!important}
+    .clp-card{border:none!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
+    .clp-card-header{padding:20px 16px 0!important;background:transparent!important;border-bottom:none!important}
+    .clp-card-header h2{font-size:22px!important;font-weight:800!important;color:#0f172a!important;letter-spacing:-0.02em!important}
+    .clp-toggle{width:36px!important;height:36px!important;border-radius:10px!important;background:#f1f5f9!important;display:flex!important;align-items:center!important;justify-content:center!important}
+    .clp-toggle svg{width:18px!important;height:18px!important}
+    .clp-card-body{padding:16px 16px 20px!important}
+    .clp-filters{gap:14px!important}
+    .clp-field label{font-size:12px!important;font-weight:700!important;color:#475569!important;margin-bottom:6px!important;text-transform:uppercase;letter-spacing:0.04em}
+    .clp-field select{height:48px!important;border-radius:12px!important;border:1.5px solid #e2e8f0!important;font-size:15px!important;padding:0 16px!important;background:#fff!important;color:#1e293b!important;box-shadow:0 1px 3px rgba(0,0,0,0.04)!important}
+    .clp-field select:focus{border-color:#4CAF50!important;box-shadow:0 0 0 3px rgba(76,175,80,0.12)!important}
     .clp-btn-row.visible{margin-top:16px!important}
-    .clp-fetch-btn{
-      width:100%!important;justify-content:center!important;padding:15px!important;border-radius:14px!important;font-size:15px!important;
-      background:linear-gradient(135deg,#4CAF50 0%,#43A047 100%)!important;
-      box-shadow:0 4px 16px rgba(76,175,80,0.3),0 8px 32px rgba(76,175,80,0.15)!important;
-    }
-    .clp-fetch-btn:active{transform:scale(.97)!important}
-    .clp-results{margin-top:0!important}
-    .clp-results.visible{margin-top:20px!important}
-    .clp-results-inner{border-radius:16px!important;padding:16px!important;box-shadow:0 2px 16px rgba(0,0,0,0.06)!important;border:none!important;border-top:none!important;background:#fff!important}
-    .clp-info-bar{gap:8px!important;justify-content:center!important}
-    .clp-info-badge{border-radius:10px!important;padding:8px 14px!important;font-size:11px!important}
-    .clp-info-badge.total{background:rgba(36,229,94,0.08)!important;border:1px solid rgba(36,229,94,0.2)!important;color:#0F8A34!important}
-    .sheet-heading{padding:0!important;min-height:auto!important;flex-direction:column!important;gap:8px!important;margin-bottom:16px!important;position:relative!important}
-    .sheet-logo{position:static!important;transform:none!important;width:72px!important;height:72px!important;margin-bottom:4px!important}
+    .clp-fetch-btn{width:100%!important;height:48px!important;border-radius:12px!important;font-size:15px!important;font-weight:700!important;justify-content:center!important;background:linear-gradient(135deg,#4CAF50 0%,#3d8b40 100%)!important;box-shadow:0 4px 14px rgba(76,175,80,0.35)!important}
+    .clp-fetch-btn:active{transform:scale(0.97)!important;box-shadow:0 2px 6px rgba(76,175,80,0.25)!important}
+    .clp-actions-top{flex-direction:column!important;gap:10px!important;padding:0 16px!important;margin-top:16px!important}
+    .clp-top-action{width:100%!important;justify-content:center!important;height:44px!important;border-radius:12px!important;font-size:14px!important;font-weight:700!important}
+    .clp-top-action svg{width:18px!important;height:18px!important}
+    .clp-top-action.print{background:#fff!important;border:1.5px solid #e2e8f0!important;color:#475569!important}
+    .clp-top-action.pdf{background:linear-gradient(135deg,#4CAF50 0%,#3d8b40 100%)!important;border:none!important;color:#fff!important;box-shadow:0 4px 14px rgba(76,175,80,0.35)!important}
+    .clp-results.visible{margin-top:16px!important}
+    .clp-results-inner{padding-top:16px!important}
+    .clp-sheet-card{border-radius:16px!important;border:none!important;box-shadow:0 1px 3px rgba(0,0,0,0.04),0 6px 20px rgba(0,0,0,0.06)!important;overflow:hidden!important}
+    .sheet-heading{padding:20px 16px!important;min-height:auto!important;border-radius:16px 16px 0 0!important;background:#fff!important}
+    .sheet-logo{position:static!important;transform:none!important;width:56px!important;height:56px!important;margin:0 auto 10px!important;display:block!important;border-radius:12px!important}
     .sheet-heading-copy{text-align:center!important}
-    .sheet-heading-copy h2{font-size:16px!important}
-    .sheet-heading-copy p,.sheet-addr,.sheet-contact{font-size:11px!important}
-    .clp-table-wrap{border-radius:12px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;border:1px solid #e5e7eb!important}
-    .register-table{min-width:700px!important;font-size:11pt!important}
-    .register-table th,.register-table td{padding:5px 6px!important;font-size:10pt!important}
-    .grid-cell{width:28px!important;height:28px!important}
-    .clp-actions-top{flex-direction:row!important;gap:10px!important;margin-top:16px!important}
-    .clp-top-action{flex:1!important;justify-content:center!important;padding:14px!important;border-radius:12px!important;font-size:13px!important}
-    .clp-top-action.print{background:#fff!important}
-    .clp-top-action.pdf{background:linear-gradient(135deg,#4CAF50,#43A047)!important;border:none!important;box-shadow:0 4px 14px rgba(76,175,80,0.3)!important}
-    .clp-empty{padding:48px 16px!important}
+    .sheet-heading-copy h2{font-size:18px!important;letter-spacing:0!important;color:#0f172a!important}
+    .sheet-heading-copy .sheet-subtitle{font-size:11px!important;margin-top:4px!important}
+    .sheet-addr,.sheet-contact{font-size:11px!important}
+    .sheet-accent-bar{height:3px!important;margin:0 16px 10px!important;border-radius:2px!important}
+    .clp-table-wrap{margin:0 12px 12px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;border-radius:10px!important;border:1px solid #e2e8f0!important}
+    .register-table{min-width:700px!important;font-size:10pt!important}
+    .register-table th{font-size:9pt!important;padding:6px 6px!important;background:#f1f5f9!important}
+    .register-table td{font-size:10pt!important;padding:5px 6px!important}
+    .grid-cell{width:22px!important;height:24px!important}
+    .clp-info-bar{padding:0 16px!important;gap:8px!important;flex-wrap:wrap!important}
+    .clp-info-badge{font-size:11px!important;padding:4px 10px!important;border-radius:8px!important}
+    .clp-empty{padding:40px 16px!important}
     .clp-empty svg{width:40px!important;height:40px!important}
-  }
-
-  @media print{
-    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-    html,body,.app-content,.main-content{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important;background-image:none!important}
-    .global-header,.mobile-global-header,.bottom-nav,.sub-nav-bar,.clp-card,.clp-card-header,.clp-card-body,.clp-actions-top,.clp-btn-row,.clp-info-bar{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
-    .print-watermark{display:none!important}
-    .clp-page{padding:0!important;margin:0!important;max-width:none!important;background:#fff!important}
-    .clp-results{max-height:none!important;opacity:1!important;margin:0!important;overflow:visible!important;position:static!important}
-    .clp-results-inner{border-top:none!important;padding:0!important;background:#fff!important;box-shadow:none!important;border-radius:0!important}
-    .clp-table-wrap{border:none!important;border-radius:0!important;overflow:visible!important;margin:0!important}
-    .sheet-heading{display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important;padding:8px 0 6px 100px!important;min-height:auto!important;margin:0 0 8px!important;text-align:center!important;background:#fff!important;border:none!important;border-bottom:2px solid {{ section_accent|default:'#0f1727' }}!important;border-radius:0!important}
-    .sheet-logo{position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:80px!important;height:80px!important;object-fit:contain!important;display:block!important;border-radius:6px!important}
-    .sheet-heading-copy{text-align:center!important}
-    .sheet-heading-copy h2{font-family:"Times New Roman",Times,serif!important;font-size:22px!important;font-weight:900!important;text-transform:uppercase!important;color:{{ section_accent|default:'#0f1727' }}!important;margin:0!important;line-height:1.1!important;letter-spacing:0.06em!important}
-    .sheet-heading-copy p{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;margin:1px 0 0!important;font-weight:600!important}
-    .sheet-heading-copy .sheet-addr{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;font-weight:600!important}
-    .sheet-heading-copy .sheet-contact{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;font-weight:500!important}
-    .register-table,.register-table *,.register-table *::before,.register-table *::after{font-family:"Times New Roman",Times,serif!important}
-    .register-table{width:100%!important;min-width:0!important;border-collapse:collapse!important;border:1px solid #000!important;font-size:11.5pt!important;table-layout:fixed!important}
-    .register-table th{background:#e2e6ea!important;color:#000!important;font-weight:900!important;font-size:11.5pt!important;padding:5px 8px!important;border:1px solid #000!important;text-transform:uppercase!important;text-align:left!important;line-height:1.3!important}
-    .register-table td{padding:4px 8px!important;border:1px solid #000!important;color:#000!important;font-weight:400!important;font-size:11.5pt!important;line-height:1.3!important;vertical-align:middle!important}
-    .register-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
-    .register-table a{color:#000!important;text-decoration:none!important}
-    .grid-cell{width:36px!important;height:34px!important;background:#fff!important;font-size:11.5pt!important}
-    .clp-empty,.clp-empty *{font-family:"Times New Roman",Times,serif!important;font-size:11.5pt!important;color:#000!important}
-    @page{
-      size:A4 portrait;
-      margin:8mm 10mm 20mm 10mm;
-      @bottom-center{
-        content:"GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
-        font-family:"Times New Roman",Times,serif;
-        font-size:8pt;
-        font-weight:700;
-        color:#64748b;
-        text-transform:uppercase;
-        letter-spacing:0.5pt;
-        border-top:0.5pt solid #cbd5e1;
-        width:70%;
-        padding-top:4pt;
-      }
-      @bottom-right{
-        content:"Page " counter(page) " of " counter(pages);
-        font-family:"Times New Roman",Times,serif;
-        font-size:8pt;
-        font-weight:700;
-        color:#64748b;
-        width:28%;
-        white-space:nowrap;
-      }
-    }
+    .clp-empty div{font-size:13px!important}
   }
 </style>
 
-  <script type="text/plain" id="pagePrintCSS">
-    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-    html,body,.app-content,.main-content{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important;background-image:none!important}
-    .global-header,.mobile-global-header,.bottom-nav,.sub-nav-bar,.clp-card,.clp-card-header,.clp-card-body,.clp-actions-top,.clp-btn-row,.clp-info-bar{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
-    .print-watermark{display:none!important}
-    .clp-page{padding:0!important;margin:0!important;max-width:none!important;background:#fff!important}
-    .clp-results{max-height:none!important;opacity:1!important;margin:0!important;overflow:visible!important;position:static!important}
-    .clp-results-inner{border-top:none!important;padding:0!important;background:#fff!important;box-shadow:none!important;border-radius:0!important}
-    .clp-table-wrap{border:none!important;border-radius:0!important;overflow:visible!important;margin:0!important}
-    .sheet-heading{display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important;padding:8px 0 6px 100px!important;min-height:auto!important;margin:0 0 8px!important;text-align:center!important;background:#fff!important;border:none!important;border-bottom:2px solid {{ section_accent|default:'#0f1727' }}!important;border-radius:0!important}
-    .sheet-logo{position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:80px!important;height:80px!important;object-fit:contain!important;display:block!important;border-radius:6px!important}
-    .sheet-heading-copy{text-align:center!important}
-    .sheet-heading-copy h2{font-family:"Times New Roman",Times,serif!important;font-size:22px!important;font-weight:900!important;text-transform:uppercase!important;color:{{ section_accent|default:'#0f1727' }}!important;margin:0!important;line-height:1.1!important;letter-spacing:0.06em!important}
-    .sheet-heading-copy p{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;margin:1px 0 0!important;font-weight:600!important}
-    .sheet-heading-copy .sheet-addr{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;font-weight:600!important}
-    .sheet-heading-copy .sheet-contact{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;font-weight:500!important}
-    .register-table,.register-table *,.register-table *::before,.register-table *::after{font-family:"Times New Roman",Times,serif!important}
-    .register-table{width:100%!important;min-width:0!important;border-collapse:collapse!important;border:1px solid #000!important;font-size:11.5pt!important;table-layout:fixed!important}
-    .register-table th{background:#e2e6ea!important;color:#000!important;font-weight:900!important;font-size:11.5pt!important;padding:5px 8px!important;border:1px solid #000!important;text-transform:uppercase!important;text-align:left!important;line-height:1.3!important}
-    .register-table td{padding:4px 8px!important;border:1px solid #000!important;color:#000!important;font-weight:400!important;font-size:11.5pt!important;line-height:1.3!important;vertical-align:middle!important}
-    .register-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
-    .register-table a{color:#000!important;text-decoration:none!important}
-    .grid-cell{width:36px!important;height:34px!important;background:#fff!important;font-size:11.5pt!important}
-    .clp-empty,.clp-empty *{font-family:"Times New Roman",Times,serif!important;font-size:11.5pt!important;color:#000!important}
-    @page{size:A4 portrait;margin:8mm 10mm 20mm 10mm;@bottom-center{content:"GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";font-family:"Times New Roman",Times,serif;font-size:8pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5pt;border-top:0.5pt solid #cbd5e1;width:70%;padding-top:4pt}@bottom-right{content:"Page " counter(page) " of " counter(pages);font-family:"Times New Roman",Times,serif;font-size:8pt;font-weight:700;color:#64748b;width:28%;white-space:nowrap}}
-  </script>
+{% comment %}Print popup CSS — read by EDUNEXUSPrint.openPrintWindow(){% endcomment %}
+<script type="text/plain" id="pagePrintCSS">
+@page{size:A4 portrait;margin:8mm 10mm 20mm 10mm;@bottom-center{content:"GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";font-family:"Times New Roman",Times,serif;font-size:8pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5pt;border-top:0.5pt solid #cbd5e1;width:70%;padding-top:4pt}@bottom-right{content:"Page " counter(page) " of " counter(pages);font-family:"Times New Roman",Times,serif;font-size:8pt;font-weight:700;color:#64748b;width:28%;white-space:nowrap}}
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+html,body,.app-content,.main-content{overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important;background-image:none!important}
+.global-header,.mobile-global-header,.bottom-nav,.sub-nav-bar,.clp-card,.clp-card-header,.clp-card-body,.clp-actions-top,.clp-btn-row,.clp-info-bar{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
+.clp-page{padding:0!important;margin:0!important;max-width:none!important;background:#fff!important}
+.clp-results{max-height:none!important;opacity:1!important;margin:0!important;overflow:visible!important;position:static!important}
+.clp-results-inner{border-top:none!important;padding:0!important;background:#fff!important;box-shadow:none!important;border-radius:0!important}
+.clp-sheet-card{display:block!important;border:none!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;margin:0!important;background:#fff!important}
+.clp-table-wrap{border:none!important;border-radius:0!important;overflow:visible!important;margin:0!important}
+.sheet-heading{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:0!important;border:none!important;border-bottom:2px solid {{ section_accent|default:'#0f1727' }}!important;padding:8px 0 6px 100px!important;min-height:auto!important;background:#fff!important}
+.sheet-accent-bar{display:none!important}
+.sheet-logo{position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:80px!important;height:80px!important;object-fit:contain!important;display:block!important;border-radius:6px!important}
+.sheet-heading-copy{text-align:center!important}
+.sheet-heading-copy h2{font-family:"Times New Roman",Times,serif!important;font-size:22px!important;font-weight:900!important;text-transform:uppercase!important;color:{{ section_accent|default:'#0f1727' }}!important;margin:0!important;line-height:1.1!important;letter-spacing:0.06em!important}
+.sheet-heading-copy .sheet-subtitle{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;margin:2px 0 0!important;font-weight:600!important;letter-spacing:0.04em!important;text-transform:uppercase!important}
+.sheet-heading-copy .sheet-year{display:inline-block!important;background:{{ section_accent|default:'#0f1727' }}!important;color:#fff!important;font-size:9px!important;font-weight:700!important;padding:1px 7px!important;border-radius:20px!important;margin-left:4px!important}
+.sheet-heading-copy .sheet-addr{font-size:11px!important;color:#374151!important;font-weight:600!important;margin:1px 0 0!important;font-family:"Times New Roman",Times,serif!important}
+.sheet-heading-copy .sheet-contact{font-size:11px!important;color:#374151!important;font-weight:500!important;margin:1px 0 0!important;font-family:"Times New Roman",Times,serif!important}
+.register-table,.register-table *,.register-table *::before,.register-table *::after{font-family:"Times New Roman",Times,serif!important}
+.register-table{width:100%!important;min-width:0!important;border-collapse:collapse!important;border:1px solid #000!important;font-size:12pt!important;table-layout:fixed!important}
+.register-table th{background:#e2e6ea!important;color:#000!important;font-size:12pt!important;font-weight:900!important;padding:5px 8px!important;border:1px solid #000!important;text-transform:uppercase!important;text-align:left!important;line-height:1.3!important}
+.register-table td{padding:4px 8px!important;border:1px solid #000!important;color:#000!important;font-weight:400!important;font-size:11.5pt!important;line-height:1.3!important;vertical-align:middle!important}
+.register-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
+.register-table a{color:#000!important;text-decoration:none!important}
+.grid-cell{width:28px!important;height:28px!important;background:#fff!important;font-size:12pt!important}
+</script>
 
 <div class="clp-page">
   <div class="clp-card">
@@ -257,67 +220,66 @@
     </button>
     <button type="button" class="clp-top-action pdf" id="clpPdfBtn"
             onclick="clpDownloadPdf(this)"
-            data-url="{% url 'download_classlist_pdf' %}?context={{ selected_context_key|urlencode }}&view_mode={{ current_view_mode }}">
+            data-url="{% url 'download_classlist_pdf' %}?grade={{ selected_grade|urlencode }}&stream={{ selected_stream|urlencode }}">
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Download PDF
     </button>
   </div>
-
   <div class="clp-results visible" id="clpResults">
     <div class="clp-results-inner">
-      <div class="clp-info-bar">
-        <span class="clp-info-badge total"><i class="ph ph-users"></i> Total: {{ total_count }}</span>
-        <span class="clp-info-badge boys"><i class="ph ph-user"></i> Boys: {{ boys_count }}</span>
-        <span class="clp-info-badge girls"><i class="ph ph-user"></i> Girls: {{ girls_count }}</span>
-      </div>
-      <div class="sheet-heading">
-        {% if request.school.logo %}
-          <img class="sheet-logo" src="{{ request.school.logo.url }}" alt="{{ request.school.name }}" onerror="this.style.display='none';">
-        {% endif %}
-        <div class="sheet-heading-copy">
-          <h2>{{ request.school.name }}</h2>
-          {% if request.school.address %}<p class="sheet-addr">Address: {{ request.school.address }}</p>{% endif %}
-          {% if request.school.phone or request.school.email %}
-          <p class="sheet-contact">
-            {% if request.school.phone %}Tel {{ request.school.phone }}{% endif %}
-            {% if request.school.phone and request.school.email %} &nbsp;|&nbsp; {% endif %}
-            {% if request.school.email %}Email {{ request.school.email }}{% endif %}
-          </p>
+      <div class="clp-sheet-card">
+        <div class="sheet-heading">
+          {% if request.school.logo %}
+            <img class="sheet-logo" src="{{ request.school.logo.url }}" alt="{{ request.school.name }}" onerror="this.style.display='none';">
           {% endif %}
-          <p>{{ selected_grade }} {{ selected_stream }} | Teacher Mark Entry Sheet | {% now "Y" %}</p>
+          <div class="sheet-heading-copy">
+            <h2>{{ request.school.name }}</h2>
+            {% if request.school.address %}<p class="sheet-addr">Address: {{ request.school.address }}</p>{% endif %}
+            {% if request.school.phone_number or request.school.email %}
+            <p class="sheet-contact">
+              {% if request.school.phone_number %}Tel {{ request.school.phone_number }}{% endif %}
+              {% if request.school.phone_number and request.school.email %} &nbsp;|&nbsp; {% endif %}
+              {% if request.school.email %}Email {{ request.school.email }}{% endif %}
+            </p>
+            {% endif %}
+            <p class="sheet-subtitle">{{ selected_grade }} {{ selected_stream }} | Teacher Mark Entry Sheet <span class="sheet-year">{% now "Y" %}</span></p>
+          </div>
         </div>
-      </div>
-      <div class="clp-table-wrap">
-        <table class="register-table" id="learnerTable">
-          <thead>
-            <tr>
-              <th style="width:70px">Adm</th>
-              {% if selected_stream == 'Combined' %}
-                <th style="width:80px">Stream</th>
-              {% endif %}
-              <th style="width:220px">Learner Name</th>
-              <th style="width:120px">Assessment No</th>
-              {% for i in "123456789012345" %}
-                <th class="grid-cell"></th>
+        <div class="sheet-accent-bar"></div>
+        <div class="clp-table-wrap">
+          <table class="register-table" id="learnerTable">
+            <thead>
+              <tr>
+                <th style="width:50px">Adm</th>
+                {% if selected_stream == 'Combined' %}
+                  <th style="width:80px">Stream</th>
+                {% endif %}
+                <th style="width:150px;white-space:nowrap">Learner Name</th>
+                <th style="width:80px">Gender</th>
+                <th style="width:120px">Assessment No</th>
+                {% for i in "1234567890" %}
+                  <th class="grid-cell"></th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in students %}
+              <tr class="learner-row">
+                <td>{{ s.admission_no }}</td>
+                {% if selected_stream == 'Combined' %}
+                  <td>{{ s.stream }}</td>
+                {% endif %}
+                <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.name }}</td>
+                <td>{{ s.gender|default:"-" }}</td>
+                <td>{{ s.assessment_no|default:"-" }}</td>
+                {% for i in "1234567890" %}
+                  <td class="grid-cell"></td>
+                {% endfor %}
+              </tr>
               {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for s in students %}
-            <tr class="learner-row">
-              <td>{{ s.admission_no }}</td>
-              {% if selected_stream == 'Combined' %}
-                <td>{{ s.stream }}</td>
-              {% endif %}
-              <td>{{ s.name }}</td>
-              <td>{{ s.assessment_no|default:"-" }}</td>
-              {% for i in "123456789012345" %}
-                <td class="grid-cell"></td>
-              {% endfor %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -343,11 +305,7 @@
       body=document.getElementById('clpBody');
 
   function updateBtnVisibility(){
-    if(grade.value&&stream.value){
-      btnRow.className='clp-btn-row visible';
-    }else{
-      btnRow.className='clp-btn-row';
-    }
+    btnRow.className = (grade.value && stream.value) ? 'clp-btn-row visible' : 'clp-btn-row';
   }
 
   grade.addEventListener('change',function(){
@@ -373,51 +331,47 @@
   stream.addEventListener('change',updateBtnVisibility);
 
   fetchBtn.addEventListener('click',function(){
-    if(!grade.value||!stream.value)return;
-    document.getElementById('clpForm').submit();
+    if(grade.value&&stream.value) document.getElementById('clpForm').submit();
   });
 
   toggle.addEventListener('click',function(){
-    if(body.classList.contains('collapsed')){
-      body.classList.remove('collapsed');
-      toggle.classList.remove('collapsed');
-    }else{
-      body.classList.add('collapsed');
-      toggle.classList.add('collapsed');
-    }
+    body.classList.toggle('collapsed');
+    toggle.classList.toggle('collapsed');
   });
 
   if(grade.value){
     grade.dispatchEvent(new Event('change'));
     {% if selected_stream %}
-    setTimeout(function(){
-      stream.value='{{ selected_stream }}';
-      updateBtnVisibility();
-    },500);
+    setTimeout(function(){ stream.value='{{ selected_stream }}'; updateBtnVisibility(); },500);
     {% endif %}
   }
 
-})();
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey)&&e.key==='p'){
+      e.preventDefault();e.stopPropagation();
+      if(typeof EDUNEXUSPrint!=='undefined'&&EDUNEXUSPrint.openPrintWindow){
+        EDUNEXUSPrint.openPrintWindow('.clp-results',{title:'{{ selected_grade|default:"Class" }} {{ selected_stream|default:"List" }} - Class List'});
+      }
+      return false;
+    }
+  },true);
 
-function clpDownloadPdf(btn) {
-    if (btn.disabled) return;
-    var orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="clp-spinner"><i></i><i></i><i></i><i></i><i></i></span> Generating\u2026';
+  window.clpDownloadPdf=function(btn){
+    if(btn.disabled)return;
+    var orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="clp-spinner"><i></i><i></i><i></i><i></i><i></i></span> Generating\u2026';
     fetch(btn.dataset.url)
-    .then(function(r) { if (!r.ok) throw new Error('PDF failed'); return r.blob(); })
-    .then(function(blob) {
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = '';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+      .then(function(r){if(!r.ok)throw new Error('PDF failed');return r.blob();})
+      .then(function(blob){
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);a.download='';
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
         URL.revokeObjectURL(a.href);
-        btn.disabled = false;
-        btn.innerHTML = orig;
-    })
-    .catch(function() { btn.disabled = false; btn.innerHTML = orig; alert('Failed to generate PDF.'); });
-}
+        btn.disabled=false;btn.innerHTML=orig;
+      })
+      .catch(function(){btn.disabled=false;btn.innerHTML=orig;alert('Failed to generate PDF.');});
+  };
+})();
 </script>
 {% endblock %}

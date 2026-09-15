@@ -17,6 +17,7 @@ from django.views.decorators.cache import never_cache
 from .constants import (
     ASSESSMENT_MAP,
     GRADE_CHOICES,
+    JSS_GRADE_CHOICES,
     LOWER_PRIMARY_GRADE_CHOICES,
     LOWER_PRIMARY_SUBJECT_NAMES,
     LOWER_PRIMARY_SUBJECT_SHORT_MAP,
@@ -398,8 +399,10 @@ def results_list(request):
     }
     if grade and grade in LOWER_PRIMARY_GRADE_CHOICES:
         section_accent = section_colors['LOWER_PRIMARY']
-    elif is_primary:
+    elif grade and grade in PRIMARY_GRADE_CHOICES:
         section_accent = section_colors['PRIMARY']
+    elif grade and grade in JSS_GRADE_CHOICES:
+        section_accent = section_colors['JSS']
     else:
         section_accent = section_colors.get(section, '#305CDE')
 
@@ -1529,7 +1532,7 @@ def _build_merit_list_from_snapshots(
     else:
         section_accent = section_colors.get(sec, '#305CDE')
 
-    return {
+    result = {
         'broadsheet': broadsheet,
         'published_subjects': published_subjects,
         'ordered_levels': active_levels,
@@ -1544,13 +1547,19 @@ def _build_merit_list_from_snapshots(
         'section_accent': section_accent,
     }
 
+    # Cache result in Redis for 5 minutes
+    if not force_live:
+        cache_key = f'merit_list:{school.pk}:{grade}:{stream}:{exam.id}'
+        cache.set(cache_key, result, 300)
+
+    return result
+
 
 def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_live=False):
     """
     Build the broadsheet data for the inline merit list display.
     Returns dict with broadsheet, published_subjects, ordered_levels, etc.
-    Tries the snapshot first for speed; falls back to live computation.
-    Set force_live=True to skip snapshot and always use live computation.
+    Result is cached in Redis for 5 minutes. Set force_live=True to skip cache.
     """
     from .constants import (
         ORDERED_LEVELS,
@@ -1570,6 +1579,7 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
         user_has_main_school_admin_override,
     )
     from ..models import ExamSummary, Subject, ExamResultSnapshot
+    from django.core.cache import cache
 
     is_admin_view = user_has_main_school_admin_override(request.user)
     section = exam.school_section or 'JSS'
@@ -1586,22 +1596,12 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
             .values_list('name', flat=True).order_by('name')
         )
 
-    # ── Try snapshot path first (much faster) ──────────────────────────
+    # ── Try Redis cache first ──────────────────────────────────────────
     if not force_live:
-        snapshot_streams = actual_streams if is_combined else [stream]
-        all_snapshots = []
-        for s_name in snapshot_streams:
-            snap = ExamResultSnapshot.get_latest(
-                school, exam.term, exam.year, exam.name, grade, s_name,
-            )
-            if snap:
-                all_snapshots.append(snap)
-
-        if all_snapshots and len(all_snapshots) == len(snapshot_streams):
-            return _build_merit_list_from_snapshots(
-                request, school, grade, stream, exam,
-                all_snapshots, actual_streams, is_combined,
-            )
+        cache_key = f'merit_list:{school.pk}:{grade}:{stream}:{exam.id}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
     # ── Fallback: live computation ─────────────────────────────────────
 

@@ -17,6 +17,7 @@ class StudentsConfig(AppConfig):
 
         from students.security.audit import connect_audit_signals
         from students.security.roles import ensure_security_groups
+        import students.signals  # noqa: F401 — register cache invalidation signals
 
         connect_audit_signals()
 

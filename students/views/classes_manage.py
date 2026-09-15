@@ -388,8 +388,10 @@ def api_class_list(request):
     """JSON endpoint: returns student list for a given grade+stream.
     For CRE/IRE/HRE subjects, filters by Student.religion tag.
     If no students are tagged yet, returns all (first-time behavior).
+    Cached in Redis for SCORE_SHEET_CACHE_TTL.
     """
     from django.http import JsonResponse
+    from django.core.cache import cache
     from ..models import Student, Stream, Subject
     from .constants import RELIGION_SUBJECTS, RELIGION_TAG
 
@@ -403,6 +405,12 @@ def api_class_list(request):
 
     if not grade_name:
         return JsonResponse({'students': [], 'has_multiple_streams': False})
+
+    # Build cache key including subject_id (religion filtering changes results)
+    cache_key = f'score_sheet:class_list:{school.pk}:{grade_name}:{stream_name}:{subject_id}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse(cached)
 
     stream_count = Stream.all_objects.filter(school=school, grade__name=grade_name).count()
     has_multiple = stream_count > 1
@@ -430,7 +438,6 @@ def api_class_list(request):
         tagged = students.filter(religion=religion_tag)
         if tagged.exists():
             students = tagged
-        # else: no students tagged yet → show all (first-time)
 
     from django.db.models import CharField, Value
     from django.db.models.functions import Substr, Length
@@ -456,7 +463,9 @@ def api_class_list(request):
             'guardian_phone': s.guardian.phone if s.guardian else '',
         })
 
-    return JsonResponse({'students': student_list, 'has_multiple_streams': has_multiple})
+    result = {'students': student_list, 'has_multiple_streams': has_multiple}
+    cache.set(cache_key, result, 300)  # 5 min TTL
+    return JsonResponse(result)
 
 
 @login_required(login_url='login')

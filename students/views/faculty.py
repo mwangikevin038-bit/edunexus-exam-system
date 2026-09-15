@@ -619,21 +619,55 @@ def manage_faculty_matrix(request):
                 messages.error(request, "An error occurred while updating the profile. Please try again.")
             return redirect('manage_faculty_matrix')
 
-        # --- Delete teacher profile ---
+        # --- Delete teacher profile (hard-delete with audit trail) ---
         elif action_type == 'delete_profile':
             school = get_request_school(request)
+            teacher_id = request.POST.get('teacher_id')
             try:
                 with transaction.atomic():
-                    teacher = Teacher.all_objects.get(id=request.POST.get('teacher_id'), school=school)
-                    name    = teacher.get_full_title()
-                    teacher.user.delete()   # CASCADE removes Teacher record too
-                messages.success(request, f"'{name}' and their login account were deleted.")
+                    teacher = Teacher.all_objects.select_related('user').get(id=teacher_id, school=school)
+                    name = teacher.get_full_title()
+                    user_id = teacher.user_id
+                    user_username = teacher.user.username
+
+                    # 1. Deactivate all subject assignments first (preserves marks data)
+                    deactivated = SubjectAssignment.all_objects.filter(
+                        teacher_profile=teacher, is_active=True
+                    ).update(is_active=False)
+
+                    # 2. Log to SecurityAuditLog before deletion
+                    from students.models import SecurityAuditLog
+                    SecurityAuditLog.objects.create(
+                        actor=request.user,
+                        client_ip=request.META.get('REMOTE_ADDR'),
+                        action='delete',
+                        target_model='students.teacher',
+                        target_id=str(teacher.pk),
+                        target_fields=['user', 'teacher_profile'],
+                        old_values={
+                            'teacher_id': teacher.pk,
+                            'user_id': user_id,
+                            'username': user_username,
+                            'name': name,
+                            'subjects_taught': teacher.subjects_taught or '',
+                            'school_section': teacher.school_section,
+                            'sub_section': teacher.sub_section or '',
+                            'deactivated_assignments': deactivated,
+                        },
+                        new_values={},
+                        school_id_snapshot=school.pk,
+                    )
+
+                    # 3. Hard-delete the User account (CASCADE removes Teacher record)
+                    teacher.user.delete()
+
+                messages.success(request, f"'{name}' and their login account were permanently deleted. {deactivated} subject assignment(s) deactivated.")
             except Teacher.DoesNotExist:
                 messages.error(request, "Teacher record not found.")
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.exception("Profile deletion failed for teacher_id=%s", request.POST.get('teacher_id'))
+                logger.exception("Profile deletion failed for teacher_id=%s", teacher_id)
                 messages.error(request, "An error occurred while deleting the profile. Please try again.")
             return redirect('manage_faculty_matrix')
 

@@ -10,6 +10,7 @@ import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.db.models import IntegerField
 from django.db.models.functions import Cast, Length, Substr
 from django.http import HttpResponse, JsonResponse
@@ -1775,12 +1776,102 @@ def admin_student_analytics(request, student_id):
     return HttpResponse(html)
 
 
-@login_required(login_url='login')
-@never_cache
+def _class_list_cache_key(school_id, grade, stream):
+    return f'class_list:{school_id}:{grade}:{stream}'
+
+
+_CLASS_LIST_CACHE_TTL = 600  # 10 minutes
+
+
+def _grades_cache_key(school_id):
+    return f'grades:{school_id}'
+
+
+def _streams_cache_key(school_id, grade):
+    return f'streams:{school_id}:{grade}'
+
+
+def _exams_cache_key(school_id, grade):
+    return f'score_sheet:exams:{school_id}:{grade}'
+
+
+def _subjects_cache_key(school_id, grade):
+    return f'score_sheet:subjects:{school_id}:{grade}'
+
+
+def _class_list_api_cache_key(school_id, grade, stream, subject_id):
+    return f'score_sheet:class_list:{school_id}:{grade}:{stream}:{subject_id}'
+
+
+def _analysis_cache_key(school_id, exam_id, class_name, stream_filter):
+    return f'score_sheet:analysis:{school_id}:{exam_id}:{class_name}:{stream_filter}'
+
+
+def _streams_printout_cache_key(school_id, grade):
+    return f'score_sheet:streams:{school_id}:{grade}'
+
+
+def _teacher_cache_key(school_id, grade, subject_id):
+    return f'score_sheet:teacher:{school_id}:{grade}:{subject_id}'
+
+
+SCORE_SHEET_CACHE_TTL = 300  # 5 minutes — short enough for mark entry, long enough to stop hammering DB
+
+
+def _school_grades_cache_key(school_id):
+    return f'score_sheet:grades:{school_id}'
+
+
+def invalidate_score_sheet_caches(school_id, grade=None):
+    """Invalidate all score sheet related caches for a school."""
+    from django.core.cache import cache as _cache
+    keys_to_delete = [_school_grades_cache_key(school_id)]
+    if grade:
+        keys_to_delete.extend([
+            _exams_cache_key(school_id, grade),
+            _subjects_cache_key(school_id, grade),
+            _grades_cache_key(school_id),
+            _streams_printout_cache_key(school_id, grade),
+        ])
+    _cache.delete_many(keys_to_delete)
+
+
+def invalidate_class_list_caches(school_id, grade, stream=None):
+    """Invalidate class list + score sheet caches for a specific grade/stream."""
+    from django.core.cache import cache as _cache
+    keys_to_delete = [
+        _class_list_cache_key(school_id, grade, stream or ''),
+        _class_list_cache_key(school_id, grade, 'Combined'),
+        _grades_cache_key(school_id),
+        _streams_cache_key(school_id, grade),
+        _exams_cache_key(school_id, grade),
+        _subjects_cache_key(school_id, grade),
+        _streams_printout_cache_key(school_id, grade),
+    ]
+    _cache.delete_many(keys_to_delete)
+
+
+def _delete_pattern_keys(pattern_prefix):
+    """Delete all cache keys matching a prefix using Redis KEYS scan."""
+    from django.core.cache import cache as _cache
+    try:
+        backend = cache._cache if hasattr(cache, '_cache') else None
+        if backend and hasattr(backend, 'get_client'):
+            client = backend.get_client(None)
+            full_key = cache.make_key(pattern_prefix + '*')
+            raw_keys = client.keys('*' + pattern_prefix + '*')
+            if raw_keys:
+                real_keys = [cache.cache_key(k.decode() if isinstance(k, bytes) else k) for k in raw_keys]
+                client.delete(*real_keys)
+    except Exception:
+        pass
+
+
 def class_lists(request):
     """
-    Teacher learner directory — Grade + Stream selection, then fetches students.
-    Mirrors the admin class_list_printout but section-scoped for teachers.
+    Unified class list view — handles teacher, admin, and printout modes.
+    Teacher mode: section-scoped, grid-only mark entry sheet.
+    Admin/printout mode: school header, Gender column, full register.
     """
     from ..models import Grade, Stream
 
@@ -1792,9 +1883,18 @@ def class_lists(request):
     is_admin_view = user_has_main_school_admin_override(request.user)
     section = get_request_school_section(request)
 
-    # Section-scoped grade list
+    # Determine view_mode: teacher = grid-only, admin = school header + Gender column
+    view_mode = request.GET.get('view_mode', '').strip()
+    if view_mode not in ('admin', 'teacher'):
+        view_mode = 'admin' if is_admin_view else 'teacher'
+
+    # Admin sees all grades; teachers see section-scoped grades
     if is_admin_view:
-        grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
+        gk = _grades_cache_key(school.pk)
+        grades = cache.get(gk)
+        if grades is None:
+            grades = list(Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct())
+            cache.set(gk, grades, _CLASS_LIST_CACHE_TTL)
     else:
         if section == 'LOWER_PRIMARY':
             allowed_grades = LOWER_PRIMARY_GRADE_CHOICES
@@ -1802,9 +1902,12 @@ def class_lists(request):
             allowed_grades = PRIMARY_GRADE_CHOICES
         else:
             allowed_grades = JSS_GRADE_CHOICES
-        grades = Grade.all_objects.filter(
-            school=school, name__in=allowed_grades
-        ).order_by('order').values_list('name', flat=True).distinct()
+        gk = _grades_cache_key(school.pk)
+        all_grades = cache.get(gk)
+        if all_grades is None:
+            all_grades = list(Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct())
+            cache.set(gk, all_grades, _CLASS_LIST_CACHE_TTL)
+        grades = [g for g in all_grades if g in allowed_grades]
 
     grade_name = request.GET.get('grade', '').strip()
     stream_name = request.GET.get('stream', '').strip()
@@ -1819,8 +1922,26 @@ def class_lists(request):
         section_accent = section_colors['LOWER_PRIMARY']
     elif grade_name in PRIMARY_GRADE_CHOICES:
         section_accent = section_colors['PRIMARY']
+    elif grade_name in JSS_GRADE_CHOICES:
+        section_accent = section_colors['JSS']
     else:
         section_accent = section_colors.get(section, '#305CDE')
+
+    # Access control: admin register requires admin or class teacher of that stream
+    can_see_admin = is_admin_view
+    if not is_admin_view and grade_name and stream_name:
+        from ..models import Teacher
+        teacher = Teacher.all_objects.filter(school=school, user=request.user, is_active=True).first()
+        if teacher and teacher.assigned_task:
+            task = teacher.assigned_task
+            if task.startswith('Class Teacher'):
+                remainder = task.replace('Class Teacher ', '').strip()
+                if remainder == f'{grade_name} {stream_name}':
+                    can_see_admin = True
+
+    # Force teacher mode if not authorized for admin register
+    if view_mode == 'admin' and not can_see_admin:
+        view_mode = 'teacher'
 
     students = []
     streams = []
@@ -1828,42 +1949,55 @@ def class_lists(request):
     selected_stream = stream_name
 
     if grade_name:
-        streams = list(
-            Stream.all_objects.filter(school=school, grade__name=grade_name)
-            .values_list('name', flat=True).order_by('name')
-        )
-        if len(streams) > 1:
+        sk = _streams_cache_key(school.pk, grade_name)
+        streams = cache.get(sk)
+        if streams is None:
+            streams = list(
+                Stream.all_objects.filter(school=school, grade__name=grade_name)
+                .values_list('name', flat=True).order_by('name')
+            )
+            cache.set(sk, streams, _CLASS_LIST_CACHE_TTL)
+        else:
+            streams = list(streams)
+        if len(streams) > 1 and 'Combined' not in streams:
             streams.append('Combined')
 
     if grade_name and stream_name:
-        from django.db.models.functions import Substr, Length
-        from django.db.models import IntegerField
-        from django.db.models.functions import Cast
-
-        if stream_name == 'Combined':
-            qs = Student.all_objects.filter(
-                school=school, class_name=grade_name, is_active=True
-            )
+        # Try Redis cache first
+        cache_key = _class_list_cache_key(school.pk, grade_name, stream_name)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            students = cached
         else:
-            qs = Student.all_objects.filter(
-                school=school, class_name=grade_name, stream=stream_name, is_active=True
+            from django.db.models.functions import Substr, Length
+            from django.db.models import IntegerField
+            from django.db.models.functions import Cast
+
+            if stream_name == 'Combined':
+                qs = Student.all_objects.filter(
+                    school=school, class_name=grade_name, is_active=True
+                )
+            else:
+                qs = Student.all_objects.filter(
+                    school=school, class_name=grade_name, stream=stream_name, is_active=True
+                )
+            qs = (
+                qs.annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
+                .order_by('adm_int')
             )
-        qs = (
-            qs.annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
-            .order_by('adm_int')
-        )
-        for s in qs:
-            students.append({
-                'id': s.id,
-                'admission_no': s.admission_no or '',
-                'name': s.name or '',
-                'gender': s.gender or '',
-                'stream': s.stream or '',
-                'assessment_no': s.assessment_no or '',
-                'guardian_name': s.guardian.name if s.guardian else '',
-                'guardian_phone': s.guardian.phone if s.guardian else '',
-                'religion': s.religion or '',
-            })
+            for s in qs:
+                students.append({
+                    'id': s.id,
+                    'admission_no': s.admission_no or '',
+                    'name': s.name or '',
+                    'gender': s.gender or '',
+                    'stream': s.stream or '',
+                    'assessment_no': s.assessment_no or '',
+                    'guardian_name': s.guardian.name if s.guardian else '',
+                    'guardian_phone': s.guardian.phone if s.guardian else '',
+                    'religion': s.religion or '',
+                })
+            cache.set(cache_key, students, _CLASS_LIST_CACHE_TTL)
 
     return render(request, 'students/class_lists.html', {
         'grades': grades,
@@ -1871,7 +2005,9 @@ def class_lists(request):
         'students': students,
         'selected_grade': selected_grade,
         'selected_stream': selected_stream,
+        'view_mode': view_mode,
         'is_admin_view': is_admin_view,
+        'can_see_admin': can_see_admin,
         'total_count': len(students),
         'boys_count': sum(1 for s in students if s['gender'] == 'Male'),
         'girls_count': sum(1 for s in students if s['gender'] == 'Female'),
@@ -3122,112 +3258,12 @@ def printouts_hub(request):
 @login_required(login_url='login')
 @school_admin_required
 def class_list_printout(request):
-    """
-    Class List printout page — Grade + Stream selection, then fetches students.
-    Supports view_mode: 'admin' (guardian contacts) or 'teacher' (mark sheet grid).
-    """
-    from ..models import Grade, Stream
-    from ..security.roles import user_has_main_school_admin_override
-
-    school = get_request_school(request)
-    if not school:
-        messages.error(request, "No school context found.")
-        return redirect('school_admin_dashboard')
-
-    grades = Grade.all_objects.filter(school=school).order_by('order').values_list('name', flat=True).distinct()
-
-    grade_name = request.GET.get('grade', '').strip()
-    stream_name = request.GET.get('stream', '').strip()
-    view_mode = request.GET.get('view_mode', 'admin').strip()
-    if view_mode not in ('admin', 'teacher'):
-        view_mode = 'admin'
-
-    # Access control: admin register requires admin or class teacher of that stream
-    is_admin = user_has_main_school_admin_override(request.user)
-    can_see_admin = is_admin
-    if not is_admin and grade_name and stream_name:
-        from ..models import Teacher
-        teacher = Teacher.all_objects.filter(school=school, user=request.user, is_active=True).first()
-        if teacher and teacher.assigned_task:
-            task = teacher.assigned_task
-            if task.startswith('Class Teacher'):
-                remainder = task.replace('Class Teacher ', '').strip()
-                if remainder == f'{grade_name} {stream_name}':
-                    can_see_admin = True
-
-    # Force teacher mode if not authorized for admin register
-    if view_mode == 'admin' and not can_see_admin:
-        view_mode = 'teacher'
-
-    # Section-aware accent color based on grade
-    section_colors = {
-        'JSS':           '#305CDE',
-        'PRIMARY':       '#00674F',
-        'LOWER_PRIMARY': '#B45309',
-    }
-    if grade_name in ['Grade 1', 'Grade 2', 'Grade 3']:
-        section_accent = section_colors['LOWER_PRIMARY']
-    elif grade_name in ['Grade 4', 'Grade 5', 'Grade 6']:
-        section_accent = section_colors['PRIMARY']
-    else:
-        section_accent = section_colors['JSS']
-
-    students = []
-    streams = []
-    selected_grade = grade_name
-    selected_stream = stream_name
-
-    if grade_name:
-        streams = list(
-            Stream.all_objects.filter(school=school, grade__name=grade_name)
-            .values_list('name', flat=True).order_by('name')
-        )
-
-    if grade_name and stream_name:
-        from django.db.models import CharField, Value
-        from django.db.models.functions import Substr, Length
-        from django.db.models import IntegerField
-        from django.db.models.functions import Cast
-        from ..models import Student
-
-        if stream_name == 'Combined':
-            qs = Student.all_objects.filter(
-                school=school, class_name=grade_name, is_active=True
-            )
-        else:
-            qs = Student.all_objects.filter(
-                school=school, class_name=grade_name, stream=stream_name, is_active=True
-            )
-        qs = (
-            qs.annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
-            .order_by('adm_int')
-        )
-        for s in qs:
-            students.append({
-                'id': s.id,
-                'admission_no': s.admission_no or '',
-                'name': s.name or '',
-                'gender': s.gender or '',
-                'stream': s.stream or '',
-                'assessment_no': s.assessment_no or '',
-                'guardian_name': s.guardian.name if s.guardian else '',
-                'guardian_phone': s.guardian.phone if s.guardian else '',
-                'religion': s.religion or '',
-            })
-
-    return render(request, 'students/class_list_printout.html', {
-        'grades': grades,
-        'streams': streams,
-        'students': students,
-        'selected_grade': selected_grade,
-        'selected_stream': selected_stream,
-        'view_mode': view_mode,
-        'can_see_admin': can_see_admin,
-        'total_count': len(students),
-        'boys_count': sum(1 for s in students if s['gender'] == 'Male'),
-        'girls_count': sum(1 for s in students if s['gender'] == 'Female'),
-        'section_accent': section_accent,
-    })
+    """Thin wrapper — delegates to class_lists with view_mode=admin."""
+    # Inject view_mode=admin into GET params if not already set
+    if 'view_mode' not in request.GET:
+        request.GET = request.GET.copy()
+        request.GET['view_mode'] = 'admin'
+    return class_lists(request)
 
 
 @login_required(login_url='login')
@@ -3235,6 +3271,7 @@ def api_streams_for_grade_printout(request):
     """AJAX endpoint: returns streams for a given grade. Adds 'Combined' if 2+ streams.
 
     Teachers are scoped to their section — cannot fetch streams for other sections.
+    Cached in Redis for SCORE_SHEET_CACHE_TTL.
     """
     from django.http import JsonResponse
     from ..models import Stream
@@ -3260,16 +3297,19 @@ def api_streams_for_grade_printout(request):
         elif section == 'JSS' and grade_name in LOWER_PRIMARY_GRADE_CHOICES + PRIMARY_GRADE_CHOICES:
             return JsonResponse({'streams': []})
 
+    cache_key = _streams_printout_cache_key(school.pk, grade_name)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({'streams': cached})
+
     streams = list(
         Stream.all_objects.filter(school=school, grade__name=grade_name)
         .values_list('name', flat=True).order_by('name')
     )
     if len(streams) > 1:
         streams.append('Combined')
+    cache.set(cache_key, streams, SCORE_SHEET_CACHE_TTL)
     return JsonResponse({'streams': streams})
-
-
-@login_required(login_url='login')
 @school_admin_required
 def score_sheet(request):
     """
@@ -3333,12 +3373,12 @@ def analysis_report(request):
 
 
 @login_required(login_url='login')
-@never_cache
 def api_exams_for_class(request):
     """AJAX endpoint: returns exams for a given grade.
 
     Only returns exams where ALL subjects have published mark submissions.
     Teachers are scoped to their section.
+    Result is cached in Redis for SCORE_SHEET_CACHE_TTL.
     """
     from django.http import JsonResponse
     from django.db.models import Count, Q
@@ -3356,6 +3396,12 @@ def api_exams_for_class(request):
 
     is_admin = user_has_main_school_admin_override(request.user)
     section = get_request_school_section(request)
+
+    # Check Redis cache first
+    cache_key = _exams_cache_key(school.pk, grade_name)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({'exams': cached})
 
     qs = Exam.all_objects.filter(school=school, is_deleted=False)
 
@@ -3418,6 +3464,9 @@ def api_exams_for_class(request):
                 'year': exam.year,
             })
 
+    # Cache the result
+    cache.set(cache_key, complete_exams, SCORE_SHEET_CACHE_TTL)
+
     import logging
     logging.getLogger('students').info(
         'api_exams_for_class: school=%s grade=%s section=%s is_admin=%s total_subjects=%d complete_exams=%d',
@@ -3430,7 +3479,9 @@ def api_exams_for_class(request):
 @login_required(login_url='login')
 @school_admin_required
 def api_subjects_for_grade(request):
-    """AJAX endpoint: returns subjects for a given grade, grouped by section."""
+    """AJAX endpoint: returns subjects for a given grade, grouped by section.
+    Cached in Redis for SCORE_SHEET_CACHE_TTL.
+    """
     from django.http import JsonResponse
     from ..models import Subject
 
@@ -3442,23 +3493,26 @@ def api_subjects_for_grade(request):
     if not grade_name:
         return JsonResponse({'subjects': []})
 
+    cache_key = _subjects_cache_key(school.pk, grade_name)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({'subjects': cached})
+
     subjects = list(
         Subject.all_objects.filter(school=school, grade=grade_name, is_active=True)
         .order_by('school_section', 'name')
         .values('id', 'name', 'code', 'school_section')
     )
-    import logging
-    logging.getLogger('students').info(
-        'api_subjects_for_grade: school=%s grade=%s count=%d',
-        getattr(school, 'pk', None), grade_name, len(subjects),
-    )
+    cache.set(cache_key, subjects, SCORE_SHEET_CACHE_TTL)
     return JsonResponse({'subjects': subjects})
 
 
 @login_required(login_url='login')
 @school_admin_required
 def api_teacher_for_subject(request):
-    """AJAX endpoint: returns the teacher assigned to a given grade+stream+subject."""
+    """AJAX endpoint: returns the teacher assigned to a given grade+stream+subject.
+    Cached in Redis for SCORE_SHEET_CACHE_TTL.
+    """
     from django.http import JsonResponse
     from ..models import SubjectAssignment
 
@@ -3472,6 +3526,11 @@ def api_teacher_for_subject(request):
 
     if not grade_name or not subject_id:
         return JsonResponse({'teacher': None})
+
+    cache_key = _teacher_cache_key(school.pk, grade_name, subject_id)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({'teacher': cached})
 
     assignment = SubjectAssignment.all_objects.filter(
         school=school,
@@ -3489,6 +3548,7 @@ def api_teacher_for_subject(request):
     else:
         teacher_name = None
 
+    cache.set(cache_key, teacher_name, SCORE_SHEET_CACHE_TTL)
     return JsonResponse({'teacher': teacher_name})
 
 
@@ -3541,7 +3601,6 @@ def report_forms(request):
 
 
 @login_required(login_url='login')
-@never_cache
 def merit_list(request):
     """Merit List page — Form + Exam selection, then display results broadsheet inline.
 
@@ -3639,6 +3698,8 @@ def merit_list(request):
     context = build_broadsheet_for_merit_list(request, school, grade, stream, exam_object)
     context['show_table'] = True
     context['grades'] = grades
+    context['grade'] = grade
+    context['stream'] = stream
     context['selected_grade'] = grade
     context['selected_stream'] = stream
     context['selected_exam_id'] = exam_id
@@ -3736,6 +3797,12 @@ def api_analysis_data(request):
 
     if not exam_id:
         return JsonResponse({'error': 'exam_id required'}, status=400)
+
+    # Check Redis cache — this endpoint runs 200-500+ DB queries, caching is critical
+    analysis_cache_key = _analysis_cache_key(school.pk, exam_id, class_name_filter or '', stream_filter or '')
+    cached_data = cache.get(analysis_cache_key)
+    if cached_data is not None:
+        return JsonResponse(cached_data)
 
     exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
     if not exam:
@@ -4585,6 +4652,8 @@ def api_analysis_data(request):
         'current_exam_id': exam.id,
         'all_ranked_students': ranked_students,
     }
+    # Cache for 5 minutes — this endpoint runs 200-500+ DB queries
+    cache.set(analysis_cache_key, data, SCORE_SHEET_CACHE_TTL)
     return JsonResponse(data)
 
 
