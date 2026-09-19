@@ -552,7 +552,7 @@ def manage_faculty_matrix(request):
                         messages.error(request,
                             "Phone number must be 10 digits starting with 0 (e.g. 0712345678).")
                         return redirect('manage_faculty_matrix')
-                    if not new_tsc or not new_tsc.isdigit():
+                    if new_tsc and not new_tsc.isdigit():
                         messages.error(request, "TSC number must be digits only.")
                         return redirect('manage_faculty_matrix')
                     # TSC must be unique within the school
@@ -630,12 +630,20 @@ def manage_faculty_matrix(request):
                     user_id = teacher.user_id
                     user_username = teacher.user.username
 
-                    # 1. Deactivate all subject assignments first (preserves marks data)
-                    deactivated = SubjectAssignment.all_objects.filter(
-                        teacher_profile=teacher, is_active=True
-                    ).update(is_active=False)
+                    # 1. Deactivate + unlink all subject assignments (preserves marks data)
+                    assignments_to_fix = SubjectAssignment.all_objects.filter(
+                        teacher_profile=teacher
+                    )
+                    deactivated = assignments_to_fix.update(is_active=False)
+                    assignments_to_fix.update(teacher_profile=None)
 
-                    # 2. Log to SecurityAuditLog before deletion
+                    # 2. Unlink mark submissions too
+                    from ..models import MarkSubmission
+                    MarkSubmission.all_objects.filter(
+                        teacher=teacher
+                    ).update(teacher=None)
+
+                    # 3. Log to SecurityAuditLog before deletion
                     from students.models import SecurityAuditLog
                     SecurityAuditLog.objects.create(
                         actor=request.user,
@@ -658,7 +666,7 @@ def manage_faculty_matrix(request):
                         school_id_snapshot=school.pk,
                     )
 
-                    # 3. Hard-delete the User account (CASCADE removes Teacher record)
+                    # 4. Hard-delete the User account (CASCADE removes Teacher record)
                     teacher.user.delete()
 
                 messages.success(request, f"'{name}' and their login account were permanently deleted. {deactivated} subject assignment(s) deactivated.")

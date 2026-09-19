@@ -947,7 +947,7 @@ class SubjectAssignment(SchoolScopedModel):
         ('LOWER', 'Lower Primary'),
         ('UPPER', 'Upper Primary'),
     ]
-    teacher_profile = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='assignments', null=True, blank=True)
+    teacher_profile = models.ForeignKey(Teacher, on_delete=models.SET_NULL, related_name='assignments', null=True, blank=True)
     subject = models.ForeignKey(
         'Subject',
         on_delete=models.PROTECT,
@@ -1012,7 +1012,7 @@ class MarkSubmission(SchoolScopedModel):
         ('published', 'Published'),
     ]
 
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True)
     subject = models.ForeignKey(
         'Subject',
         on_delete=models.PROTECT,
@@ -1220,6 +1220,12 @@ class Exam(SchoolScopedModel):
         default=7,
         help_text="Minimum number of subjects a student must have published results for",
     )
+    closed_at = models.DateTimeField(null=True, blank=True)
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='closed_exams',
+    )
 
     class Meta:
         unique_together = ('school', 'name', 'term', 'year', 'school_section', 'sub_section')
@@ -1247,7 +1253,7 @@ class AssessmentLock(SchoolScopedModel):
         ('End Term Assessment', 'End Term Assessment'),
     ]
     
-    year = models.IntegerField(default=2026)
+    year = models.IntegerField(default=current_year)
     term = models.CharField(max_length=20, choices=[('Term 1', 'Term 1'), ('Term 2', 'Term 2'), ('Term 3', 'Term 3')])
     exam_type = models.CharField(max_length=50)
     grade = models.CharField(max_length=20, choices=[('Grade 1', 'Grade 1'), ('Grade 2', 'Grade 2'), ('Grade 3', 'Grade 3'), ('Grade 4', 'Grade 4'), ('Grade 5', 'Grade 5'), ('Grade 6', 'Grade 6'), ('Grade 7', 'Grade 7'), ('Grade 8', 'Grade 8'), ('Grade 9', 'Grade 9')])

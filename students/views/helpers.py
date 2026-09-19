@@ -77,7 +77,7 @@ def invalidate_report_caches(school_id, class_name, stream, year, term, assessme
     from ..models import ExamResultSnapshot, School
     try:
         school = School.objects.get(pk=school_id)
-        ExamResultSnapshot.objects.filter(
+        ExamResultSnapshot.all_objects.filter(
             school=school,
             term=term,
             year=year,
@@ -1379,7 +1379,7 @@ def invalidate_exam_snapshots(school, exam, class_name=None, stream=None):
     """
     from ..models import ExamResultSnapshot
 
-    qs = ExamResultSnapshot.objects.filter(
+    qs = ExamResultSnapshot.all_objects.filter(
         school=school,
         term=exam.term,
         year=exam.year,

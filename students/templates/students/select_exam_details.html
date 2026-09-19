@@ -5,6 +5,36 @@
 <link rel="stylesheet" href="{% static 'css/entry-mobile.css' %}">
 {% endblock %}
 {% block sub_tabs %}
+{% if is_admin_view %}
+<nav class="sub-nav-bar dm-subnav">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=manage" class="sub-nav-link">
+        <i class="ph ph-gear-six"></i>
+        Manage Exams
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=create" class="sub-nav-link">
+        <i class="ph ph-plus-circle"></i>
+        Create Exam
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=grading" class="sub-nav-link">
+        <i class="ph ph-chart-line-up"></i>
+        Grading Systems
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'manage_exams' %}?tab=deleted" class="sub-nav-link">
+        <i class="ph ph-trash"></i>
+        Deleted Exams
+      </a>
+    </li>
+  </ul>
+</nav>
+{% else %}
 <nav class="sub-nav-bar dm-subnav">
   <ul class="sub-nav-list">
     <li class="sub-nav-item">
@@ -19,6 +49,7 @@
     </li>
   </ul>
 </nav>
+{% endif %}
 {% endblock %}
 {% block content %}
 <style>
@@ -26,9 +57,15 @@
     .en-shell{max-width:880px;margin:0 auto}
     .cp-desktop{max-width:880px;margin:0 auto}
 
-    /* ── Content area scroll fix ──────────────────────── */
-    .main-content{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;max-height:calc(100vh - var(--global-header-height,64px) - 35px);max-height:calc(100dvh - var(--global-header-height,64px) - 35px)}
-    .app-content{overflow:hidden}
+    @media (min-width: 769px) {
+        .main-content{overflow:visible;max-height:none}
+        .app-content{overflow:visible}
+    }
+
+    @media (max-width: 768px) {
+        .main-content{max-height:calc(100dvh - 56px);overflow-y:auto;padding:12px 16px;padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+        .app-content{overflow:hidden;margin-top:0}
+    }
 
     /* ── Alert banners (assessment list) ──────────────── */
     .cp-dt-alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;margin-bottom:16px;font-size:.8125rem;font-weight:600;line-height:1.4}
@@ -36,23 +73,14 @@
     .cp-dt-alert-success{background:#f0fdf4;color:#15803d}
     .cp-dt-alert-info{background:#eff6ff;color:#1d4ed8}
     .cp-dt-alert-danger{background:#fef2f2;color:#dc2626}
-
-    @media (max-width: 768px) {
-        .main-content{max-height:calc(100dvh - 56px);overflow-y:auto;padding:12px 16px;padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
-        .app-content{overflow:hidden;margin-top:0}
-    }
 </style>
 
 <div class="cp-desktop" id="examContent">
     {% if selected_assignment and selected_exam %}
         <div class="en-shell">
             <header class="en-header">
-                <a href="{% url back_url %}" class="en-back"
-                   hx-get="{% url back_url %}"
-                   hx-target="#examContent"
-                   hx-swap="innerHTML"
-                   hx-push-url="true">
-                    <i class="ph ph-arrow-left"></i> Back to assessments
+                <a href="{% url back_url %}{{ back_url_args|default:'' }}" class="en-back {% if is_admin_view %}en-back--admin{% endif %}">
+                    <i class="ph ph-arrow-left"></i> {{ back_label|default:"Back to assessments" }}
                 </a>
                 <div class="en-header-title">Score Capture</div>
                 <div class="en-header-subtitle">Enter marks below. Changes save automatically.</div>
@@ -137,20 +165,38 @@
                     <input type="hidden" name="assignment_id" value="{{ selected_assignment.id }}">
                     <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
 
-                    <div class="en-meta-pills en-meta-pills--inline">
-                        <span class="en-meta-pill">
-                            <i class="ph ph-squares-four"></i>
-                            <span>Total:</span>
-                            <div class="en-meta-pill-input">
+                    {# ── Total Marks Gate ────────────────────────────── #}
+                    <div class="en-total-gate" id="totalGate">
+                        <div class="en-total-gate-card" id="totalGateCard">
+                            <div class="en-total-gate-header">
+                                <div class="en-total-gate-icon"><i class="ph ph-target"></i></div>
+                                <div class="en-total-gate-info">
+                                    <div class="en-total-gate-title">Set Total Marks</div>
+                                    <div class="en-total-gate-desc">How many marks is this assessment worth? Confirm before entering scores.</div>
+                                </div>
+                            </div>
+                            <div class="en-total-gate-input-row">
                                 <input type="number" name="maximum_marks" id="maximumMarks"
-                                       class="js-maximum-marks"
+                                       class="js-maximum-marks en-total-gate-input"
                                        value="{{ current_maximum_marks|default:100 }}"
                                        min="1" max="500"
-                                       {% if is_locked or is_submitted %}readonly{% endif %}
-                                       onchange="recalculateMaxMarks(this)">
-                                <span>pts</span>
+                                       inputmode="numeric"
+                                       {% if is_locked or is_submitted %}readonly{% endif %}>
+                                <span class="en-total-gate-unit">marks</span>
                             </div>
-                        </span>
+                            {% if not is_locked and not is_submitted %}
+                            <button type="button" class="en-total-gate-btn" id="totalGateBtn">
+                                <i class="ph ph-check-circle"></i> Confirm &amp; Start Entering
+                            </button>
+                            {% endif %}
+                        </div>
+                        <div class="en-total-gate-badge" id="totalGateBadge" style="display:none;">
+                            <i class="ph ph-check-circle"></i>
+                            <span>Total: <strong id="totalGateBadgeValue">{{ current_maximum_marks|default:100 }}</strong> marks</span>
+                            {% if not is_locked and not is_submitted %}
+                            <button type="button" class="en-total-gate-badge-edit" id="totalGateEdit">Change</button>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="en-section">
@@ -176,17 +222,27 @@
                                            data-had-value="{% if student.current_score != '' and student.current_score is not None %}1{% else %}0{% endif %}"
                                            {% if is_locked or is_submitted %}readonly{% endif %}
                                            onfocus="this.select()">
-                                    <span class="en-grade js-grade">{{ student.performance_level|default:"—" }}</span>
+                                    <button type="button" class="en-absent js-absent"
+                                            aria-label="Toggle absent for {{ student.name }}"
+                                            {% if is_locked or is_submitted %}disabled{% endif %}>AB</button>
+                                    <div class="en-student-status">
+                                        <span class="en-level js-level">—</span>
+                                        <span class="en-pts js-pts"></span>
+                                        <span class="en-pct js-pct"></span>
+                                    </div>
                                 </div>
                             </div>
                         {% endfor %}
                     </div>
 
-                    <div class="en-actions">
-                        <button type="button" id="enSubmitBtn" class="en-submit-btn"
-                                {% if is_locked %}disabled{% endif %}>
-                            <i class="ph ph-paper-plane-tilt"></i>
-                            {% if is_submitted %}Resubmit Sheet{% else %}Submit Sheet{% endif %}
+                    {# Submit row — JS moves this outside .en-body for fixed positioning #}
+                    <div class="en-inline-submit" id="enInlineSubmit" data-submitted="{% if is_submitted %}1{% else %}0{% endif %}" data-locked="{% if is_locked %}1{% else %}0{% endif %}">
+                        <span class="en-inline-submit-progress">
+                            <span id="scoredCountInline">0</span> / {{ students|length }} scored
+                        </span>
+                        <button type="button" class="en-submit-btn en-submit-btn--inline" id="enSubmitBtn">
+                            <span class="htmx-indicator-none"><i class="ph ph-cloud-arrow-up"></i> Submit</span>
+                            <span class="htmx-indicator"><i class="ph ph-spinner-gap spinning"></i> Processing...</span>
                         </button>
                     </div>
                 </form>
@@ -291,14 +347,11 @@
         return null;
     }
 
-    var _csrf = null;
     function getCsrfToken() {
-        if (_csrf) return _csrf;
         var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-        if (m) { _csrf = m[1]; return _csrf; }
+        if (m) return m[1];
         var i = document.querySelector('#marksForm input[name="csrfmiddlewaretoken"]');
-        _csrf = i ? i.value : '';
-        return _csrf;
+        return i ? i.value : '';
     }
 
     var DEBOUNCE_MS = 1500;
@@ -435,9 +488,12 @@
         }
         var totalStudents = inputs.length;
         var submitBar = document.getElementById('enInlineSubmit');
+        var body = document.querySelector('.en-body');
         if (submitBar) {
-            if (scored >= totalStudents && totalStudents > 0) submitBar.classList.add('is-visible');
+            var allScored = scored >= totalStudents && totalStudents > 0;
+            if (allScored) submitBar.classList.add('is-visible');
             else submitBar.classList.remove('is-visible');
+            if (body) body.classList.toggle('has-submit-bar', allScored);
         }
     }
 
@@ -624,10 +680,55 @@
                     return;
                 }
 
-                form.setAttribute('data-submitting', 'true');
+                var allInputs = form.querySelectorAll('.js-score');
+                var missingCount = 0, firstMissingId = null;
+                for (var i = 0; i < allInputs.length; i++) {
+                    var v = (allInputs[i].value || '').trim().toUpperCase();
+                    if (v === '') {
+                        missingCount++;
+                        if (!firstMissingId) {
+                            var r = allInputs[i].closest('.en-student');
+                            if (r) firstMissingId = r.getAttribute('data-student-id');
+                        }
+                    }
+                }
+                if (missingCount > 0) {
+                    showToast(missingCount + ' learner(s) still need a score or AB.', 'error');
+                    if (firstMissingId) {
+                        var el = document.querySelector('.en-student[data-student-id="' + firstMissingId + '"]');
+                        if (el) {
+                            el.scrollIntoView({behavior:'smooth',block:'center'});
+                            el.classList.add('highlight-missing');
+                            setTimeout(function(){el.classList.remove('highlight-missing');},3000);
+                        }
+                    }
+                    return;
+                }
 
-                // Bulk submit sends ALL scores from the form — no need to flush individual auto-saves.
-                htmx.trigger(form, 'submit');
+                // Stop pending debounced auto-saves so they don't fire after
+                // the bulk submit and trigger "sheet submitted" errors.
+                Object.keys(saveTimers).forEach(function(sid) {
+                    clearTimeout(saveTimers[sid]);
+                });
+                saveTimers = {};
+
+                // Wait for any in-flight auto-saves to finish, then submit.
+                // This prevents a race where auto-save and bulk submit both
+                // try to modify the same marks concurrently.
+                var inflightPromises = Object.values(inflightByStudent);
+                inflightByStudent = {};
+
+                function doSubmit() {
+                    form.setAttribute('data-submitting', 'true');
+                    // Bulk submit sends ALL scores from the form in one request.
+                    htmx.trigger(form, 'submit');
+                }
+
+                if (inflightPromises.length) {
+                    Promise.all(inflightPromises).then(doSubmit).catch(doSubmit);
+                } else {
+                    doSubmit();
+                }
             });
         }
 
@@ -695,14 +796,16 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initMarkEntry);
+        document.addEventListener('DOMContentLoaded', function() { initMarkEntry(); initTotalGate(); });
     } else {
         initMarkEntry();
+        initTotalGate();
     }
 
     document.body.addEventListener('htmx:afterSwap', function(e) {
         if (e.detail.target && e.detail.target.id === 'examContent') {
             initMarkEntry();
+            initTotalGate();
         }
     });
 
@@ -726,6 +829,58 @@
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ph ph-arrow-u-up-left"></i> Return for Edits'; }
         });
     };
+
+    // ─── Total Marks Gate ───────────────────────────────────────
+    function initTotalGate() {
+        var gateCard = document.getElementById('totalGateCard');
+        var gateBadge = document.getElementById('totalGateBadge');
+        var gateBtn = document.getElementById('totalGateBtn');
+        var gateEdit = document.getElementById('totalGateEdit');
+        var gateBadgeVal = document.getElementById('totalGateBadgeValue');
+        var maxInput = document.getElementById('maximumMarks');
+        var students = document.getElementById('studentsContainer');
+        if (!gateCard || !students) return;
+
+        var submitBar = document.getElementById('enInlineSubmit');
+        var isLocked = submitBar && submitBar.getAttribute('data-locked') === '1';
+        var isSubmitted = submitBar && submitBar.getAttribute('data-submitted') === '1';
+        if (isLocked || isSubmitted) {
+            gateCard.style.display = 'none';
+            gateBadge.style.display = 'inline-flex';
+            if (gateBadgeVal) gateBadgeVal.textContent = maxInput ? maxInput.value : '100';
+            return;
+        }
+
+        students.classList.add('is-gated');
+
+        if (gateBtn) {
+            gateBtn.addEventListener('click', function() {
+                var val = maxInput.value.trim();
+                if (!val || parseInt(val, 10) < 1) {
+                    maxInput.classList.add('input-error');
+                    maxInput.focus();
+                    setTimeout(function() { maxInput.classList.remove('input-error'); }, 1500);
+                    return;
+                }
+                gateCard.style.display = 'none';
+                gateBadge.style.display = 'inline-flex';
+                if (gateBadgeVal) gateBadgeVal.textContent = val;
+                students.classList.remove('is-gated');
+                var sc = document.querySelectorAll('.js-score');
+                for (var i = 0; i < sc.length; i++) calcScore(sc[i], true);
+            });
+        }
+
+        if (gateEdit) {
+            gateEdit.addEventListener('click', function() {
+                gateBadge.style.display = 'none';
+                gateCard.style.display = 'block';
+                students.classList.add('is-gated');
+                maxInput.focus();
+                maxInput.select();
+            });
+        }
+    }
 
     window.recalculateMaxMarks = function(input) {
         var newMax = parseInt(input.value, 10);

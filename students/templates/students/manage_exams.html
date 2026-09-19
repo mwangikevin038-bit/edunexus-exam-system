@@ -1,4 +1,4 @@
-{% extends 'students/base.html' %}
+﻿{% extends 'students/base.html' %}
 {% load static %}
 
 {% block sub_tabs %}
@@ -92,23 +92,23 @@
         background: #ffffff;
         border: 1px solid #e5e7eb;
         border-radius: 0;
-        padding: 24px 28px;
+        padding: 12px 28px;
         margin-bottom: 24px;
     }
 
     .year-filter-card label {
         display: block;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         color: #1e293b;
-        margin-bottom: 12px;
+        margin-bottom: 6px;
         font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
     }
 
     .year-filter-card select {
         width: 100%;
-        height: 48px;
-        border: 1.5px solid #c6f544;
+        height: 36px;
+        border: 1px solid #4169E1;
         border-radius: 4px;
         background: #f7fef2;
         color: #1e293b;
@@ -128,8 +128,8 @@
 
     .year-filter-card select:focus {
         outline: none;
-        border-color: #84cc16;
-        box-shadow: 0 0 0 2px rgba(132, 204, 22, 0.15);
+        border-color: #2548b5;
+        box-shadow: 0 0 0 2px rgba(65, 105, 225, 0.2);
     }
 
     .exam-list-card {
@@ -165,11 +165,11 @@
     .exam-list-table th {
         background: #ffffff;
         color: #374151;
-        padding: 14px 14px;
+        padding: 8px 14px;
         text-align: left;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 700;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #94a3b8;
         white-space: nowrap;
         font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
     }
@@ -184,10 +184,10 @@
     }
 
     .exam-list-table td {
-        padding: 16px 14px;
-        border: 1px solid #e5e7eb;
+        padding: 8px 14px;
+        border: 1px solid #94a3b8;
         color: #1f2937;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
         vertical-align: middle;
         white-space: nowrap;
@@ -219,6 +219,11 @@
         color: #6b7280;
     }
 
+    .status-ready {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
     .status-in-progress {
         background: #fef3c7;
         color: #92400e;
@@ -245,7 +250,7 @@
     }
 
     .status-published,
-    .status-Released {
+    .status-released {
         background: #dcfce7;
         color: #166534;
     }
@@ -258,6 +263,130 @@
     .status-draft {
         background: #f3f4f6;
         color: #6b7280;
+    }
+
+    .lifecycle-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 4px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    .lifecycle-active {
+        background: #dcfce7;
+        color: #166534;
+    }
+    .lifecycle-closed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .lifecycle-closed i {
+        font-size: 11px;
+    }
+
+    .exam-name-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .btn-close-exam {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: #fff;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-close-exam:hover {
+        background: #fef2f2;
+        border-color: #dc2626;
+    }
+    .btn-close-exam i {
+        font-size: 12px;
+    }
+
+    .btn-reopen {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-reopen:hover {
+        background: #1d4ed8;
+    }
+    .btn-reopen i {
+        font-size: 14px;
+    }
+
+    .exam-row-closed td {
+        background: #fafafa;
+    }
+    .exam-row-closed:first-child td {
+        background: #fafafa;
+    }
+
+    .exam-mob-closed {
+        opacity: 0.75;
+    }
+
+    .auto-close-banner {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 6px;
+        padding: 6px 10px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #166534;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .auto-close-banner i {
+        font-size: 14px;
+        color: #16a34a;
+        flex-shrink: 0;
+    }
+    .auto-close-btn {
+        display: inline;
+        padding: 0;
+        margin: 0;
+        background: none;
+        border: none;
+        color: #16a34a;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: underline;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .auto-close-btn:hover {
+        color: #15803d;
     }
 
     .action-btns {
@@ -1184,8 +1313,8 @@
     .ce-field input[type="text"],
     .ce-field select {
         width: 100%;
-        height: 42px;
-        border: 1.5px solid #d1d5db;
+        height: 35px;
+        border: 1px solid #4169E1;
         border-radius: 6px;
         background: #f0fdf4;
         color: #1f2937;
@@ -1214,23 +1343,23 @@
         color: #9ca3af;
     }
     .ce-divider {
-        font-size: 15px;
+        font-size: 13px;
         font-weight: 700;
-        color: #5b7a2e;
-        margin: 8px 0 16px 0;
+        color: #374151;
+        margin: 8px 0 12px 0;
         font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
     }
     .ce-select-all {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 10px 0;
+        padding: 8px 0;
         border-bottom: 1.5px solid #e5e7eb;
         margin-bottom: 2px;
     }
     .ce-select-all input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         accent-color: #5b7a2e;
         cursor: pointer;
         margin: 0;
@@ -1247,37 +1376,53 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 14px 0;
-        border-bottom: 1px solid #f1f5f9;
+        padding: 10px 12px;
+        border-radius: 6px;
+    }
+    .ce-class-row:nth-child(odd) {
+        background: #e8eaed;
+    }
+    .ce-class-row:nth-child(even) {
+        background: #ffffff;
     }
     .ce-class-row:last-child {
         border-bottom: none;
     }
     .ce-class-row input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         accent-color: #5b7a2e;
         cursor: pointer;
         margin: 0;
         flex-shrink: 0;
     }
     .ce-class-row .ce-class-name {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 600;
         color: #1e293b;
-        min-width: 100px;
+        min-width: 80px;
         font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
     }
     .ce-class-row .ce-badge {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 700;
-        padding: 3px 10px;
+        padding: 2px 8px;
         border-radius: 4px;
-        background: #dcfce7;
-        color: #166534;
         letter-spacing: 0.3px;
         font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
         white-space: nowrap;
+    }
+    .ce-badge-lower-primary {
+        background: rgba(180, 83, 9, 0.1);
+        color: #B45309;
+    }
+    .ce-badge-upper-primary {
+        background: rgba(0, 103, 79, 0.1);
+        color: #00674F;
+    }
+    .ce-badge-jss {
+        background: rgba(48, 92, 222, 0.1);
+        color: #305CDE;
     }
     .ce-btn-row {
         display: flex;
@@ -1317,7 +1462,6 @@
 <div class="create-exam-page">
     <div class="create-exam-shell">
         <div class="create-exam-card">
-            <h2 class="create-exam-title">Create New Assessment</h2>
 
             <form method="POST" id="createForm">
                 {% csrf_token %}
@@ -1348,6 +1492,13 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="ce-field">
+                        <label>Status</label>
+                        <select name="status" required>
+                            <option value="active" selected>Active</option>
+                            <option value="draft">Draft</option>
+                        </select>
+                    </div>
                 </div>
 
                 <p class="ce-divider">Form that sat for the exam</p>
@@ -1362,7 +1513,7 @@
                     <div class="ce-class-row">
                         <input type="checkbox" name="selected_classes" value="{{ grade.name }}" id="class_{{ grade.name }}">
                         <span class="ce-class-name">{{ grade.name }}</span>
-                        <span class="ce-badge">{{ grade.school_section }}{% if grade.sub_section %} - {{ grade.sub_section }}{% endif %}</span>
+                        <span class="ce-badge ce-badge-{% if grade.school_section == 'JSS' %}jss{% elif grade.sub_section == 'LOWER' %}lower-primary{% else %}upper-primary{% endif %}">{% if grade.school_section == 'JSS' %}JSS{% elif grade.sub_section == 'LOWER' %}Lower Primary{% elif grade.sub_section == 'UPPER' %}Upper Primary{% else %}Primary{% endif %}</span>
                     </div>
                     {% empty %}
                     <p class="ce-empty-grades">No grades available. Please set up grades in School Setup first.</p>
@@ -1377,194 +1528,10 @@
                 </div>
             </form>
             </div>
-
-            <!-- Mobile card layout (hidden on desktop, shown on mobile via CSS) -->
-            <div class="exam-mobile-cards">
-                {% for exam in term_data.exams %}
-                    {% for class_row in exam.classes %}
-                    <div class="exam-mobile-card">
-                        <div class="exam-mob-header">
-                            {% if forloop.parentloop.first and forloop.first %}
-                            <span class="exam-mob-name">{{ exam.name }}</span>
-                            {% elif forloop.first %}
-                            <span class="exam-mob-name">{{ exam.name }}</span>
-                            {% endif %}
-                            <span class="status-pill status-{{ class_row.status|slugify }}">{{ class_row.status }}</span>
-                        </div>
-                        <div class="exam-mob-class">{{ class_row.class_name }}</div>
-                        <div class="exam-mob-meta">
-                            <span class="exam-mob-date">{{ class_row.updated_on|date:"d/m/Y" }}</span>
-                            <span class="exam-mob-by">{{ class_row.updated_by|default:"-" }}</span>
-                        </div>
-                        <div class="exam-mob-actions">
-                            <a href="{% url 'edit_exam' %}?exam_id={{ class_row.exam_id }}" class="btn-action btn-edit">
-                                <i class="ph ph-pencil-simple"></i> Edit Exam
-                            </a>
-                            {% if class_row.status == 'Published' %}
-                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
-                                <i class="ph ph-chart-bar"></i> Analyse Exam
-                            </a>
-                            <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-withdraw" onclick="return confirm('Withdraw all published results for {{ class_row.class_name }}? This will revert published submissions back to submitted.')">
-                                <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
-                            </a>
-                            {% else %}
-                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-subject-papers">
-                                <i class="ph ph-users"></i> Subject Papers
-                            </a>
-                            <a href="{% url 'publish_results_overview' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-publish-results">
-                                <i class="ph ph-chart-bar"></i> Publish Results
-                            </a>
-                            {% endif %}
-                            <button type="button" class="btn-action btn-delete-exam" onclick="openDeleteModal({{ class_row.exam_id }}, '{{ exam.name|escapejs }}')">
-                                <i class="ph ph-trash"></i> Delete
-                            </button>
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% endfor %}
-            </div>
-        </div>
+</div>
 </div>
 
-<style>
-    .delete-modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-        backdrop-filter: blur(4px);
-    }
-    .delete-modal-overlay.active { display: flex; }
-    .delete-modal {
-        background: #fff;
-        border-radius: 16px;
-        padding: 0;
-        width: 420px;
-        max-width: 90vw;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-        animation: modalSlideIn 0.2s ease;
-        overflow: hidden;
-    }
-    @keyframes modalSlideIn {
-        from { opacity: 0; transform: translateY(-20px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .delete-modal-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 20px 24px 0;
-    }
-    .delete-modal-icon {
-        width: 44px; height: 44px;
-        border-radius: 12px;
-        background: #fef2f2;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    .delete-modal-icon i {
-        font-size: 22px;
-        color: #dc2626;
-    }
-    .delete-modal-title {
-        font-size: 17px;
-        font-weight: 700;
-        color: #111827;
-        margin: 0;
-        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
-    }
-    .delete-modal-body {
-        padding: 16px 24px;
-    }
-    .delete-modal-body p {
-        font-size: 14px;
-        color: #6b7280;
-        margin: 0;
-        line-height: 1.6;
-        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
-    }
-    .delete-modal-body .exam-name-highlight {
-        font-weight: 700;
-        color: #111827;
-    }
-    .delete-modal-footer {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        padding: 16px 24px 20px;
-    }
-    .delete-modal-btn {
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        border: none;
-        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
-        transition: all 0.15s ease;
-    }
-    .delete-modal-btn-cancel {
-        background: #f3f4f6;
-        color: #374151;
-    }
-    .delete-modal-btn-cancel:hover { background: #e5e7eb; }
-    .delete-modal-btn-delete {
-        background: #dc2626;
-        color: #ffffff;
-    }
-    .delete-modal-btn-delete:hover { background: #b91c1c; }
-</style>
 
-<div class="delete-modal-overlay" id="deleteModalOverlay" onclick="closeDeleteModal(event)">
-    <div class="delete-modal" onclick="event.stopPropagation()">
-        <div class="delete-modal-header">
-            <div class="delete-modal-icon">
-                <i class="ph ph-warning"></i>
-            </div>
-            <h3 class="delete-modal-title">Delete Assessment</h3>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to delete <span class="exam-name-highlight" id="deleteModalExamName"></span>?<br><br>It will be moved to Deleted Exams where it can be recovered.</p>
-        </div>
-        <div class="delete-modal-footer">
-            <button class="delete-modal-btn delete-modal-btn-cancel" onclick="closeDeleteModal()">Cancel</button>
-            <button class="delete-modal-btn delete-modal-btn-delete" id="deleteModalConfirmBtn" onclick="document.getElementById('deleteExamForm').submit();">Delete</button>
-        </div>
-    </div>
-</div>
-
-<script>
-function toggleSelectAll(checkbox) {
-    document.querySelectorAll('.ce-classes-list input[type="checkbox"]').forEach(cb => {
-        cb.checked = checkbox.checked;
-    });
-}
-
-function openDeleteModal(examId, examName) {
-    document.getElementById('deleteModalExamName').textContent = examName;
-    document.getElementById('deleteModalExamId').value = examId;
-    document.getElementById('deleteModalOverlay').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeDeleteModal(e) {
-    if (!e || e.target === document.getElementById('deleteModalOverlay')) {
-        document.getElementById('deleteModalOverlay').classList.remove('active');
-        document.body.style.overflow = '';
-    }
-}
-</script>
-
-<form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" id="deleteExamForm" style="display:none;">
-    {% csrf_token %}
-    <input type="hidden" name="action_type" value="delete_exam">
-    <input type="hidden" name="exam_id" id="deleteModalExamId" value="">
-</form>
 
 {% elif active_tab == 'grading' %}
 
@@ -1666,7 +1633,7 @@ function closeDeleteModal(e) {
                             <td>
                                 <div class="gs-action-cell">
                                     <button class="gs-btn-view" onclick="gsViewScale({{ config.id }})"><i class="ph ph-eye"></i> View</button>
-                                    <button class="gs-btn-delete" onclick="gsDeleteConfig({{ config.id }}, '{{ config.display_name }}')"><i class="ph ph-trash"></i> Delete</button>
+                                    <button class="gs-btn-delete" onclick="gsDeleteConfig({{ config.id }}, '{{ config.display_name|escapejs }}')"><i class="ph ph-trash"></i> Delete</button>
                                 </div>
                             </td>
                         </tr>
@@ -2142,9 +2109,43 @@ function gsAutofill() {
                     <tbody>
                         {% for exam in term_data.exams %}
                             {% for class_row in exam.classes %}
-                            <tr{% if forloop.first %} class="exam-first-row"{% endif %}>
+                            <tr{% if forloop.first %} class="exam-first-row{% if exam.status == 'closed' %} exam-row-closed{% endif %}"{% endif %}>
                                 {% if forloop.first %}
-                                <td rowspan="{{ exam.rowspan }}" style="white-space: normal; word-wrap: break-word;">{{ exam.name }}</td>
+                                <td rowspan="{{ exam.rowspan }}" style="white-space: normal; word-wrap: break-word;">
+                                    <div class="exam-name-cell">
+                                        <span>{{ exam.name }}</span>
+                                        {% if exam.status == 'closed' %}
+                                        <span class="lifecycle-pill lifecycle-closed"><i class="ph ph-lock"></i> Closed</span>
+                                        {% else %}
+                                        <span class="lifecycle-pill lifecycle-active">Active</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if exam.status != 'closed' and exam.all_published %}
+                                    <div class="auto-close-banner">
+                                        <i class="ph ph-info"></i>
+                                        All results published.
+                                        <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Close {{ exam.name|escapejs }}? Teachers will no longer be able to edit marks.');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action_type" value="toggle_status">
+                                            <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                            {% for eid in exam.exam_ids %}{% if not forloop.first %}<input type="hidden" name="extra_exam_ids" value="{{ eid }}">{% endif %}{% endfor %}
+                                            <input type="hidden" name="year" value="{{ selected_year }}">
+                                            <button type="submit" class="auto-close-btn">Close now</button>
+                                        </form>
+                                    </div>
+                                    {% elif exam.status != 'closed' %}
+                                    <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="margin-top: 6px;" onsubmit="return confirm('Close {{ exam.name|escapejs }}? Teachers will no longer be able to edit marks. Published results remain visible.');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action_type" value="toggle_status">
+                                        <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                        {% for eid in exam.exam_ids %}{% if not forloop.first %}<input type="hidden" name="extra_exam_ids" value="{{ eid }}">{% endif %}{% endfor %}
+                                        <input type="hidden" name="year" value="{{ selected_year }}">
+                                        <button type="submit" class="btn-close-exam">
+                                            <i class="ph ph-lock"></i> Close Exam
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
                                 {% endif %}
                                 <td>{{ class_row.class_name }}</td>
                                 <td>
@@ -2152,6 +2153,14 @@ function gsAutofill() {
                                 </td>
                                 <td>{{ class_row.updated_by|default:"-" }}</td>
                                 <td>{{ class_row.updated_on|date:"d/m/Y" }}</td>
+                                {% if exam.status == 'closed' %}
+                                <td style="text-align: center;">
+                                    <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-analyze">
+                                        <i class="ph ph-chart-bar"></i> Analyse
+                                    </a>
+                                </td>
+                                <td style="text-align: center;" colspan="2"></td>
+                                {% else %}
                                 <td style="text-align: center;">
                                     <a href="{% url 'edit_exam' %}?exam_id={{ class_row.exam_id }}" class="btn-action btn-edit">
                                         <i class="ph ph-pencil-simple"></i> Edit Exam
@@ -2159,18 +2168,25 @@ function gsAutofill() {
                                 </td>
                                 {% if class_row.status == 'Published' %}
                                 <td style="text-align: center;">
-                                    <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
+                                    <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-analyze">
                                         <i class="ph ph-chart-bar"></i> Analyse Exam
                                     </a>
                                 </td>
                                 <td style="text-align: center;">
-                                    <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-withdraw" onclick="return confirm('Withdraw all published results for {{ class_row.class_name }}? This will revert published submissions back to submitted.')">
-                                        <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
-                                    </a>
+                                    <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Withdraw all published results for {{ class_row.class_name|escapejs }}? This will revert published submissions back to submitted.');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action_type" value="withdraw_results">
+                                        <input type="hidden" name="withdraw_exam_id" value="{{ class_row.exam_id }}">
+                                        <input type="hidden" name="withdraw_class_name" value="{{ class_row.class_name }}">
+                                        <input type="hidden" name="year" value="{{ selected_year }}">
+                                        <button type="submit" class="btn-action btn-withdraw">
+                                            <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
+                                        </button>
+                                    </form>
                                 </td>
                                 {% else %}
                                 <td style="text-align: center;">
-                                    <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-subject-papers">
+                                    <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-subject-papers">
                                         <i class="ph ph-users"></i> Subject Papers
                                     </a>
                                 </td>
@@ -2180,7 +2196,19 @@ function gsAutofill() {
                                     </a>
                                 </td>
                                 {% endif %}
+                                {% endif %}
                                 <td style="text-align: center;">
+                                    {% if exam.status == 'closed' %}
+                                    <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Reopen this assessment? Teachers will be able to edit marks again.');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action_type" value="toggle_status">
+                                        <input type="hidden" name="exam_id" value="{{ class_row.exam_id }}">
+                                        <input type="hidden" name="year" value="{{ selected_year }}">
+                                        <button type="submit" class="btn-action btn-reopen">
+                                            <i class="ph ph-arrow-clockwise"></i> Reopen
+                                        </button>
+                                    </form>
+                                    {% else %}
                                     <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Delete this assessment? It will be moved to Deleted Exams where it can be recovered.');">
                                         {% csrf_token %}
                                         <input type="hidden" name="action_type" value="delete_exam">
@@ -2189,6 +2217,7 @@ function gsAutofill() {
                                             <i class="ph ph-trash"></i> Delete
                                         </button>
                                     </form>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -2201,9 +2230,12 @@ function gsAutofill() {
             <div class="exam-mobile-cards">
                 {% for exam in term_data.exams %}
                     {% for class_row in exam.classes %}
-                    <div class="exam-mobile-card">
+                    <div class="exam-mobile-card{% if exam.status == 'closed' %} exam-mob-closed{% endif %}">
                         <div class="exam-mob-header">
                             <span class="exam-mob-name">{{ exam.name }}</span>
+                            {% if exam.status == 'closed' %}
+                            <span class="lifecycle-pill lifecycle-closed"><i class="ph ph-lock"></i> Closed</span>
+                            {% endif %}
                             <span class="status-pill status-{{ class_row.status|slugify }}">{{ class_row.status }}</span>
                         </div>
                         <div class="exam-mob-class">{{ class_row.class_name }}</div>
@@ -2212,18 +2244,39 @@ function gsAutofill() {
                             <span class="exam-mob-by">{{ class_row.updated_by|default:"-" }}</span>
                         </div>
                         <div class="exam-mob-actions">
+                            {% if exam.status == 'closed' %}
+                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-analyze">
+                                <i class="ph ph-chart-bar"></i> Analyse
+                            </a>
+                            <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Reopen this assessment? Teachers will be able to edit marks again.');">
+                                {% csrf_token %}
+                                <input type="hidden" name="action_type" value="toggle_status">
+                                <input type="hidden" name="exam_id" value="{{ class_row.exam_id }}">
+                                <input type="hidden" name="year" value="{{ selected_year }}">
+                                <button type="submit" class="btn-action btn-reopen">
+                                    <i class="ph ph-arrow-clockwise"></i> Reopen
+                                </button>
+                            </form>
+                            {% else %}
                             <a href="{% url 'edit_exam' %}?exam_id={{ class_row.exam_id }}" class="btn-action btn-edit">
                                 <i class="ph ph-pencil-simple"></i> Edit Exam
                             </a>
                             {% if class_row.status == 'Published' %}
-                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-analyze">
+                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-analyze">
                                 <i class="ph ph-chart-bar"></i> Analyse Exam
                             </a>
-                            <a href="?tab=manage&year={{ selected_year }}&withdraw={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-withdraw" onclick="return confirm('Withdraw all published results for {{ class_row.class_name }}? This will revert published submissions back to submitted.')">
-                                <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
-                            </a>
+                            <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Withdraw all published results for {{ class_row.class_name|escapejs }}? This will revert published submissions back to submitted.');">
+                                {% csrf_token %}
+                                <input type="hidden" name="action_type" value="withdraw_results">
+                                <input type="hidden" name="withdraw_exam_id" value="{{ class_row.exam_id }}">
+                                <input type="hidden" name="withdraw_class_name" value="{{ class_row.class_name }}">
+                                <input type="hidden" name="year" value="{{ selected_year }}">
+                                <button type="submit" class="btn-action btn-withdraw">
+                                    <i class="ph ph-arrow-u-up-left"></i> Withdraw Results
+                                </button>
+                            </form>
                             {% else %}
-                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name }}" class="btn-action btn-subject-papers">
+                            <a href="{% url 'analyse_exam' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-subject-papers">
                                 <i class="ph ph-users"></i> Subject Papers
                             </a>
                             <a href="{% url 'publish_results_overview' %}?exam_id={{ class_row.exam_id }}&class_name={{ class_row.class_name|urlencode }}" class="btn-action btn-publish-results">
@@ -2233,6 +2286,7 @@ function gsAutofill() {
                             <button type="button" class="btn-action btn-delete-exam" onclick="openDeleteModal({{ class_row.exam_id }}, '{{ exam.name|escapejs }}')">
                                 <i class="ph ph-trash"></i> Delete
                             </button>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -2252,5 +2306,146 @@ function gsAutofill() {
 </div>
 
 {% endif %}
+
+<style>
+    .delete-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(4px);
+    }
+    .delete-modal-overlay.active { display: flex; }
+    .delete-modal {
+        background: #fff;
+        border-radius: 16px;
+        padding: 0;
+        width: 420px;
+        max-width: 90vw;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        animation: modalSlideIn 0.2s ease;
+        overflow: hidden;
+    }
+    @keyframes modalSlideIn {
+        from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .delete-modal-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 20px 24px 0;
+    }
+    .delete-modal-icon {
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        background: #fef2f2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .delete-modal-icon i {
+        font-size: 22px;
+        color: #dc2626;
+    }
+    .delete-modal-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .delete-modal-body {
+        padding: 16px 24px;
+    }
+    .delete-modal-body p {
+        font-size: 14px;
+        color: #6b7280;
+        margin: 0;
+        line-height: 1.6;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .delete-modal-body .exam-name-highlight {
+        font-weight: 700;
+        color: #111827;
+    }
+    .delete-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 16px 24px 20px;
+    }
+    .delete-modal-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        transition: all 0.15s ease;
+    }
+    .delete-modal-btn-cancel {
+        background: #f3f4f6;
+        color: #374151;
+    }
+    .delete-modal-btn-cancel:hover { background: #e5e7eb; }
+    .delete-modal-btn-delete {
+        background: #dc2626;
+        color: #ffffff;
+    }
+    .delete-modal-btn-delete:hover { background: #b91c1c; }
+</style>
+
+<div class="delete-modal-overlay" id="deleteModalOverlay" onclick="closeDeleteModal(event)">
+    <div class="delete-modal" onclick="event.stopPropagation()">
+        <div class="delete-modal-header">
+            <div class="delete-modal-icon">
+                <i class="ph ph-warning"></i>
+            </div>
+            <h3 class="delete-modal-title">Delete Assessment</h3>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to delete <span class="exam-name-highlight" id="deleteModalExamName"></span>?<br><br>It will be moved to Deleted Exams where it can be recovered.</p>
+        </div>
+        <div class="delete-modal-footer">
+            <button class="delete-modal-btn delete-modal-btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+            <button class="delete-modal-btn delete-modal-btn-delete" id="deleteModalConfirmBtn" onclick="document.getElementById('deleteExamForm').submit();">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleSelectAll(checkbox) {
+    document.querySelectorAll('.ce-classes-list input[type="checkbox"]').forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+}
+
+function openDeleteModal(examId, examName) {
+    document.getElementById('deleteModalExamName').textContent = examName;
+    document.getElementById('deleteModalExamId').value = examId;
+    document.getElementById('deleteModalOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDeleteModal(e) {
+    if (!e || e.target === document.getElementById('deleteModalOverlay')) {
+        document.getElementById('deleteModalOverlay').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+</script>
+
+<form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" id="deleteExamForm" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="action_type" value="delete_exam">
+    <input type="hidden" name="exam_id" id="deleteModalExamId" value="">
+    <input type="hidden" name="year" value="{{ selected_year }}">
+</form>
 
 {% endblock %}

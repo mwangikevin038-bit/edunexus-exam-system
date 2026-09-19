@@ -10,6 +10,7 @@ from django.http import Http404
 from django.utils.functional import cached_property
 
 from students.school_scope import get_current_school, get_current_school_section
+from students.security.roles import user_has_main_school_admin_override
 
 logger = logging.getLogger("students.security.tenant")
 
@@ -20,6 +21,11 @@ def get_request_school(request):
         return school
 
     user = getattr(request, "user", None)
+    if user and user.is_authenticated and hasattr(user, "school_admin_profile"):
+        try:
+            return user.school_admin_profile.school
+        except Exception:
+            pass
     if user and user.is_authenticated and hasattr(user, "teacher_profile"):
         return user.teacher_profile.school
 
@@ -72,7 +78,14 @@ def get_school_object_or_403(model, request, *, using="objects", **lookup):
     """
     school = get_request_school(request)
     user_section = get_request_school_section(request)
-    manager = getattr(model, using, model.objects)
+    user = getattr(request, "user", None)
+    is_admin = user and user.is_authenticated and (_is_platform_superuser(request) or user_has_main_school_admin_override(user))
+
+    # Admins bypass section-scoped manager; use all_objects
+    if is_admin:
+        manager = getattr(model, "all_objects", model.objects)
+    else:
+        manager = getattr(model, using, model.objects)
 
     # Build lookup with school filter
     if school is not None:
@@ -93,7 +106,7 @@ def get_school_object_or_403(model, request, *, using="objects", **lookup):
     obj = qs.first()
 
     # ── Section isolation check ──────────────────────────────────────────
-    if obj is not None and user_section in ("PRIMARY", "JSS"):
+    if not is_admin and obj is not None and user_section in ("PRIMARY", "JSS"):
         obj_section = getattr(obj, "school_section", None)
         if obj_section and obj_section != user_section:
             # Check if the record even exists in the other section
@@ -112,7 +125,7 @@ def get_school_object_or_403(model, request, *, using="objects", **lookup):
             raise Http404
 
     # ── Sub-section isolation check (LOWER_PRIMARY vs PRIMARY UPPER) ─────
-    if obj is not None and user_section == "LOWER_PRIMARY":
+    if not is_admin and obj is not None and user_section == "LOWER_PRIMARY":
         obj_sub = getattr(obj, "sub_section", None)
         if obj_sub is not None and obj_sub != "LOWER":
             logger.warning(
@@ -130,7 +143,6 @@ def get_school_object_or_403(model, request, *, using="objects", **lookup):
         if obj_sub is not None and obj_sub != "UPPER":
             user = getattr(request, "user", None)
             if not (user and user.is_authenticated and _is_platform_superuser(request)):
-                from .roles import user_has_main_school_admin_override
                 if not user_has_main_school_admin_override(user):
                     logger.warning(
                         "SUB-SECTION IDOR blocked: model=%s record_sub_section=%s user_section=%s "

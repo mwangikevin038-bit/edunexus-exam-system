@@ -30,12 +30,8 @@
         {# ═══ iOS 17 MARK ENTRY SHELL ════════════════════════════ #}
         <div class="en-shell">
             <header class="en-header">
-                <a href="{% url back_url %}" class="en-back"
-                   hx-get="{% url back_url %}"
-                   hx-target="#examContent"
-                   hx-swap="innerHTML"
-                   hx-push-url="true">
-                    <i class="ph ph-arrow-left"></i> Back to assessments
+                <a href="{% url back_url %}{{ back_url_args|default:'' }}" class="en-back {% if is_admin_view %}en-back--admin{% endif %}">
+                    <i class="ph ph-arrow-left"></i> {{ back_label|default:"Back to assessments" }}
                 </a>
                 <div class="en-header-title">Score Capture</div>
                 <div class="en-header-subtitle">Enter marks below. Changes save automatically.</div>
@@ -324,15 +320,11 @@
         return null;
     }
 
-    // Lazy CSRF — read once per request, reuse.
-    var _csrf = null;
     function getCsrfToken() {
-        if (_csrf) return _csrf;
         var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-        if (m) { _csrf = m[1]; return _csrf; }
+        if (m) return m[1];
         var i = document.querySelector('#marksForm input[name="csrfmiddlewaretoken"]');
-        _csrf = i ? i.value : '';
-        return _csrf;
+        return i ? i.value : '';
     }
 
     // ── Batch auto-save: collect changes, flush every 3s as a single request ──
@@ -699,7 +691,8 @@
     // every keystroke. Teachers adjust the total infrequently and we don't
     // want to thrash the server while they type "100".
     var maxInput = document.getElementById('maximumMarks');
-    if (maxInput) {
+    if (maxInput && !maxInput._wired) {
+        maxInput._wired = true;
         var maxTimer = null;
         maxInput.addEventListener('input', function() {
             if (maxTimer) clearTimeout(maxTimer);
@@ -732,7 +725,8 @@
         // Wire up the submit button (it's outside the form now)
         var form = document.getElementById('marksForm');
         var submitBtn = document.getElementById('enSubmitBtn');
-        if (submitBtn && form) {
+        if (submitBtn && form && !submitBtn._wired) {
+            submitBtn._wired = true;
             submitBtn.addEventListener('click', function() {
                 if (form.getAttribute('data-submitting') === 'true') return false;
 
@@ -741,14 +735,68 @@
                     return;
                 }
 
+                var allInputs = form.querySelectorAll('.js-score');
+                var missingCount = 0, firstMissingId = null;
+                for (var i = 0; i < allInputs.length; i++) {
+                    var v = (allInputs[i].value || '').trim().toUpperCase();
+                    if (v === '') {
+                        missingCount++;
+                        if (!firstMissingId) {
+                            var r = allInputs[i].closest('.en-student');
+                            if (r) firstMissingId = r.getAttribute('data-student-id');
+                        }
+                    }
+                }
+                if (missingCount > 0) {
+                    showToast(missingCount + ' learner(s) still need a score or AB.', 'error');
+                    if (firstMissingId) {
+                        var el = document.querySelector('.en-student[data-student-id="' + firstMissingId + '"]');
+                        if (el) {
+                            el.scrollIntoView({behavior:'smooth',block:'center'});
+                            el.classList.add('highlight-missing');
+                            setTimeout(function(){el.classList.remove('highlight-missing');},3000);
+                        }
+                    }
+                    return;
+                }
+
                 form.setAttribute('data-submitting', 'true');
 
-                // Stop batch auto-save — bulk submit handles everything atomically
+                // Stop batch timer and flush any pending changes before submitting.
+                // This prevents losing unsaved edits when the user clicks Submit.
                 stopBatchTimer();
-                pendingChanges = {};
 
-                // Bulk submit sends ALL scores from the form in one request.
-                htmx.trigger(form, 'submit');
+                function doSubmit() {
+                    pendingChanges = {};
+                    htmx.trigger(form, 'submit');
+                }
+
+                if (batchInflight || Object.keys(pendingChanges).length) {
+                    // Flush pending changes first, then submit
+                    var waited = 0;
+                    var poll = setInterval(function() {
+                        waited += 100;
+                        if (!batchInflight || waited >= 3000) {
+                            clearInterval(poll);
+                            if (Object.keys(pendingChanges).length && !batchInflight) {
+                                // Flush remaining changes, then submit after response
+                                flushBatch();
+                                var waited2 = 0;
+                                var poll2 = setInterval(function() {
+                                    waited2 += 100;
+                                    if (!batchInflight || waited2 >= 3000) {
+                                        clearInterval(poll2);
+                                        doSubmit();
+                                    }
+                                }, 100);
+                            } else {
+                                doSubmit();
+                            }
+                        }
+                    }, 100);
+                } else {
+                    doSubmit();
+                }
             });
         }
 
@@ -809,7 +857,8 @@
                         }
                         flushOne();
                     }).catch(function() {
-                        // Network still flaky — leave draft in localStorage, stop retrying
+                        // Network still flaky — leave draft in localStorage, move on to next
+                        flushOne();
                     });
                 } catch(ignored) {
                     localStorage.removeItem(k);
@@ -849,7 +898,8 @@
 
         students.classList.add('is-gated');
 
-        if (gateBtn) {
+        if (gateBtn && !gateBtn._wired) {
+            gateBtn._wired = true;
             gateBtn.addEventListener('click', function() {
                 var val = maxInput.value.trim();
                 if (!val || parseInt(val, 10) < 1) {
@@ -867,7 +917,8 @@
             });
         }
 
-        if (gateEdit) {
+        if (gateEdit && !gateEdit._wired) {
+            gateEdit._wired = true;
             gateEdit.addEventListener('click', function() {
                 gateBadge.style.display = 'none';
                 gateCard.style.display = 'block';

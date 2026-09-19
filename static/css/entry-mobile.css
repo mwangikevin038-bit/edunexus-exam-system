@@ -11,6 +11,9 @@
     --en-green-glow: rgba(36, 229, 94, 0.30);
     --en-green-ring: rgba(36, 229, 94, 0.18);
     --en-bg: #F2F5F3;
+    --en-bg-elevated: #FFFFFF;
+    --en-surface: #FFFFFF;
+    --en-surface-hover: #F8FAFB;
     --en-border: rgba(0, 0, 0, 0.05);
     --en-border-strong: rgba(0, 0, 0, 0.10);
     --en-border-input: rgba(0, 0, 0, 0.08);
@@ -81,6 +84,25 @@
 
 .en-back:active { opacity: 0.6; }
 .en-back i { font-size: 13px; }
+
+.en-back--admin {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--en-green-dark);
+    background: rgba(36, 229, 94, 0.08);
+    border: 0.5px solid rgba(36, 229, 94, 0.18);
+    border-radius: var(--en-radius-pill);
+    padding: 6px 14px 6px 10px;
+    font-size: .8125rem;
+    font-weight: 700;
+    text-decoration: none;
+    margin-bottom: 8px;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 150ms, opacity 150ms;
+}
+.en-back--admin:active { opacity: 0.6; background: rgba(36, 229, 94, 0.14); }
+.en-back--admin i { font-size: 14px; }
 
 .en-header-title {
     font-size: 1.375rem;
@@ -693,6 +715,15 @@
 
 .en-student.saved-flash { animation: enSavedFlash 600ms ease; }
 
+.en-student.highlight-missing {
+    animation: enHighlightMissing 600ms ease 3;
+    border-left: 3px solid #dc2626;
+}
+@keyframes enHighlightMissing {
+    0%, 100% { background: var(--en-surface); }
+    50% { background: rgba(220, 38, 38, 0.08); }
+}
+
 /* ── Empty State ────────────────────────────────────────────── */
 .en-empty {
     display: flex;
@@ -1061,6 +1092,24 @@
    can't see there's anything to scroll and the document scrollbar
    is never engaged. Fall back to a plain flowing layout here. */
 @media (min-width: 769px) {
+    :root { --en-bg: #eef2f7; }
+    .en-header {
+        background: none;
+        border: none;
+        padding: 20px 32px 0;
+    }
+    .en-back { margin-bottom: 8px; }
+    .en-header-title {
+        font-size: 1.375rem;
+        font-weight: 800;
+        color: #1A1D1A;
+        letter-spacing: -0.02em;
+    }
+    .en-header-subtitle {
+        font-size: .8125rem;
+        color: #9A9D9A;
+        margin-top: 2px;
+    }
     .en-shell {
         position: relative;
         top: auto; left: auto; right: auto; bottom: auto;
@@ -1070,8 +1119,11 @@
         margin: 0 auto;
         border-radius: 0;
         background: transparent;
+        box-shadow: none;
+        z-index: auto;
     }
-    .en-header { position: relative; }
+    .header-surface { background: #e2e8f0 !important; }
+    .en-segment-btn.active { background: #fff; }
     .en-body {
         flex: none;
         height: auto;
@@ -1079,8 +1131,23 @@
         padding: 24px 32px 120px;
         scrollbar-width: auto;
         -ms-overflow-style: auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
     }
     .en-body::-webkit-scrollbar { width: auto; display: block; }
+    .en-body .en-students .en-student {
+        border-radius: 0 !important;
+        margin-bottom: 0 !important;
+        border-bottom: 1px solid #e2e5ea;
+        box-shadow: none !important;
+        background: #ffffff !important;
+        animation: none !important;
+        padding: 7px 16px !important;
+    }
+    .en-body .en-students .en-student:last-child { border-bottom: none; }
+    .en-body .en-students .en-student:nth-child(even) { background: #f0f2f5 !important; }
+    .en-body .en-students .en-student:hover { background: #e8ebf0 !important; }
     .en-bottom-bar {
         position: fixed;
         bottom: 0;

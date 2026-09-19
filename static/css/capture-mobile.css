@@ -48,21 +48,15 @@
    SHELL — Full-screen flex column
    ═══════════════════════════════════════════════════════════════ */
 .cp-shell {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: var(--bottomnav-height, 72px);
+    position: relative;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - var(--bottomnav-height, 72px));
-    height: calc(100dvh - var(--bottomnav-height, 72px));
+    height: auto;
     background: linear-gradient(175deg, #F5F8F6 0%, #EEF2EF 40%, #F2F5F3 100%);
     font-family: var(--cp-font);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow: visible;
-    z-index: 800;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -579,13 +573,8 @@
    ═══════════════════════════════════════════════════════════════ */
 @media (min-width: 769px) {
     .cp-shell {
-        position: relative;
-        top: auto; left: auto; right: auto; bottom: auto;
-        height: auto;
-        min-height: 0;
         max-width: 880px;
         margin: 0 auto;
-        border-radius: 0;
         background: transparent;
     }
     .cp-header { position: relative; }

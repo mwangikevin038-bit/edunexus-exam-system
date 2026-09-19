@@ -212,10 +212,10 @@
             </form>
 
             <p class="edit-exam-classes-info">
-                All Forms are taking this exam
+                Classes taking this exam: <strong>{{ classes_list }}</strong>
             </p>
 
-            <a href="{% url 'manage_exams' %}?year={{ exam.year }}" class="edit-exam-back">
+            <a href="{% url 'manage_exams' %}?tab=manage&year={{ exam.year }}" class="edit-exam-back">
                 <i class="ph ph-arrow-left"></i>
                 Back
             </a>

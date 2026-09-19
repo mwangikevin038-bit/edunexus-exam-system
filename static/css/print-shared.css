@@ -189,16 +189,16 @@ html, body {
     display: flex !important;
     flex-direction: column !important;
     flex: 1 !important;
-    gap: 6px !important;
+    gap: 4px !important;
 }
 
 /* ── Report Card Header ───────────────────────────────────── */
 .rc-header {
     display: flex !important;
     align-items: center !important;
-    gap: 14px !important;
-    padding-bottom: 5px !important;
-    margin-bottom: 4px !important;
+    gap: 10px !important;
+    padding-bottom: 4px !important;
+    margin-bottom: 2px !important;
     position: relative !important;
     border-bottom: none !important;
     width: 100% !important;
@@ -278,7 +278,7 @@ html, body {
     flex: 2 !important;
     min-width: 0 !important;
     min-height: 0 !important;
-    max-height: 48mm !important;
+    max-height: 40mm !important;
     overflow: hidden !important;
 }
 
@@ -326,7 +326,7 @@ html, body {
 }
 .rc-chart-canvas-wrap {
     height: auto !important;
-    max-height: 44mm !important;
+    max-height: 36mm !important;
     overflow: hidden !important;
     position: relative !important;
     z-index: 2 !important;
@@ -334,29 +334,29 @@ html, body {
 .rc-chart-canvas-wrap canvas {
     display: block !important;
     width: 100% !important;
-    max-height: 44mm !important;
+    max-height: 36mm !important;
 }
 .rc-chart-canvas-wrap img {
     display: block !important;
     width: 100% !important;
-    max-height: 44mm !important;
+    max-height: 36mm !important;
     object-fit: contain !important;
     margin: 0 auto !important;
 }
 .rc-chart-svg {
     width: 100% !important;
-    margin: 6px 0 !important;
+    margin: 4px 0 !important;
     overflow: hidden !important;
 }
 .rc-chart-svg svg {
     width: 100% !important;
     height: auto !important;
-    max-height: 44mm !important;
+    max-height: 36mm !important;
     display: block !important;
 }
 .rc-chart-img {
     width: 100% !important;
-    max-height: 44mm !important;
+    max-height: 36mm !important;
     object-fit: contain !important;
 }
 
@@ -364,14 +364,14 @@ html, body {
 .rc-stats {
     display: grid !important;
     grid-template-columns: repeat(5, 1fr) !important;
-    gap: 8px !important;
+    gap: 6px !important;
     width: 100% !important;
 }
 .rc-stat {
     border: 1px solid #E2E8F0 !important;
     border-top: 3px solid var(--section-accent) !important;
     border-radius: 10px !important;
-    padding: 12px 10px !important;
+    padding: 8px 6px !important;
     text-align: center !important;
     background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
 }
@@ -383,7 +383,7 @@ html, body {
     color: var(--section-accent) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.06em !important;
-    margin-bottom: 6px !important;
+    margin-bottom: 4px !important;
 }
 .rc-stat-value {
     display: block !important;
@@ -423,7 +423,7 @@ html, body {
     font-weight: 800 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.03em !important;
-    padding: 6px 8px !important;
+    padding: 4px 6px !important;
     border: 1px solid #000 !important;
     white-space: nowrap !important;
 }
@@ -431,7 +431,7 @@ html, body {
 .rc-table tbody tr { page-break-inside: avoid !important; }
 .rc-table tbody td {
     font-family: 'Times New Roman', Times, serif !important;
-    padding: 5px 8px !important;
+    padding: 3px 6px !important;
     border: 1px solid #000 !important;
     font-size: 11pt !important;
     color: #1C1C1E !important;
@@ -447,6 +447,7 @@ html, body {
     text-align: left !important;
     font-size: 11pt !important;
 }
+.rc-table-cell-dev { padding: 3px 6px !important; border-bottom: none !important; }
 
 /* ── Comments Section ──────────────────────────────────────── */
 .rc-comments-header {
@@ -468,8 +469,8 @@ html, body {
 .rc-remarks-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 14px !important;
-    padding: 14px !important;
+    gap: 10px !important;
+    padding: 10px !important;
     background: #F8FAFC !important;
     border-radius: 0 0 8px 8px !important;
     margin-left: -20px !important;
@@ -478,7 +479,7 @@ html, body {
 .rc-remark-box {
     border: 1px solid #E2E8F0 !important;
     border-radius: 10px !important;
-    padding: 14px 16px !important;
+    padding: 10px 12px !important;
     background: #fff !important;
     display: flex !important;
     flex-direction: column !important;
@@ -488,7 +489,7 @@ html, body {
     font-size: 11pt !important;
     font-weight: 800 !important;
     color: #1E293B !important;
-    margin-bottom: 10px !important;
+    margin-bottom: 6px !important;
     padding-bottom: 0 !important;
     border-bottom: none !important;
 }
@@ -497,8 +498,8 @@ html, body {
     font-size: 11pt !important;
     font-weight: 400 !important;
     color: #334155 !important;
-    line-height: 1.5 !important;
-    margin-bottom: 10px !important;
+    line-height: 1.4 !important;
+    margin-bottom: 6px !important;
     flex-grow: 1 !important;
 }
 .rc-signature {
@@ -507,13 +508,13 @@ html, body {
     font-weight: 600 !important;
     color: #64748B !important;
     border-top: 1px dashed #CBD5E1 !important;
-    padding-top: 6px !important;
+    padding-top: 4px !important;
     margin-top: auto !important;
 }
 
 /* ── Grade Descriptors ─────────────────────────────────────── */
 .rc-descriptors {
-    margin-top: 10px !important;
+    margin-top: 6px !important;
     width: 100% !important;
 }
 .rc-descriptors-title {
@@ -558,8 +559,8 @@ html, body {
 .footer-dates {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 16px !important;
-    margin-top: 14px !important;
+    gap: 10px !important;
+    margin-top: 8px !important;
     width: 100% !important;
 }
 .date-box {
@@ -570,7 +571,7 @@ html, body {
     font-size: 11pt !important;
     font-weight: 700 !important;
     color: #1E293B !important;
-    padding: 10px 14px !important;
+    padding: 8px 10px !important;
     border-radius: 8px !important;
     border: 1px solid #E2E8F0 !important;
     background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
