@@ -26,9 +26,13 @@ _global_grading_cache = {}
 
 
 def prefetch_school_grading(school):
-    _global_grading_cache.clear()
     if not school:
         return
+    # Remove only this school's entries (not all schools')
+    school_id = school.pk
+    keys_to_remove = [k for k in _global_grading_cache if k[0] == school_id]
+    for k in keys_to_remove:
+        del _global_grading_cache[k]
     assignments = GradingAssignment.objects.filter(
         school=school,
     ).select_related('grading_scale', 'subject')
@@ -64,3 +68,6 @@ def get_grading_scale(school_id, section, sub_section, subject_id=None):
 
 def clear_grading_cache():
     _global_grading_cache.clear()
+    from .helpers import _subject_lookup_cache, _total_lookup_cache
+    _subject_lookup_cache.clear()
+    _total_lookup_cache.clear()

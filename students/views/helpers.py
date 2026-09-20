@@ -284,7 +284,10 @@ def get_stream_submission_summary(class_name, stream, exam):
         term=exam.term,
         exam_type=exam.name,
         year=exam.year,
+        school_section=exam.school_section,
     )
+    if exam.sub_section:
+        all_marks = all_marks.filter(sub_section=exam.sub_section)
     if school:
         all_marks = all_marks.filter(school=school)
     marks_by_subject = {}
@@ -300,7 +303,10 @@ def get_stream_submission_summary(class_name, stream, exam):
     submission_filters = dict(
         class_name=class_name, stream=stream,
         exam_name=exam.name, term=exam.term, year=exam.year,
+        school_section=exam.school_section,
     )
+    if exam.sub_section:
+        submission_filters['sub_section'] = exam.sub_section
     if school:
         submission_filters['school'] = school
     all_submissions = {
@@ -624,7 +630,8 @@ def _build_subject_lookup(scale):
         if not scale:
             return (), ()
         raw = scale
-        cache_key = id(scale)
+        cache_key = ('L', tuple(e.get('min_score', 0) for e in raw), tuple(e.get('max_score', 0) for e in raw),
+                     tuple(e.get('level', '') for e in raw), tuple(e.get('points', 0) for e in raw))
     else:
         if not scale.pk:
             return (), ()
@@ -657,7 +664,8 @@ def _build_total_lookup(scale):
         if not scale:
             return (), ()
         raw = scale
-        cache_key = id(scale)
+        cache_key = ('L', tuple(e.get('min_marks', 0) for e in raw), tuple(e.get('max_marks', 0) for e in raw),
+                     tuple(e.get('level', '') for e in raw), tuple(e.get('points', 0) for e in raw))
     else:
         if not scale.pk:
             return (), ()
@@ -724,6 +732,56 @@ def get_total_level_fast(total_marks, config):
     return '-', 0
 
 
+_DESCRIPTOR_MAP = {
+    'Exceeding Expectations': 'EE',
+    'Meeting Expectations': 'ME',
+    'Approaching Expectations': 'AE',
+    'Below Expectations': 'BE',
+    'Outstanding': 'EE',
+    'Excellent': 'EE',
+    'Good': 'ME',
+    'Average': 'AE',
+    'Fair': 'AE',
+    'Poor': 'BE',
+    'Very Poor': 'BE',
+}
+
+
+def to_primary_descriptor(perf_level, school_section=None):
+    """Map any performance level string to a safe 2-char primary_descriptor.
+
+    - JSS subjects: always returns '' (primary_descriptor is a Primary-only field).
+    - Primary subjects: maps full names to 2-char codes (EE/ME/AE/BE/AB).
+    - Handles 2-char codes (EE, ME, AE, BE, AB) — passes through.
+    - Handles JSS 3-char codes (EE1, BE2, etc.) — maps if possible, else ''.
+    - Never returns a string longer than 2 chars.
+    """
+    level = (perf_level or '').strip()
+
+    if not level:
+        return ''
+
+    if school_section and school_section != 'PRIMARY':
+        return ''
+
+    if level.upper() == 'AB':
+        return 'AB'
+
+    if level in _DESCRIPTOR_MAP:
+        return _DESCRIPTOR_MAP[level]
+
+    upper = level.upper()
+    if upper in ('EE', 'ME', 'AE', 'BE', 'AB'):
+        return upper
+
+    if len(level) == 3:
+        base = level[:2].upper()
+        if base in ('EE', 'ME', 'AE', 'BE'):
+            return base
+
+    return ''
+
+
 def get_performance_level(score, sub_section=None, subject_id=None, is_total_calculation=False, section=None, school=None):
     """
     Return (performance_level, points) using our optimized bisect lookups.
@@ -748,7 +806,7 @@ def get_performance_level(score, sub_section=None, subject_id=None, is_total_cal
     """
     import logging
     from ..school_scope import get_current_school, get_current_school_section
-    from .grading_engine import resolve_scale_fast
+    from .grading_engine import resolve_scale_fast, _global_grading_cache
 
     # Round once, but do NOT clamp to 0-100 here — `is_total_calculation=True`
     # callers pass aggregated totals (e.g. 650 / 800) that must survive intact.
@@ -769,6 +827,19 @@ def get_performance_level(score, sub_section=None, subject_id=None, is_total_cal
             subject_id=subject_id,
             is_total_calculation=is_total_calculation,
         )
+
+        if not scale_data and school:
+            cache_has_school = any(k[0] == school.pk for k in _global_grading_cache)
+            if not cache_has_school:
+                from .grading_engine import prefetch_school_grading
+                prefetch_school_grading(school)
+                scale_data = resolve_scale_fast(
+                    school.pk,
+                    section,
+                    sub_section,
+                    subject_id=subject_id,
+                    is_total_calculation=is_total_calculation,
+                )
 
         if scale_data:
             if is_total_calculation:
@@ -893,7 +964,7 @@ def get_next_admission_no(school_section=None):
     return f'001{suffix}'
 
 
-def get_students_ordered(grade, stream):
+def get_students_ordered(grade, stream, school=None):
     """
     Return students filtered by grade and stream, ordered by admission number.
     Handles P/J suffixed admission numbers. Non-numeric parts sorted to the end.
@@ -902,7 +973,12 @@ def get_students_ordered(grade, stream):
     from django.db.models.functions import Substr, Length
     students = Student.all_objects.filter(
         class_name=grade, stream=stream, is_active=True
-    ).filter(
+    )
+    if school is None:
+        school = get_current_school()
+    if school:
+        students = students.filter(school=school)
+    students = students.filter(
         admission_no__regex=r'^[0-9]+[PJ]$'
     ).annotate(
         adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField())
@@ -910,14 +986,14 @@ def get_students_ordered(grade, stream):
     return list(students)
 
 
-def get_subject_students(grade, stream, subject):
+def get_subject_students(grade, stream, subject, school=None):
     """
     Return the learner list expected for a subject.
     CRE/IRE become religion-aware after learners have been tagged once.
     Accepts either Subject instance or subject code string.
     """
     subject_code = subject.code if hasattr(subject, 'code') else subject
-    students = get_students_ordered(grade, stream)
+    students = get_students_ordered(grade, stream, school=school)
     if subject_code in RELIGION_SUBJECTS:
         religion_tag = RELIGION_TAG.get(subject_code, '')
         tagged_students = [s for s in students if s.religion == religion_tag]

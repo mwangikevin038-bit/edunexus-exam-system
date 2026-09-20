@@ -2202,7 +2202,8 @@ function gsAutofill() {
                                     <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Reopen this assessment? Teachers will be able to edit marks again.');">
                                         {% csrf_token %}
                                         <input type="hidden" name="action_type" value="toggle_status">
-                                        <input type="hidden" name="exam_id" value="{{ class_row.exam_id }}">
+                                        <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                        {% for eid in exam.exam_ids %}{% if not forloop.first %}<input type="hidden" name="extra_exam_ids" value="{{ eid }}">{% endif %}{% endfor %}
                                         <input type="hidden" name="year" value="{{ selected_year }}">
                                         <button type="submit" class="btn-action btn-reopen">
                                             <i class="ph ph-arrow-clockwise"></i> Reopen
@@ -2213,6 +2214,7 @@ function gsAutofill() {
                                         {% csrf_token %}
                                         <input type="hidden" name="action_type" value="delete_exam">
                                         <input type="hidden" name="exam_id" value="{{ class_row.exam_id }}">
+                                        {% for eid in exam.exam_ids %}{% if eid != class_row.exam_id %}<input type="hidden" name="extra_exam_ids" value="{{ eid }}">{% endif %}{% endfor %}
                                         <button type="submit" class="btn-action btn-delete-exam">
                                             <i class="ph ph-trash"></i> Delete
                                         </button>
@@ -2251,7 +2253,8 @@ function gsAutofill() {
                             <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Reopen this assessment? Teachers will be able to edit marks again.');">
                                 {% csrf_token %}
                                 <input type="hidden" name="action_type" value="toggle_status">
-                                <input type="hidden" name="exam_id" value="{{ class_row.exam_id }}">
+                                <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                {% for eid in exam.exam_ids %}{% if not forloop.first %}<input type="hidden" name="extra_exam_ids" value="{{ eid }}">{% endif %}{% endfor %}
                                 <input type="hidden" name="year" value="{{ selected_year }}">
                                 <button type="submit" class="btn-action btn-reopen">
                                     <i class="ph ph-arrow-clockwise"></i> Reopen
@@ -2283,7 +2286,7 @@ function gsAutofill() {
                                 <i class="ph ph-chart-bar"></i> Publish Results
                             </a>
                             {% endif %}
-                            <button type="button" class="btn-action btn-delete-exam" onclick="openDeleteModal({{ class_row.exam_id }}, '{{ exam.name|escapejs }}')">
+                            <button type="button" class="btn-action btn-delete-exam" onclick="openDeleteModal({{ class_row.exam_id }}, '{{ exam.name|escapejs }}', [{% for eid in exam.exam_ids %}{% if eid != class_row.exam_id %}{{ eid }}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}])">
                                 <i class="ph ph-trash"></i> Delete
                             </button>
                             {% endif %}
@@ -2426,9 +2429,20 @@ function toggleSelectAll(checkbox) {
     });
 }
 
-function openDeleteModal(examId, examName) {
+function openDeleteModal(examId, examName, extraIds) {
     document.getElementById('deleteModalExamName').textContent = examName;
     document.getElementById('deleteModalExamId').value = examId;
+    var container = document.getElementById('deleteModalExtraIds');
+    container.innerHTML = '';
+    if (extraIds && extraIds.length) {
+        extraIds.forEach(function(eid) {
+            var inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'extra_exam_ids';
+            inp.value = eid;
+            container.appendChild(inp);
+        });
+    }
     document.getElementById('deleteModalOverlay').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -2445,6 +2459,7 @@ function closeDeleteModal(e) {
     {% csrf_token %}
     <input type="hidden" name="action_type" value="delete_exam">
     <input type="hidden" name="exam_id" id="deleteModalExamId" value="">
+    <span id="deleteModalExtraIds"></span>
     <input type="hidden" name="year" value="{{ selected_year }}">
 </form>
 

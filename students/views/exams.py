@@ -45,6 +45,7 @@ from .helpers import (
     get_subject_level_fast,
     get_subject_marks,
     get_subject_students,
+    to_primary_descriptor,
     upsert_mark,
 )
 from ..models import (
@@ -518,24 +519,26 @@ def select_exam(request):
                         sub_section=selected_assignment.sub_section,
                     ).delete()
 
-                MarkSubmission.objects.update_or_create(
-                    school=school,
-                    teacher=teacher,
-                    subject=selected_assignment.subject,
-                    class_name=selected_assignment.class_name,
-                    stream=selected_assignment.stream,
-                    exam_name=selected_exam.name,
-                    term=selected_exam.term,
-                    year=selected_exam.year,
-                    school_section=selected_assignment.school_section,
-                    sub_section=selected_assignment.sub_section,
-                    defaults={
-                        "status": "submitted",
-                        "admin_note": "",
-                        "reviewed_at": None,
-                        "published_at": None,
-                    }
-                )
+                # Only create MarkSubmission when marks were actually saved
+                if marks_to_create or marks_to_update or ids_to_delete:
+                    MarkSubmission.objects.update_or_create(
+                        school=school,
+                        teacher=teacher,
+                        subject=selected_assignment.subject,
+                        class_name=selected_assignment.class_name,
+                        stream=selected_assignment.stream,
+                        exam_name=selected_exam.name,
+                        term=selected_exam.term,
+                        year=selected_exam.year,
+                        school_section=selected_assignment.school_section,
+                        sub_section=selected_assignment.sub_section,
+                        defaults={
+                            "status": "submitted",
+                            "admin_note": "",
+                            "reviewed_at": None,
+                            "published_at": None,
+                        }
+                    )
 
             messages.success(request, f"{saved_count} learner records submitted successfully." + (f" {deleted_count} mark(s) cleared." if deleted_count else ""))
             invalidate_report_caches(
@@ -998,82 +1001,84 @@ def manage_exams(request):
                 return redirect(redir)
 
             from ..security.protection import backup_marks_before_delete
-            exam_marks_qs = Mark.all_objects.filter(
-                school=school, exam_type=exam.name,
-                term=exam.term, year=exam.year,
-                school_section=exam.school_section,
-                sub_section=exam.sub_section,
-            )
-            # Wrap entire delete in a transaction to prevent race conditions
-            # where a teacher inserts a mark between backup and delete.
+            extra_ids = request.POST.getlist("extra_exam_ids")
+            all_exam_ids = [exam_id] + list(extra_ids)
+            all_exams_to_delete = list(Exam.all_objects.filter(school=school, id__in=all_exam_ids, is_deleted=False))
+
             with transaction.atomic():
-                exam_marks = list(exam_marks_qs.select_for_update())
-                backup_marks_before_delete(
-                    exam_marks,
-                    reason=f"delete_exam: exam '{exam.name}' deleted",
-                    request=request,
-                )
+                affected_classes = set()
+                for ex in all_exams_to_delete:
+                    exam_marks_qs = Mark.all_objects.filter(
+                        school=school, exam_type=ex.name,
+                        term=ex.term, year=ex.year,
+                        school_section=ex.school_section,
+                        sub_section=ex.sub_section,
+                    )
+                    exam_marks = list(exam_marks_qs.select_for_update())
+                    backup_marks_before_delete(
+                        exam_marks,
+                        reason=f"delete_exam: exam '{ex.name}' deleted",
+                        request=request,
+                    )
 
-                # Audit: log all marks being deleted
-                from students.models import MarkAuditLog
-                _del_marks = [{
-                    'student_id': m.student_id, 'subject_id': m.subject_id,
-                    'score': m.score, 'raw_score': m.raw_score, 'is_absent': m.is_absent,
-                    'term': m.term, 'year': m.year, 'exam_type': m.exam_type,
-                } for m in exam_marks]
-                if _del_marks:
-                    _audit_del = [
-                        MarkAuditLog(
-                            actor=request.user, school=school, action='delete',
-                            student_id=m['student_id'], subject_id=m['subject_id'],
-                            term=m['term'], year=m['year'], exam_type=m['exam_type'] or '',
-                            old_raw_score=m['raw_score'], old_score=m['score'], old_is_absent=m['is_absent'],
-                        ) for m in _del_marks
-                    ]
-                    MarkAuditLog.objects.bulk_create(_audit_del, batch_size=250)
+                    from students.models import MarkAuditLog
+                    _del_marks = [{
+                        'student_id': m.student_id, 'subject_id': m.subject_id,
+                        'score': m.score, 'raw_score': m.raw_score, 'is_absent': m.is_absent,
+                        'term': m.term, 'year': m.year, 'exam_type': m.exam_type,
+                    } for m in exam_marks]
+                    if _del_marks:
+                        _audit_del = [
+                            MarkAuditLog(
+                                actor=request.user, school=school, action='delete',
+                                student_id=m['student_id'], subject_id=m['subject_id'],
+                                term=m['term'], year=m['year'], exam_type=m['exam_type'] or '',
+                                old_raw_score=m['raw_score'], old_score=m['score'], old_is_absent=m['is_absent'],
+                            ) for m in _del_marks
+                        ]
+                        MarkAuditLog.objects.bulk_create(_audit_del, batch_size=250)
 
-                exam.is_deleted = True
-                exam.deleted_at = timezone.now()
-                exam.deleted_by = request.user
-                exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
+                    ex.is_deleted = True
+                    ex.deleted_at = timezone.now()
+                    ex.deleted_by = request.user
+                    ex.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
 
-                # Collect affected class names before deleting submissions
-                affected_classes = set(
+                    affected_classes.update(
+                        MarkSubmission.all_objects.filter(
+                            school=school, exam_name=ex.name,
+                            term=ex.term, year=ex.year,
+                            school_section=ex.school_section,
+                            sub_section=ex.sub_section,
+                        ).values_list('class_name', flat=True)
+                    )
+
+                    Mark.all_objects.filter(
+                        school=school, exam_type=ex.name,
+                        term=ex.term, year=ex.year,
+                        school_section=ex.school_section,
+                        sub_section=ex.sub_section,
+                    ).delete()
+
                     MarkSubmission.all_objects.filter(
-                        school=school, exam_name=exam.name,
-                        term=exam.term, year=exam.year,
-                        school_section=exam.school_section,
-                        sub_section=exam.sub_section,
-                    ).values_list('class_name', flat=True)
-                )
+                        school=school, exam_name=ex.name,
+                        term=ex.term, year=ex.year,
+                        school_section=ex.school_section,
+                        sub_section=ex.sub_section,
+                    ).delete()
 
-                Mark.all_objects.filter(
-                    school=school, exam_type=exam.name,
-                    term=exam.term, year=exam.year,
-                    school_section=exam.school_section,
-                    sub_section=exam.sub_section,
-                ).delete()
+                    ExamSummary.all_objects.filter(
+                        school=school, exam_name=ex.name,
+                        term=ex.term, year=ex.year,
+                        school_section=ex.school_section,
+                        sub_section=ex.sub_section,
+                    ).delete()
 
-                MarkSubmission.all_objects.filter(
-                    school=school, exam_name=exam.name,
-                    term=exam.term, year=exam.year,
-                    school_section=exam.school_section,
-                    sub_section=exam.sub_section,
-                ).delete()
-
-                ExamSummary.all_objects.filter(
-                    school=school, exam_name=exam.name,
-                    term=exam.term, year=exam.year,
-                    school_section=exam.school_section,
-                    sub_section=exam.sub_section,
-                ).delete()
-
-                ExamResultSnapshot.all_objects.filter(
-                    school=school, exam_name=exam.name,
-                    term=exam.term, year=exam.year,
-                    school_section=exam.school_section,
-                    sub_section=exam.sub_section,
-                ).delete()
+                    ExamResultSnapshot.all_objects.filter(
+                        school=school, exam_name=ex.name,
+                        term=ex.term, year=ex.year,
+                        school_section=ex.school_section,
+                        sub_section=ex.sub_section,
+                    ).delete()
 
             for cls in affected_classes:
                 invalidate_report_caches(
@@ -1081,7 +1086,8 @@ def manage_exams(request):
                     exam.year, exam.term, exam.name,
                 )
 
-            messages.success(request, "Assessment has been deleted.")
+            count = len(all_exams_to_delete)
+            messages.success(request, f"{'Assessment' if count == 1 else 'Assessments'} {'has' if count == 1 else 'have'} been deleted.")
             post_sub = request.POST.get("sub", "").strip().upper()
             redirect_url = reverse('manage_exams')
             params = ['tab=manage']
@@ -1279,6 +1285,21 @@ def manage_exams(request):
             school=school,
             year=selected_year,
         ).select_related('teacher', 'teacher__user', 'subject', 'published_by').order_by('-submitted_at'))
+
+        # ── Guard: exclude orphaned submissions (no actual marks) ─────────
+        # Build set of (exam_type, term, class_name, school_section, subject_id)
+        # from actual Mark records, then filter submissions to only those with marks.
+        mark_keys = set(
+            Mark.all_objects.filter(
+                school=school, year=selected_year,
+            ).values_list(
+                'exam_type', 'term', 'student__class_name', 'school_section', 'subject_id',
+            ).distinct()
+        )
+        year_submissions = [
+            s for s in year_submissions
+            if (s.exam_name, s.term, s.class_name, s.school_section, s.subject_id) in mark_keys
+        ]
 
         sub_normalized_names = {}
         for sub in year_submissions:
@@ -2611,6 +2632,9 @@ def review_submission(request):
         messages.error(request, "School context required.")
         return redirect("manage_exams")
 
+    from .grading_engine import prefetch_school_grading
+    prefetch_school_grading(school)
+
     assignment = SubjectAssignment.all_objects.filter(
         id=assignment_id,
         school=school,
@@ -2655,6 +2679,8 @@ def review_submission(request):
 
         if action_type == "save_admin_scores":
             if not user_has_main_school_admin_override(request.user):
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse({"success": False, "error": "Only the Main School Admin can override published result scores."})
                 messages.error(request, "Only the Main School Admin can override published result scores.")
                 return redirect(
                     f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
@@ -2666,6 +2692,8 @@ def review_submission(request):
                 maximum_marks = 100
 
             if maximum_marks <= 0:
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse({"success": False, "error": "Total marks must be greater than zero."})
                 messages.error(request, "Total marks must be greater than zero.")
                 return redirect(
                     f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
@@ -2680,6 +2708,7 @@ def review_submission(request):
 
             # ── BULK READ: fetch existing marks in ONE query (fixes N+1) ──
             existing_marks = Mark.all_objects.filter(
+                school=school,
                 student__in=students_for_sheet,
                 subject=assignment.subject,
                 term=exam.term,
@@ -2721,9 +2750,9 @@ def review_submission(request):
                         is_absent=True,
                         performance_level='AB',
                         points=0,
-                        primary_raw_score='AB',
-                        primary_performance_point='AB',
-                        primary_descriptor='AB',
+                        primary_raw_score='AB' if assignment.school_section == 'PRIMARY' else '',
+                        primary_performance_point='AB' if assignment.school_section == 'PRIMARY' else '',
+                        primary_descriptor=to_primary_descriptor('AB', assignment.school_section),
                     )
                     _adm_ab.integrity_checksum = compute_mark_checksum(_adm_ab)
                     marks_to_create.append(_adm_ab)
@@ -2762,6 +2791,7 @@ def review_submission(request):
                     subject_id=assignment.subject_id if assignment else None,
                     section=assignment.school_section if assignment else None,
                     sub_section=assignment.sub_section if assignment else None,
+                    school=school,
                 )
                 _adm_num = Mark(
                     **_adm_lookup,
@@ -2771,9 +2801,9 @@ def review_submission(request):
                     is_absent=False,
                     performance_level=adm_perf_level,
                     points=adm_perf_points,
-                    primary_raw_score=str(raw_score),
-                    primary_performance_point=str(adm_perf_points),
-                    primary_descriptor=adm_perf_level,
+                    primary_raw_score='',
+                    primary_performance_point='',
+                    primary_descriptor=to_primary_descriptor(adm_perf_level, assignment.school_section),
                 )
                 _adm_num.integrity_checksum = compute_mark_checksum(_adm_num)
                 marks_to_create.append(_adm_num)
@@ -2845,7 +2875,8 @@ def review_submission(request):
                     ).delete()
 
             if submission:
-                submission.admin_note = admin_note
+                if admin_note:
+                    submission.admin_note = admin_note
                 if submission.status != "published":
                     submission.status = "submitted"
                     submission.published_at = None
@@ -3024,6 +3055,27 @@ def review_submission(request):
         for mark in marks_qs
     }
 
+    # ── Batch-fetch latest audit actor per student (fixes "Updated By") ──
+    from students.models import MarkAuditLog
+    student_ids = [s.id for s in students]
+    updated_by_map = {}
+    if student_ids:
+        _latest_audits = MarkAuditLog.objects.filter(
+            school=school,
+            student_id__in=student_ids,
+            subject=assignment.subject,
+            term=exam.term,
+            year=exam.year,
+            exam_type=exam.name,
+            action__in=('create', 'update'),
+        ).select_related('actor').order_by('-timestamp')
+        for entry in _latest_audits:
+            if entry.student_id not in updated_by_map:
+                if entry.actor:
+                    updated_by_map[entry.student_id] = entry.actor.get_full_name() or entry.actor.username
+                else:
+                    updated_by_map[entry.student_id] = "System"
+
     learner_rows = []
 
     for student in students:
@@ -3043,8 +3095,9 @@ def review_submission(request):
                 percentage_display = f"{mark.score}%"
                 performance_level, points_display = get_performance_level(
                     mark.score,
-                    section=exam.school_section,
-                    sub_section=exam.sub_section,
+                    subject_id=assignment.subject_id,
+                    section=assignment.school_section,
+                    sub_section=assignment.sub_section,
                     school=school,
                 )
                 row_status = "Captured"
@@ -3068,7 +3121,7 @@ def review_submission(request):
             "performance_level": performance_level,
             "points_display": points_display,
             "row_status": row_status,
-            "updated_by": (assignment.teacher_profile.get_full_title() if assignment.teacher_profile else "—") if mark else "-",
+            "updated_by": updated_by_map.get(student.id, assignment.teacher_profile.get_full_title() if (assignment.teacher_profile and mark) else "—") if mark else "-",
             "updated_on": updated_on,
         })
 
@@ -3092,6 +3145,8 @@ def review_submission(request):
     else:
         submission_status = "In Progress"
 
+    _first_mark = marks_qs.first()
+
     context = {
         "assignment": assignment,
         "exam": exam,
@@ -3105,7 +3160,7 @@ def review_submission(request):
         "mean_score": mean_score,
         "submission": submission,
         "submission_status": submission_status,
-        "current_maximum_marks": marks_qs.first().maximum_marks if marks_qs.first() else 100,
+        "current_maximum_marks": _first_mark.maximum_marks if _first_mark else 100,
         "admin_override_enabled": user_has_main_school_admin_override(request.user),
     }
 
@@ -3339,6 +3394,7 @@ def select_exam_primary(request):
             term=selected_exam.term,
             year=selected_exam.year,
             school_section=selected_assignment.school_section,
+            sub_section=selected_assignment.sub_section,
         ).first()
 
         is_submitted = submission is not None and submission.status in [
@@ -3423,6 +3479,9 @@ def select_exam_primary(request):
                 maximum_marks = int(request.POST.get('maximum_marks', current_maximum_marks))
             except (ValueError, TypeError):
                 maximum_marks = current_maximum_marks
+
+            if maximum_marks <= 0:
+                maximum_marks = current_maximum_marks or 100
 
             missing_students = []
             saved_count = 0
@@ -3523,7 +3582,7 @@ def select_exam_primary(request):
                     existing.points = points
                     existing.primary_raw_score = str(raw_score)
                     existing.primary_performance_point = str(points)
-                    existing.primary_descriptor = descriptor
+                    existing.primary_descriptor = to_primary_descriptor(descriptor, selected_assignment.school_section)
                     existing.integrity_checksum = compute_mark_checksum(existing)
                     marks_to_update.append(existing)
                 else:
@@ -3537,7 +3596,7 @@ def select_exam_primary(request):
                         points=points,
                         primary_raw_score=str(raw_score),
                         primary_performance_point=str(points),
-                        primary_descriptor=descriptor,
+                        primary_descriptor=to_primary_descriptor(descriptor, selected_assignment.school_section),
                     )
                     _num_mark.integrity_checksum = compute_mark_checksum(_num_mark)
                     marks_to_create.append(_num_mark)
@@ -3636,24 +3695,26 @@ def select_exam_primary(request):
                         sub_section=exam_sub_section,
                     ).delete()
 
-                MarkSubmission.objects.update_or_create(
-                    school=school,
-                    teacher=teacher,
-                    subject=selected_assignment.subject,
-                    class_name=selected_assignment.class_name,
-                    stream=selected_assignment.stream,
-                    exam_name=selected_exam.name,
-                    term=selected_exam.term,
-                    year=selected_exam.year,
-                    school_section=selected_assignment.school_section,
-                    sub_section=selected_assignment.sub_section,
-                    defaults={
-                        "status": "submitted",
-                        "admin_note": "",
-                        "reviewed_at": None,
-                        "published_at": None,
-                    }
-                )
+                # Only create MarkSubmission when marks were actually saved
+                if marks_to_create or marks_to_update or marks_to_delete_ids:
+                    MarkSubmission.objects.update_or_create(
+                        school=school,
+                        teacher=teacher,
+                        subject=selected_assignment.subject,
+                        class_name=selected_assignment.class_name,
+                        stream=selected_assignment.stream,
+                        exam_name=selected_exam.name,
+                        term=selected_exam.term,
+                        year=selected_exam.year,
+                        school_section=selected_assignment.school_section,
+                        sub_section=selected_assignment.sub_section,
+                        defaults={
+                            "status": "submitted",
+                            "admin_note": "",
+                            "reviewed_at": None,
+                            "published_at": None,
+                        }
+                    )
 
             messages.success(request, f"{saved_count} learner records submitted successfully." + (f" {deleted_count} mark(s) cleared." if deleted_count else ""))
             invalidate_report_caches(
@@ -4086,9 +4147,9 @@ def _save_mark_score(request, school, teacher, assignment, exam, student, score_
         raw_score=raw_score,
         maximum_marks=maximum_marks,
         is_absent=False,
-        primary_raw_score=str(raw_score),
-        primary_performance_point=str(pp_points) if pp_points is not None else '',
-        primary_descriptor=pp_level,
+        primary_raw_score=str(raw_score) if assignment.school_section == 'PRIMARY' else '',
+        primary_performance_point=str(pp_points) if pp_points is not None and assignment.school_section == 'PRIMARY' else '',
+        primary_descriptor=to_primary_descriptor(pp_level, assignment.school_section),
         performance_level=perf_level,
         points=perf_points,
         term=exam.term,
@@ -4309,9 +4370,9 @@ def batch_save_marks(request):
                 existing.is_absent = False
                 existing.performance_level = perf_level
                 existing.points = perf_points
-                existing.primary_raw_score = str(raw_score)
-                existing.primary_performance_point = str(perf_points) if perf_points else ''
-                existing.primary_descriptor = perf_level
+                existing.primary_raw_score = ''
+                existing.primary_performance_point = ''
+                existing.primary_descriptor = ''
                 existing.version = F('version') + 1
                 existing.integrity_checksum = compute_mark_checksum(existing)
                 marks_to_update.append(existing)
@@ -4328,9 +4389,9 @@ def batch_save_marks(request):
                     raw_score=raw_score, maximum_marks=maximum_marks,
                     score=score, is_absent=False,
                     performance_level=perf_level, points=perf_points,
-                    primary_raw_score=str(raw_score),
-                    primary_performance_point=str(perf_points) if perf_points else '',
-                    primary_descriptor=perf_level,
+                    primary_raw_score='',
+                    primary_performance_point='',
+                    primary_descriptor='',
                 )
                 new_mark.integrity_checksum = compute_mark_checksum(new_mark)
                 marks_to_create.append(new_mark)
@@ -4658,7 +4719,10 @@ def publish_results_overview(request):
     all_exams = Exam.all_objects.filter(
         school=school, is_deleted=False,
         school_section=exam.school_section,
-    ).order_by("-year", "term", "name")
+    )
+    if exam.sub_section:
+        all_exams = all_exams.filter(sub_section=exam.sub_section)
+    all_exams = all_exams.order_by("-year", "term", "name")
 
     pairs = (
         SubjectAssignment.all_objects.filter(
@@ -4940,7 +5004,8 @@ def upload_results(request):
         opposite_religion_student_ids = []
 
         from .helpers import get_subject_level_fast
-        from .grading_engine import resolve_scale_fast
+        from .grading_engine import resolve_scale_fast, prefetch_school_grading
+        prefetch_school_grading(school)
         scale_data = resolve_scale_fast(school.pk, assignment.school_section, assignment.sub_section, subject_id=assignment.subject_id if assignment.subject else None)
 
         for student in students:
@@ -4971,9 +5036,9 @@ def upload_results(request):
                     is_absent=True,
                     performance_level='AB',
                     points=0,
-                    primary_raw_score='AB',
-                    primary_performance_point='AB',
-                    primary_descriptor='AB',
+                    primary_raw_score='AB' if assignment.school_section == 'PRIMARY' else '',
+                    primary_performance_point='AB' if assignment.school_section == 'PRIMARY' else '',
+                    primary_descriptor=to_primary_descriptor('AB', assignment.school_section),
                 )
                 _up_ab.integrity_checksum = compute_mark_checksum(_up_ab)
                 marks_to_create.append(_up_ab)
@@ -5015,9 +5080,9 @@ def upload_results(request):
                 is_absent=False,
                 performance_level=perf_level,
                 points=perf_points if perf_points else 0,
-                primary_raw_score=str(raw_score),
-                primary_performance_point=str(perf_points) if perf_points else '',
-                primary_descriptor=perf_level,
+                primary_raw_score=str(raw_score) if assignment.school_section == 'PRIMARY' else '',
+                primary_performance_point=str(perf_points) if perf_points is not None and assignment.school_section == 'PRIMARY' else '',
+                primary_descriptor=to_primary_descriptor(perf_level, assignment.school_section),
             )
             _up_num.integrity_checksum = compute_mark_checksum(_up_num)
             marks_to_create.append(_up_num)
@@ -5133,7 +5198,8 @@ def upload_results(request):
         )
 
     # ── Grading scale JSON ──────────────────────────────────────────────
-    from .grading_engine import resolve_scale_fast
+    from .grading_engine import resolve_scale_fast, prefetch_school_grading
+    prefetch_school_grading(school)
     scale_data = resolve_scale_fast(school.pk, assignment.school_section, assignment.sub_section, subject_id=assignment.subject_id if assignment.subject else None)
     if scale_data:
         grading_scale_json = json.dumps(scale_data)
