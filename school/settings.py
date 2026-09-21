@@ -193,6 +193,12 @@ SESSION_CACHE_ALIAS = 'default'
 SESSION_SAVE_EVERY_REQUEST = False
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 14  # 2 weeks
 
+# ==============================================================================
+# UPLOAD SIZE LIMITS — prevent OOM from large file uploads
+# ==============================================================================
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024   # 5 MB — inline parse limit
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024    # 5 MB — switch to temp file above this
+
 
 # ==============================================================================
 # DATA-IMPORT / MIGRATION DEFAULTS
@@ -296,7 +302,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 600,
+        'CONN_MAX_AGE': 300,
         'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
             'connect_timeout': 5,

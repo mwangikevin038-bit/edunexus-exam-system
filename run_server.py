@@ -30,7 +30,7 @@ CELERY_APP = os.environ.get("CELERY_APP", "school")
 CELERY_LOGLEVEL = os.environ.get("CELERY_LOGLEVEL", "info")
 WAITRESS_HOST = os.environ.get('WAITRESS_HOST', '0.0.0.0')
 WAITRESS_PORT = int(os.environ.get('WAITRESS_PORT', '8000'))
-WAITRESS_THREADS = int(os.environ.get('WAITRESS_THREADS', str(min(32, (os.cpu_count() or 4) * 8))))
+WAITRESS_THREADS = int(os.environ.get('WAITRESS_THREADS', str(min(64, (os.cpu_count() or 4) * 16))))
 
 # ── Colors ──────────────────────────────────────────────────────────────────
 class C:

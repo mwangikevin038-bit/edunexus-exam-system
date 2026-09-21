@@ -1446,9 +1446,9 @@ def individual_report_print_html(request, student_id):
 @rate_limit("report_download", max_requests=5, window_seconds=60, methods=["GET", "POST"])
 def download_bulk_report_pdf(request):
     """
-    High-performance bulk report card PDF via per-student WeasyPrint compilation
-    and in-memory PdfMerger stitching. Each student is rendered individually,
-    then all pages are stitched into a unified PDF stream.
+    Redirect to the async Celery-based bulk PDF generator.
+    The synchronous version was removed to prevent OOM crashes when
+    multiple teachers generate PDFs simultaneously.
 
     All per-student data fetching is delegated to
     ``build_report_card_context`` (students/views/helpers.py) — the same helper
@@ -1466,155 +1466,24 @@ def download_bulk_report_pdf(request):
     if not school:
         return JsonResponse({'error': 'School context is required.'}, status=400)
 
-    from .helpers import build_report_card_context_from_snapshot
-
-    is_admin_view = user_has_main_school_admin_override(request.user)
-
     grade_name  = request.GET.get('grade', '').strip()
     stream_name = request.GET.get('stream', '').strip()
     exam_id     = request.GET.get('exam_id', '').strip()
     year        = request.GET.get('year', str(datetime.date.today().year))
-    term        = request.GET.get('term', 'Term 1')
-    assessment  = request.GET.get('assessment', 'opener')
-    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
+    term        = request.GET.get('term', '').strip()
+    ids_param   = request.GET.get('ids', '').strip()
 
-    # ── Resolve student IDs from the two accepted URL shapes ────────────────
-    student_ids = [sid for sid in request.GET.get('ids', '').split(',') if sid]
+    if not exam_id or not grade_name:
+        return JsonResponse({'error': 'exam_id and grade are required.'}, status=400)
 
-    if not student_ids and grade_name and stream_name and exam_id:
-        # Resolve via build_report_card_context's built-in student list.
-        # We use it for resolution only — the actual rendering is the same
-        # code path as the explicit-ids case below.
-        from ..models import Exam
-        try:
-            _exam = Exam.all_objects.get(id=exam_id, school=school, is_deleted=False)
-        except (Exam.DoesNotExist, ValueError):
-            return JsonResponse({'error': 'Exam not found.'}, status=404)
-        db_assessment = _exam.name
-        # Pre-fetch the student IDs that belong to this grade/stream/section.
-        _resolved = build_report_card_context_from_snapshot(
-            school, grade_name, stream_name, exam_id,
-            include_chart_svg=False,
-            is_admin=is_admin_view,
-        )
-        student_ids = [s['student'].id for s in _resolved['student_marks_list']]
-        if not student_ids:
-            return JsonResponse({'error': 'No students found for that grade/stream/exam combination.'}, status=404)
+    # Build the redirect URL to the async endpoint
+    from django.urls import reverse
+    async_url = reverse('start_bulk_report_pdf')
+    params = f'?grade={grade_name}&stream={stream_name}&exam_id={exam_id}&year={year}&term={term}'
+    if ids_param:
+        params += f'&ids={ids_param}'
 
-    if not student_ids:
-        return JsonResponse({'error': 'No students selected for PDF generation. Pass ids=... OR grade=...&stream=...&exam_id=...'}, status=400)
-
-    # Sample student — needed for class/stream/section access checks
-    sample = Student.all_objects.filter(id__in=student_ids, school=school).first()
-    if not sample:
-        return JsonResponse({'error': 'No valid students found.'}, status=404)
-
-    if not user_can_access_class_stream(
-        request.user, sample.class_name, sample.stream, require_class_teacher=True,
-    ):
-        return JsonResponse(
-            {'error': 'You are not allowed to print report cards for this class stream.'},
-            status=403,
-        )
-
-    # ── Unified data build ────────────────────────────────────────────────────
-    try:
-        ctx = build_report_card_context_from_snapshot(
-            school, sample.class_name, sample.stream, db_assessment,
-            student_ids=student_ids,
-            include_chart_svg=True,
-            is_admin=is_admin_view,
-        )
-    except Exam.DoesNotExist:
-        return JsonResponse({'error': 'Exam not found.'}, status=404)
-
-    section_accent = ctx['section_accent']
-    student_marks_list = ctx['student_marks_list']
-
-    # ── Pre-compute logo base64 ONCE (not per student) ─────────────────────────
-    logo_base64_data = ""
-    try:
-        school_logo = getattr(school, "logo", None)
-        if school_logo:
-            logo_url = school_logo.url
-            logo_type = mimetypes.guess_type(logo_url)[0] or "image/png"
-            with school_logo.open("rb") as logo_file:
-                logo_data = base64.b64encode(logo_file.read()).decode("ascii")
-            logo_base64_data = f'data:{logo_type};base64,{logo_data}'
-    except Exception:
-        logger.warning("Failed to pre-compute school logo base64", exc_info=True)
-
-    # ── Wrap each per-student dict in the single-card view context ─────────────
-    student_contexts = []
-    for student_data in student_marks_list:
-        student_contexts.append({
-            'student_marks_list':   [student_data],
-            'selected_year':        ctx['selected_year'],
-            'selected_term':        ctx['selected_term'],
-            'selected_assessment':  ctx['selected_assessment_raw'],
-            'class_count':          ctx['class_count'],
-            'closing_date':         ctx['closing_date'],
-            'opening_date':         ctx['opening_date'],
-            'section_accent':       section_accent,
-            'view_mode':            'pdf',
-            'show_mobile_shell':    False,
-            'show_header':          False,
-            'show_control_panel':   False,
-        })
-
-    if not student_contexts:
-        return JsonResponse({'error': 'No students found for the selected class stream.'}, status=404)
-
-    # Close DB connections before spawning workers to prevent pool leaks
-    # (the worker thread may still hold a connection in its thread-local pool).
-    from django.db import connection
-    connection.close()
-
-    # Parallel PDF compilation via ThreadPoolExecutor.
-    #
-    # WeasyPrint releases the GIL during Pango layout + font rasterisation,
-    # so threads give genuine parallel speedup. Compared to the original
-    # ProcessPoolExecutor approach this saves the ~2.5s per-worker fork+import
-    # cost (which made ProcessPool SLOWER than sequential for batches under
-    # ~30 students).
-    #
-    # The chart cache is now thread-local so each worker gets its own
-    # matplotlib figure - no thread-safety crash.
-    base_url = request.build_absolute_uri("/")
-    compile_fn = partial(
-        _compile_single_student_pdf,
-        logo_base64=logo_base64_data,
-        section_accent=section_accent,
-        base_url=base_url,
-    )
-
-    # Sized by CPU count but capped - each WeasyPrint render uses 100-200 MB
-    # of RAM so going beyond the available cores just causes thrashing.
-    max_workers = min(4, max(1, (os.cpu_count() or 2)))
-    try:
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            pdf_results = list(executor.map(compile_fn, student_contexts))
-    except Exception as e:
-        logger.warning("[pdf] ThreadPoolExecutor failed, falling back to sequential: %s", str(e))
-        pdf_results = [compile_fn(ctx) for ctx in student_contexts]
-
-    # Stitch all pages into final output
-    merger = PdfWriter()
-    for pdf_bytes in pdf_results:
-        if pdf_bytes:
-            merger.append(io.BytesIO(pdf_bytes))
-    output_buffer = io.BytesIO()
-    merger.write(output_buffer)
-    merger.close()
-
-    grade_slug = slugify(sample.class_name or "class")
-    stream_slug = slugify(sample.stream or "stream")
-    filename = f"Bulk_Report_Cards_{grade_slug}_{stream_slug}_{year}_{slugify(term)}.pdf"
-
-    response = HttpResponse(output_buffer.getvalue(), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    output_buffer.close()
-    return response
+    return HttpResponseRedirect(async_url + params)
 
 
 # ═══════════════════════════════════════════════════════════════════════
