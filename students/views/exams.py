@@ -709,6 +709,7 @@ def select_exam(request):
         'back_url': 'select_exam',
         'back_label': 'Back to assessments',
         'section': 'JSS',
+        'is_admin_view': user_has_main_school_admin_override(request.user),
     })
 
 def _get_available_grades(school, section, active_sub):
@@ -2500,8 +2501,6 @@ def review_stream_submission(request):
             messages.error(request, "No submitted sheets are available for this stream yet.")
             return redirect(f"{request.path}?exam_id={exam.id}&class_name={class_name}&stream={stream}")
 
-        from django.db import transaction
-
         if action_type == "return_subject":
             assignment_id = request.POST.get("assignment_id")
             target_row = next(
@@ -2533,12 +2532,11 @@ def review_stream_submission(request):
             )
 
         elif action_type == "return_stream":
-            with transaction.atomic():
-                for submission in submissions:
-                    submission.status = "returned"
-                    submission.admin_note = admin_note
-                    submission.reviewed_at = timezone.now()
-                    submission.save()
+            for submission in submissions:
+                submission.status = "returned"
+                submission.admin_note = admin_note
+                submission.reviewed_at = timezone.now()
+                submission.save()
 
             # Unlock the assessment so teachers can edit returned sheets
             AssessmentLock.objects.filter(
@@ -2555,15 +2553,14 @@ def review_stream_submission(request):
             if not totals["can_approve"]:
                 messages.error(request, "This stream cannot be approved until every subject is submitted and every learner has a score or AB.")
                 return redirect(f"{request.path}?exam_id={exam.id}&class_name={class_name}&stream={stream}")
-            with transaction.atomic():
-                for row in rows:
-                    submission = row["submission"]
-                    if not submission:
-                        continue
-                    submission.status = "approved"
-                    submission.admin_note = admin_note
-                    submission.reviewed_at = timezone.now()
-                    submission.save()
+            for row in rows:
+                submission = row["submission"]
+                if not submission:
+                    continue
+                submission.status = "approved"
+                submission.admin_note = admin_note
+                submission.reviewed_at = timezone.now()
+                submission.save()
             messages.success(request, f"{class_name} {stream} has been approved as a complete stream.")
 
         elif action_type == "publish_stream":
@@ -2576,18 +2573,17 @@ def review_stream_submission(request):
                 (row["assignment"] for row in rows if row.get("assignment")), None
             )
 
-            with transaction.atomic():
-                for row in rows:
-                    submission = row["submission"]
-                    if not submission:
-                        continue
-                    submission.status = "published"
-                    submission.admin_note = admin_note
-                    submission.published_at = timezone.now()
-                    submission.published_by = request.user
-                    if not submission.reviewed_at:
-                        submission.reviewed_at = timezone.now()
-                    submission.save()
+            for row in rows:
+                submission = row["submission"]
+                if not submission:
+                    continue
+                submission.status = "published"
+                submission.admin_note = admin_note
+                submission.published_at = timezone.now()
+                submission.published_by = request.user
+                if not submission.reviewed_at:
+                    submission.reviewed_at = timezone.now()
+                submission.save()
 
             # ── Rebuild ExamSummary snapshots for this grade ───────────
             from students.tasks import populate_exam_summaries
@@ -2615,7 +2611,7 @@ def review_stream_submission(request):
 
         return redirect(f"{request.path}?exam_id={exam.id}&class_name={class_name}&stream={stream}")
 
-    return render(request, "students/review_stream_submission.html", {
+    return render(request, "students/stream_subject_detail.html", {
         "exam": exam,
         "class_name": class_name,
         "stream": stream,
@@ -3848,6 +3844,7 @@ def select_exam_primary(request):
         'back_url': 'select_exam_primary',
         'back_label': 'Back to assessments',
         'section': section,
+        'is_admin_view': user_has_main_school_admin_override(request.user),
     })
 
 
@@ -3887,12 +3884,12 @@ def clear_mark(request):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
 
     try:
-        exam = Exam.all_objects.get(id=exam_id, school=school, status='active')
+        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
     try:
-        student = Student.all_objects.get(id=student_id, school=school)
+        student = Student.objects.get(id=student_id, school=school)
     except Student.DoesNotExist:
         return JsonResponse({'error': 'Student not found'}, status=404)
 
@@ -4019,12 +4016,12 @@ def save_mark(request):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
 
     try:
-        exam = Exam.all_objects.get(id=exam_id, school=school, status='active')
+        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
     try:
-        student = Student.all_objects.get(id=student_id, school=school)
+        student = Student.objects.get(id=student_id, school=school)
     except Student.DoesNotExist:
         return JsonResponse({'error': 'Student not found'}, status=404)
 
@@ -4243,9 +4240,8 @@ def batch_save_marks(request):
             assignment = SubjectAssignment.all_objects.get(id=assignment_id, school=school, teacher_profile=teacher)
     except SubjectAssignment.DoesNotExist:
         return JsonResponse({'error': 'Assignment not found'}, status=404)
-
     try:
-        exam = Exam.all_objects.get(id=exam_id, school=school, status='active')
+        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
@@ -4257,6 +4253,7 @@ def batch_save_marks(request):
         school_section=assignment.school_section,
         sub_section=assignment.sub_section,
     ).first()
+
     if submission and submission.status in ('submitted', 'approved', 'published'):
         return JsonResponse({'error': 'Sheet is locked'}, status=403)
 
@@ -4300,13 +4297,14 @@ def batch_save_marks(request):
         # Prefetch student objects for new marks (avoids N+1 in the loop)
         student_ids = [item.get('student_id') for item in marks_data if item.get('student_id')]
         students_map = {
-            s.id: s for s in Student.all_objects.filter(id__in=student_ids, school=school)
+            s.id: s for s in Student.objects.filter(id__in=student_ids, school=school)
         }
 
         marks_to_create = []
         marks_to_update = []
         marks_to_delete = []
         skipped_unchanged = 0
+        skipped_invalid = []
 
         for item in marks_data:
             student_id = item.get('student_id')
@@ -4377,9 +4375,11 @@ def batch_save_marks(request):
             try:
                 raw_score = int(score_value)
             except ValueError:
+                skipped_invalid.append(str(student_id))
                 continue
 
             if raw_score < 0 or raw_score > maximum_marks:
+                skipped_invalid.append(str(student_id))
                 continue
 
             score = round((raw_score / maximum_marks) * 100)
@@ -4496,7 +4496,7 @@ def batch_save_marks(request):
                 exam.year, exam.term, exam.name,
             )
 
-    return JsonResponse({'ok': True, 'saved': saved_count, 'skipped': skipped_unchanged})
+    return JsonResponse({'ok': True, 'saved': saved_count, 'skipped': skipped_unchanged, 'skipped_invalid': skipped_invalid})
 
 
 @login_required(login_url='login')
@@ -4544,7 +4544,7 @@ def update_maximum_marks(request):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
 
     try:
-        exam = Exam.all_objects.get(id=exam_id, school=school, status='active')
+        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
@@ -4681,7 +4681,7 @@ def return_mark_sheet(request):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
 
     try:
-        exam = Exam.all_objects.get(id=exam_id, school=school, status='active')
+        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
