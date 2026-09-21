@@ -106,6 +106,7 @@ urlpatterns = [
     path('school-admin/exams/review/', views.review_stream_submission, name='review_stream_submission'),
     path('school-admin/exams/review-submission/', views.review_submission, name='review_submission'),
     path('school-admin/exams/publish-results/', views.publish_results_overview, name='publish_results_overview'),
+    path('school-admin/exams/quick-publish-stream/', views.quick_publish_stream, name='quick_publish_stream'),
     path('school-admin/exams/save-min-subjects/', views.save_exam_min_subjects, name='save_exam_min_subjects'),
     path('school-admin/exams/upload-results/', views.upload_results, name='upload_results'),
     path('school-admin/classes/', views.manage_classes, name='manage_classes'),

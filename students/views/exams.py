@@ -5294,3 +5294,126 @@ def upload_results(request):
     }
 
     return render(request, template_name, context)
+
+
+@login_required(login_url='login')
+@school_admin_required
+def quick_publish_stream(request):
+    """
+    AJAX endpoint: publish ALL subjects in a stream in one click.
+    Validates all marks are present, then publishes atomically.
+    POST: exam_id, class_name, stream
+    Returns JSON: {ok, published, errors}
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    if not user_has_main_school_admin_override(request.user):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
+
+    exam_id = request.POST.get('exam_id')
+    class_name = request.POST.get('class_name')
+    stream = request.POST.get('stream')
+
+    if not all([exam_id, class_name, stream]):
+        return JsonResponse({'error': 'Missing parameters'}, status=400)
+
+    try:
+        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
+    except Exam.DoesNotExist:
+        return JsonResponse({'error': 'Exam not found or closed'}, status=404)
+
+    # Get all subject assignments for this stream
+    assignments = SubjectAssignment.all_objects.filter(
+        school=school, class_name=class_name, stream=stream,
+        school_section=exam.school_section, is_active=True,
+    ).select_related('subject', 'teacher_profile')
+
+    if not assignments.exists():
+        return JsonResponse({'error': 'No subject assignments found for this stream'}, status=404)
+
+    # Validate each subject has complete marks
+    errors = []
+    submissions_to_publish = []
+
+    for assignment in assignments:
+        # Get existing submission
+        submission = MarkSubmission.all_objects.filter(
+            school=school, teacher=assignment.teacher_profile,
+            subject=assignment.subject, class_name=class_name, stream=stream,
+            exam_name=exam.name, term=exam.term, year=exam.year,
+            school_section=assignment.school_section,
+            sub_section=assignment.sub_section,
+        ).first()
+
+        if not submission:
+            errors.append({
+                'subject': assignment.subject.name,
+                'teacher': assignment.teacher_profile.get_full_title() if assignment.teacher_profile else '—',
+                'issue': 'Not submitted yet',
+            })
+            continue
+
+        if submission.status == 'published':
+            continue
+
+        # Check marks completeness
+        from .helpers import get_religion_aware_student_count, get_subject_marks
+        total_students = get_religion_aware_student_count(class_name, stream, assignment.subject)
+        captured_count = get_subject_marks(
+            class_name, stream, assignment.subject,
+            exam.term, exam.name, exam.year,
+        ).count()
+        missing = max(total_students - captured_count, 0)
+
+        if missing > 0:
+            errors.append({
+                'subject': assignment.subject.name,
+                'teacher': assignment.teacher_profile.get_full_title() if assignment.teacher_profile else '—',
+                'issue': f'{missing} learner(s) missing marks',
+            })
+            continue
+
+        submissions_to_publish.append(submission)
+
+    if errors:
+        return JsonResponse({'ok': False, 'errors': errors, 'total_subjects': assignments.count()})
+
+    # All good — publish atomically
+    from django.db import transaction
+    with transaction.atomic():
+        for sub in submissions_to_publish:
+            sub.status = 'published'
+            sub.published_at = timezone.now()
+            sub.published_by = request.user
+            if not sub.reviewed_at:
+                sub.reviewed_at = timezone.now()
+            sub.save()
+
+    # Side effects (same as existing publish_stream)
+    from students.tasks import populate_exam_summaries
+    first_assignment = assignments.first()
+    if first_assignment:
+        populate_exam_summaries.delay(
+            school_id=school.pk,
+            grade=class_name,
+            year=exam.year,
+            term=exam.term,
+            exam_name=exam.name,
+            school_section=first_assignment.school_section,
+            sub_section=first_assignment.sub_section,
+        )
+
+    from students.views.helpers import build_exam_result_snapshot, invalidate_report_caches
+    build_exam_result_snapshot(
+        school=school, exam=exam, class_name=class_name, stream=stream,
+    )
+    invalidate_report_caches(
+        school.pk, class_name, stream, exam.year, exam.term, exam.name,
+    )
+
+    return JsonResponse({'ok': True, 'published': len(submissions_to_publish)})

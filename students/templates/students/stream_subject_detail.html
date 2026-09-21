@@ -302,21 +302,315 @@
     .pub-publish-btn {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 9px 20px;
-        font-size: 13px;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 24px;
+        font-size: 14px;
         font-weight: 600;
-        color: #fff;
-        background: #0d9488;
+        letter-spacing: -0.01em;
+        color: #0f172a;
+        background: var(--en-green, #9be816);
         border: none;
-        border-radius: 6px;
+        border-radius: 12px;
         cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(155, 232, 22, 0.3), 0 4px 12px rgba(155, 232, 22, 0.15);
         text-decoration: none;
-        transition: background 0.15s;
+        position: relative;
+        overflow: hidden;
+        min-width: 160px;
+    }
+
+    .pub-publish-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+        pointer-events: none;
     }
 
     .pub-publish-btn:hover {
-        background: #0f766e;
+        background: var(--en-green-hover, #8ad412);
+        box-shadow: 0 2px 8px rgba(155, 232, 22, 0.4), 0 8px 24px rgba(155, 232, 22, 0.2);
+        transform: translateY(-1px);
+    }
+
+    .pub-publish-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(155, 232, 22, 0.3);
+    }
+
+    .pub-publish-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .pub-publish-btn .pub-btn-spinner {
+        display: none;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(15, 23, 42, 0.2);
+        border-top-color: #0f172a;
+        border-radius: 50%;
+        animation: pubSpin 0.6s linear infinite;
+    }
+
+    .pub-publish-btn.loading .pub-btn-spinner {
+        display: block;
+    }
+
+    .pub-publish-btn.loading .pub-btn-text {
+        display: none;
+    }
+
+    @keyframes pubSpin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ── iOS 18 Publish Modal ─────────────────────────────────────── */
+    .pub-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+
+    .pub-modal-overlay.active {
+        display: flex;
+        opacity: 1;
+    }
+
+    .pub-modal {
+        background: #fff;
+        border-radius: 20px;
+        width: 420px;
+        max-width: 90vw;
+        max-height: 85vh;
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        transform: scale(0.95) translateY(10px);
+        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .pub-modal-overlay.active .pub-modal {
+        transform: scale(1) translateY(0);
+    }
+
+    .pub-modal-header {
+        padding: 28px 28px 0;
+        text-align: center;
+    }
+
+    .pub-modal-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        background: var(--en-green-light, rgba(155, 232, 22, 0.12));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+
+    .pub-modal-icon i {
+        font-size: 28px;
+        color: var(--en-green, #9be816);
+    }
+
+    .pub-modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+        margin: 0 0 6px;
+    }
+
+    .pub-modal-subtitle {
+        font-size: 14px;
+        color: #64748b;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .pub-modal-body {
+        padding: 20px 28px;
+    }
+
+    .pub-modal-stream-info {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 4px;
+    }
+
+    .pub-modal-stream-info .stream-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--en-green, #9be816);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .pub-modal-stream-info .stream-icon i {
+        font-size: 20px;
+        color: #0f172a;
+    }
+
+    .pub-modal-stream-info .stream-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .pub-modal-stream-info .stream-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .pub-modal-stream-info .stream-meta {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 2px;
+    }
+
+    .pub-modal-errors {
+        margin-top: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .pub-modal-error-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        background: #fef2f2;
+        border-radius: 10px;
+        margin-bottom: 6px;
+    }
+
+    .pub-modal-error-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .pub-modal-error-item .error-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #ef4444;
+        margin-top: 6px;
+        flex-shrink: 0;
+    }
+
+    .pub-modal-error-item .error-text {
+        font-size: 13px;
+        color: #991b1b;
+        line-height: 1.4;
+    }
+
+    .pub-modal-error-item .error-text strong {
+        font-weight: 600;
+    }
+
+    .pub-modal-success-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: var(--en-green, #9be816);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+
+    .pub-modal-success-icon i {
+        font-size: 32px;
+        color: #0f172a;
+    }
+
+    .pub-modal-footer {
+        padding: 0 28px 28px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .pub-modal-footer button {
+        flex: 1;
+        padding: 12px 20px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+        letter-spacing: -0.01em;
+    }
+
+    .pub-modal-btn-cancel {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .pub-modal-btn-cancel:hover {
+        background: #e2e8f0;
+    }
+
+    .pub-modal-btn-confirm {
+        background: var(--en-green, #9be816);
+        color: #0f172a;
+        box-shadow: 0 1px 3px rgba(155, 232, 22, 0.3);
+    }
+
+    .pub-modal-btn-confirm:hover {
+        background: var(--en-green-hover, #8ad412);
+        box-shadow: 0 2px 8px rgba(155, 232, 22, 0.4);
+    }
+
+    .pub-modal-btn-confirm:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pub-modal-btn-confirm .btn-spinner {
+        display: none;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(15, 23, 42, 0.2);
+        border-top-color: #0f172a;
+        border-radius: 50%;
+        animation: pubSpin 0.6s linear infinite;
+    }
+
+    .pub-modal-btn-confirm.loading .btn-spinner {
+        display: inline-block;
+    }
+
+    .pub-modal-btn-confirm.loading .btn-label {
+        display: none;
+    }
+
+    .pub-modal-footer .pub-modal-btn-close {
+        background: var(--en-green, #9be816);
+        color: #0f172a;
+    }
+
+    .pub-modal-footer .pub-modal-btn-close:hover {
+        background: var(--en-green-hover, #8ad412);
     }
 
     .pub-empty-msg {
@@ -729,34 +1023,145 @@
         <div class="pub-detail-actions">
             <div class="pub-detail-actions-left">
                 <a href="{% url 'publish_results_overview' %}?exam_id={{ exam.id }}&class_name={{ class_name|urlencode }}" class="pub-back-btn">
-                    Back
+                    <i class="ph ph-arrow-left" style="font-size:14px;"></i> Back
                 </a>
-                <div class="pub-action-wrap">
-                    <button class="pub-action-btn" onclick="togglePubActionMenu()">
-                        Action <i class="ph ph-caret-down" style="font-size:13px;"></i>
-                    </button>
-                    <div class="pub-action-menu" id="pubActionMenu">
-                        <a href="#">Download Results</a>
-                        <a href="#">Send Reminders</a>
-                    </div>
+            </div>
+            <button class="pub-publish-btn" id="pubPublishBtn" onclick="openPublishModal()">
+                <span class="pub-btn-text"><i class="ph ph-paper-plane-tilt" style="font-size:15px;"></i> Publish Results</span>
+                <span class="pub-btn-spinner"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- CSRF token for AJAX publish -->
+{% csrf_token %}
+
+<!-- ── iOS 18 Publish Modal ───────────────────────────────────── -->
+<div class="pub-modal-overlay" id="pubModalOverlay">
+    <div class="pub-modal" onclick="event.stopPropagation()">
+        <div class="pub-modal-header">
+            <div class="pub-modal-icon" id="pubModalIconWrap">
+                <i class="ph ph-paper-plane-tilt" id="pubModalIcon"></i>
+            </div>
+            <h3 class="pub-modal-title" id="pubModalTitle">Publish Results</h3>
+            <p class="pub-modal-subtitle" id="pubModalSubtitle">
+                Publish all subject results for this stream. This action cannot be easily undone.
+            </p>
+        </div>
+        <div class="pub-modal-body" id="pubModalBody">
+            <div class="pub-modal-stream-info">
+                <div class="stream-icon"><i class="ph ph-chalkboard-teacher"></i></div>
+                <div class="stream-details">
+                    <div class="stream-name">{{ class_name }} {{ stream }}</div>
+                    <div class="stream-meta">{{ exam.name }} &middot; {{ exam.term }} {{ exam.year }}</div>
                 </div>
             </div>
-            <a href="#" class="pub-publish-btn">
-                Publish Results
-            </a>
+            <div class="pub-modal-errors" id="pubModalErrors" style="display:none;"></div>
+        </div>
+        <div class="pub-modal-footer" id="pubModalFooter">
+            <button class="pub-modal-btn-cancel" onclick="closePublishModal()">Cancel</button>
+            <button class="pub-modal-btn-confirm" id="pubModalConfirmBtn" onclick="confirmPublish()">
+                <span class="btn-label">Publish</span>
+                <span class="btn-spinner"></span>
+            </button>
         </div>
     </div>
 </div>
 
 <script>
-function togglePubActionMenu() {
-    document.getElementById('pubActionMenu').classList.toggle('show');
-}
-document.addEventListener('click', function(e) {
-    var menu = document.getElementById('pubActionMenu');
-    if (!e.target.closest('.pub-action-wrap')) {
-        menu.classList.remove('show');
-    }
-});
+(function() {
+    var overlay = document.getElementById('pubModalOverlay');
+    var examId = '{{ exam.id|escapejs }}';
+    var className = '{{ class_name|escapejs }}';
+    var stream = '{{ stream|escapejs }}';
+
+    window.openPublishModal = function() {
+        document.getElementById('pubModalErrors').style.display = 'none';
+        document.getElementById('pubModalTitle').textContent = 'Publish Results';
+        document.getElementById('pubModalSubtitle').textContent = 'Publish all subject results for this stream. This action cannot be easily undone.';
+        document.getElementById('pubModalIconWrap').style.background = '';
+        document.getElementById('pubModalIcon').className = 'ph ph-paper-plane-tilt';
+        document.getElementById('pubModalIcon').style.color = '';
+        var confirmBtn = document.getElementById('pubModalConfirmBtn');
+        confirmBtn.style.display = '';
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove('loading');
+        document.getElementById('pubModalFooter').innerHTML = '';
+        document.getElementById('pubModalFooter').appendChild(document.getElementById('pubModalConfirmBtn'));
+        document.getElementById('pubModalFooter').insertAdjacentHTML('beforeend',
+            '<button class="pub-modal-btn-cancel" onclick="closePublishModal()">Cancel</button>');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closePublishModal = function() {
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    };
+
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closePublishModal();
+    });
+
+    window.confirmPublish = function() {
+        var btn = document.getElementById('pubModalConfirmBtn');
+        btn.classList.add('loading');
+        btn.disabled = true;
+
+        var formData = new FormData();
+        formData.append('exam_id', examId);
+        formData.append('class_name', className);
+        formData.append('stream', stream);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        fetch("{% url 'quick_publish_stream' %}", {
+            method: 'POST',
+            body: formData,
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+
+            if (data.ok) {
+                document.getElementById('pubModalIconWrap').style.background = 'var(--en-green, #9be816)';
+                document.getElementById('pubModalIcon').className = 'ph ph-check-circle';
+                document.getElementById('pubModalIcon').style.color = '#0f172a';
+                document.getElementById('pubModalTitle').textContent = 'Published!';
+                document.getElementById('pubModalSubtitle').textContent = data.published + ' subject sheet(s) published successfully. Results are now visible to teachers and students.';
+                document.getElementById('pubModalErrors').style.display = 'none';
+                document.getElementById('pubModalFooter').innerHTML =
+                    '<button class="pub-modal-btn-close" onclick="window.location.reload()">Done</button>';
+            } else {
+                document.getElementById('pubModalIconWrap').style.background = 'rgba(239, 68, 68, 0.1)';
+                document.getElementById('pubModalIcon').className = 'ph ph-warning-circle';
+                document.getElementById('pubModalIcon').style.color = '#ef4444';
+                document.getElementById('pubModalTitle').textContent = 'Cannot Publish Yet';
+                document.getElementById('pubModalSubtitle').textContent = 'The following issues need to be resolved before publishing:';
+
+                var errorsHtml = '';
+                if (data.errors && data.errors.length) {
+                    data.errors.forEach(function(err) {
+                        errorsHtml += '<div class="pub-modal-error-item">' +
+                            '<div class="error-dot"></div>' +
+                            '<div class="error-text"><strong>' + err.subject + '</strong> — ' + err.issue + '</div>' +
+                            '</div>';
+                    });
+                }
+                var errDiv = document.getElementById('pubModalErrors');
+                errDiv.innerHTML = errorsHtml;
+                errDiv.style.display = 'block';
+            }
+        })
+        .catch(function(err) {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+            document.getElementById('pubModalTitle').textContent = 'Something went wrong';
+            document.getElementById('pubModalSubtitle').textContent = 'Please check your connection and try again.';
+            document.getElementById('pubModalErrors').style.display = 'none';
+        });
+    };
+})();
 </script>
 {% endblock %}

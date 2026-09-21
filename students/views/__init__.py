@@ -104,6 +104,7 @@ from .exams import (  # noqa: F401
     review_stream_submission,
     review_submission,
     publish_results_overview,
+    quick_publish_stream,
     save_exam_min_subjects,
     upload_results,
     manage_assessment_locks,
