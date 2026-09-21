@@ -2500,6 +2500,8 @@ def review_stream_submission(request):
             messages.error(request, "No submitted sheets are available for this stream yet.")
             return redirect(f"{request.path}?exam_id={exam.id}&class_name={class_name}&stream={stream}")
 
+        from django.db import transaction
+
         if action_type == "return_subject":
             assignment_id = request.POST.get("assignment_id")
             target_row = next(
@@ -2531,11 +2533,12 @@ def review_stream_submission(request):
             )
 
         elif action_type == "return_stream":
-            for submission in submissions:
-                submission.status = "returned"
-                submission.admin_note = admin_note
-                submission.reviewed_at = timezone.now()
-                submission.save()
+            with transaction.atomic():
+                for submission in submissions:
+                    submission.status = "returned"
+                    submission.admin_note = admin_note
+                    submission.reviewed_at = timezone.now()
+                    submission.save()
 
             # Unlock the assessment so teachers can edit returned sheets
             AssessmentLock.objects.filter(
@@ -2552,14 +2555,15 @@ def review_stream_submission(request):
             if not totals["can_approve"]:
                 messages.error(request, "This stream cannot be approved until every subject is submitted and every learner has a score or AB.")
                 return redirect(f"{request.path}?exam_id={exam.id}&class_name={class_name}&stream={stream}")
-            for row in rows:
-                submission = row["submission"]
-                if not submission:
-                    continue
-                submission.status = "approved"
-                submission.admin_note = admin_note
-                submission.reviewed_at = timezone.now()
-                submission.save()
+            with transaction.atomic():
+                for row in rows:
+                    submission = row["submission"]
+                    if not submission:
+                        continue
+                    submission.status = "approved"
+                    submission.admin_note = admin_note
+                    submission.reviewed_at = timezone.now()
+                    submission.save()
             messages.success(request, f"{class_name} {stream} has been approved as a complete stream.")
 
         elif action_type == "publish_stream":
@@ -2572,17 +2576,18 @@ def review_stream_submission(request):
                 (row["assignment"] for row in rows if row.get("assignment")), None
             )
 
-            for row in rows:
-                submission = row["submission"]
-                if not submission:
-                    continue
-                submission.status = "published"
-                submission.admin_note = admin_note
-                submission.published_at = timezone.now()
-                submission.published_by = request.user
-                if not submission.reviewed_at:
-                    submission.reviewed_at = timezone.now()
-                submission.save()
+            with transaction.atomic():
+                for row in rows:
+                    submission = row["submission"]
+                    if not submission:
+                        continue
+                    submission.status = "published"
+                    submission.admin_note = admin_note
+                    submission.published_at = timezone.now()
+                    submission.published_by = request.user
+                    if not submission.reviewed_at:
+                        submission.reviewed_at = timezone.now()
+                    submission.save()
 
             # ── Rebuild ExamSummary snapshots for this grade ───────────
             from students.tasks import populate_exam_summaries
@@ -2610,7 +2615,7 @@ def review_stream_submission(request):
 
         return redirect(f"{request.path}?exam_id={exam.id}&class_name={class_name}&stream={stream}")
 
-    return render(request, "students/stream_subject_detail.html", {
+    return render(request, "students/review_stream_submission.html", {
         "exam": exam,
         "class_name": class_name,
         "stream": stream,
