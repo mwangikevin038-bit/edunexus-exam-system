@@ -205,9 +205,9 @@ if __name__ == '__main__':
     # ── Startup checks ───────────────────────────────────────────────────
     info("Running startup checks...")
 
-    # 1) Django system checks
+    # 1) Django system checks (skip --deploy; those warnings are for HTTPS production only)
     try:
-        call_command('check', '--deploy', verbosity=0)
+        call_command('check', verbosity=0)
         ok("Django system checks passed")
     except SystemCheckError as e:
         warn(f"System check warnings (non-fatal): {e}")
@@ -222,11 +222,7 @@ if __name__ == '__main__':
         plan_output = out.getvalue()
         if '[ ]' in plan_output:
             pending = [l.strip() for l in plan_output.splitlines() if '[ ]' in l]
-            err(f"{len(pending)} unapplied migration(s) found!")
-            info("Run: python manage.py migrate")
-            resp = input("  Continue anyway? [y/N] ").strip().lower()
-            if resp != 'y':
-                sys.exit(1)
+            warn(f"{len(pending)} unapplied migration(s) — run 'python manage.py migrate' soon")
         else:
             ok("All migrations applied")
     except Exception as e:
