@@ -653,6 +653,7 @@ class Mark(SchoolScopedModel):
         indexes = [
             models.Index(fields=['school', 'student', 'term', 'year', 'exam_type'], name='mark_student_exam_idx'),
             models.Index(fields=['school', 'subject', 'term', 'year'], name='mark_subject_exam_idx'),
+            models.Index(fields=['school', 'subject', 'term', 'year', 'exam_type'], name='mark_subject_exam_type_idx'),
             models.Index(fields=['school', 'term', 'year', 'exam_type'], name='mark_exam_lookup_idx'),
             models.Index(fields=['school', 'school_section', 'term', 'year'], name='mark_section_idx'),
             models.Index(fields=['school', 'student', 'subject', 'term', 'exam_type', 'year', 'school_section', 'sub_section'], name='mark_upsert_idx'),

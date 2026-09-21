@@ -354,40 +354,86 @@ def select_exam(request):
             )
             from ..security.integrity import compute_mark_checksum
 
-            with transaction.atomic():
-                existing_marks = {
-                    m.student_id: m for m in Mark.all_objects.filter(
-                        subject=selected_assignment.subject,
-                        term=selected_exam.term,
-                        exam_type=selected_exam.name,
-                        year=selected_exam.year,
-                        school=school,
-                        school_section=selected_assignment.school_section,
-                        sub_section=selected_assignment.sub_section,
-                    ).select_related('student', 'subject')
-                }
+            from django.db import DatabaseError as _DBConcurrencyError
+            try:
+                with transaction.atomic():
+                    existing_marks = {
+                        m.student_id: m for m in Mark.all_objects.select_for_update(
+                            nowait=True,
+                        ).filter(
+                            subject=selected_assignment.subject,
+                            term=selected_exam.term,
+                            exam_type=selected_exam.name,
+                            year=selected_exam.year,
+                            school=school,
+                            school_section=selected_assignment.school_section,
+                            sub_section=selected_assignment.sub_section,
+                        ).select_related('student', 'subject')
+                    }
 
-                marks_to_create = []
-                marks_to_update = []
-                ids_to_delete = []
+                    marks_to_create = []
+                    marks_to_update = []
+                    ids_to_delete = []
 
-                for student, value in raw_inputs:
-                    existing = existing_marks.get(student.id)
+                    for student, value in raw_inputs:
+                        existing = existing_marks.get(student.id)
 
-                    if value is None:
+                        if value is None:
+                            if existing:
+                                ids_to_delete.append(existing.id)
+                                deleted_count += 1
+                            continue
+
+                        if value == "AB":
+                            if existing:
+                                existing.raw_score = None
+                                existing.maximum_marks = maximum_marks
+                                existing.score = 0
+                                existing.is_absent = True
+                                existing.performance_level = 'AB'
+                                existing.points = 0
+                                existing.integrity_checksum = compute_mark_checksum(existing)
+                                marks_to_update.append(existing)
+                            else:
+                                new_mark = Mark(
+                                    school=school,
+                                    student=student,
+                                    subject=selected_assignment.subject,
+                                    term=selected_exam.term,
+                                    exam_type=selected_exam.name,
+                                    year=selected_exam.year,
+                                    school_section=selected_assignment.school_section,
+                                    sub_section=selected_assignment.sub_section,
+                                    raw_score=None,
+                                    maximum_marks=maximum_marks,
+                                    score=0,
+                                    is_absent=True,
+                                    performance_level='AB',
+                                    points=0,
+                                )
+                                new_mark.integrity_checksum = compute_mark_checksum(new_mark)
+                                marks_to_create.append(new_mark)
+                            saved_count += 1
+                            continue
+
+                        if is_religion and opposite_religion:
+                            opposite_religion_student_ids.append(student.id)
+
+                        score = round((value / maximum_marks) * 100)
+
+                        # Compute grading from percentage
+                        if grading_scale:
+                            perf_level, perf_points = get_subject_level_fast(score, grading_scale)
+                        else:
+                            perf_level, perf_points = '-', 0
+
                         if existing:
-                            ids_to_delete.append(existing.id)
-                            deleted_count += 1
-                        continue
-
-                    if value == "AB":
-                        if existing:
-                            existing.raw_score = None
+                            existing.raw_score = value
                             existing.maximum_marks = maximum_marks
-                            existing.score = 0
-                            existing.is_absent = True
-                            existing.performance_level = 'AB'
-                            existing.points = 0
+                            existing.score = score
+                            existing.is_absent = False
+                            existing.performance_level = perf_level
+                            existing.points = perf_points
                             existing.integrity_checksum = compute_mark_checksum(existing)
                             marks_to_update.append(existing)
                         else:
@@ -400,145 +446,109 @@ def select_exam(request):
                                 year=selected_exam.year,
                                 school_section=selected_assignment.school_section,
                                 sub_section=selected_assignment.sub_section,
-                                raw_score=None,
+                                raw_score=value,
                                 maximum_marks=maximum_marks,
-                                score=0,
-                                is_absent=True,
-                                performance_level='AB',
-                                points=0,
+                                score=score,
+                                is_absent=False,
+                                performance_level=perf_level,
+                                points=perf_points,
                             )
                             new_mark.integrity_checksum = compute_mark_checksum(new_mark)
                             marks_to_create.append(new_mark)
                         saved_count += 1
-                        continue
 
-                    if is_religion and opposite_religion:
-                        opposite_religion_student_ids.append(student.id)
-
-                    score = round((value / maximum_marks) * 100)
-
-                    # Compute grading from percentage
-                    if grading_scale:
-                        perf_level, perf_points = get_subject_level_fast(score, grading_scale)
+                    if ids_to_delete:
+                        from ..security.protection import backup_marks_before_delete
+                        backup_marks_before_delete(
+                            Mark.all_objects.filter(id__in=ids_to_delete),
+                            reason="select_exam: marks replaced by teacher submission",
+                            request=request,
+                        )
+                        # Audit: log deletes
+                        from students.models import MarkAuditLog
+                        _del_marks = list(Mark.all_objects.filter(id__in=ids_to_delete).values(
+                            'student_id', 'subject_id', 'score', 'raw_score', 'is_absent', 'term', 'year', 'exam_type',
+                        ))
+                        _all_audit = [
+                            MarkAuditLog(
+                                actor=request.user if request.user.is_authenticated else None,
+                                school=school, action='delete',
+                                student_id=m['student_id'], subject_id=m['subject_id'],
+                                term=m['term'], year=m['year'], exam_type=m['exam_type'] or '',
+                                old_raw_score=m['raw_score'], old_score=m['score'], old_is_absent=m['is_absent'],
+                            ) for m in _del_marks
+                        ]
+                        Mark.all_objects.filter(id__in=ids_to_delete).delete()
                     else:
-                        perf_level, perf_points = '-', 0
+                        _all_audit = []
+                    if marks_to_create:
+                        Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
+                        # Audit: log creates
+                        from students.models import MarkAuditLog
+                        _all_audit += [
+                            MarkAuditLog(
+                                actor=request.user if request.user.is_authenticated else None,
+                                school=school, action='create',
+                                student_id=m.student_id, subject_id=m.subject_id,
+                                term=m.term, year=m.year, exam_type=m.exam_type or '',
+                                new_raw_score=m.raw_score, new_score=m.score, new_is_absent=m.is_absent,
+                                new_performance_level=m.performance_level,
+                            ) for m in marks_to_create
+                        ]
+                    if _all_audit:
+                        MarkAuditLog.objects.bulk_create(_all_audit, batch_size=250)
+                    if marks_to_update:
+                        Mark.all_objects.bulk_update(
+                            marks_to_update,
+                            ['raw_score', 'maximum_marks', 'score', 'is_absent',
+                             'performance_level', 'points', 'integrity_checksum'],
+                            batch_size=250,
+                        )
 
-                    if existing:
-                        existing.raw_score = value
-                        existing.maximum_marks = maximum_marks
-                        existing.score = score
-                        existing.is_absent = False
-                        existing.performance_level = perf_level
-                        existing.points = perf_points
-                        existing.integrity_checksum = compute_mark_checksum(existing)
-                        marks_to_update.append(existing)
-                    else:
-                        new_mark = Mark(
+                    # ============================================================
+                    # PHASE 3 — Post-atomic side effects (inside transaction)
+                    # ============================================================
+                    if religion_student_ids:
+                        Student.all_objects.filter(id__in=religion_student_ids).update(religion=religion_tag)
+
+                    if opposite_religion and opposite_religion_student_ids:
+                        Mark.all_objects.filter(
                             school=school,
-                            student=student,
-                            subject=selected_assignment.subject,
+                            student_id__in=opposite_religion_student_ids,
+                            subject=opposite_religion,
                             term=selected_exam.term,
                             exam_type=selected_exam.name,
                             year=selected_exam.year,
                             school_section=selected_assignment.school_section,
                             sub_section=selected_assignment.sub_section,
-                            raw_score=value,
-                            maximum_marks=maximum_marks,
-                            score=score,
-                            is_absent=False,
-                            performance_level=perf_level,
-                            points=perf_points,
+                        ).delete()
+
+                    # Only create MarkSubmission when marks were actually saved
+                    if marks_to_create or marks_to_update or ids_to_delete:
+                        MarkSubmission.objects.update_or_create(
+                            school=school,
+                            teacher=teacher,
+                            subject=selected_assignment.subject,
+                            class_name=selected_assignment.class_name,
+                            stream=selected_assignment.stream,
+                            exam_name=selected_exam.name,
+                            term=selected_exam.term,
+                            year=selected_exam.year,
+                            school_section=selected_assignment.school_section,
+                            sub_section=selected_assignment.sub_section,
+                            defaults={
+                                "status": "submitted",
+                                "admin_note": "",
+                                "reviewed_at": None,
+                                "published_at": None,
+                            }
                         )
-                        new_mark.integrity_checksum = compute_mark_checksum(new_mark)
-                        marks_to_create.append(new_mark)
-                    saved_count += 1
 
-                if ids_to_delete:
-                    from ..security.protection import backup_marks_before_delete
-                    backup_marks_before_delete(
-                        Mark.all_objects.filter(id__in=ids_to_delete),
-                        reason="select_exam: marks replaced by teacher submission",
-                        request=request,
-                    )
-                    # Audit: log deletes
-                    from students.models import MarkAuditLog
-                    _del_marks = list(Mark.all_objects.filter(id__in=ids_to_delete).values(
-                        'student_id', 'subject_id', 'score', 'raw_score', 'is_absent', 'term', 'year', 'exam_type',
-                    ))
-                    _all_audit = [
-                        MarkAuditLog(
-                            actor=request.user if request.user.is_authenticated else None,
-                            school=school, action='delete',
-                            student_id=m['student_id'], subject_id=m['subject_id'],
-                            term=m['term'], year=m['year'], exam_type=m['exam_type'] or '',
-                            old_raw_score=m['raw_score'], old_score=m['score'], old_is_absent=m['is_absent'],
-                        ) for m in _del_marks
-                    ]
-                    Mark.all_objects.filter(id__in=ids_to_delete).delete()
-                else:
-                    _all_audit = []
-                if marks_to_create:
-                    Mark.all_objects.bulk_create(marks_to_create, batch_size=250)
-                    # Audit: log creates
-                    from students.models import MarkAuditLog
-                    _all_audit += [
-                        MarkAuditLog(
-                            actor=request.user if request.user.is_authenticated else None,
-                            school=school, action='create',
-                            student_id=m.student_id, subject_id=m.subject_id,
-                            term=m.term, year=m.year, exam_type=m.exam_type or '',
-                            new_raw_score=m.raw_score, new_score=m.score, new_is_absent=m.is_absent,
-                            new_performance_level=m.performance_level,
-                        ) for m in marks_to_create
-                    ]
-                if _all_audit:
-                    MarkAuditLog.objects.bulk_create(_all_audit, batch_size=250)
-                if marks_to_update:
-                    Mark.all_objects.bulk_update(
-                        marks_to_update,
-                        ['raw_score', 'maximum_marks', 'score', 'is_absent',
-                         'performance_level', 'points', 'integrity_checksum'],
-                        batch_size=250,
-                    )
-
-                # ============================================================
-                # PHASE 3 — Post-atomic side effects (inside transaction)
-                # ============================================================
-                if religion_student_ids:
-                    Student.all_objects.filter(id__in=religion_student_ids).update(religion=religion_tag)
-
-                if opposite_religion and opposite_religion_student_ids:
-                    Mark.all_objects.filter(
-                        school=school,
-                        student_id__in=opposite_religion_student_ids,
-                        subject=opposite_religion,
-                        term=selected_exam.term,
-                        exam_type=selected_exam.name,
-                        year=selected_exam.year,
-                        school_section=selected_assignment.school_section,
-                        sub_section=selected_assignment.sub_section,
-                    ).delete()
-
-                # Only create MarkSubmission when marks were actually saved
-                if marks_to_create or marks_to_update or ids_to_delete:
-                    MarkSubmission.objects.update_or_create(
-                        school=school,
-                        teacher=teacher,
-                        subject=selected_assignment.subject,
-                        class_name=selected_assignment.class_name,
-                        stream=selected_assignment.stream,
-                        exam_name=selected_exam.name,
-                        term=selected_exam.term,
-                        year=selected_exam.year,
-                        school_section=selected_assignment.school_section,
-                        sub_section=selected_assignment.sub_section,
-                        defaults={
-                            "status": "submitted",
-                            "admin_note": "",
-                            "reviewed_at": None,
-                            "published_at": None,
-                        }
-                    )
+            except _DBConcurrencyError:
+                messages.warning(request, "This subject is being edited by another user. Please wait a moment and try again.")
+                return _htmx_redirect(request,
+                    f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
+                )
 
             messages.success(request, f"{saved_count} learner records submitted successfully." + (f" {deleted_count} mark(s) cleared." if deleted_count else ""))
             invalidate_report_caches(
@@ -3619,7 +3629,23 @@ def select_exam_primary(request):
 
             # ── PHASE 3: Atomic bulk write — update existing + create new in one transaction ──
             _all_audit = []
-            with transaction.atomic():
+            from django.db import DatabaseError as _DBConcurrencyError
+            try:
+              with transaction.atomic():
+                # Re-lock existing marks to prevent concurrent saves from racing
+                _locked_marks = {
+                    m.student_id: m for m in Mark.all_objects.select_for_update(
+                        nowait=True,
+                    ).filter(
+                        school=school,
+                        subject=selected_assignment.subject,
+                        term=selected_exam.term,
+                        exam_type=selected_exam.name,
+                        year=selected_exam.year,
+                        school_section=selected_assignment.school_section,
+                        sub_section=selected_assignment.sub_section,
+                    )
+                }
                 # Bulk update existing marks (no delete+create — much faster)
                 if marks_to_update:
                     Mark.all_objects.bulk_update(
@@ -3715,6 +3741,12 @@ def select_exam_primary(request):
                             "published_at": None,
                         }
                     )
+
+            except _DBConcurrencyError:
+                messages.warning(request, "This subject is being edited by another user. Please wait a moment and try again.")
+                return _htmx_redirect(request,
+                    f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
+                )
 
             messages.success(request, f"{saved_count} learner records submitted successfully." + (f" {deleted_count} mark(s) cleared." if deleted_count else ""))
             invalidate_report_caches(
@@ -5097,9 +5129,26 @@ def upload_results(request):
                 f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
             )
 
-        with transaction.atomic():
+        from django.db import DatabaseError as _DBConcurrencyError
+        try:
+          with transaction.atomic():
             from students.models import MarkAuditLog
             _all_audit = []
+
+            # Re-lock existing marks to prevent concurrent admin/teacher saves from racing
+            _locked_marks = {
+                m.student_id: m for m in Mark.all_objects.select_for_update(
+                    nowait=True,
+                ).filter(
+                    school=school,
+                    subject=assignment.subject,
+                    term=exam.term,
+                    exam_type=exam.name,
+                    year=exam.year,
+                    school_section=assignment.school_section,
+                    sub_section=assignment.sub_section,
+                )
+            }
 
             if marks_to_delete_ids:
                 from ..security.protection import backup_marks_before_delete
@@ -5174,6 +5223,12 @@ def upload_results(request):
                         "published_at": None,
                     }
                 )
+
+        except _DBConcurrencyError:
+            messages.warning(request, "This subject is being edited by another user. Please wait a moment and try again.")
+            return _htmx_redirect(request,
+                f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+            )
 
         from students.tasks import populate_exam_summaries
         populate_exam_summaries.delay(

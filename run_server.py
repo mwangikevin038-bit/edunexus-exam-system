@@ -30,7 +30,7 @@ CELERY_APP = os.environ.get("CELERY_APP", "school")
 CELERY_LOGLEVEL = os.environ.get("CELERY_LOGLEVEL", "info")
 WAITRESS_HOST = os.environ.get('WAITRESS_HOST', '0.0.0.0')
 WAITRESS_PORT = int(os.environ.get('WAITRESS_PORT', '8000'))
-WAITRESS_THREADS = int(os.environ.get('WAITRESS_THREADS', str(min(16, (os.cpu_count() or 4) * 4))))
+WAITRESS_THREADS = int(os.environ.get('WAITRESS_THREADS', str(min(32, (os.cpu_count() or 4) * 8))))
 
 # ── Colors ──────────────────────────────────────────────────────────────────
 class C:
@@ -179,13 +179,15 @@ def _check_port_available(port):
 # ── Banner ──────────────────────────────────────────────────────────────────
 def print_banner(host, port, threads):
     w = 60
+    cpu_count = os.cpu_count() or 1
     print()
     print(f"  {C.GREEN}{'━' * w}{C.RESET}")
-    print(f"  {C.GREEN}{C.BOLD}  ⚡ EDUNEXUS Production Server{C.RESET}")
+    print(f"  {C.GREEN}{C.BOLD}  EDUNEXUS Production Server{C.RESET}")
     print(f"  {C.GREEN}{'━' * w}{C.RESET}")
     print(f"  {C.WHITE}  URL:      {C.CYAN}http://{host}:{port}{C.RESET}")
-    print(f"  {C.WHITE}  Threads:  {C.CYAN}{threads}{C.RESET}")
+    print(f"  {C.WHITE}  Threads:  {C.CYAN}{threads}{C.RESET}  {C.WHITE}CPUs: {C.CYAN}{cpu_count}{C.RESET}")
     print(f"  {C.WHITE}  Redis:    {C.CYAN}port {REDIS_PORT}{C.RESET}")
+    print(f"  {C.WHITE}  Workers:  {C.CYAN}pdf_worker(4) + default_worker(4){C.RESET}")
     print(f"  {C.GREEN}{'━' * w}{C.RESET}")
     print()
 
@@ -195,9 +197,51 @@ if __name__ == '__main__':
     django.setup()
 
     from django.core.wsgi import get_wsgi_application
+    from django.core.management import call_command
     from waitress import serve
 
     application = get_wsgi_application()
+
+    # ── Startup checks ───────────────────────────────────────────────────
+    info("Running startup checks...")
+
+    # 1) Django system checks
+    try:
+        call_command('check', '--deploy', verbosity=0)
+        ok("Django system checks passed")
+    except SystemCheckError as e:
+        warn(f"System check warnings (non-fatal): {e}")
+    except Exception as e:
+        warn(f"System check skipped: {e}")
+
+    # 2) Pending migrations check
+    try:
+        from io import StringIO
+        out = StringIO()
+        call_command('showmigrations', '--plan', verbosity=1, stdout=out)
+        plan_output = out.getvalue()
+        if '[ ]' in plan_output:
+            pending = [l.strip() for l in plan_output.splitlines() if '[ ]' in l]
+            err(f"{len(pending)} unapplied migration(s) found!")
+            info("Run: python manage.py migrate")
+            resp = input("  Continue anyway? [y/N] ").strip().lower()
+            if resp != 'y':
+                sys.exit(1)
+        else:
+            ok("All migrations applied")
+    except Exception as e:
+        warn(f"Migration check skipped: {e}")
+
+    # 3) Static files check
+    static_root = os.path.join(PROJECT_ROOT, 'staticfiles')
+    if not os.path.isdir(static_root) or not os.listdir(static_root):
+        warn("staticfiles/ is empty or missing")
+        info("Run: python manage.py collectstatic --noinput")
+        try:
+            call_command('collectstatic', '--noinput', verbosity=0)
+            ok("Static files collected")
+        except Exception as e:
+            warn(f"collectstatic failed: {e}")
 
     # Check port availability first
     if not _check_port_available(WAITRESS_PORT):
@@ -238,7 +282,7 @@ if __name__ == '__main__':
             channel_timeout=1200,
             cleanup_interval=30,
             max_request_body_size=10 * 1024 * 1024,
-            recv_bytes=65536,
+            recv_bytes=131072,
         )
     except KeyboardInterrupt:
         pass

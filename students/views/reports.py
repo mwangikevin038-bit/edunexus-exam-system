@@ -1549,7 +1549,9 @@ def _build_merit_list_from_snapshots(
 
     # Cache result in Redis for 5 minutes
     if not force_live:
-        cache_key = f'merit_list:{school.pk}:{grade}:{stream}:{exam.id}'
+        _safe_g = str(grade).replace(" ", "_") if grade else ""
+        _safe_s = str(stream).replace(" ", "_") if stream else ""
+        cache_key = f'merit_list:{school.pk}:{_safe_g}:{_safe_s}:{exam.id}'
         cache.set(cache_key, result, 300)
 
     return result
@@ -1598,7 +1600,9 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
 
     # ── Try Redis cache first ──────────────────────────────────────────
     if not force_live:
-        cache_key = f'merit_list:{school.pk}:{grade}:{stream}:{exam.id}'
+        _safe_g = str(grade).replace(" ", "_") if grade else ""
+        _safe_s = str(stream).replace(" ", "_") if stream else ""
+        cache_key = f'merit_list:{school.pk}:{_safe_g}:{_safe_s}:{exam.id}'
         cached = cache.get(cache_key)
         if cached is not None:
             return cached

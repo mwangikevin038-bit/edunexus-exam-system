@@ -47,10 +47,18 @@ def resolve_term_dates(school, year, term):
 _CACHE_TTL = 3600  # 1 hour
 
 def _leaderboard_cache_key(school_id, class_name, stream, year, term, assessment):
-    return f"lb_{school_id}_{class_name}_{stream}_{year}_{term}_{assessment}"
+    _g = str(class_name).replace(" ", "_") if class_name else ""
+    _s = str(stream).replace(" ", "_") if stream else ""
+    _t = str(term).replace(" ", "_") if term else ""
+    _a = str(assessment).replace(" ", "_") if assessment else ""
+    return f"lb_{school_id}_{_g}_{_s}_{year}_{_t}_{_a}"
 
 def _class_avg_cache_key(school_id, class_name, stream, year, term, assessment):
-    return f"avg_{school_id}_{class_name}_{stream}_{year}_{term}_{assessment}"
+    _g = str(class_name).replace(" ", "_") if class_name else ""
+    _s = str(stream).replace(" ", "_") if stream else ""
+    _t = str(term).replace(" ", "_") if term else ""
+    _a = str(assessment).replace(" ", "_") if assessment else ""
+    return f"avg_{school_id}_{_g}_{_s}_{year}_{_t}_{_a}"
 
 def invalidate_report_caches(school_id, class_name, stream, year, term, assessment):
     """Call this whenever marks are uploaded/changed for a class/stream/exam."""
@@ -61,15 +69,20 @@ def invalidate_report_caches(school_id, class_name, stream, year, term, assessme
     from .students_mgmt import invalidate_score_sheet_caches
     invalidate_score_sheet_caches(school_id, class_name)
 
-    # Invalidate merit list cache for this grade — use pattern delete via Redis
+    # Invalidate merit list cache for this grade — use SCAN (non-blocking)
+    # instead of KEYS (blocks entire Redis server)
     try:
-        from django.core.cache import cache as _cache
         from django_redis import get_redis_connection
         conn = get_redis_connection("default")
-        pattern = f'*merit_list:{school_id}:{class_name}:*'
-        keys = conn.keys(pattern)
-        if keys:
-            conn.delete(*keys)
+        _safe_cn = str(class_name).replace(" ", "_") if class_name else ""
+        pattern = f'merit_list:{school_id}:{_safe_cn}:*'
+        cursor = 0
+        while True:
+            cursor, keys = conn.scan(cursor=cursor, match=pattern, count=100)
+            if keys:
+                conn.delete(*keys)
+            if cursor == 0:
+                break
     except Exception:
         pass
 
@@ -806,7 +819,7 @@ def get_performance_level(score, sub_section=None, subject_id=None, is_total_cal
     """
     import logging
     from ..school_scope import get_current_school, get_current_school_section
-    from .grading_engine import resolve_scale_fast, _global_grading_cache
+    from .grading_engine import resolve_scale_fast, _GRADED_CACHE_KEYS
 
     # Round once, but do NOT clamp to 0-100 here — `is_total_calculation=True`
     # callers pass aggregated totals (e.g. 650 / 800) that must survive intact.
@@ -829,7 +842,8 @@ def get_performance_level(score, sub_section=None, subject_id=None, is_total_cal
         )
 
         if not scale_data and school:
-            cache_has_school = any(k[0] == school.pk for k in _global_grading_cache)
+            _school_prefix = f"grading_scale:{school.pk}:"
+            cache_has_school = any(k.startswith(_school_prefix) for k in _GRADED_CACHE_KEYS)
             if not cache_has_school:
                 from .grading_engine import prefetch_school_grading
                 prefetch_school_grading(school)

@@ -407,7 +407,9 @@ def api_class_list(request):
         return JsonResponse({'students': [], 'has_multiple_streams': False})
 
     # Build cache key including subject_id (religion filtering changes results)
-    cache_key = f'score_sheet:class_list:{school.pk}:{grade_name}:{stream_name}:{subject_id}'
+    _safe_gn = str(grade_name).replace(" ", "_") if grade_name else ""
+    _safe_sn = str(stream_name).replace(" ", "_") if stream_name else ""
+    cache_key = f'score_sheet:class_list:{school.pk}:{_safe_gn}:{_safe_sn}:{subject_id}'
     cached = cache.get(cache_key)
     if cached is not None:
         return JsonResponse(cached)

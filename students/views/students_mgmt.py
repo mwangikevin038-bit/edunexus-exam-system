@@ -1787,32 +1787,37 @@ def _grades_cache_key(school_id):
     return f'grades:{school_id}'
 
 
+def _safe_grade(grade):
+    """Replace spaces with underscores for memcached-safe cache keys."""
+    return str(grade).strip().replace(" ", "_") if grade else ""
+
+
 def _streams_cache_key(school_id, grade):
-    return f'streams:{school_id}:{grade}'
+    return f'streams:{school_id}:{_safe_grade(grade)}'
 
 
 def _exams_cache_key(school_id, grade):
-    return f'score_sheet:exams:{school_id}:{grade}'
+    return f'score_sheet:exams:{school_id}:{_safe_grade(grade)}'
 
 
 def _subjects_cache_key(school_id, grade):
-    return f'score_sheet:subjects:{school_id}:{grade}'
+    return f'score_sheet:subjects:{school_id}:{_safe_grade(grade)}'
 
 
 def _class_list_api_cache_key(school_id, grade, stream, subject_id):
-    return f'score_sheet:class_list:{school_id}:{grade}:{stream}:{subject_id}'
+    return f'score_sheet:class_list:{school_id}:{_safe_grade(grade)}:{_safe_grade(stream)}:{subject_id}'
 
 
 def _analysis_cache_key(school_id, exam_id, class_name, stream_filter):
-    return f'score_sheet:analysis:{school_id}:{exam_id}:{class_name}:{stream_filter}'
+    return f'score_sheet:analysis:{school_id}:{exam_id}:{_safe_grade(class_name)}:{_safe_grade(stream_filter)}'
 
 
 def _streams_printout_cache_key(school_id, grade):
-    return f'score_sheet:streams:{school_id}:{grade}'
+    return f'score_sheet:streams:{school_id}:{_safe_grade(grade)}'
 
 
 def _teacher_cache_key(school_id, grade, subject_id):
-    return f'score_sheet:teacher:{school_id}:{grade}:{subject_id}'
+    return f'score_sheet:teacher:{school_id}:{_safe_grade(grade)}:{subject_id}'
 
 
 SCORE_SHEET_CACHE_TTL = 300  # 5 minutes — short enough for mark entry, long enough to stop hammering DB
