@@ -808,6 +808,12 @@
             }
         });
 
+        document.body.addEventListener('htmx:afterRequest', function(e) {
+            if (e.detail.elt === form && e.detail.failed) {
+                form.setAttribute('data-submitting', 'false');
+            }
+        });
+
         // ─── Offline draft re-sync ──────────────────────────────────
         // When connectivity returns, iterate all localStorage keys
         // matching offline_mark_* and replay them sequentially.

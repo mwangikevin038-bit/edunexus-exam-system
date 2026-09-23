@@ -193,7 +193,7 @@
     {% if show_table %}
     <div class="query-summary-banner">
       <div class="query-summary-banner-grade">
-        Grade {{ selected_grade|default:grade }}: {{ selected_stream|default:stream }}
+        {{ selected_grade|default:grade }}: {{ selected_stream|default:stream }}
       </div>
       <div class="query-summary-banner-exam">
         {{ selected_exam|default:"END TERM" }}
@@ -318,8 +318,10 @@
             var e=data.exams[i];
             var opt=document.createElement('option');
             opt.value=e.id;
-            opt.textContent=e.name+' ('+e.term+' '+e.year+')';
+            var label=e.display_name||e.name;
+            opt.textContent=label+' ('+e.term+' '+e.year+')';
             // Stash term/year/name as data attrs so we can build the PDF context key on the client
+            // dataset.name must stay the raw Exam.name so the PDF context key matches the server
             opt.dataset.year=e.year;
             opt.dataset.term=e.term;
             opt.dataset.name=e.name;

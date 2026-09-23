@@ -13,12 +13,31 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(r) {
-                for (var i = 0; i < r.length; i++) r[i].unregister();
+                r.forEach(function(reg) { reg.unregister(); });
             });
             if (caches && caches.keys) {
                 caches.keys().then(function(n) { n.forEach(function(k) { caches.delete(k); }); });
             }
         }
+    </script>
+
+    <!-- Chrome "Desktop site" forces a ~980px layout on phones and scales
+         it down (~42%), making mobile CSS look tiny. Counteract so mobile
+         is always the readable default. -->
+    <script>
+    (function () {
+        function fitMobile() {
+            try {
+                if (screen.width > 500) return;
+                if (window.innerWidth < 900) return;
+                var ratio = window.innerWidth / screen.width;
+                if (ratio < 1.15) return;
+                document.documentElement.style.zoom = String(ratio);
+            } catch (e) {}
+        }
+        fitMobile();
+        window.addEventListener('resize', fitMobile, { passive: true });
+    })();
     </script>
 
     <!-- PWA -->
@@ -759,7 +778,7 @@
     <script>
     </script>
 
-    <script src="{% static 'js/edunexus_print.js' %}"></script>
+    <script src="{% static 'js/edunexus_print.js' %}?v=6"></script>
 
     {% block extra_js %}{% endblock %}
 </body>

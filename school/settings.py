@@ -38,8 +38,10 @@ LOCAL_ALLOWED_HOSTS = [
     '.localhost',
     '127.0.0.1',
     '192.168.36.186',
+    '192.168.57.195',
     '192.168.202.230',
     '192.168.48.107',
+    '192.168.48.64',
     '192.168.52.230',
     '192.168.242.230',
     '192.168.62.11',
@@ -255,7 +257,9 @@ else:
 CSRF_TRUSTED_ORIGINS = [
     'http://*.localhost:8000',
     'http://192.168.48.107:8000',
+    'http://192.168.48.64:8000',
     'http://192.168.36.186:8000',
+    'http://192.168.57.195:8000',
     'http://192.168.242.230:8000',
     'http://192.168.202.230:8000',
     'http://192.168.29.91:8000',
@@ -459,6 +463,10 @@ DEFAULT_CHARSET = 'utf-8'
 
 # Public URL used in email links (password reset, welcome credentials, etc.)
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000').rstrip('/')
+
+# Password-reset link lifetime: 24 hours (aligns with email/done-page copy;
+# also invalidates reset tokens sooner than Django's 3-day default).
+PASSWORD_RESET_TIMEOUT = 86400
 
 
 # ==============================================================================

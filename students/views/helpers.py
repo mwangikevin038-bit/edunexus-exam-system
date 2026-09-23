@@ -60,31 +60,96 @@ def _class_avg_cache_key(school_id, class_name, stream, year, term, assessment):
     _a = str(assessment).replace(" ", "_") if assessment else ""
     return f"avg_{school_id}_{_g}_{_s}_{year}_{_t}_{_a}"
 
+def _delete_cache_key_pattern(logical_pattern):
+    """
+    Delete cache keys whose logical key matches logical_pattern.
+
+    logical_pattern uses '*' as a wildcard (e.g. 'merit_list:1:Grade_3:*').
+    Works with native django RedisCache (SCAN) and best-effort LocMem.
+    Returns number of keys deleted; never raises.
+    """
+    if not logical_pattern:
+        return 0
+
+    try:
+        if '*' not in logical_pattern:
+            cache.delete(logical_pattern)
+            return 1
+
+        prefix = logical_pattern.split('*', 1)[0]
+        full_prefix = cache.make_key(prefix)
+        match_pattern = full_prefix + '*'
+
+        client = None
+        backend_client = getattr(cache, '_cache', None)
+        if backend_client is not None:
+            if hasattr(backend_client, 'get_client'):
+                try:
+                    client = backend_client.get_client(None, write=True)
+                except TypeError:
+                    client = backend_client.get_client(None)
+            elif hasattr(backend_client, 'scan'):
+                client = backend_client
+
+        if client is not None and hasattr(client, 'scan'):
+            cursor = 0
+            deleted = 0
+            while True:
+                cursor, keys = client.scan(cursor=cursor, match=match_pattern, count=200)
+                if keys:
+                    deleted += int(client.delete(*keys) or 0)
+                if cursor == 0:
+                    break
+            return deleted
+
+        if isinstance(backend_client, dict):
+            kp = getattr(cache, 'key_prefix', '') or ''
+            ver = getattr(cache, 'version', 1)
+            head = f'{kp}:{ver}:'
+            logical_keys = []
+            for fk in list(backend_client.keys()):
+                if fk.startswith(full_prefix):
+                    if fk.startswith(head):
+                        logical_keys.append(fk[len(head):])
+                    else:
+                        logical_keys.append(fk)
+            for lk in logical_keys:
+                cache.delete(lk)
+            return len(logical_keys)
+
+        if hasattr(cache, 'delete_pattern'):
+            return int(cache.delete_pattern(logical_pattern) or 0)
+    except Exception:
+        pass
+    return 0
+
+
+def _safe_cache_get(key, default=None):
+    """cache.get that returns default if the cache backend is down."""
+    try:
+        return cache.get(key, default)
+    except Exception:
+        return default
+
+
 def invalidate_report_caches(school_id, class_name, stream, year, term, assessment):
     """Call this whenever marks are uploaded/changed for a class/stream/exam."""
-    cache.delete(_leaderboard_cache_key(school_id, class_name, stream, year, term, assessment))
-    cache.delete(_class_avg_cache_key(school_id, class_name, stream, year, term, assessment))
+    try:
+        cache.delete(_leaderboard_cache_key(school_id, class_name, stream, year, term, assessment))
+        cache.delete(_class_avg_cache_key(school_id, class_name, stream, year, term, assessment))
+    except Exception:
+        pass
 
     # Also invalidate score sheet caches (exams list, analysis data)
     from .students_mgmt import invalidate_score_sheet_caches
     invalidate_score_sheet_caches(school_id, class_name)
 
-    # Invalidate merit list cache for this grade — use SCAN (non-blocking)
-    # instead of KEYS (blocks entire Redis server)
-    try:
-        from django_redis import get_redis_connection
-        conn = get_redis_connection("default")
-        _safe_cn = str(class_name).replace(" ", "_") if class_name else ""
-        pattern = f'merit_list:{school_id}:{_safe_cn}:*'
-        cursor = 0
-        while True:
-            cursor, keys = conn.scan(cursor=cursor, match=pattern, count=100)
-            if keys:
-                conn.delete(*keys)
-            if cursor == 0:
-                break
-    except Exception:
-        pass
+    # Invalidate merit list Redis keys for this grade (native Redis SCAN)
+    _safe_cn = str(class_name).replace(' ', '_') if class_name else ''
+    _delete_cache_key_pattern(f'merit_list:{school_id}:{_safe_cn}:*')
+
+    # Report-forms memo for this school (pattern delete)
+    _delete_cache_key_pattern(f'report_forms:{school_id}:*')
 
     # Also invalidate the exam result snapshot
     from ..models import ExamResultSnapshot, School
@@ -108,7 +173,7 @@ def get_cached_class_averages(school, class_name, stream, year, term, assessment
     Tries the snapshot first (zero DB); falls back to Mark aggregation.
     """
     key = _class_avg_cache_key(school.pk, class_name, stream, year, term, assessment)
-    cached = cache.get(key)
+    cached = _safe_cache_get(key)
     if cached is not None:
         return cached
 
@@ -283,6 +348,11 @@ def get_stream_submission_summary(class_name, stream, exam):
     assignment_filters = dict(class_name=class_name, stream=stream)
     if school:
         assignment_filters['school'] = school
+    # Scope to the exam's section (and sub-section for Primary) so the
+    # readiness UI matches what quick_publish_stream will actually publish.
+    assignment_filters['school_section'] = exam.school_section
+    if exam.sub_section:
+        assignment_filters['sub_section'] = exam.sub_section
 
     assignments = list(
         SubjectAssignment.all_objects.filter(is_active=True, **assignment_filters)
@@ -312,7 +382,10 @@ def get_stream_submission_summary(class_name, stream, exam):
         if m['is_absent']:
             marks_by_subject[sid]['absent'] += 1
 
-    # Batch-fetch ALL submissions for this class/stream/exam in ONE query
+    # Batch-fetch ALL submissions for this class/stream/exam in ONE query.
+    # Key by (subject_id, teacher_id): unique_together allows one row per
+    # teacher, and we must resolve the assigned teacher's sheet — not an
+    # arbitrary other teacher's submission for the same subject.
     submission_filters = dict(
         class_name=class_name, stream=stream,
         exam_name=exam.name, term=exam.term, year=exam.year,
@@ -322,15 +395,17 @@ def get_stream_submission_summary(class_name, stream, exam):
         submission_filters['sub_section'] = exam.sub_section
     if school:
         submission_filters['school'] = school
-    all_submissions = {
-        s.subject_id: s
-        for s in MarkSubmission.all_objects.filter(**submission_filters).select_related('teacher')
-    }
+    all_submissions = {}
+    for s in MarkSubmission.all_objects.filter(**submission_filters).select_related('teacher'):
+        all_submissions[(s.subject_id, s.teacher_id)] = s
 
     # Batch-fetch student counts per subject (for religion-aware counting)
     all_students = Student.all_objects.filter(
-        class_name=class_name, stream=stream, is_active=True
+        class_name=class_name, stream=stream, is_active=True,
+        school_section=exam.school_section,
     )
+    if exam.sub_section:
+        all_students = all_students.filter(sub_section=exam.sub_section)
     if school:
         all_students = all_students.filter(school=school)
     total_student_count = all_students.count()
@@ -370,8 +445,14 @@ def get_stream_submission_summary(class_name, stream, exam):
         absent_count = marks_data['absent']
         missing_count = max(expected_count - captured_count, 0)
 
-        # Get submission from batch-fetched data
-        submission = all_submissions.get(sid)
+        # Prefer the assigned teacher's submission; fall back to any
+        # submission for the subject (legacy sheets from a previous teacher).
+        submission = all_submissions.get((sid, assignment.teacher_profile_id))
+        if submission is None:
+            submission = next(
+                (s for (sub_id, _tid), s in all_submissions.items() if sub_id == sid),
+                None,
+            )
 
         if submission:
             totals[submission.status] = totals.get(submission.status, 0) + 1
@@ -1032,6 +1113,9 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
         exam_type=exam_type,
         year=year,
     )
+    subject_section = getattr(subject, 'school_section', None)
+    if subject_section:
+        marks = marks.filter(school_section=subject_section)
     if school:
         marks = marks.filter(school=school)
     if subject_code in RELIGION_SUBJECTS:
@@ -1039,6 +1123,8 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
         religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag)
         if school:
             religion_filter['school'] = school
+        if subject_section:
+            religion_filter['school_section'] = subject_section
         if Student.all_objects.filter(**religion_filter).exists():
             marks = marks.filter(student__religion=religion_tag)
     return marks
@@ -1047,13 +1133,18 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
 def get_religion_aware_student_count(class_name, stream, subject):
     """Return the count of students eligible for the given subject."""
     subject_code = subject.code if hasattr(subject, 'code') else subject
+    subject_section = getattr(subject, 'school_section', None)
     students = Student.all_objects.filter(class_name=class_name, stream=stream, is_active=True)
+    if subject_section:
+        students = students.filter(school_section=subject_section)
     if subject_code in RELIGION_SUBJECTS:
         religion_tag = RELIGION_TAG.get(subject_code, '')
         school = get_current_school()
         religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag, is_active=True)
         if school:
             religion_filter['school'] = school
+        if subject_section:
+            religion_filter['school_section'] = subject_section
         if Student.all_objects.filter(**religion_filter).exists():
             students = students.filter(religion=religion_tag)
     return students.count()
@@ -1321,6 +1412,27 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
                 else:
                     marks_dict[mark.subject.code] = {'score': '-', 'level': '-', 'subject_id': mark.subject_id}
 
+        # Prefer ExamSummary; fall back to marks so snapshot grade/gender
+        # breakdowns are never all-zero when the Celery summary task lagged.
+        if summary:
+            overall_plv = summary.overall_plv or '-'
+            mean_points = float(summary.mean_points) if summary else 0
+        elif subject_count and total_marks:
+            if is_primary:
+                overall_plv = calculate_primary_plv(
+                    total_marks, subject_count,
+                    sub_section=sub_section, school=school, section=section,
+                )
+            else:
+                overall_plv = calculate_report_plv(
+                    total_points, total_marks,
+                    school=school, section=section,
+                )
+            mean_points = float(total_points) / float(subject_count)
+        else:
+            overall_plv = '-'
+            mean_points = 0
+
         student_data[student.id] = {
             'student_id': student.id,
             'name': student.name,
@@ -1330,8 +1442,8 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
             'total_marks': summary.total_marks if summary else total_marks,
             'total_points': summary.total_points if summary else total_points,
             'subject_count': summary.subject_count if summary else subject_count,
-            'mean_points': float(summary.mean_points) if summary else 0,
-            'overall_plv': summary.overall_plv if summary else '-',
+            'mean_points': mean_points,
+            'overall_plv': overall_plv,
             'stream_rank': summary.stream_rank if summary else 0,
             'grade_rank': summary.grade_rank if summary else 0,
             'marks': marks_dict,
@@ -2267,16 +2379,13 @@ def invalidate_report_forms_cache(school_id, grade=None, stream=None, exam_id=No
     """
     if grade and stream and exam_id:
         key = get_report_forms_cache_key(school_id, grade, stream, exam_id)
-        cache.delete(key)
-    else:
-        # Evict all report_forms cache entries for this school
-        pattern = f"report_forms:{school_id}:*"
         try:
-            from django.core.cache import cache as _cache
-            if hasattr(_cache, 'delete_pattern'):
-                _cache.delete_pattern(pattern)
+            cache.delete(key)
         except Exception:
             pass
+    else:
+        # Evict all report_forms cache entries for this school
+        _delete_cache_key_pattern(f"report_forms:{school_id}:*")
 
 
 def freeze_comments_for_student_marks(marks, class_teacher_remark, headteacher_comment,

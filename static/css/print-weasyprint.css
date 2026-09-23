@@ -346,19 +346,69 @@ html, body {
 .broadsheet-document { width: 100%; border: none; margin: 0; padding: 0; background: #fff; }
 .broadsheet-card { position: relative; background: #fff; border: none; overflow: visible; padding: 0; }
 
+/* Section-aware accents for PDF (JSS / PRIMARY / LOWER) */
+.broadsheet-document.bs-section-jss { --section-accent: #305CDE; }
+.broadsheet-document.bs-section-primary { --section-accent: #00674F; }
+.broadsheet-document.bs-section-lower { --section-accent: #B45309; }
+
 .bs-header-block {
-    padding: 6px 16px 4px 16px;
-    border-bottom: 3pt solid #305CDE;
-    margin-bottom: 6px;
-    background: transparent;
+    padding: 14px 20px;
+    border-bottom: 2px solid var(--section-accent, #305CDE);
+    margin-bottom: 0;
+    background: #ffffff;
 }
 .bs-header-main { width: 100%; overflow: hidden; }
-.bs-header-logo-wrap { float: left; width: 1in; margin-right: 12px; }
+.bs-header-logo-wrap { float: left; width: 1in; margin-right: 14px; }
 .bs-logo-frame { width: 1in; height: 1in; }
 .bs-header-logo-wrap img { width: 100%; height: 100%; max-width: 1in; max-height: 1in; }
 .bs-header-text { overflow: hidden; }
-.bs-school-name { font-family: "Georgia", "Times New Roman", Times, serif; font-size: 22pt; font-weight: 700; color: #305CDE; letter-spacing: 0.5px; line-height: 1.1; margin: 0 0 3px; text-transform: uppercase; }
-.bs-results-badge { display: inline-block; padding: 8px 18px; border-radius: 20px; background: #305CDE; color: #fff; font-size: 10pt; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.bs-header-main h2,
+.bs-school-name {
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--section-accent, #305CDE);
+    letter-spacing: 0;
+    line-height: 1.1;
+    margin: 0;
+    text-transform: uppercase;
+}
+.bs-header-main p,
+.bs-subtitle {
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    margin: 4px 0 0 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.bs-results-badge {
+    display: inline-block;
+    float: right;
+    padding: 10px 20px;
+    border-radius: 50px;
+    background: var(--section-accent, #305CDE);
+    color: #ffffff;
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.bs-section-jss .bs-header-block { border-bottom-color: #305CDE; }
+.bs-section-jss .bs-school-name,
+.bs-section-jss .bs-header-main h2 { color: #305CDE; }
+.bs-section-jss .bs-results-badge { background: #305CDE; }
+.bs-section-primary .bs-header-block { border-bottom-color: #00674F; }
+.bs-section-primary .bs-school-name,
+.bs-section-primary .bs-header-main h2 { color: #00674F; }
+.bs-section-primary .bs-results-badge { background: #00674F; }
+.bs-section-lower .bs-header-block { border-bottom-color: #B45309; }
+.bs-section-lower .bs-school-name,
+.bs-section-lower .bs-header-main h2 { color: #B45309; }
+.bs-section-lower .bs-results-badge { background: #B45309; }
 
 .table-analysis { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11.5pt; font-family: "Times New Roman", Times, serif; color: #000; }
 .table-analysis th, .table-analysis td { border: 1px solid #000; padding: 3px 4px; white-space: nowrap; vertical-align: middle; text-align: center; font-size: 11.5pt; line-height: 1.2; overflow: hidden; color: #000; }

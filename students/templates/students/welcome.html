@@ -817,31 +817,33 @@
 .lp-stagger > *:nth-child(5) { transition-delay: 320ms; }
 .lp-stagger > *:nth-child(6) { transition-delay: 400ms; }
 
-/* ── RESPONSIVE ─────────────────────────────────────────────── */
-@media (max-width: 1024px) {
-    .lp-modules-grid { grid-template-columns: repeat(2, 1fr); }
-    .lp-why-inner { grid-template-columns: 1fr; gap: 48px; }
-    .lp-mock { display: none; }
-    .lp-stats { grid-template-columns: repeat(2, 1fr); }
-    .lp-stat { border-bottom: 1px solid var(--lp-gray-200); }
-    .lp-footer-top { grid-template-columns: 1fr 1fr; }
-}
-
-@media (max-width: 768px) {
+/* ── RESPONSIVE ───────────────────────────────────────────────
+   MOBILE IS ALWAYS THE DEFAULT (≤1023px). This includes phones
+   portrait + landscape AND Chrome "Desktop site" (forces 980px).
+   Desktop chrome only at ≥1024px (real desktops). */
+@media (max-width: 1023px) {
     .lp-nav { padding: 0 20px; }
     .lp-nav-links { display: none; }
     .lp-hero { padding: 120px 20px 80px; min-height: auto; }
     .lp-section { padding: 60px 20px; }
     .lp-why { padding: 60px 20px; }
     .lp-modules-grid { grid-template-columns: 1fr; }
+    .lp-why-inner { grid-template-columns: 1fr; gap: 48px; }
+    .lp-mock { display: none; }
+    .lp-stats { grid-template-columns: repeat(2, 1fr); }
+    .lp-stat { border-bottom: 1px solid var(--lp-gray-200); }
     .lp-cta-wrap { padding: 0 20px 60px; }
     .lp-cta { padding: 40px 28px; flex-direction: column; text-align: center; }
     .lp-footer { padding: 40px 20px 24px; }
     .lp-footer-top { grid-template-columns: 1fr; gap: 32px; }
     .lp-footer-bottom { flex-direction: column; text-align: center; }
-    .lp-stats { grid-template-columns: repeat(2, 1fr); }
     .lp-stat { padding: 20px 16px; }
     .lp-stat-value { font-size: 1.6rem; }
+}
+
+@media (min-width: 1024px) {
+    /* Real desktop only — phones and Desktop-site (980px) stay mobile */
+    .lp-nav-links { display: flex; }
 }
 </style>
 

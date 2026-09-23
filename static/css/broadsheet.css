@@ -15,6 +15,29 @@
     box-shadow: none;
 }
 
+/* ── Section-aware accents (JSS / PRIMARY / LOWER PRIMARY) ─ */
+.broadsheet-document.bs-section-jss {
+    --section-accent: #305CDE;
+}
+.broadsheet-document.bs-section-primary {
+    --section-accent: #00674F;
+}
+.broadsheet-document.bs-section-lower {
+    --section-accent: #B45309;
+}
+.bs-section-jss  { --section-accent: #305CDE; }
+.bs-section-primary { --section-accent: #00674F; }
+.bs-section-lower   { --section-accent: #B45309; }
+.bs-section-jss  .bs-results-badge,
+.bs-section-jss  .bs-school-name,
+.bs-section-jss  .bs-header-block { --section-accent: #305CDE; }
+.bs-section-primary .bs-results-badge,
+.bs-section-primary .bs-school-name,
+.bs-section-primary .bs-header-block { --section-accent: #00674F; }
+.bs-section-lower .bs-results-badge,
+.bs-section-lower .bs-school-name,
+.bs-section-lower .bs-header-block { --section-accent: #B45309; }
+
 /* ── Broadsheet Card Container ───────────────────────────── */
 .broadsheet-card {
     position: relative;
@@ -556,9 +579,10 @@
     /* ── Flexbox → Table fallback (WeasyPrint safe) ──────── */
     .bs-header-block {
         display: block !important;
-        padding: 6px 16px 4px 16px !important;
-        border-bottom: 3pt solid var(--section-accent, #305CDE) !important;
-        margin-bottom: 6px !important;
+        padding: 14px 20px !important;
+        border-bottom: 2px solid var(--section-accent, #305CDE) !important;
+        margin-bottom: 0 !important;
+        background: #ffffff !important;
     }
     .bs-header-main {
         display: flex !important;
@@ -570,19 +594,31 @@
     .bs-header-main > div:first-child {
         flex: 1 !important;
         min-width: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 14px !important;
     }
-    .bs-header-main > span:last-child {
+    .bs-header-main > span:last-child,
+    .bs-header-main > .bs-results-badge {
         flex-shrink: 0 !important;
         text-align: right !important;
         white-space: nowrap !important;
-        font-size: 1rem !important;
-        padding: 12px 24px !important;
+        align-self: center !important;
+        padding: 10px 20px !important;
+        border-radius: 50px !important;
+        font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif !important;
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.05em !important;
+        background: var(--section-accent, #305CDE) !important;
+        color: #ffffff !important;
     }
     .bs-header-logo-wrap {
         display: flex !important;
         align-items: center !important;
         width: 1in !important;
-        padding-right: 12px !important;
+        flex-shrink: 0 !important;
+        padding-right: 0 !important;
     }
     .bs-logo-frame {
         width: 1in !important;
@@ -598,16 +634,36 @@
         font-size: 6pt !important;
     }
 
-    /* Premium heading text overrides (override inline styles) */
+    /* Premium heading text — match browser exactly */
     .bs-header-main h2 {
-        font-size: 2rem !important;
+        font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif !important;
+        font-size: 1.75rem !important;
         font-weight: 800 !important;
-        letter-spacing: 0.02em !important;
+        letter-spacing: 0 !important;
+        color: var(--section-accent, #305CDE) !important;
+        text-transform: uppercase !important;
+        margin: 0 !important;
+        line-height: 1.1 !important;
     }
     .bs-header-main p {
-        font-size: 0.95rem !important;
-        letter-spacing: 0.08em !important;
-        margin-top: 2px !important;
+        font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        color: #64748b !important;
+        letter-spacing: 0.05em !important;
+        text-transform: uppercase !important;
+        margin: 4px 0 0 0 !important;
+    }
+    .bs-results-badge {
+        font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif !important;
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
+        padding: 10px 20px !important;
+        border-radius: 50px !important;
+        letter-spacing: 0.05em !important;
+        background: var(--section-accent, #305CDE) !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15) !important;
     }
 
     /* ── Page Break Control ──────────────────────────────── */

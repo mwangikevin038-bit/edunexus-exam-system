@@ -738,6 +738,12 @@
             }
         });
 
+        document.body.addEventListener('htmx:afterRequest', function(e) {
+            if (e.detail.elt === form && e.detail.failed) {
+                form.setAttribute('data-submitting', 'false');
+            }
+        });
+
         function reflushOfflineDrafts() {
             var keys = [];
             for (var i = 0; i < localStorage.length; i++) {

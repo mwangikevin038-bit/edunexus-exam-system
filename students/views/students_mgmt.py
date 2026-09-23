@@ -18,7 +18,7 @@ from django.middleware.csrf import get_token
 from django.views.decorators.cache import never_cache
 from django.shortcuts import redirect, render
 
-from .constants import GRADE_CHOICES, TERM_CHOICES, get_streams_for_school
+from .constants import GRADE_CHOICES, TERM_CHOICES, get_streams_for_school, normalize_exam_display_name
 from ..forms import StudentForm
 from .helpers import (
     get_class_teacher_scope,
@@ -1838,7 +1838,16 @@ def invalidate_score_sheet_caches(school_id, grade=None):
             _grades_cache_key(school_id),
             _streams_printout_cache_key(school_id, grade),
         ])
-    _cache.delete_many(keys_to_delete)
+    try:
+        _cache.delete_many(keys_to_delete)
+    except Exception:
+        pass
+    # Heavy analysis payloads are keyed by exam_id — pattern-delete per school.
+    try:
+        from .helpers import _delete_cache_key_pattern
+        _delete_cache_key_pattern(f'score_sheet:analysis:{school_id}:*')
+    except Exception:
+        pass
 
 
 def invalidate_class_list_caches(school_id, grade, stream=None):
@@ -1857,17 +1866,10 @@ def invalidate_class_list_caches(school_id, grade, stream=None):
 
 
 def _delete_pattern_keys(pattern_prefix):
-    """Delete all cache keys matching a prefix using Redis KEYS scan."""
-    from django.core.cache import cache as _cache
+    """Delete all cache keys matching a prefix (native Redis SCAN / LocMem)."""
     try:
-        backend = cache._cache if hasattr(cache, '_cache') else None
-        if backend and hasattr(backend, 'get_client'):
-            client = backend.get_client(None)
-            full_key = cache.make_key(pattern_prefix + '*')
-            raw_keys = client.keys('*' + pattern_prefix + '*')
-            if raw_keys:
-                real_keys = [cache.cache_key(k.decode() if isinstance(k, bytes) else k) for k in raw_keys]
-                client.delete(*real_keys)
+        from .helpers import _delete_cache_key_pattern
+        _delete_cache_key_pattern(pattern_prefix + '*')
     except Exception:
         pass
 
@@ -3465,6 +3467,8 @@ def api_exams_for_class(request):
             complete_exams.append({
                 'id': exam.id,
                 'name': exam.name,
+                # Display label matches Manage Exams (Opener Exam → Opener Assessment)
+                'display_name': normalize_exam_display_name(exam.name),
                 'term': exam.term,
                 'year': exam.year,
             })
@@ -3714,19 +3718,29 @@ def merit_list(request):
         f"{exam_object.year}|{exam_object.term}|{exam_object.name}|{grade}|{stream}"
     )
 
-    # Section accent color for branding header
+    # Section accent — prefer grade (Grade 1-3 = lower primary amber), exam section only as fallback
     section_colors = {
         'JSS':           '#305CDE',
         'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
-    sec = exam_object.school_section or 'JSS'
-    if sec == 'PRIMARY' and exam_object.sub_section == 'LOWER':
+    if grade in LOWER_PRIMARY_GRADE_CHOICES:
         context['section_accent'] = section_colors['LOWER_PRIMARY']
-    elif sec == 'PRIMARY':
+        context['section_key'] = 'lower'
+    elif grade in PRIMARY_GRADE_CHOICES:
         context['section_accent'] = section_colors['PRIMARY']
+        context['section_key'] = 'primary'
     else:
-        context['section_accent'] = section_colors.get(sec, '#305CDE')
+        sec = exam_object.school_section or 'JSS'
+        if sec == 'PRIMARY' and exam_object.sub_section == 'LOWER':
+            context['section_accent'] = section_colors['LOWER_PRIMARY']
+            context['section_key'] = 'lower'
+        elif sec == 'PRIMARY':
+            context['section_accent'] = section_colors['PRIMARY']
+            context['section_key'] = 'primary'
+        else:
+            context['section_accent'] = section_colors.get(sec, '#305CDE')
+            context['section_key'] = 'jss'
 
     # HTMX ASYNCHRONOUS PIPELINE INTERCEPTOR:
     context['is_teacher_view'] = not is_admin
@@ -3805,7 +3819,10 @@ def api_analysis_data(request):
 
     # Check Redis cache — this endpoint runs 200-500+ DB queries, caching is critical
     analysis_cache_key = _analysis_cache_key(school.pk, exam_id, class_name_filter or '', stream_filter or '')
-    cached_data = cache.get(analysis_cache_key)
+    try:
+        cached_data = cache.get(analysis_cache_key)
+    except Exception:
+        cached_data = None
     if cached_data is not None:
         return JsonResponse(cached_data)
 

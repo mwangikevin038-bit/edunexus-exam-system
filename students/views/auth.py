@@ -226,6 +226,13 @@ def custom_password_change(request):
                     'force_password_change': force_password_change,
                 })
 
+            # Record new password in history (enables reuse detection)
+            try:
+                from ..security.passwords import record_password_history
+                record_password_history(user, form.cleaned_data.get('new_password1'))
+            except Exception as exc:
+                logger.warning("Could not record password history for user_id=%s: %s", user.pk, exc)
+
             # Clear the force_password_change session flag
             request.session.pop('force_password_change', None)
             request.session.modified = True

@@ -1892,7 +1892,7 @@ table.table-analysis th:nth-child(2){font-weight:800!important}
         </button>
     </div>
 
-    <div class="broadsheet-document" style="--section-accent: {{ section_accent }};">
+    <div class="broadsheet-document bs-section-{{ section_key|default:'jss' }}" style="--section-accent: {{ section_accent }};">
     <!-- Branding header OUTSIDE the scrollable card so it stays at screen width -->
     <div class="bs-header-block bs-branding-only" style="--section-accent: {{ section_accent }};">
         <div class="bs-header-main">
@@ -1918,7 +1918,7 @@ table.table-analysis th:nth-child(2){font-weight:800!important}
                         <span class="bs-meta-chip">{{ selected_exam|upper }}</span>
                     </div>
                 </div>
-                <div class="bs-results-badge">{{ selected_term|upper }} Results List</div>
+                <div class="bs-results-badge">{{ selected_exam|upper }} Results List</div>
             </div>
         </div>
     </div>

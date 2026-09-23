@@ -1,6 +1,6 @@
 {% if show_table %}
 <!-- Unified Broadsheet Document: header + action toolbar + table inside one white card -->
-<div class="broadsheet-document" style="--section-accent: {{ section_accent }};">
+<div class="broadsheet-document bs-section-{{ section_key|default:'jss' }}" style="--section-accent: {{ section_accent }};">
 
     <!-- BRANDING HEADER MATRIX -->
     <div class="bs-header-block bs-branding-only">
@@ -21,13 +21,13 @@
                         {{ request.school.name|default:"SCHOOL NAME" }}
                     </h2>
                     <p style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 600; color: #64748b; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.05em;">
-                        GRADE {{ selected_grade|upper }} {{ selected_stream|upper }} &middot; {{ selected_year }} &middot; {{ selected_exam|upper }}
+                        {{ selected_grade|upper }} {{ selected_stream|upper }} &middot; {{ selected_year }} &middot; {{ selected_exam|upper }}
                     </p>
                 </div>
             </div>
 
             <!-- Status Badge (section-aware accent) -->
-            <span style="flex-shrink: 0; background: var(--section-accent, #305CDE); color: #ffffff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 700; padding: 10px 20px; border-radius: 50px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15);">
+            <span class="bs-results-badge bs-badge-section" style="flex-shrink: 0; background: var(--section-accent, #305CDE); color: #ffffff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 700; padding: 10px 20px; border-radius: 50px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15);">
                 {{ selected_term|upper }} RESULTS LIST
             </span>
         </div>

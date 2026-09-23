@@ -36,6 +36,7 @@ from .constants import (
     RELIGION_SUBJECTS,
     RELIGION_TAG,
     TERM_CHOICES,
+    normalize_exam_display_name,
 )
 from .helpers import (
     build_analysis_from_snapshot,
@@ -1270,14 +1271,7 @@ def manage_exams(request):
     all_year_exams = list(Exam.all_objects.filter(school=school, year=selected_year, is_deleted=False).order_by("-term", "name"))
 
     def _normalize_exam_name(name):
-        lower = name.strip().lower()
-        if 'opener' in lower or 'opening' in lower:
-            return 'Opener Assessment'
-        if 'mid' in lower:
-            return 'Mid Term Assessment'
-        if 'end' in lower or 'final' in lower:
-            return 'End Term Assessment'
-        return name.strip()
+        return normalize_exam_display_name(name)
 
     seen_exam_keys = set()
     unique_year_exams = []
@@ -2363,7 +2357,15 @@ def review_stream_submission(request):
     # Determine the exam section (Exams don't have LOWER_PRIMARY, they use PRIMARY)
     exam_section_filter = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
 
-    exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first() if exam_id else None
+    # When exam_id is supplied, only accept an exam from the active section —
+    # otherwise a stale/malicious id can load a JSS exam while viewing Primary
+    # (or vice versa) and the readiness counts will be wrong.
+    exam = None
+    if exam_id:
+        exam = Exam.all_objects.filter(
+            school=school, id=exam_id, is_deleted=False,
+            school_section=exam_section_filter,
+        ).first()
     if not exam:
         exam = Exam.all_objects.filter(school=school, status="active", school_section=exam_section_filter, is_deleted=False).order_by("-year", "term", "name").first()
     if not exam:
@@ -2429,11 +2431,15 @@ def review_stream_submission(request):
 
     # ── Detail view: class_name + stream provided ────────────────────
     section = get_request_school_section(request)
-    valid_pairs = set(
-        SubjectAssignment.all_objects.filter(school=school, is_active=True)
-        .values_list("class_name", "stream")
-        .distinct()
+    # Only accept streams that belong to this section (and sub-section for Primary).
+    pairs_qs = SubjectAssignment.all_objects.filter(
+        school=school, is_active=True, school_section=exam_section_filter,
     )
+    if exam.sub_section:
+        pairs_qs = pairs_qs.filter(sub_section=exam.sub_section)
+    elif section == 'LOWER_PRIMARY':
+        pairs_qs = pairs_qs.filter(sub_section='LOWER')
+    valid_pairs = set(pairs_qs.values_list("class_name", "stream").distinct())
     if (class_name, stream) not in valid_pairs:
         messages.error(request, "Select a valid class stream.")
         return redirect("manage_exams")
@@ -2447,46 +2453,78 @@ def review_stream_submission(request):
         has_marks = row["captured_count"] > 0
         has_submission = row["submission"] is not None
         sub = row["submission"]
+        missing = row["missing_count"]
+        marks_complete = has_marks and missing == 0
 
-        # Compute display status
+        # Compute display status — accurate, distinct labels per state
         if sub and sub.status == "published":
             row["display_status"] = "Published"
             row["status_color"] = "green"
-        elif sub and sub.status in ("approved", "submitted") and has_marks:
-            row["display_status"] = "Pending publishing by Admin"
-            row["status_color"] = "blue"
         elif sub and sub.status == "returned":
             row["display_status"] = "Returned for correction"
             row["status_color"] = "red"
-        elif sub and not has_marks:
-            row["display_status"] = "Pending publishing by Subject Teacher"
-            row["status_color"] = "orange"
-        elif has_marks and row["status_key"] == "ready":
-            row["display_status"] = "Pending publishing by Subject Teacher"
+        elif sub and sub.status in ("approved", "submitted") and marks_complete:
+            row["display_status"] = "Ready to publish"
+            row["status_color"] = "blue"
+        elif sub:
+            # Submission exists but marks are incomplete (or none yet)
+            row["display_status"] = "Awaiting marks"
             row["status_color"] = "orange"
         elif has_marks:
-            row["display_status"] = "Pending publishing by Subject Teacher"
-            row["status_color"] = "orange"
-        elif row["status_key"] == "not_started":
-            row["display_status"] = "Pending publishing by Subject Teacher"
+            # Marks captured but no formal submission from the teacher
+            row["display_status"] = "Awaiting submission"
             row["status_color"] = "orange"
         else:
-            row["display_status"] = row["status_label"]
-            row["status_color"] = "gray"
+            row["display_status"] = "Awaiting Subject Teacher"
+            row["status_color"] = "orange"
+
+        # Readiness for the one-click publish action (mirrors quick_publish_stream:
+        # submission must exist; already-published counts as satisfied; marks complete)
+        if sub and (sub.status == "published" or missing == 0):
+            row["publish_ready"] = True
+            row["publish_blocker"] = ""
+        else:
+            row["publish_ready"] = False
+            if not sub:
+                row["publish_blocker"] = "Not submitted yet"
+            else:
+                row["publish_blocker"] = f"{missing} learner(s) missing marks"
 
         # Split: only subjects with a formal submission AND marks go to upper table
+        row["student_without_marks"] = f"{missing} / {row['total_students']} Don't have marks"
         if has_submission and has_marks:
-            without = row["missing_count"]
-            total = row["total_students"]
-            row["student_without_marks"] = f"{without} / {total} Don't have marks"
             submitted_rows.append(row)
-        elif has_submission:
-            # Submission exists but no marks yet — treat as not started
-            row["student_without_marks"] = f"{row['missing_count']} / {row['total_students']} Don't have marks"
-            not_started_rows.append(row)
         else:
-            row["student_without_marks"] = f"{row['missing_count']} / {row['total_students']} Don't have marks"
+            # No submission, or submission without marks — lower table
             not_started_rows.append(row)
+
+    # ── Stream-level publish readiness (drives button state) ──────────
+    publish_total = len(rows)
+    already_published = sum(
+        1 for r in rows if r["submission"] and r["submission"].status == "published"
+    )
+    ready_count = sum(1 for r in rows if r["publish_ready"])
+    # quick_publish_stream only accepts status='active' — a closed/draft exam
+    # must not show an enabled Publish button (the AJAX call would 404).
+    exam_is_active = exam.status == "active"
+    all_published = publish_total > 0 and already_published == publish_total
+    all_ready = exam_is_active and publish_total > 0 and ready_count == publish_total
+
+    # Helper-pill copy for the Publish button
+    not_ready = publish_total - ready_count
+    if publish_total == 0:
+        ready_label = "No subjects in this stream"
+    elif all_published:
+        ready_label = f"All {publish_total} subjects published"
+    elif not exam_is_active:
+        ready_label = "Exam is closed"
+    elif all_ready:
+        ready_label = f"{publish_total}/{publish_total} ready"
+    elif ready_count == 0:
+        ready_label = f"0/{publish_total} ready — waiting for subject teachers"
+    else:
+        noun = "subject" if not_ready == 1 else "subjects"
+        ready_label = f"{ready_count}/{publish_total} ready · {not_ready} {noun} not ready"
 
     if request.method == "POST":
         import bleach
@@ -2586,17 +2624,24 @@ def review_stream_submission(request):
                 submission.save()
 
             # ── Rebuild ExamSummary snapshots for this grade ───────────
+            # Sync before snapshot so ExamSummary ranks are fresh (not Celery-stale).
             from students.tasks import populate_exam_summaries
             if first_assignment:
-                populate_exam_summaries.delay(
-                    school_id=school.pk,
-                    grade=class_name,
-                    year=exam.year,
-                    term=exam.term,
-                    exam_name=exam.name,
-                    school_section=first_assignment.school_section,
-                    sub_section=first_assignment.sub_section,
-                )
+                populate_exam_summaries.apply(kwargs={
+                    'school_id': school.pk,
+                    'grade': class_name,
+                    'year': exam.year,
+                    'term': exam.term,
+                    'exam_name': exam.name,
+                    'school_section': first_assignment.school_section,
+                    'sub_section': first_assignment.sub_section,
+                })
+
+            # Clear Redis + stale snapshots FIRST, then rebuild snapshot.
+            from students.views.helpers import invalidate_report_caches
+            invalidate_report_caches(
+                school.pk, class_name, stream, exam.year, exam.term, exam.name,
+            )
 
             # ── Build report card snapshot for this stream ─────────────
             from students.views.helpers import build_exam_result_snapshot
@@ -2619,6 +2664,11 @@ def review_stream_submission(request):
         "submitted_rows": submitted_rows,
         "not_started_rows": not_started_rows,
         "totals": totals,
+        "publish_total": publish_total,
+        "ready_count": ready_count,
+        "all_published": all_published,
+        "all_ready": all_ready,
+        "ready_label": ready_label,
     })
 
 
@@ -3022,14 +3072,20 @@ def review_submission(request):
 
             # ── Rebuild ExamSummary snapshots for this grade ───────────
             from students.tasks import populate_exam_summaries
-            populate_exam_summaries.delay(
-                school_id=school.pk,
-                grade=assignment.class_name,
-                year=exam.year,
-                term=exam.term,
-                exam_name=exam.name,
-                school_section=assignment.school_section,
-                sub_section=assignment.sub_section,
+            populate_exam_summaries.apply(kwargs={
+                'school_id': school.pk,
+                'grade': assignment.class_name,
+                'year': exam.year,
+                'term': exam.term,
+                'exam_name': exam.name,
+                'school_section': assignment.school_section,
+                'sub_section': assignment.sub_section,
+            })
+
+            from students.views.helpers import invalidate_report_caches
+            invalidate_report_caches(
+                school.pk, assignment.class_name, assignment.stream,
+                exam.year, exam.term, exam.name,
             )
 
             # ── Build report card snapshot for this stream ─────────────
@@ -3958,6 +4014,12 @@ def clear_mark(request):
             if remaining == 0:
                 submission.delete()
 
+    if deleted_count:
+        invalidate_report_caches(
+            school.pk, assignment.class_name, assignment.stream,
+            exam.year, exam.term, exam.name,
+        )
+
     return JsonResponse({'ok': True, 'deleted': deleted_count})
 
 
@@ -4077,6 +4139,11 @@ def save_mark(request):
                 sub_section=assignment.sub_section,
             )
             deleted = mark_qs.delete()
+        if deleted and deleted[0]:
+            invalidate_report_caches(
+                school.pk, assignment.class_name, assignment.stream,
+                exam.year, exam.term, exam.name,
+            )
         return JsonResponse({'ok': True, 'cleared': True, 'deleted': deleted[0] if deleted else 0})
 
     try:
@@ -4136,6 +4203,10 @@ def _save_mark_score(request, school, teacher, assignment, exam, student, score_
             year=exam.year,
             exam_type=exam.name,
         )
+        invalidate_report_caches(
+            school.pk, assignment.class_name, assignment.stream,
+            exam.year, exam.term, exam.name,
+        )
         return JsonResponse({'ok': True, 'absent': True, 'mark_id': mark_id})
 
     # ── NUMERIC SCORE → upsert with computed grading ──────────────────────
@@ -4192,6 +4263,11 @@ def _save_mark_score(request, school, teacher, assignment, exam, student, score_
     )
 
     _handle_religion()
+
+    invalidate_report_caches(
+        school.pk, assignment.class_name, assignment.stream,
+        exam.year, exam.term, exam.name,
+    )
 
     return JsonResponse({'ok': True, 'saved': True, 'mark_id': mark_id})
 
@@ -5323,37 +5399,28 @@ def quick_publish_stream(request):
         return JsonResponse({'error': 'Missing parameters'}, status=400)
 
     try:
-        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
+        exam = Exam.all_objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found or closed'}, status=404)
 
-    # Get all subject assignments for this stream
-    assignments = SubjectAssignment.all_objects.filter(
-        school=school, class_name=class_name, stream=stream,
-        school_section=exam.school_section, is_active=True,
-    ).select_related('subject', 'teacher_profile')
-
-    if not assignments.exists():
+    # Validate with the SAME summary the readiness UI uses so the button's
+    # ready_count / blockers can never disagree with what publish accepts
+    # (section, sub-section, religion-aware counts, assigned-teacher sheets).
+    rows, _totals = get_stream_submission_summary(class_name, stream, exam)
+    if not rows:
         return JsonResponse({'error': 'No subject assignments found for this stream'}, status=404)
 
-    # Validate each subject has complete marks
     errors = []
     submissions_to_publish = []
-
-    for assignment in assignments:
-        # Get existing submission
-        submission = MarkSubmission.all_objects.filter(
-            school=school, teacher=assignment.teacher_profile,
-            subject=assignment.subject, class_name=class_name, stream=stream,
-            exam_name=exam.name, term=exam.term, year=exam.year,
-            school_section=assignment.school_section,
-            sub_section=assignment.sub_section,
-        ).first()
+    for row in rows:
+        submission = row.get('submission')
+        subject_name = row.get('subject_name') or '—'
+        teacher_name = row.get('teacher_name') or '—'
 
         if not submission:
             errors.append({
-                'subject': assignment.subject.name,
-                'teacher': assignment.teacher_profile.get_full_title() if assignment.teacher_profile else '—',
+                'subject': subject_name,
+                'teacher': teacher_name,
                 'issue': 'Not submitted yet',
             })
             continue
@@ -5361,19 +5428,11 @@ def quick_publish_stream(request):
         if submission.status == 'published':
             continue
 
-        # Check marks completeness
-        from .helpers import get_religion_aware_student_count, get_subject_marks
-        total_students = get_religion_aware_student_count(class_name, stream, assignment.subject)
-        captured_count = get_subject_marks(
-            class_name, stream, assignment.subject,
-            exam.term, exam.name, exam.year,
-        ).count()
-        missing = max(total_students - captured_count, 0)
-
+        missing = row.get('missing_count', 0)
         if missing > 0:
             errors.append({
-                'subject': assignment.subject.name,
-                'teacher': assignment.teacher_profile.get_full_title() if assignment.teacher_profile else '—',
+                'subject': subject_name,
+                'teacher': teacher_name,
                 'issue': f'{missing} learner(s) missing marks',
             })
             continue
@@ -5381,7 +5440,7 @@ def quick_publish_stream(request):
         submissions_to_publish.append(submission)
 
     if errors:
-        return JsonResponse({'ok': False, 'errors': errors, 'total_subjects': assignments.count()})
+        return JsonResponse({'ok': False, 'errors': errors, 'total_subjects': len(rows)})
 
     # All good — publish atomically
     from django.db import transaction
@@ -5395,25 +5454,28 @@ def quick_publish_stream(request):
             sub.save()
 
     # Side effects (same as existing publish_stream)
+    # Sync ExamSummary FIRST so the snapshot is not baked with stale Celery ranks,
+    # then clear Redis/old snapshots, then rebuild the snapshot.
     from students.tasks import populate_exam_summaries
-    first_assignment = assignments.first()
+    first_row = rows[0] if rows else None
+    first_assignment = first_row.get('assignment') if first_row else None
     if first_assignment:
-        populate_exam_summaries.delay(
-            school_id=school.pk,
-            grade=class_name,
-            year=exam.year,
-            term=exam.term,
-            exam_name=exam.name,
-            school_section=first_assignment.school_section,
-            sub_section=first_assignment.sub_section,
-        )
+        populate_exam_summaries.apply(kwargs={
+            'school_id': school.pk,
+            'grade': class_name,
+            'year': exam.year,
+            'term': exam.term,
+            'exam_name': exam.name,
+            'school_section': first_assignment.school_section,
+            'sub_section': first_assignment.sub_section,
+        })
 
     from students.views.helpers import build_exam_result_snapshot, invalidate_report_caches
-    build_exam_result_snapshot(
-        school=school, exam=exam, class_name=class_name, stream=stream,
-    )
     invalidate_report_caches(
         school.pk, class_name, stream, exam.year, exam.term, exam.name,
+    )
+    build_exam_result_snapshot(
+        school=school, exam=exam, class_name=class_name, stream=stream,
     )
 
     return JsonResponse({'ok': True, 'published': len(submissions_to_publish)})

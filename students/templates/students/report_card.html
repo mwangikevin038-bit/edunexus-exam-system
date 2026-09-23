@@ -526,7 +526,7 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
                         data.exams.forEach(function(e) {
                             var opt = document.createElement('option');
                             opt.value = e.id;
-                            opt.textContent = e.name + ' (' + e.term + ' ' + e.year + ')';
+                            opt.textContent = (e.display_name || e.name) + ' (' + e.term + ' ' + e.year + ')';
                             examSel.appendChild(opt);
                         });
                         examSel.disabled = false;

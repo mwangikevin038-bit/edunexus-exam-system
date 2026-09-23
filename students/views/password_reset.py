@@ -10,6 +10,7 @@ Provides:
 
 import re
 import logging
+import time
 
 from django import forms
 from django.contrib import messages
@@ -22,6 +23,7 @@ from django.contrib.auth.views import (
     PasswordResetConfirmView,
     PasswordResetCompleteView,
 )
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.utils.encoding import force_bytes
@@ -83,16 +85,16 @@ class RateLimitedPasswordResetView(PasswordResetView):
 
         for attempt in range(1 + MAX_RETRIES):
             try:
-                from django.core.mail import EmailMessage
+                from django.core.mail import EmailMultiAlternatives
                 from django.template.loader import render_to_string
                 subject = render_to_string(subject_template_name, context)
                 subject = ''.join(subject.splitlines())
                 html_body = render_to_string(html_email_template_name or email_template_name, context)
                 text_body = render_to_string(email_template_name, context)
-                site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
-                email = EmailMessage(
+                site_url = self._site_url()
+                email = EmailMultiAlternatives(
                     subject=subject,
-                    body=html_body,
+                    body=text_body,
                     from_email=from_email,
                     to=[to_email],
                     headers={
@@ -102,7 +104,7 @@ class RateLimitedPasswordResetView(PasswordResetView):
                         'X-Auto-Response-Suppress': 'All',
                     },
                 )
-                email.content_subtype = 'html'
+                email.attach_alternative(html_body, 'text/html')
                 email.send(fail_silently=True)
                 logger.info("Password reset email sent to %s", to_email)
                 return
@@ -120,34 +122,43 @@ class RateLimitedPasswordResetView(PasswordResetView):
                         to_email, 1 + MAX_RETRIES
                     )
 
+    def _site_url(self):
+        """Prefer the request's host; fall back to settings.SITE_URL."""
+        try:
+            return f'{self.request.scheme}://{self.request.get_host()}'
+        except Exception:
+            return getattr(settings, 'SITE_URL', 'http://localhost:8000')
+
+    def _rate_limit_ok(self, email):
+        """Cache-based per-email rate limit (survives session loss / new browsers)."""
+        if getattr(settings, 'RATELIMIT_DISABLE', False) and settings.DEBUG:
+            return True
+        ip = self.request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() \
+            or self.request.META.get('REMOTE_ADDR', 'unknown')
+        key = f'{self.RATE_LIMIT_KEY}:{email}:{ip}'
+        now = time.time()
+        bucket = cache.get(key)
+        if not bucket or now - bucket['start'] > self.RATE_LIMIT_WINDOW:
+            cache.set(key, {'count': 1, 'start': now}, self.RATE_LIMIT_WINDOW)
+            return True
+        if bucket['count'] >= self.RATE_LIMIT_MAX:
+            remaining = int(self.RATE_LIMIT_WINDOW - (now - bucket['start']))
+            minutes = remaining // 60
+            seconds = remaining % 60
+            messages.warning(
+                self.request,
+                f"Too many reset requests. Please try again in {minutes}m {seconds}s."
+            )
+            return False
+        bucket['count'] += 1
+        cache.set(key, bucket, max(1, int(self.RATE_LIMIT_WINDOW - (now - bucket['start']))))
+        return True
+
     def form_valid(self, form):
         email = form.cleaned_data.get('email', '').lower().strip()
 
-        # Check rate limit per email in session
-        rate_data = self.request.session.get(self.RATE_LIMIT_KEY, {})
-        import time
-        now = time.time()
-
-        if email in rate_data:
-            attempts, window_start = rate_data[email]
-            if now - window_start < self.RATE_LIMIT_WINDOW:
-                if attempts >= self.RATE_LIMIT_MAX:
-                    remaining = int(self.RATE_LIMIT_WINDOW - (now - window_start))
-                    minutes = remaining // 60
-                    seconds = remaining % 60
-                    messages.warning(
-                        self.request,
-                        f"Too many reset requests. Please try again in {minutes}m {seconds}s."
-                    )
-                    return redirect('password_reset')
-            else:
-                rate_data[email] = (0, now)
-
-        # Increment attempt counter
-        attempts, window_start = rate_data.get(email, (0, now))
-        rate_data[email] = (attempts + 1, window_start)
-        self.request.session[self.RATE_LIMIT_KEY] = rate_data
-        self.request.session.modified = True
+        if not self._rate_limit_ok(email):
+            return redirect('password_reset')
 
         # Log the reset attempt
         logger.info("Password reset requested for email: %s from IP: %s", email, self.request.META.get('REMOTE_ADDR'))
@@ -172,13 +183,16 @@ class SecurePasswordResetConfirmView(PasswordResetConfirmView):
         # Store that this user completed password reset in the session
         response = super().form_valid(form)
 
-        # Invalidate the token by saving the user (Django's token generator checks password hash)
         user = form.user
         if user:
-            # Force token invalidation by updating the user's last_login
-            from django.utils import timezone
-            user.last_login = timezone.now()
-            user.save(update_fields=['last_login'])
+            # Record the new password in history (enables reuse detection).
+            # Token is already invalidated by the password hash change alone —
+            # do NOT touch last_login here (it would fake a login event).
+            try:
+                from ..security.passwords import record_password_history
+                record_password_history(user, form.cleaned_data.get('new_password1'))
+            except Exception as exc:
+                logger.warning("Could not record password history for user %s: %s", user.username, exc)
 
             # Clear must_change_password on Teacher profile to prevent forced-change loop
             from ..models import Teacher, SchoolAdmin

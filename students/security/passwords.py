@@ -222,7 +222,10 @@ def send_password_changed_email(user, *, request=None):
         try:
             from django.core.mail import EmailMessage
             from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'EDUNEXUS Portal <edunexus.system@gmail.com>')
-            site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+            if request is not None:
+                site_url = f'{request.scheme}://{request.get_host()}'
+            else:
+                site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
             context = {
                 'user': user,
                 'timestamp': timezone.now(),
@@ -231,9 +234,10 @@ def send_password_changed_email(user, *, request=None):
             }
             html = render_to_string('email/password_changed.html', context)
             text = render_to_string('email/password_changed.txt', context)
-            email = EmailMessage(
+            from django.core.mail import EmailMultiAlternatives
+            email = EmailMultiAlternatives(
                 subject='Your EDUNEXUS password was changed',
-                body=html,
+                body=text,
                 from_email=from_email,
                 to=[user.email],
                 headers={
@@ -243,7 +247,7 @@ def send_password_changed_email(user, *, request=None):
                     'X-Auto-Response-Suppress': 'All',
                 },
             )
-            email.content_subtype = 'html'
+            email.attach_alternative(html, 'text/html')
             email.send(fail_silently=True)
             logger.info("Password-changed email sent to %s", user.email)
             return True

@@ -210,7 +210,7 @@
             var e=data.exams[i];
             var opt=document.createElement('option');
             opt.value=e.id;
-            opt.textContent=e.name+' ('+e.term+' '+e.year+')';
+            opt.textContent=(e.display_name||e.name)+' ('+e.term+' '+e.year+')';
             exam.appendChild(opt);
           }
           exam.disabled=false;

@@ -186,6 +186,25 @@ ASSESSMENT_MAP = {
 
 ASSESSMENT_SLUG_MAP = {name: slug for slug, name in ASSESSMENT_MAP.items()}
 
+
+def normalize_exam_display_name(name):
+    """Canonical exam label used across Manage Exams, printouts, and APIs.
+
+    Keeps 'Opener Exam', 'Opening Exam', 'Mid Term Exam', 'End of Term
+    Assessment', etc. visually consistent so users recognize the same exam
+    everywhere (e.g. Manage Exams vs Merit List dropdown).
+    """
+    if not name:
+        return name or ''
+    lower = str(name).strip().lower()
+    if 'opener' in lower or 'opening' in lower:
+        return 'Opener Assessment'
+    if 'mid' in lower:
+        return 'Mid Term Assessment'
+    if 'end' in lower or 'final' in lower:
+        return 'End Term Assessment'
+    return str(name).strip()
+
 # ── Subject Display Order (broadsheet column order) ──────────────────────────
 SUBJECT_DISPLAY_ORDER = {
     # JSS codes
