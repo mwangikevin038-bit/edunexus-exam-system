@@ -580,7 +580,7 @@
 /* ═══════════════════════════════════════════════════════════════
    DESKTOP — hide mobile profile
    ═══════════════════════════════════════════════════════════════ */
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
     .pf-shell {
         display: none;
     }
@@ -589,7 +589,7 @@
 /* ═══════════════════════════════════════════════════════════════
    MOBILE — hide old desktop profile, show iOS one
    ═══════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     /* Hide the old desktop profile entirely */
     .pf-desktop {
         display: none !important;

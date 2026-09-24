@@ -36,8 +36,12 @@
 <style>
     .main-content {
         padding: 0 !important;
-        max-width: calc(100% - var(--sidebar-width)) !important;
-        margin-left: var(--sidebar-width) !important;
+    }
+    @media (min-width: 1024px) {
+        .main-content {
+            max-width: calc(100% - var(--sidebar-width)) !important;
+            margin-left: var(--sidebar-width) !important;
+        }
     }
 
     .app-content {
@@ -51,7 +55,7 @@
     }
 
     .pub-detail-main {
-        padding: 28px 34px 96px;
+        padding: 28px 34px 36px;
     }
 
     .pub-detail-title {
@@ -216,16 +220,15 @@
         align-items: center;
         justify-content: space-between;
         gap: 14px;
-        position: sticky;
-        bottom: 0;
-        z-index: 50;
-        margin: 16px -34px 0;
-        padding: 14px 34px;
-        background: rgba(255, 255, 255, 0.88);
-        backdrop-filter: blur(16px) saturate(180%);
-        -webkit-backdrop-filter: blur(16px) saturate(180%);
-        border-top: 1px solid rgba(15, 23, 42, 0.06);
-        box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.05);
+        position: static;
+        z-index: auto;
+        margin: 20px 0 0;
+        padding: 16px 0 0;
+        background: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-top: 1px solid #e5e7eb;
+        box-shadow: none;
     }
 
     .pub-detail-actions-left {
@@ -236,9 +239,11 @@
 
     .pub-detail-actions-right {
         display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 8px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 12px;
     }
 
     .pub-ready-pill {
@@ -280,16 +285,24 @@
         font-size: 13px;
         font-weight: 600;
         color: #475569;
-        background: #f1f5f9;
+        background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 6px;
         cursor: pointer;
         text-decoration: none;
-        transition: background 0.15s;
+        transition: background 0.15s, border-color 0.15s;
+        box-shadow: none;
+        transform: none;
     }
 
     .pub-back-btn:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .pub-back-btn:active {
         background: #e2e8f0;
+        transform: none;
     }
 
     .pub-action-wrap {
@@ -401,7 +414,7 @@
             inset 0 1px 0 rgba(255, 255, 255, 0.6),
             0 2px 4px rgba(15, 23, 42, 0.1),
             0 10px 28px -4px rgba(155, 232, 22, 0.55);
-        transform: translateY(-1px);
+        transform: none;
     }
 
     .pub-publish-btn:hover:not(:disabled)::after {
@@ -814,7 +827,7 @@
     /* ═══════════════════════════════════════════════════════════════
        STREAM SUBJECT DETAIL — Premium Mobile (iOS 17 / Zeraki)
        ═══════════════════════════════════════════════════════════════ */
-    @media (max-width: 768px) {
+    @media (max-width: 1023px) {
         .main-content {
             padding: 0 !important;
             max-width: 100% !important;

@@ -3,7 +3,7 @@
 
 {% block sub_tabs %}
 <style>
-  @media(max-width:768px){
+  @media (max-width: 1023px){
     .app-content{background:transparent!important}
   }
 </style>
@@ -53,6 +53,54 @@
   .prof-change-sig:hover{background:#0f172a}
   .prof-change-sig i{font-size:15px}
 
+  /* ── Signature capture modal ── */
+  .sig-modal-overlay{position:fixed;inset:0;z-index:1200;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}
+  .sig-modal-overlay.open{opacity:1;visibility:visible}
+  .sig-modal{width:100%;max-width:420px;background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(15,23,42,0.28);overflow:hidden;transform:translateY(12px) scale(.98);transition:transform .2s cubic-bezier(.16,1,.3,1);max-height:min(92dvh,720px);display:flex;flex-direction:column}
+  .sig-modal-overlay.open .sig-modal{transform:translateY(0) scale(1)}
+  .sig-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #f1f5f9;flex-shrink:0}
+  .sig-modal-title{font-size:.95rem;font-weight:700;color:#0f172a;margin:0;display:flex;align-items:center;gap:8px}
+  .sig-modal-title i{font-size:18px;color:#4CAF50}
+  .sig-modal-close{width:34px;height:34px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:background .15s}
+  .sig-modal-close:hover{background:#e2e8f0;color:#0f172a}
+  .sig-modal-body{padding:18px;overflow-y:auto;flex:1}
+  .sig-modal-footer{display:flex;gap:10px;padding:14px 18px;border-top:1px solid #f1f5f9;background:#fafbfc;flex-shrink:0}
+  .sig-step{display:none}
+  .sig-step.active{display:block}
+  .sig-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .sig-choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:28px 12px;border:1.5px solid #e2e8f0;border-radius:14px;background:#f8fafc;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;color:#0f172a;font-family:inherit}
+  .sig-choice:hover,.sig-choice:focus-visible{border-color:#4CAF50;background:#f0faf3;box-shadow:0 0 0 3px rgba(76,175,80,0.12);outline:none}
+  .sig-choice-icon{width:52px;height:52px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;color:#2E7D32}
+  .sig-choice-icon i{font-size:26px}
+  .sig-choice-label{font-size:.82rem;font-weight:700}
+  .sig-choice-hint{font-size:.68rem;color:#94a3b8;font-weight:500;text-align:center;line-height:1.3}
+  .sig-camera-stage{position:relative;background:#0f172a;border-radius:14px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+  .sig-camera-stage video,.sig-camera-stage canvas,.sig-camera-stage img{width:100%;height:100%;object-fit:contain;display:block;background:#0f172a}
+  .sig-camera-guide{position:absolute;inset:12% 6%;border:2px dashed rgba(255,255,255,0.35);border-radius:8px;pointer-events:none}
+  .sig-camera-guide span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,0.55);font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+  .sig-camera-status{margin-top:12px;padding:12px 14px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:.78rem;line-height:1.45;display:none}
+  .sig-camera-status.show{display:block}
+  .sig-camera-status strong{display:block;margin-bottom:2px;color:#7c2d12}
+  .sig-camera-actions{display:flex;gap:10px;margin-top:14px}
+  .sig-camera-actions .sig-btn{flex:1}
+  .sig-upload-preview{display:none;margin-top:4px}
+  .sig-upload-preview.show{display:block}
+  .sig-upload-frame{border:1.5px dashed #cbd5e1;border-radius:12px;background:#f8fafc;min-height:90px;display:flex;align-items:center;justify-content:center;padding:12px;position:relative}
+  .sig-upload-frame img{max-width:100%;max-height:100px;object-fit:contain}
+  .sig-upload-meta{font-size:.72rem;color:#64748b;margin-top:8px;text-align:center;word-break:break-all}
+  .sig-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:10px;padding:11px 16px;font-size:.82rem;font-weight:700;cursor:pointer;transition:background .15s,box-shadow .15s;font-family:inherit}
+  .sig-btn-primary{background:#4CAF50;color:#fff}
+  .sig-btn-primary:hover{background:#43A047;box-shadow:0 4px 14px rgba(76,175,80,0.35)}
+  .sig-btn-dark{background:#1e293b;color:#fff}
+  .sig-btn-dark:hover{background:#0f172a}
+  .sig-btn-ghost{background:#fff;color:#475569;border:1.5px solid #e2e8f0}
+  .sig-btn-ghost:hover{background:#f8fafc;border-color:#cbd5e1}
+  .sig-btn i{font-size:15px}
+  .sig-stage-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin:0 0 10px}
+  .sig-pending{display:none;align-items:center;gap:6px;margin-top:8px;padding:8px 10px;border-radius:8px;background:#ecfdf5;border:1px solid #a7f3d0;color:#047857;font-size:.72rem;font-weight:600}
+  .sig-pending.show{display:flex}
+  .sig-pending i{font-size:14px;flex-shrink:0}
+
   .prof-form-card{background:#fff;border:1px solid #e8e8ec;border-radius:16px;padding:32px 36px}
   .prof-form-title{font-size:1.3rem;font-weight:800;color:#0f172a;margin:0 0 28px;letter-spacing:-.02em}
 
@@ -82,7 +130,7 @@
   .prof-btn-save:hover{background:#43A047;box-shadow:0 4px 14px rgba(76,175,80,0.35)}
   .prof-btn i{font-size:15px}
 
-  @media(max-width:768px){
+  @media (max-width: 1023px){
     body{background:linear-gradient(180deg,#C8E6C9 0%,#E8F5E9 40%,#f5f5f5 100%)!important;min-height:100dvh}
     .main-content{background:transparent!important;padding:0!important}
     .app-content{background:transparent!important;padding:0!important;padding-bottom:80px!important;min-height:100dvh}
@@ -102,6 +150,16 @@
     .prof-signature-box .no-sig{font-size:.75rem!important;color:#94a3b8!important}
     .prof-sig-delete{width:26px!important;height:26px!important;border-radius:6px!important;font-size:12px!important}
     .prof-change-sig{border-radius:10px!important;padding:10px 14px!important;font-size:.75rem!important;background:#1e293b!important}
+    .sig-modal-overlay{padding:0!important;align-items:flex-end!important}
+    .sig-modal{max-width:none!important;border-radius:20px 20px 0 0!important;max-height:92dvh!important}
+    .sig-choice-grid{gap:10px!important}
+    .sig-choice{padding:22px 10px!important}
+    .sig-choice-icon{width:46px!important;height:46px!important}
+    .sig-camera-stage{aspect-ratio:1/1!important;border-radius:12px!important}
+    .sig-camera-actions{flex-direction:column!important}
+    .sig-camera-actions .sig-btn{width:100%!important;height:46px!important}
+    .sig-modal-footer{flex-direction:column-reverse!important}
+    .sig-modal-footer .sig-btn{width:100%!important;height:46px!important}
     .prof-form-card{background:#fff!important;border:none!important;border-radius:0 0 20px 20px!important;padding:20px!important;margin:0 12px 16px!important;box-shadow:0 4px 20px rgba(0,0,0,0.06)!important}
     .prof-form-title{font-size:1.1rem!important;margin:0 0 20px!important;color:#1b5e20!important}
     .prof-form-grid{grid-template-columns:1fr!important;gap:14px!important}
@@ -151,13 +209,14 @@
     <div class="prof-signature-box" id="sigBox">
       {% if teacher.signature %}
         <img src="{{ teacher.signature.url }}" alt="Signature" id="sigPreview">
-        <button type="button" class="prof-sig-delete" id="sigDeleteBtn" onclick="document.getElementById('deleteSignature').value='1';var p=document.getElementById('sigPreview');if(p)p.style.display='none';this.style.display='none';var n=document.getElementById('noSig');if(n)n.style.display='flex';" title="Remove signature"><i class="ph ph-trash"></i></button>
+        <button type="button" class="prof-sig-delete" id="sigDeleteBtn" title="Remove signature"><i class="ph ph-trash"></i></button>
         <span class="no-sig" id="noSig" style="display:none">No signature</span>
       {% else %}
         <span class="no-sig" id="noSig">No signature</span>
       {% endif %}
     </div>
-    <button type="button" class="prof-change-sig" onclick="document.getElementById('sigFileUpload').click()"><i class="ph ph-pen"></i> Change Signature</button>
+    <div class="sig-pending" id="sigPending" aria-live="polite"><i class="ph-fill ph-check-circle"></i> Signature ready — tap Save to apply</div>
+    <button type="button" class="prof-change-sig" id="openSigModalBtn"><i class="ph ph-signature"></i> Change Signature</button>
   </aside>
 
   <div class="prof-form-card">
@@ -230,46 +289,362 @@
 </div>
 </form>
 
-<script>
-document.getElementById('profilePictureUpload').addEventListener('change', function(e) {
-  if (e.target.files && e.target.files[0]) {
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      var box = document.getElementById('avatarBox');
-      var existing = document.getElementById('avatarImg');
-      if (existing) existing.remove();
-      var icon = document.getElementById('avatarIcon');
-      if (icon) icon.style.display = 'none';
-      var img = document.createElement('img');
-      img.src = ev.target.result;
-      img.alt = 'Profile';
-      img.id = 'avatarImg';
-      box.prepend(img);
-    };
-    reader.readAsDataURL(e.target.files[0]);
-  }
-});
+<!-- Signature capture modal -->
+<div class="sig-modal-overlay" id="sigModal" role="dialog" aria-modal="true" aria-labelledby="sigModalTitle" hidden>
+  <div class="sig-modal" id="sigModalPanel">
+    <div class="sig-modal-header">
+      <h3 class="sig-modal-title" id="sigModalTitle"><i class="ph-fill ph-signature"></i> Change Signature</h3>
+      <button type="button" class="sig-modal-close" id="sigModalClose" aria-label="Close"><i class="ph x"></i></button>
+    </div>
+    <div class="sig-modal-body">
 
-document.getElementById('sigFileUpload').addEventListener('change', function(e) {
-  if (e.target.files && e.target.files[0]) {
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      var box = document.getElementById('sigBox');
-      var existing = document.getElementById('sigPreview');
-      if (existing) existing.remove();
-      var delBtn = document.getElementById('sigDeleteBtn');
-      if (delBtn) delBtn.style.display = 'none';
-      var noSig = document.getElementById('noSig');
-      if (noSig) noSig.style.display = 'none';
-      var img = document.createElement('img');
-      img.src = ev.target.result;
-      img.alt = 'Signature';
-      img.id = 'sigPreview';
-      box.prepend(img);
-      document.getElementById('deleteSignature').value = '0';
-    };
-    reader.readAsDataURL(e.target.files[0]);
+      <div class="sig-step active" id="sigStepChoice">
+        <p class="sig-stage-label">Choose how to add your signature</p>
+        <div class="sig-choice-grid">
+          <button type="button" class="sig-choice" id="sigChoiceCamera">
+            <span class="sig-choice-icon"><i class="ph-fill ph-camera"></i></span>
+            <span class="sig-choice-label">Take Photo</span>
+            <span class="sig-choice-hint">Open the camera and capture your signature</span>
+          </button>
+          <button type="button" class="sig-choice" id="sigChoiceUpload">
+            <span class="sig-choice-icon"><i class="ph-fill ph-upload-simple"></i></span>
+            <span class="sig-choice-label">Upload Picture</span>
+            <span class="sig-choice-hint">Choose an image already on this device</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="sig-step" id="sigStepCamera">
+        <p class="sig-stage-label">Position signature in the frame</p>
+        <div class="sig-camera-stage">
+          <video id="sigVideo" playsinline autoplay muted></video>
+          <canvas id="sigCanvas" hidden></canvas>
+          <img id="sigShotPreview" alt="Captured signature" hidden>
+          <div class="sig-camera-guide" id="sigCameraGuide"><span>Align signature</span></div>
+        </div>
+        <div class="sig-camera-status" id="sigCameraStatus"></div>
+        <div class="sig-camera-actions" id="sigCameraActions">
+          <button type="button" class="sig-btn sig-btn-ghost" id="sigCameraBack"><i class="ph ph-arrow-left"></i> Back</button>
+          <button type="button" class="sig-btn sig-btn-primary" id="sigCaptureBtn"><i class="ph ph-camera"></i> Capture</button>
+        </div>
+        <div class="sig-camera-actions" id="sigConfirmActions" hidden>
+          <button type="button" class="sig-btn sig-btn-ghost" id="sigRetakeBtn"><i class="ph ph-arrow-counter-clockwise"></i> Retake</button>
+          <button type="button" class="sig-btn sig-btn-primary" id="sigUsePhotoBtn"><i class="ph ph-check"></i> Use Photo</button>
+        </div>
+      </div>
+
+      <div class="sig-step" id="sigStepUpload">
+        <p class="sig-stage-label">Selected image</p>
+        <div class="sig-upload-preview show">
+          <div class="sig-upload-frame" id="sigUploadFrame">
+            <span class="no-sig" id="sigUploadEmpty" style="font-size:.8rem;color:#94a3b8;font-style:italic">No image selected yet</span>
+            <img id="sigUploadImg" alt="Selected signature" hidden>
+          </div>
+          <div class="sig-upload-meta" id="sigUploadMeta"></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="sig-modal-footer" id="sigUploadFooter" hidden>
+      <button type="button" class="sig-btn sig-btn-ghost" id="sigUploadCancel"><i class="ph ph-x"></i> Cancel</button>
+      <button type="button" class="sig-btn sig-btn-primary" id="sigUploadApply" disabled><i class="ph ph-check"></i> Use This Image</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="sigNativeCapture" accept="image/*" capture="environment" style="display:none">
+<input type="file" id="sigNativeUpload" accept="image/*" style="display:none">
+
+<script>
+(function () {
+  var fileInput = document.getElementById('sigFileUpload');
+  var deleteFlag = document.getElementById('deleteSignature');
+  var sigPending = document.getElementById('sigPending');
+  var modal = document.getElementById('sigModal');
+  var video = document.getElementById('sigVideo');
+  var canvas = document.getElementById('sigCanvas');
+  var shot = document.getElementById('sigShotPreview');
+  var guide = document.getElementById('sigCameraGuide');
+  var camStatus = document.getElementById('sigCameraStatus');
+  var camActions = document.getElementById('sigCameraActions');
+  var confirmActions = document.getElementById('sigConfirmActions');
+  var uploadFooter = document.getElementById('sigUploadFooter');
+  var uploadImg = document.getElementById('sigUploadImg');
+  var uploadEmpty = document.getElementById('sigUploadEmpty');
+  var uploadMeta = document.getElementById('sigUploadMeta');
+  var uploadApply = document.getElementById('sigUploadApply');
+  var nativeCapture = document.getElementById('sigNativeCapture');
+  var nativeUpload = document.getElementById('sigNativeUpload');
+  var stream = null;
+  var pendingBlob = null;
+  var pendingName = 'signature.jpg';
+  var lastStep = 'choice';
+
+  function showStep(name) {
+    lastStep = name;
+    ['sigStepChoice', 'sigStepCamera', 'sigStepUpload'].forEach(function (id) {
+      document.getElementById(id).classList.toggle('active', id === 'sigStep' + name.charAt(0).toUpperCase() + name.slice(1));
+    });
+    uploadFooter.hidden = (name !== 'upload');
   }
-});
+
+  function showSigToast(msg, type) {
+    if (typeof window.showToast === 'function') { window.showToast(msg, type || 'info'); return; }
+    try { window.alert(msg); } catch (e) {}
+  }
+
+  function setSignatureFile(file, dataUrl) {
+    if (!file) return;
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+    } catch (e) {
+      showSigToast('Could not attach image. Try a smaller file or another browser.', 'error');
+      return;
+    }
+    deleteFlag.value = '0';
+    var box = document.getElementById('sigBox');
+    var existing = document.getElementById('sigPreview');
+    if (existing) existing.remove();
+    var delBtn = document.getElementById('sigDeleteBtn');
+    if (delBtn) delBtn.style.display = 'none';
+    var noSig = document.getElementById('noSig');
+    if (noSig) noSig.style.display = 'none';
+    var img = document.createElement('img');
+    img.src = dataUrl || URL.createObjectURL(file);
+    img.alt = 'Signature';
+    img.id = 'sigPreview';
+    box.prepend(img);
+    if (sigPending) sigPending.classList.add('show');
+    showSigToast('Signature ready — tap Save to apply.', 'success');
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null;
+    }
+    video.srcObject = null;
+  }
+
+  function openModal() {
+    modal.hidden = false;
+    requestAnimationFrame(function () { modal.classList.add('open'); });
+    document.body.style.overflow = 'hidden';
+    showStep('choice');
+    resetUploadStep();
+    resetCameraStep();
+  }
+
+  function closeModal() {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+    stopCamera();
+    setTimeout(function () { modal.hidden = true; }, 200);
+  }
+
+  function resetCameraStep() {
+    shot.hidden = true;
+    shot.removeAttribute('src');
+    video.hidden = false;
+    canvas.hidden = true;
+    guide.style.display = '';
+    camActions.hidden = false;
+    confirmActions.hidden = true;
+    camStatus.classList.remove('show');
+    camStatus.innerHTML = '';
+    pendingBlob = null;
+    var cap = document.getElementById('sigCaptureBtn');
+    if (cap) cap.hidden = false;
+  }
+
+  function resetUploadStep() {
+    uploadImg.hidden = true;
+    uploadImg.removeAttribute('src');
+    uploadEmpty.hidden = false;
+    uploadMeta.textContent = '';
+    uploadApply.disabled = true;
+    pendingBlob = null;
+    nativeUpload.value = '';
+    nativeCapture.value = '';
+  }
+
+  function showCameraError(title, body) {
+    camStatus.innerHTML = '<strong>' + title + '</strong>' + body;
+    camStatus.classList.add('show');
+    camActions.hidden = false;
+    confirmActions.hidden = true;
+    var cap = document.getElementById('sigCaptureBtn');
+    if (cap) cap.hidden = true;
+    stopCamera();
+  }
+
+  async function startCamera() {
+    resetCameraStep();
+    showStep('camera');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showCameraError('Camera preview unavailable', 'Opening your phone camera instead. If nothing opens, use Upload Picture.');
+      nativeCapture.click();
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
+        audio: false
+      });
+      video.srcObject = stream;
+      video.hidden = false;
+      shot.hidden = true;
+      await video.play();
+    } catch (err) {
+      showCameraError('Could not open camera preview', 'Trying your device camera app. Grant camera permission if prompted, or use Upload Picture.');
+      nativeCapture.click();
+    }
+  }
+
+  function captureFrame() {
+    if (!video.videoWidth) {
+      showSigToast('Camera is still starting — try again in a moment.', 'warning');
+      return;
+    }
+    var w = video.videoWidth;
+    var h = video.videoHeight;
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    shot.src = dataUrl;
+    shot.hidden = false;
+    video.hidden = true;
+    guide.style.display = 'none';
+    canvas.toBlob(function (blob) {
+      if (!blob) {
+        showSigToast('Could not capture photo. Try Upload Picture.', 'error');
+        return;
+      }
+      pendingBlob = blob;
+      pendingName = 'signature_' + Date.now() + '.jpg';
+      camActions.hidden = true;
+      confirmActions.hidden = false;
+    }, 'image/jpeg', 0.92);
+  }
+
+  async function usePhoto() {
+    if (!pendingBlob) return;
+    var file = new File([pendingBlob], pendingName, { type: 'image/jpeg' });
+    setSignatureFile(file, shot.src);
+    stopCamera();
+    closeModal();
+  }
+
+  function onNativeSelected(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!/^image\//.test(file.type)) {
+      showSigToast('Please choose an image file.', 'error');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showSigToast('Image too large. Maximum size is 2MB.', 'error');
+      e.target.value = '';
+      return;
+    }
+    if (e.target === nativeCapture) {
+      setSignatureFile(file);
+      closeModal();
+      return;
+    }
+    // Upload step: show preview, wait for Use This Image
+    pendingBlob = file;
+    pendingName = file.name;
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      uploadImg.src = ev.target.result;
+      uploadImg.hidden = false;
+      uploadEmpty.hidden = true;
+      uploadMeta.textContent = file.name + ' · ' + Math.max(1, Math.round(file.size / 1024)) + ' KB';
+      uploadApply.disabled = false;
+    };
+    reader.readAsDataURL(file);
+    showStep('upload');
+    modal.hidden = false;
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  document.getElementById('openSigModalBtn').addEventListener('click', openModal);
+  document.getElementById('sigModalClose').addEventListener('click', closeModal);
+  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+  });
+
+  document.getElementById('sigChoiceCamera').addEventListener('click', function () {
+    startCamera();
+  });
+  document.getElementById('sigChoiceUpload').addEventListener('click', function () {
+    resetUploadStep();
+    nativeUpload.click();
+  });
+  document.getElementById('sigCaptureBtn').addEventListener('click', captureFrame);
+  document.getElementById('sigRetakeBtn').addEventListener('click', function () { startCamera(); });
+  document.getElementById('sigUsePhotoBtn').addEventListener('click', usePhoto);
+  document.getElementById('sigCameraBack').addEventListener('click', function () {
+    stopCamera();
+    showStep('choice');
+  });
+  document.getElementById('sigUploadCancel').addEventListener('click', function () {
+    resetUploadStep();
+    showStep('choice');
+  });
+  uploadApply.addEventListener('click', function () {
+    if (!pendingBlob) return;
+    var file = pendingBlob instanceof File
+      ? pendingBlob
+      : new File([pendingBlob], pendingName, { type: pendingBlob.type || 'image/jpeg' });
+    setSignatureFile(file, uploadImg.src || null);
+    closeModal();
+  });
+
+  nativeCapture.addEventListener('change', onNativeSelected);
+  nativeUpload.addEventListener('change', onNativeSelected);
+
+  var delBtn = document.getElementById('sigDeleteBtn');
+  if (delBtn) {
+    delBtn.addEventListener('click', function () {
+      deleteFlag.value = '1';
+      fileInput.value = '';
+      pendingBlob = null;
+      var p = document.getElementById('sigPreview');
+      if (p) p.style.display = 'none';
+      delBtn.style.display = 'none';
+      var n = document.getElementById('noSig');
+      if (n) n.style.display = 'flex';
+      if (sigPending) sigPending.classList.remove('show');
+    });
+  }
+
+  document.getElementById('profilePictureUpload').addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var box = document.getElementById('avatarBox');
+        var existing = document.getElementById('avatarImg');
+        if (existing) existing.remove();
+        var icon = document.getElementById('avatarIcon');
+        if (icon) icon.style.display = 'none';
+        var img = document.createElement('img');
+        img.src = ev.target.result;
+        img.alt = 'Profile';
+        img.id = 'avatarImg';
+        box.prepend(img);
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  });
+})();
 </script>
 {% endblock %}

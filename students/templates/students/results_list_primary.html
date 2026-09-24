@@ -1151,7 +1151,7 @@
     .summary-table tr:nth-child(odd) { background-color: #ffffff !important; }
 
     /* ===== IOS-STYLE MOBILE OVERRIDES ===== */
-    @media (max-width: 768px) {
+    @media (max-width: 1023px) {
         html,
         body {
             overflow-x: hidden !important;
@@ -2343,7 +2343,7 @@ table.table-analysis th:nth-child(2){font-weight:800!important}
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    if (window.innerWidth > 768) return;
+    if (window.innerWidth > 1023) return;
 
     var rows = document.querySelectorAll('.table-analysis tbody tr');
     var subjectNames = Array.from(document.querySelectorAll('.table-analysis thead .subj-header')).map(function(th) {

@@ -2357,15 +2357,16 @@ def review_stream_submission(request):
     # Determine the exam section (Exams don't have LOWER_PRIMARY, they use PRIMARY)
     exam_section_filter = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
 
-    # When exam_id is supplied, only accept an exam from the active section —
-    # otherwise a stale/malicious id can load a JSS exam while viewing Primary
-    # (or vice versa) and the readiness counts will be wrong.
+    # When exam_id is supplied (publish overview deep-link), load THAT exam.
+    # Session workspace defaults to PRIMARY on admin login and must not reject
+    # a JSS exam mid-publish — otherwise View bounces to manage_exams.
     exam = None
     if exam_id:
         exam = Exam.all_objects.filter(
             school=school, id=exam_id, is_deleted=False,
-            school_section=exam_section_filter,
         ).first()
+        if exam:
+            exam_section_filter = 'PRIMARY' if exam.school_section == 'PRIMARY' else 'JSS'
     if not exam:
         exam = Exam.all_objects.filter(school=school, status="active", school_section=exam_section_filter, is_deleted=False).order_by("-year", "term", "name").first()
     if not exam:
@@ -2431,13 +2432,14 @@ def review_stream_submission(request):
 
     # ── Detail view: class_name + stream provided ────────────────────
     section = get_request_school_section(request)
-    # Only accept streams that belong to this section (and sub-section for Primary).
+    # Only accept streams that belong to THIS exam's section (and sub-section),
+    # not the session workspace — admin login defaults workspace to PRIMARY.
     pairs_qs = SubjectAssignment.all_objects.filter(
-        school=school, is_active=True, school_section=exam_section_filter,
+        school=school, is_active=True, school_section=exam.school_section,
     )
     if exam.sub_section:
         pairs_qs = pairs_qs.filter(sub_section=exam.sub_section)
-    elif section == 'LOWER_PRIMARY':
+    elif exam.school_section == 'PRIMARY' and section == 'LOWER_PRIMARY':
         pairs_qs = pairs_qs.filter(sub_section='LOWER')
     valid_pairs = set(pairs_qs.values_list("class_name", "stream").distinct())
     if (class_name, stream) not in valid_pairs:
@@ -3351,17 +3353,24 @@ def _get_primary_performance(percentage, school=None, section=None, sub_section=
     if not section:
         section = get_current_school_section()
 
+    if section == 'LOWER_PRIMARY':
+        section = 'PRIMARY'
+        sub_section = sub_section or 'LOWER'
+
     if school and section:
-        from .grading_engine import resolve_scale_fast
+        from .grading_engine import resolve_scale_fast, prefetch_school_grading
         scale_data = resolve_scale_fast(school.pk, section, sub_section, subject_id=subject_id)
+        if not scale_data:
+            prefetch_school_grading(school)
+            scale_data = resolve_scale_fast(school.pk, section, sub_section, subject_id=subject_id)
         if scale_data:
             return get_subject_level_fast(percentage, scale_data)
 
     logging.getLogger("students.exams").error(
-        "GradingScale.subject_scale missing for school_id=%s section=%s. "
+        "GradingScale.subject_scale missing for school_id=%s section=%s sub_section=%s. "
         "Primary descriptor cannot be resolved. "
         "Configure it at /school-admin/grading-config/.",
-        getattr(school, 'id', None), section,
+        getattr(school, 'id', None), section, sub_section,
     )
     return 'NO CONFIG', 0
 
@@ -3392,31 +3401,49 @@ def select_exam_primary(request):
     school = get_request_school(request)
     section = get_request_school_section(request)
 
-    # Determine which section and sub_section to use for this view
+    # Workspace must match SchoolScopedManager + tenant IDOR exactly:
+    #   PRIMARY  → sub_section='UPPER' only
+    #   LOWER_PRIMARY → sub_section='LOWER' only
+    #   JSS → no sub_section
+    # If the list uses a looser filter than open, some rows 403 and HTMX
+    # silently fails to swap — tap looks dead.
+    # Legacy rows may have sub_section=NULL: include them when the class
+    # belongs to this sub-section (same policy the open path applies).
+    from .constants import LOWER_PRIMARY_CLASSES, UPPER_PRIMARY_CLASSES
+
     if section == 'LOWER_PRIMARY':
         exam_section = 'PRIMARY'
         exam_sub_section = 'LOWER'
+        _sub_ok_classes = LOWER_PRIMARY_CLASSES
     elif section == 'PRIMARY':
         exam_section = 'PRIMARY'
-        exam_sub_section = None  # Let assignments determine sub-section
+        exam_sub_section = 'UPPER'
+        _sub_ok_classes = UPPER_PRIMARY_CLASSES
     else:
         exam_section = 'JSS'
         exam_sub_section = None
+        _sub_ok_classes = None
 
     assignments = (
         SubjectAssignment.all_objects
         .filter(school=school, teacher_profile=teacher, school_section=exam_section, is_active=True)
-        .select_related('teacher_profile__user')
+        .select_related('teacher_profile__user', 'subject')
         .order_by('class_name', 'stream', 'subject__code')
     )
     if exam_sub_section:
-        assignments = assignments.filter(sub_section=exam_sub_section)
+        from django.db.models import Q
+        assignments = assignments.filter(
+            Q(sub_section=exam_sub_section)
+            | (Q(sub_section__isnull=True) & Q(class_name__in=_sub_ok_classes))
+        )
 
     active_exams = Exam.all_objects.filter(
         school=school, status='active', school_section=exam_section, is_deleted=False
     ).order_by('-created_at')
     if exam_sub_section:
-        active_exams = active_exams.filter(sub_section=exam_sub_section)
+        active_exams = active_exams.filter(
+            Q(sub_section=exam_sub_section) | Q(sub_section__isnull=True)
+        )
     active_exams = active_exams[:1]
 
     selected_assignment = None
@@ -3428,19 +3455,56 @@ def select_exam_primary(request):
     current_maximum_marks = 100
 
     if assignment_id and exam_id:
-        selected_assignment = get_school_object_or_403(
-            SubjectAssignment,
-            request,
-            id=assignment_id,
-            teacher_profile=teacher,
-        )
+        # Own assignment: load with all_objects (same universe as the list),
+        # then apply the same section policy as the list filter so a row that
+        # appears is always openable (list/open parity — no silent 403).
+        selected_assignment = SubjectAssignment.all_objects.filter(
+            school=school, id=assignment_id, teacher_profile=teacher, is_active=True,
+        ).first()
+        if selected_assignment is None:
+            selected_assignment = get_school_object_or_403(
+                SubjectAssignment,
+                request,
+                id=assignment_id,
+                teacher_profile=teacher,
+            )
+        else:
+            # Same sub-section policy as the list filter so a listed row always opens.
+            if selected_assignment.school_section != exam_section:
+                messages.error(request, "That assessment belongs to a different section.")
+                return _htmx_redirect(request, reverse('select_exam_primary'))
+            if exam_sub_section:
+                sub = selected_assignment.sub_section
+                sub_ok = (sub == exam_sub_section) or (
+                    sub is None and selected_assignment.class_name in _sub_ok_classes
+                )
+                if not sub_ok:
+                    messages.error(request, "That assessment belongs to a different sub-section.")
+                    return _htmx_redirect(request, reverse('select_exam_primary'))
 
-        selected_exam = get_school_object_or_403(
-            Exam,
-            request,
+        # Exam open: same universe + policy as active_exams list above so a
+        # listed row always opens (list/open parity — no silent 403/404).
+        # objects manager forces sub_section='UPPER'/'LOWER' and rejects NULL;
+        # the list allows NULL legacy exams via all_objects.
+        selected_exam = Exam.all_objects.filter(
+            school=school,
             id=exam_id,
             status='active',
-        )
+            is_deleted=False,
+            school_section=exam_section,
+        ).first()
+        if selected_exam is None:
+            selected_exam = get_school_object_or_403(
+                Exam,
+                request,
+                id=exam_id,
+                status='active',
+            )
+        elif exam_sub_section:
+            exam_sub = selected_exam.sub_section
+            if not (exam_sub == exam_sub_section or exam_sub is None):
+                messages.error(request, "That exam belongs to a different sub-section.")
+                return _htmx_redirect(request, reverse('select_exam_primary'))
 
         is_locked = AssessmentLock.objects.filter(
             school=school,
@@ -3637,7 +3701,10 @@ def select_exam_primary(request):
                     )
 
                 percentage = round((raw_score / maximum_marks) * 100)
-                descriptor, points = _get_primary_performance(percentage, school=school, section=exam_section, sub_section=exam_sub_section)
+                descriptor, points = _get_primary_performance(
+                    percentage, school=school, section=exam_section,
+                    sub_section=exam_sub_section or selected_assignment.sub_section or selected_exam.sub_section,
+                )
 
                 if existing:
                     # Update existing mark in-place (no delete+create)

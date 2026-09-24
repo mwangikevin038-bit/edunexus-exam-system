@@ -1777,7 +1777,7 @@ def admin_student_analytics(request, student_id):
 
 
 def _class_list_cache_key(school_id, grade, stream):
-    return f'class_list:{school_id}:{grade}:{stream}'
+    return f'class_list:{school_id}:{_safe_grade(grade)}:{_safe_grade(stream)}'
 
 
 _CLASS_LIST_CACHE_TTL = 600  # 10 minutes

@@ -730,6 +730,7 @@ def individual_report(request, student_id):
     ).select_related('user').first()
     if ct_q:
         class_teacher_name = ct_q.get_full_title()
+    class_teacher_signature = ct_q.signature.url if (ct_q and ct_q.signature) else ""
     marks_list = list(marks)
     for mark in marks_list:
         mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
@@ -910,6 +911,7 @@ def individual_report(request, student_id):
             'chart_data_json': chart_data_json,
             'class_teacher_remark': class_teacher_remark,
             'class_teacher_name':   class_teacher_name,
+            'class_teacher_signature': class_teacher_signature,
             'headteacher_comment': headteacher_comment,
             'closing_date': closing_date,
             'opening_date': opening_date,
@@ -1059,6 +1061,7 @@ def bulk_report_cards(request):
     ).select_related('user').first()
     if ct_q:
         class_teacher_name = ct_q.get_full_title()
+    class_teacher_signature = ct_q.signature.url if (ct_q and ct_q.signature) else ""
 
     ct_comment_mgr = ClassTeacherMasterComment.all_objects if is_admin_view else ClassTeacherMasterComment.objects
     master_comment = ct_comment_mgr.filter(
@@ -1189,6 +1192,7 @@ def bulk_report_cards(request):
             'chart_data_json':     chart_data_json,
             'class_teacher_remark': class_teacher_remark,
             'class_teacher_name':   class_teacher_name,
+            'class_teacher_signature': class_teacher_signature,
             'headteacher_comment': headteacher_comment,
             'closing_date':        closing_date,
             'opening_date':        opening_date,

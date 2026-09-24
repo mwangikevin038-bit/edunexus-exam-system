@@ -224,7 +224,13 @@
             <div class="rc-remark-box">
                 <div class="rc-remark-title">Class Teacher Remarks{% if student_data.class_teacher_name %}: {{ student_data.class_teacher_name }}{% endif %}</div>
                 <div class="rc-remark-text">{{ student_data.class_teacher_remark }}</div>
-                <div class="rc-signature">Signature: ____________________</div>
+                <div class="rc-signature">
+                    {% if student_data.class_teacher_signature %}
+                        <img src="{{ student_data.class_teacher_signature }}" alt="Class teacher signature" class="rc-signature-img">
+                    {% else %}
+                        Signature: ____________________
+                    {% endif %}
+                </div>
             </div>
             <div class="rc-remark-box">
                 <div class="rc-remark-title">Principal Remarks</div>

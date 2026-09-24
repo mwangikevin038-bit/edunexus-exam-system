@@ -1482,17 +1482,32 @@
 /* ═══════════════════════════════════════════════════════════════
    DESKTOP — hide mobile dashboards
    ═══════════════════════════════════════════════════════════════ */
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
     .dash-ios,
     .admin-ios {
         display: none;
     }
 }
 
+/* Dashboard iOS shells own the header — never show base mobile header */
+html.force-mobile .mobile-global-header,
+html.force-mobile .global-header {
+    display: none !important;
+}
+
+html.force-mobile .dash-ios,
+html.force-mobile .admin-ios {
+    display: flex !important;
+}
+
+html.force-mobile .td {
+    display: none !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    MOBILE — hide desktop content, show iOS shells
    ═══════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     /* Hide all desktop dashboard content */
     .td,
     .dashboard-master-grid-60-40,

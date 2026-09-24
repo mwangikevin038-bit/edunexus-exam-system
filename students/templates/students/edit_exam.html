@@ -18,8 +18,12 @@
 <style>
     .main-content {
         padding: 0 !important;
-        max-width: calc(100% - var(--sidebar-width)) !important;
-        margin-left: var(--sidebar-width) !important;
+    }
+    @media (min-width: 1024px) {
+        .main-content {
+            max-width: calc(100% - var(--sidebar-width)) !important;
+            margin-left: var(--sidebar-width) !important;
+        }
     }
 
     .app-content {

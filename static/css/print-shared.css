@@ -511,6 +511,13 @@ html, body {
     padding-top: 4px !important;
     margin-top: auto !important;
 }
+.rc-signature-img {
+    display: block !important;
+    height: 36px !important;
+    max-width: 160px !important;
+    object-fit: contain !important;
+    margin-top: 2px !important;
+}
 
 /* ── Grade Descriptors ─────────────────────────────────────── */
 .rc-descriptors {

@@ -2048,7 +2048,7 @@ body.sidebar-collapsed .main-content {
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Desktop Collapse Toggle ────────────────────────────────── */
-@media (min-width: 1025px) {
+@media (min-width: 1024px) {
     .sidebar-toggle {
         display: none;
     }
@@ -2060,7 +2060,7 @@ body.sidebar-collapsed .main-content {
 }
 
 /* ── Tablet ─────────────────────────────────────────────────── */
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
     .sidebar {
         transform: translateX(-100%);
     }
@@ -2086,7 +2086,7 @@ body.sidebar-collapsed .main-content {
 }
 
 /* ── Mobile ─────────────────────────────────────────────────── */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .bottom-nav {
         display: flex;
         z-index: 900;
@@ -2389,7 +2389,7 @@ body.sidebar-collapsed .main-content {
 /* ═══════════════════════════════════════════════════════════════
    MOBILE SUB-NAV (inside iOS shell or standalone)
    ═══════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .dm-subnav {
         position: relative !important;
         top: auto !important;
@@ -2860,3 +2860,72 @@ body.sidebar-collapsed .main-content {
     transition: background .12s, color .12s;
 }
 .event-btn-save:hover { background: #14b8a6; color: #fff; }
+
+/* ═══════════════════════════════════════════════════════════════
+   FORCE MOBILE — real phones only (html.force-mobile).
+   Overrides spoofed-wide viewports (Chrome "Desktop site", etc.)
+   so desktop chrome never wins on a phone.
+   ═══════════════════════════════════════════════════════════════ */
+html.force-mobile .premium-sidebar,
+html.force-mobile .hamburger-btn,
+html.force-mobile .sidebar-overlay,
+html.force-mobile .global-header,
+html.force-mobile .topbar,
+html.force-mobile .mobile-topbar,
+html.force-mobile .sub-tab-bar {
+    display: none !important;
+}
+
+html.force-mobile .sub-nav-bar:not(.dm-subnav) {
+    display: none !important;
+}
+
+html.force-mobile .bottom-nav {
+    display: flex !important;
+    z-index: 900 !important;
+}
+
+html.force-mobile .main-content,
+html.force-mobile body.ps-collapsed .main-content,
+html.force-mobile .app-content {
+    margin-left: 0 !important;
+    max-width: 100% !important;
+}
+
+html.force-mobile .mobile-global-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    background: #ffffff;
+    border-bottom: 0.5px solid rgba(0,0,0,0.08);
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+}
+
+/* Mobile page shells always win on phones (even if viewport ≥1024) */
+html.force-mobile .dash-ios,
+html.force-mobile .admin-ios {
+    display: flex !important;
+}
+
+html.force-mobile .rc-shell,
+html.force-mobile .lm-shell,
+html.force-mobile .pf-shell,
+html.force-mobile .en-shell,
+html.force-mobile .cp-shell,
+html.force-mobile .rs-shell,
+html.force-mobile .rv-shell {
+    display: flex !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+html.force-mobile .td,
+html.force-mobile .pf-desktop,
+html.force-mobile .rd-desktop {
+    display: none !important;
+}

@@ -953,11 +953,14 @@ def download_individual_report_pdf(request, student_id):
     ).select_related('user').first()
     if ct_q:
         class_teacher_name = ct_q.get_full_title()
+    class_teacher_signature = ""
+    if ct_q and ct_q.signature:
+        class_teacher_signature = request.build_absolute_uri(ct_q.signature.url) if request else ct_q.signature.url
 
     marks_list = list(marks)
     for mark in marks_list:
         mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
-        mark.teacher_name = teacher_map.get(mark.subject.code, '\u2014')
+        mark.teacher_name = teacher_map.get(mark.subject.code, '—')
         if is_primary and not mark.is_absent:
             pct = mark.score or 0
             mark.performance_level, mark.points = _get_primary_performance(pct)
@@ -1003,7 +1006,8 @@ def download_individual_report_pdf(request, student_id):
     chart_class_avg = [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent]
 
     # Check Redis cache first before generating new chart
-    chart_cache_key = f"student_chart_{student.id}_{year}_{term}"
+    from school.cache_keys import sanitize_cache_part
+    chart_cache_key = f"student_chart_{student.id}_{year}_{sanitize_cache_part(term)}"
     chart_svg = cache.get(chart_cache_key)
 
     if not chart_svg:
@@ -1132,6 +1136,7 @@ def download_individual_report_pdf(request, student_id):
             'chart_svg': chart_svg,
             'class_teacher_remark': class_teacher_remark,
             'class_teacher_name':   class_teacher_name,
+            'class_teacher_signature': class_teacher_signature,
             'headteacher_comment': headteacher_comment,
             'closing_date': closing_date,
             'opening_date': opening_date,
@@ -1260,11 +1265,14 @@ def individual_report_print_html(request, student_id):
     ).select_related('user').first()
     if ct_q:
         class_teacher_name = ct_q.get_full_title()
+    class_teacher_signature = ""
+    if ct_q and ct_q.signature:
+        class_teacher_signature = request.build_absolute_uri(ct_q.signature.url) if request else ct_q.signature.url
 
     marks_list = list(marks)
     for mark in marks_list:
         mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
-        mark.teacher_name = teacher_map.get(mark.subject.code, '\u2014')
+        mark.teacher_name = teacher_map.get(mark.subject.code, '—')
         if is_primary and not mark.is_absent:
             pct = mark.score or 0
             mark.performance_level, mark.points = _get_primary_performance(pct)
@@ -1308,7 +1316,8 @@ def individual_report_print_html(request, student_id):
     chart_student = [m.score for m in marks_list if not m.is_absent]
     chart_class_avg = [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent]
 
-    chart_cache_key = f"student_chart_{student.id}_{year}_{term}"
+    from school.cache_keys import sanitize_cache_part
+    chart_cache_key = f"student_chart_{student.id}_{year}_{sanitize_cache_part(term)}"
     chart_svg = cache.get(chart_cache_key)
     if not chart_svg:
         chart_svg = generate_premium_vector_chart_svg(chart_labels, chart_student, chart_class_avg)
@@ -1318,7 +1327,7 @@ def individual_report_print_html(request, student_id):
     overall_plv = calculate_primary_plv(total_marks, assessed_subjects, sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks)
 
     from ..models import ClassTeacherMasterComment, SchoolHeadteacherComment
-    master_comment = ClassTeacherMasterComment.objects.filter(
+    master_comment = ClassTeacherMasterComment.all_objects.filter(
         school=school, year=year, term=term, grade=student.class_name,
         stream=student.stream, exam_type=db_assessment,
     ).first()
@@ -1391,6 +1400,7 @@ def individual_report_print_html(request, student_id):
         'chart_svg':           chart_svg,
         'class_teacher_remark': class_teacher_remark,
         'class_teacher_name':   class_teacher_name,
+        'class_teacher_signature': class_teacher_signature,
         'headteacher_comment': headteacher_comment,
         'closing_date':        closing_date,
         'opening_date':        opening_date,
@@ -1416,6 +1426,7 @@ def individual_report_print_html(request, student_id):
             'chart_svg': chart_svg,
             'class_teacher_remark': class_teacher_remark,
             'class_teacher_name':   class_teacher_name,
+            'class_teacher_signature': class_teacher_signature,
             'headteacher_comment': headteacher_comment,
             'closing_date': closing_date,
             'opening_date': opening_date,

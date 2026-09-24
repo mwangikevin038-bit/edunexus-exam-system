@@ -286,7 +286,7 @@
 }
 
 /* ===== MOBILE REPORT CARDS ===== */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .reports-page {
         padding: var(--space-3);
         padding-top: calc(var(--mobile-topbar) + var(--space-3));

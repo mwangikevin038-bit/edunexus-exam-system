@@ -3,7 +3,7 @@
 
 {% block sub_tabs %}
 <style>
-  @media(max-width:768px){
+  @media (max-width: 1023px){
     .app-content{background:transparent!important}
   }
 </style>
@@ -43,8 +43,12 @@
 <style>
     .main-content {
         padding: 0 !important;
-        max-width: calc(100% - var(--sidebar-width)) !important;
-        margin-left: var(--sidebar-width) !important;
+    }
+    @media (min-width: 1024px) {
+        .main-content {
+            max-width: calc(100% - var(--sidebar-width)) !important;
+            margin-left: var(--sidebar-width) !important;
+        }
     }
     .app-content { background: #f8fafc; }
 
@@ -492,7 +496,7 @@
     /* ════════════════════════════════════════════════════════════
        MOBILE — iOS 17 Premium
        ════════════════════════════════════════════════════════════ */
-    @media (max-width: 768px) {
+    @media (max-width: 1023px) {
         body{background:linear-gradient(180deg,#C8E6C9 0%,#E8F5E9 40%,#f5f5f5 100%)!important;min-height:100dvh}
         .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;background:transparent!important}
         .app-content{background:transparent!important;padding:0!important;min-height:100dvh}

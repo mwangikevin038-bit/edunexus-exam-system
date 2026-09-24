@@ -24,8 +24,12 @@
 <style>
     .main-content {
         padding: 0 !important;
-        max-width: calc(100% - var(--sidebar-width)) !important;
-        margin-left: var(--sidebar-width) !important;
+    }
+    @media (min-width: 1024px) {
+        .main-content {
+            max-width: calc(100% - var(--sidebar-width)) !important;
+            margin-left: var(--sidebar-width) !important;
+        }
     }
 
     .app-content {
@@ -252,7 +256,7 @@
         font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 1023px) {
         .main-content {
             padding: 0 !important;
             max-width: 100% !important;

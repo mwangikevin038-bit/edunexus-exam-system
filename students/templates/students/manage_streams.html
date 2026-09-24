@@ -24,8 +24,12 @@
 <style>
     .main-content {
         padding: 0 !important;
-        max-width: calc(100% - var(--sidebar-width)) !important;
-        margin-left: var(--sidebar-width) !important;
+    }
+    @media (min-width: 1024px) {
+        .main-content {
+            max-width: calc(100% - var(--sidebar-width)) !important;
+            margin-left: var(--sidebar-width) !important;
+        }
     }
 
     .app-content {
@@ -342,7 +346,7 @@
     /* Mobile Cards */
     .streams-mobile-cards { display: none; }
 
-    @media (max-width: 768px) {
+    @media (max-width: 1023px) {
         .main-content { padding: 0 !important; max-width: 100% !important; margin-left: 0 !important; }
         .classes-page { padding: 12px 16px 80px; }
         .classes-card { border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: none; padding: 0; overflow: hidden; }
@@ -742,7 +746,7 @@
 .split-num-btn:hover { border-color: #22C55E; background: #f0fdf4; }
 .split-num-btn.active { border-color: #22C55E; background: #f0fdf4; color: #199E41; }
 .split-num-btn.active span:first-child { color: #199E41; }
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     #splitModal > div {
         width: 96vw; border-radius: 20px; max-height: 92vh;
         box-shadow: 0 25px 60px rgba(0,0,0,0.3);

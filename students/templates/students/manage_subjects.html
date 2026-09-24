@@ -24,8 +24,12 @@
 <style>
     .main-content {
         padding: 0 !important;
-        max-width: calc(100% - var(--sidebar-width)) !important;
-        margin-left: var(--sidebar-width) !important;
+    }
+    @media (min-width: 1024px) {
+        .main-content {
+            max-width: calc(100% - var(--sidebar-width)) !important;
+            margin-left: var(--sidebar-width) !important;
+        }
     }
     .app-content { background: #F1F5F9; }
     .classes-page {
@@ -281,7 +285,7 @@
     /* Mobile Cards */
     .subjects-mobile-cards { display: none; }
 
-    @media (max-width: 768px) {
+    @media (max-width: 1023px) {
         .main-content { padding: 0 !important; max-width: 100% !important; margin-left: 0 !important; }
         .classes-page { padding: 12px 16px 80px; }
         .classes-card { border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: none; padding: 0; overflow: hidden; }

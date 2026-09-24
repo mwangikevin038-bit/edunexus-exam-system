@@ -341,7 +341,7 @@
 /* ═══════════════════════════════════════════════════════════════
    MOBILE — Premium iOS 17 layout
    ═══════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     /* Hide desktop-only elements */
     .mobile-topbar,
     .global-header,
@@ -446,6 +446,30 @@
     .cp-body {
         padding: 8px 16px 120px !important;
         background: transparent !important;
+        /* Own scroll container: keep sticky header/subnav from covering rows */
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+    }
+
+    /* Every assessment row must be tappable — never overlay it */
+    .cp-assess {
+        pointer-events: auto !important;
+        position: relative !important;
+        z-index: 1 !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: rgba(76, 175, 80, 0.18);
+    }
+
+    .cp-items {
+        pointer-events: auto !important;
+        position: relative !important;
+        z-index: 1 !important;
+    }
+
+    .cp-group {
+        pointer-events: auto !important;
+        position: relative !important;
     }
 
     /* ── Group cards — premium flat white ─────────────────── */
@@ -571,7 +595,7 @@
 /* ═══════════════════════════════════════════════════════════════
    DESKTOP — natural document scroll, visible scrollbar
    ═══════════════════════════════════════════════════════════════ */
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
     .cp-shell {
         max-width: 880px;
         margin: 0 auto;

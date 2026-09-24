@@ -46,8 +46,12 @@
 
     .main-content {
         padding: 0 !important;
-        max-width: calc(100% - var(--sidebar-width)) !important;
-        margin-left: var(--sidebar-width) !important;
+    }
+    @media (min-width: 1024px) {
+        .main-content {
+            max-width: calc(100% - var(--sidebar-width)) !important;
+            margin-left: var(--sidebar-width) !important;
+        }
     }
 
     .app-content {
@@ -520,7 +524,7 @@
        MANAGE EXAMS — Premium Mobile (iOS 17 / Zeraki-quality)
        All phone sizes · Uses dm-* design tokens from dashboard-mobile
        ═══════════════════════════════════════════════════════════════ */
-    @media (max-width: 768px) {
+    @media (max-width: 1023px) {
         /* ── Layout reset ── */
         .main-content {
             padding: 0 !important;

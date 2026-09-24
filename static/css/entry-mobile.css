@@ -882,7 +882,7 @@
 }
 
 /* ── Mobile — Hide base elements ────────────────────────────── */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     :root {
         --en-surface: #FFFFFF;
         --en-surface-elevated: #FFFFFF;
@@ -1091,7 +1091,7 @@
    scrollbar on .en-body and position:fixed on .en-shell, the user
    can't see there's anything to scroll and the document scrollbar
    is never engaged. Fall back to a plain flowing layout here. */
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
     :root { --en-bg: #eef2f7; }
     .en-header {
         background: none;

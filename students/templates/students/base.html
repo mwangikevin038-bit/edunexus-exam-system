@@ -21,22 +21,32 @@
         }
     </script>
 
-    <!-- Chrome "Desktop site" forces a ~980px layout on phones and scales
-         it down (~42%), making mobile CSS look tiny. Counteract so mobile
-         is always the readable default. -->
+    <!-- Phones always use mobile CSS. Chrome "Desktop site" can fake a
+         ~980–1024px layout; mark real phones so desktop chrome never wins. -->
     <script>
     (function () {
-        function fitMobile() {
+        function markPhone() {
             try {
-                if (screen.width > 500) return;
-                if (window.innerWidth < 900) return;
-                var ratio = window.innerWidth / screen.width;
-                if (ratio < 1.15) return;
-                document.documentElement.style.zoom = String(ratio);
+                var phone = screen.width <= 500
+                    || /Android.+Mobile|iPhone|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+                document.documentElement.classList.toggle('force-mobile', !!phone);
             } catch (e) {}
         }
-        fitMobile();
-        window.addEventListener('resize', fitMobile, { passive: true });
+        markPhone();
+        window.addEventListener('resize', markPhone, { passive: true });
+    })();
+    </script>
+
+    <!-- Chrome "Desktop site" can force a ~980px layout on phones. Do NOT
+         apply html zoom (it makes text explode and varies by network/cache).
+         Phone detection above + force-mobile CSS is enough for a stable view. -->
+    <script>
+    (function () {
+        function clearBadZoom() {
+            try { document.documentElement.style.zoom = ''; } catch (e) {}
+        }
+        clearBadZoom();
+        window.addEventListener('resize', clearBadZoom, { passive: true });
     })();
     </script>
 
@@ -515,7 +525,7 @@
         });
 
         window.addEventListener('resize', () => {
-            if (window.innerWidth > 768) closeMenu();
+            if (window.innerWidth > 1023) closeMenu();
         });
 
         // ── Mobile Menu Sheet ────────────────────────────────────
@@ -595,6 +605,19 @@
         // Override alert() with toast for non-critical messages
         window._originalAlert = window.alert;
         window.alert = function(msg) { showToast(msg, 'error'); };
+
+        // Surface failed HTMX requests (4xx/5xx are not swapped) as toasts.
+        // Without this, a rejected hx-get looks like a dead tap.
+        document.addEventListener('htmx:responseError', function(e) {
+            var xhr = e.detail && e.detail.xhr;
+            var status = xhr ? xhr.status : 0;
+            var path = (xhr && xhr.responseURL) || '';
+            if (path.indexOf('/save-mark') !== -1 || path.indexOf('/return') !== -1) return;
+            showToast('Request failed' + (status ? ' (HTTP ' + status + ')' : '') + '. Refresh and try again.', 'error');
+        });
+        document.addEventListener('htmx:sendError', function() {
+            showToast('Network error — check your connection.', 'error');
+        });
 
         showLoader();
         window.addEventListener('load', hideLoader);

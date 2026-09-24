@@ -149,14 +149,17 @@ class Command(BaseCommand):
             exp_section, exp_sub = _expected_pair(sa.class_name)
             if exp_section is None:
                 continue
-            if sa.school_section != exp_section:
+            section_bad = sa.school_section != exp_section
+            sub_bad = exp_section == 'PRIMARY' and (sa.sub_section or '') != (exp_sub or '')
+            if section_bad or sub_bad:
                 findings["subject_assignments_bad_section"].append({
                     "id": sa.id, "class_name": sa.class_name, "stream": sa.stream,
-                    "school_section": sa.school_section, "expected": exp_section,
+                    "school_section": sa.school_section, "sub_section": sa.sub_section,
+                    "expected_section": exp_section, "expected_sub": exp_sub,
                 })
                 if do_fix:
                     sa.school_section = exp_section
-                    sa.sub_section = exp_sub or None
+                    sa.sub_section = exp_sub
                     sa.save(update_fields=["school_section", "sub_section"])
 
         # ── Exams ─────────────────────────────────────────────────────────

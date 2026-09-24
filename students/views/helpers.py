@@ -2039,6 +2039,7 @@ def build_report_card_context(
     ).filter(Q(assigned_task__icontains=stream)).select_related('user').first()
     if ct_q:
         class_teacher_name = ct_q.get_full_title()
+    class_teacher_signature = ct_q.signature.url if (ct_q and ct_q.signature) else ""
 
     # ── 11. Master comments (class teacher + headteacher) ─────────────────────
     master_comment = ClassTeacherMasterComment.objects.filter(
@@ -2122,7 +2123,11 @@ def build_report_card_context(
         # for the rationale. Cached per (student, exam) in Redis.
         chart_svg = ''
         if include_chart_svg and chart_labels:
-            chart_cache_key = f"student_chart_{student.id}_{year}_{term}_{db_assessment}"
+            from school.cache_keys import sanitize_cache_part
+            chart_cache_key = (
+                f"student_chart_{student.id}_{year}_"
+                f"{sanitize_cache_part(term)}_{sanitize_cache_part(db_assessment)}"
+            )
             from django.core.cache import cache as _cache
             chart_svg = _cache.get(chart_cache_key)
             if not chart_svg:
@@ -2206,6 +2211,7 @@ def build_report_card_context(
             'chart_svg':            chart_svg or '',
             'class_teacher_remark': class_teacher_remark,
             'class_teacher_name':   class_teacher_name,
+            'class_teacher_signature': class_teacher_signature,
             'headteacher_comment':  headteacher_comment,
             'closing_date':         closing_date,
             'opening_date':         opening_date,
@@ -2368,7 +2374,11 @@ def upsert_mark(
 
 def get_report_forms_cache_key(school_id, grade, stream, exam_id):
     """Generate a cache key for report forms display."""
-    return f"report_forms:{school_id}:{grade}:{stream}:{exam_id}"
+    from school.cache_keys import sanitize_cache_part
+    return (
+        f"report_forms:{school_id}:"
+        f"{sanitize_cache_part(grade)}:{sanitize_cache_part(stream)}:{exam_id}"
+    )
 
 
 def invalidate_report_forms_cache(school_id, grade=None, stream=None, exam_id=None):

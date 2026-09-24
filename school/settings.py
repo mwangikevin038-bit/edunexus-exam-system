@@ -41,7 +41,7 @@ LOCAL_ALLOWED_HOSTS = [
     '192.168.57.195',
     '192.168.202.230',
     '192.168.48.107',
-    '192.168.48.64',
+    '192.168.39.65',
     '192.168.52.230',
     '192.168.242.230',
     '192.168.62.11',
@@ -160,26 +160,32 @@ if _REDIS_URL:
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': _REDIS_URL,
+            'KEY_FUNCTION': 'school.cache_keys.safe_make_key',
         },
         'csv_upload': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': _REDIS_URL,
+            'KEY_FUNCTION': 'school.cache_keys.safe_make_key',
         },
         'pdf_generation': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': _REDIS_URL,
+            'KEY_FUNCTION': 'school.cache_keys.safe_make_key',
         },
     }
 else:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'KEY_FUNCTION': 'school.cache_keys.safe_make_key',
         },
         'csv_upload': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'KEY_FUNCTION': 'school.cache_keys.safe_make_key',
         },
         'pdf_generation': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'KEY_FUNCTION': 'school.cache_keys.safe_make_key',
         },
     }
 RATELIMIT_DISABLE = os.environ.get('RATELIMIT_DISABLE', 'False') == 'True'
@@ -257,7 +263,7 @@ else:
 CSRF_TRUSTED_ORIGINS = [
     'http://*.localhost:8000',
     'http://192.168.48.107:8000',
-    'http://192.168.48.64:8000',
+    'http://192.168.39.65:8000',
     'http://192.168.36.186:8000',
     'http://192.168.57.195:8000',
     'http://192.168.242.230:8000',

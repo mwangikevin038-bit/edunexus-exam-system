@@ -130,7 +130,7 @@
     .empty-hub h4 { font-size: 14px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
     .empty-hub p { font-size: 12px; color: var(--ink-5); }
 
-    @media (min-width: 769px) {
+    @media (min-width: 1024px) {
         .hub-body { padding: 24px 32px 48px; }
         .hub-title { font-size: 24px; }
         .hub-stats { grid-template-columns: repeat(4, 1fr); }
@@ -325,7 +325,7 @@ function initHubCharts() {
     hubChartsInitialized = true;
 
     Chart.defaults.font.family = 'Inter';
-    var isMobile = window.innerWidth < 769;
+    var isMobile = window.innerWidth < 1024;
     var C = { muted:'#94a3b8', line:'rgba(0,0,0,0.04)' };
     var tt = {
         backgroundColor:'rgba(15,23,42,0.92)', titleColor:'#f8fafc', bodyColor:'#94a3b8',

@@ -926,20 +926,27 @@ def manage_faculty_matrix(request):
                     f"and cannot be assigned here.")
                 return redirect('manage_faculty_matrix')
 
-            sub_section = None
-            if section == 'LOWER_PRIMARY':
-                sub_section = 'LOWER'
-            elif section == 'PRIMARY':
-                _, sub_section = section_for_class(grade)
+            # Always derive section/sub from the GRADE (not the workspace token),
+            # so Grade 5 is never written as LOWER just because the admin was
+            # in the Lower Primary workspace when they assigned.
+            _, sub_section = section_for_class(grade)
+            db_school_section = 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS'
+            if sub_section is not None or section in ('LOWER_PRIMARY', 'PRIMARY'):
+                db_school_section = 'PRIMARY'
+            if section == 'JSS':
+                db_school_section = 'JSS'
+                sub_section = None
 
-            SubjectAssignment.objects.update_or_create(
+            # all_objects: scoped manager hides LOWER rows in UPPER workspace
+            # and was skipping/creating wrong rows for Grade 1-3.
+            SubjectAssignment.all_objects.update_or_create(
                 school=school,
                 class_name=grade,
                 stream=stream,
                 subject=subject,
                 defaults={
                     'teacher_profile_id': teacher_id,
-                    'school_section': 'PRIMARY' if section in ('LOWER_PRIMARY', 'PRIMARY') else 'JSS',
+                    'school_section': db_school_section,
                     'sub_section': sub_section,
                 }
             )

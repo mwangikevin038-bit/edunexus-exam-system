@@ -187,7 +187,7 @@
   .ar-empty svg{width:48px;height:48px;stroke:#cbd5e1;margin-bottom:12px}
   .print-watermark{display:none}
 
-  @media(max-width:768px){
+  @media (max-width: 1023px){
     .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
     .app-content{margin-top:0!important}
     .ar-wrap{padding:0 0 calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 16px)!important;background:#f8fafc!important}
@@ -1356,7 +1356,7 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
         grad.addColorStop(1,'rgba(255,255,255,0)');
         potDatasets.push({label:gradeName+' '+s,data:d.pot_streams_data[s]||[],fill:true,backgroundColor:grad,borderColor:potColors[i%potColors.length],borderWidth:2.5,tension:0.4,pointRadius:5,pointBackgroundColor:'#ffffff',pointBorderColor:potColors[i%potColors.length],pointBorderWidth:2.5,pointHoverRadius:8,pointHoverBackgroundColor:potColors[i%potColors.length],pointHoverBorderColor:'#fff',pointHoverBorderWidth:3});
       });
-      var isMobile=window.innerWidth<=768;
+      var isMobile=window.innerWidth <= 1023;
       new Chart(potCtx.getContext('2d'),{
         type:'line',
         data:{labels:d.pot_labels,datasets:potDatasets},
@@ -1430,7 +1430,7 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
       'var oc=document.getElementById("arOverallChart");' +
       'if(oc){var pcm={"EE":"#059669","ME":"#2563eb","AE":"#d97706","BE":"#dc2626"};var ocC=p.ocLabels.map(function(lv){return pcm[lv]||"#6366f1"});new Chart(oc.getContext("2d"),{type:"bar",data:{labels:p.ocLabels,datasets:[{label:"Number of Students",data:p.ocData,backgroundColor:ocC,borderRadius:6,borderSkipped:false,barPercentage:0.6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:"#f1f5f9"},ticks:{font:{size:10,weight:"500",family:"Times New Roman, Times, serif"},color:"#94a3b8"},title:{display:true,text:"Number of Students",font:{size:11,weight:"700",family:"Times New Roman, Times, serif"},color:"#475569"}}}}})}' +
       'var pot=document.getElementById("arPOTChart");' +
-      'if(pot&&p.potLabels.length&&p.potDatasets.length){var pc=["#0d9488","#2563eb","#e11d48","#d97706","#7c3aed","#0891b2","#c026d3"];var isM=window.innerWidth<=768;var pDS=p.potDatasets.map(function(ds,i){return{label:ds.label,data:ds.data,fill:i>0,borderColor:i===0?"#0f172a":pc[(i-1)%pc.length],backgroundColor:i===0?"#0f172a":pc[(i-1)%pc.length],borderWidth:i===0?3:2.5,tension:0.4,pointRadius:i===0?6:5,pointBackgroundColor:"#ffffff",pointBorderColor:i===0?"#0f172a":pc[(i-1)%pc.length],pointBorderWidth:i===0?3:2.5}});new Chart(pot.getContext("2d"),{type:"line",data:{labels:p.potLabels,datasets:pDS},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:isM?"bottom":"right",labels:{usePointStyle:true,pointStyle:"circle",boxWidth:isM?8:10,padding:isM?10:18,font:{size:isM?10:12,weight:"700",family:"Times New Roman, Times, serif"},color:"#1e293b"}}},scales:{x:{offset:true,ticks:{font:{size:isM?8:11,weight:"600",family:"Times New Roman, Times, serif"},color:"#475569",maxRotation:isM?45:0,minRotation:isM?45:0}},y:{min:1,grace:"10%",ticks:{font:{size:isM?9:11,weight:"600",family:"Times New Roman, Times, serif"},color:"#64748b",stepSize:1},grid:{color:"#d1d5db"},border:{display:false}}}}})}' +
+      'if(pot&&p.potLabels.length&&p.potDatasets.length){var pc=["#0d9488","#2563eb","#e11d48","#d97706","#7c3aed","#0891b2","#c026d3"];var isM=window.innerWidth <= 1023;var pDS=p.potDatasets.map(function(ds,i){return{label:ds.label,data:ds.data,fill:i>0,borderColor:i===0?"#0f172a":pc[(i-1)%pc.length],backgroundColor:i===0?"#0f172a":pc[(i-1)%pc.length],borderWidth:i===0?3:2.5,tension:0.4,pointRadius:i===0?6:5,pointBackgroundColor:"#ffffff",pointBorderColor:i===0?"#0f172a":pc[(i-1)%pc.length],pointBorderWidth:i===0?3:2.5}});new Chart(pot.getContext("2d"),{type:"line",data:{labels:p.potLabels,datasets:pDS},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:isM?"bottom":"right",labels:{usePointStyle:true,pointStyle:"circle",boxWidth:isM?8:10,padding:isM?10:18,font:{size:isM?10:12,weight:"700",family:"Times New Roman, Times, serif"},color:"#1e293b"}}},scales:{x:{offset:true,ticks:{font:{size:isM?8:11,weight:"600",family:"Times New Roman, Times, serif"},color:"#475569",maxRotation:isM?45:0,minRotation:isM?45:0}},y:{min:1,grace:"10%",ticks:{font:{size:isM?9:11,weight:"600",family:"Times New Roman, Times, serif"},color:"#64748b",stepSize:1},grid:{color:"#d1d5db"},border:{display:false}}}}})}' +
     '})();';
     container.appendChild(initScript);
   }

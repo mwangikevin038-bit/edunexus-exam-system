@@ -63,7 +63,7 @@
 
   @media(max-width:640px){.clp-page{padding:16px 16px 40px}}
 
-  @media(max-width:768px){
+  @media (max-width: 1023px){
     .main-content{padding:0!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
     .app-content{margin-top:0!important}
     .clp-page{padding:0 0 96px!important;max-width:100%}
@@ -334,7 +334,7 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
     var mobile=document.querySelector('.tl-mobile-view');
     var desktop=document.querySelector('.clp-sheet-card');
     if(!mobile||!desktop) return;
-    if(window.innerWidth<=768){
+    if(window.innerWidth <= 1023){
       mobile.style.display='block';
       desktop.style.display='none';
     }else{

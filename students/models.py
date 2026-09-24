@@ -990,6 +990,7 @@ class SubjectAssignment(SchoolScopedModel):
 
     def clean(self):
         super().clean()
+        self._derive_section_from_class()
         if self.subject_id:
             if self.subject.grade != self.class_name:
                 raise ValidationError({
@@ -999,6 +1000,20 @@ class SubjectAssignment(SchoolScopedModel):
                 raise ValidationError({
                     'subject': f"Subject {self.subject.code} belongs to {self.subject.get_school_section_display()}, but assignment is for {self.get_school_section_display()}."
                 })
+
+    def _derive_section_from_class(self):
+        """Force school_section/sub_section from class_name (single source of truth)."""
+        cn = (self.class_name or '').strip()
+        if cn in ('Grade 1', 'Grade 2', 'Grade 3'):
+            self.school_section, self.sub_section = 'PRIMARY', 'LOWER'
+        elif cn in ('Grade 4', 'Grade 5', 'Grade 6'):
+            self.school_section, self.sub_section = 'PRIMARY', 'UPPER'
+        elif cn in ('Grade 7', 'Grade 8', 'Grade 9'):
+            self.school_section, self.sub_section = 'JSS', None
+
+    def save(self, *args, **kwargs):
+        self._derive_section_from_class()
+        super().save(*args, **kwargs)
 
 #------------------------------MARK SUBMISSION-------------------------------------#
 class MarkSubmission(SchoolScopedModel):

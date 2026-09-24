@@ -942,7 +942,7 @@
 /* ═══════════════════════════════════════════════════════════════
    MOBILE — Hide base template elements + desktop wrapper
    ═══════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     /* Hide the desktop content wrapper */
     .rd-desktop {
         display: none !important;
@@ -984,7 +984,7 @@
 /* ═══════════════════════════════════════════════════════════════
    DESKTOP — Hide mobile shell
    ═══════════════════════════════════════════════════════════════ */
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
     .rs-shell {
         display: none !important;
     }

@@ -405,7 +405,7 @@
 /* ═══════════════════════════════════════════════════════════════
    MOBILE — Hide base template elements
    ═══════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .mobile-topbar {
         display: none !important;
     }
@@ -428,7 +428,7 @@
 /* ═══════════════════════════════════════════════════════════════
    DESKTOP — Hide mobile shell
    ═══════════════════════════════════════════════════════════════ */
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
     .lm-shell {
         display: none;
     }
