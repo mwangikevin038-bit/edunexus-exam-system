@@ -3190,7 +3190,7 @@ def teacher_report_forms_display(request):
         exams_qs = exams_qs.filter(school_section='PRIMARY', sub_section='UPPER')
     else:
         exams_qs = exams_qs.filter(school_section='JSS')
-    for ex in exams_qs.order_by('-year', 'term', 'name'):
+    for ex in exams_qs.order_by('-year', '-term', 'name'):
         available_exams.append({
             'id': str(ex.id), 'label': f"{ex.name} ({ex.term} {ex.year})",
             'name': ex.name, 'term': ex.term, 'year': ex.year,
@@ -3438,7 +3438,7 @@ def api_exams_for_class(request):
         sa_filters &= Q(school_section='JSS')
     total_subjects = SubjectAssignment.all_objects.filter(sa_filters).values('subject').distinct().count()
 
-    all_exams = list(qs.order_by('-year', 'term', 'name'))
+    all_exams = list(qs.order_by('-year', '-term', 'name'))
 
     complete_exams = []
     for exam in all_exams:
@@ -4776,7 +4776,7 @@ def report_forms_display(request):
     available_exams = [
         {'id': str(ex.id), 'label': f"{ex.name} ({ex.term} {ex.year})",
          'name': ex.name, 'term': ex.term, 'year': ex.year}
-        for ex in exams_qs.order_by('-year', 'term', 'name')
+        for ex in exams_qs.order_by('-year', '-term', 'name')
     ]
 
     view_context = {

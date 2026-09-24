@@ -1230,7 +1230,7 @@ class Exam(SchoolScopedModel):
 
     class Meta:
         unique_together = ('school', 'name', 'term', 'year', 'school_section', 'sub_section')
-        ordering = ['-year', 'term', 'name']
+        ordering = ['-year', '-term', 'name']
         indexes = [
             models.Index(fields=['school', 'year', 'term'], name='exam_school_term_idx'),
         ]

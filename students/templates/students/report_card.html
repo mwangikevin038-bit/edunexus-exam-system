@@ -264,6 +264,288 @@
     }
 </style>
 
+<script type="text/plain" id="pagePrintCSS">
+@page { size: A4 portrait; margin: 5mm 5mm 8mm 5mm; }
+@page { @bottom-center { content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026"; font-family: "Times New Roman", Times, serif; font-size: 7pt; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4pt; border-top: 0.5pt solid #cbd5e1; width: 70%; padding-top: 3pt; } @bottom-right { content: none; } }
+@page landscape { size: A4 portrait; margin: 5mm 5mm 8mm 5mm; }
+
+* {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    transition: none !important;
+    animation: none !important;
+}
+
+body, html, .app-content, .main-content {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+#reportCardsContainer, .rv-scroll {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    color: #1C1C1E !important;
+    overflow: visible !important;
+}
+.rc-card-scroll, .rv-card-scroll {
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.rc-card-scroll::after, .rv-card-scroll::after { display: none !important; }
+
+.report-card, #reportCardsContainer .report-card {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: .18in .35in .20in .55in !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    position: relative !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    color: #1C1C1E !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background: white !important;
+}
+.report-card + .report-card { page-break-before: always !important; break-before: page !important; }
+.report-card:last-child { page-break-after: auto !important; break-after: auto !important; }
+
+.report-card::before {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    left: 14px !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 19px !important;
+    background: var(--section-accent, #305CDE) !important;
+    border-radius: 0 20px 20px 0 !important;
+    z-index: 1 !important;
+}
+
+.report-content, #reportCardsContainer .report-content {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+}
+
+#reportCardsContainer .rc-header, .rc-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding-bottom: 4px !important;
+    margin-bottom: 2px !important;
+    position: relative !important;
+    border-bottom: none !important;
+    width: 100% !important;
+}
+.rc-header::after { display: none !important; }
+#reportCardsContainer .report-logo, #reportCardsContainer .rc-logo-placeholder,
+.report-logo, .rc-logo-placeholder {
+    width: 72px !important;
+    height: 72px !important;
+    border-radius: 8px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+}
+.rc-logo-spacer { width: 72px !important; flex-shrink: 0 !important; }
+.rc-schoolinfo { text-align: center !important; margin: 0 80px !important; }
+.rc-schoolinfo h1 { font-size: 15pt !important; font-weight: 900 !important; margin: 0 0 3px !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; line-height: 1.1 !important; }
+.rc-schoolinfo .rc-address { font-size: 10pt !important; font-weight: 600 !important; margin-bottom: 2px !important; }
+.rc-schoolinfo .rc-contact-line { font-size: 10pt !important; font-weight: 500 !important; margin: 0 !important; }
+
+#reportCardsContainer .rc-banner, .rc-banner {
+    padding: 4px 12px !important;
+    font-size: 10pt !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+    margin-left: calc(-0.55in + 33px) !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
+    background: var(--section-accent, #305CDE) !important;
+    color: #fff !important;
+    text-align: center !important;
+}
+
+#reportCardsContainer .rc-top-grid, .rc-top-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+    width: 100% !important;
+    overflow: hidden !important;
+}
+#reportCardsContainer .rc-student-block, .rc-student-block {
+    flex: 1 !important;
+    min-width: 180px !important;
+    display: flex !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+}
+#reportCardsContainer .rc-chart-block, .rc-chart-block {
+    flex: 2 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: 36mm !important;
+    overflow: hidden !important;
+}
+#reportCardsContainer .rc-initials-avatar, .rc-initials-avatar {
+    width: 72px !important;
+    height: 80px !important;
+    border-radius: 8px !important;
+    font-size: 26pt !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.02em !important;
+}
+#reportCardsContainer .rc-student-name, .rc-student-name { font-size: 13pt !important; font-weight: 800 !important; margin-bottom: 5px !important; }
+#reportCardsContainer .rc-detail, .rc-detail { font-size: 11pt !important; margin-bottom: 2px !important; line-height: 1.35 !important; }
+#reportCardsContainer .rc-label, .rc-label { font-weight: 800 !important; text-transform: uppercase !important; }
+
+#reportCardsContainer .rc-chart-title, .rc-chart-title { font-size: 9pt !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; margin-bottom: 2px !important; text-align: left !important; line-height: 1 !important; }
+#reportCardsContainer .rc-chart-canvas-wrap, .rc-chart-canvas-wrap { height: auto !important; max-height: 34mm !important; overflow: hidden !important; position: relative !important; z-index: 2 !important; }
+#reportCardsContainer .rc-chart-canvas-wrap canvas, .rc-chart-canvas-wrap canvas { display: block !important; width: 100% !important; max-height: 34mm !important; }
+.rc-chart-svg { width: 100% !important; margin: 2px 0 !important; overflow: hidden !important; }
+.rc-chart-svg svg { max-height: 34mm !important; }
+.rc-chart-img { width: 100% !important; max-height: 34mm !important; object-fit: contain !important; }
+
+#reportCardsContainer .rc-stats, .rc-stats {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 5px !important;
+    width: 100% !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+#reportCardsContainer .rc-stat, .rc-stat {
+    border: 1px solid #E2E8F0 !important;
+    border-top: 3px solid var(--section-accent) !important;
+    border-radius: 8px !important;
+    padding: 6px 5px !important;
+    text-align: center !important;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+}
+#reportCardsContainer .rc-stat-label, .rc-stat-label { display: block !important; font-size: 8pt !important; font-weight: 800 !important; color: var(--section-accent) !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; margin-bottom: 3px !important; }
+#reportCardsContainer .rc-stat-value, .rc-stat-value { display: block !important; font-size: 14pt !important; font-weight: 800 !important; color: #1E293B !important; line-height: 1.15 !important; }
+#reportCardsContainer .rc-stat-value small, .rc-stat-value small { font-size: 10pt !important; font-weight: 600 !important; color: #94A3B8 !important; }
+
+.table-scroll { width: 100% !important; overflow: visible !important; }
+.rc-table { width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; min-width: 0 !important; }
+.rc-table colgroup .col-subj { width: 32% !important; }
+.rc-table colgroup .col-marks { width: 13% !important; }
+.rc-table colgroup .col-dev { width: 18% !important; }
+.rc-table colgroup .col-grade { width: 12% !important; }
+.rc-table colgroup .col-teacher { width: 25% !important; }
+.rc-table thead th { padding: 3px 6px !important; font-size: 9pt !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.03em !important; border: 1px solid #000 !important; background: #E9ECF0 !important; color: #1E293B !important; white-space: nowrap !important; }
+.rc-table thead th:first-child { text-align: left !important; }
+.rc-table tbody tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+.rc-table tbody td { padding: 2px 6px !important; font-size: 10pt !important; border: 1px solid #000 !important; line-height: 1.25 !important; }
+.rc-subj { font-weight: 700 !important; text-align: left !important; white-space: nowrap !important; }
+.rc-center { text-align: center !important; }
+.rc-grade { font-weight: 800 !important; color: #2563EB !important; }
+.rc-teacher { font-style: italic !important; font-weight: 600 !important; padding-left: 8px !important; text-align: left !important; font-size: 10pt !important; }
+.rc-table-cell-dev { padding: 2px 6px !important; border-bottom: none !important; }
+
+#reportCardsContainer .rc-comments-header, .rc-comments-header {
+    padding: 4px 12px !important;
+    font-size: 10pt !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    text-align: center !important;
+    margin-left: -20px !important;
+    margin-right: 20px !important;
+    border-radius: 0 20px 0 0 !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
+    background: var(--section-accent, #16A34A) !important;
+    color: #fff !important;
+}
+.rc-remarks-grid {
+    width: 100% !important;
+    margin-left: -20px !important;
+    margin-right: 20px !important;
+    margin-top: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 8px !important;
+    background: #F8FAFC !important;
+    border-radius: 0 0 8px 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+.rc-remark-box { padding: 8px 10px !important; border: 1px solid #E2E8F0 !important; border-radius: 8px !important; background: #fff !important; display: flex !important; flex-direction: column !important; }
+.rc-remark-title { font-size: 10pt !important; font-weight: 800 !important; color: #1E293B !important; margin-bottom: 4px !important; border-bottom: none !important; }
+.rc-remark-text { font-size: 10pt !important; line-height: 1.3 !important; margin-bottom: 4px !important; flex-grow: 1 !important; }
+.rc-signature { font-size: 9pt !important; font-weight: 600 !important; color: #64748B !important; border-top: 1px dashed #CBD5E1 !important; padding-top: 3px !important; margin-top: auto !important; }
+
+#reportCardsContainer .rc-descriptors, .rc-descriptors { margin-top: 4px !important; width: 100% !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+#reportCardsContainer .rc-descriptors-title, .rc-descriptors-title { font-size: 9pt !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; margin-bottom: 3px !important; padding-bottom: 3px !important; border-bottom: 2px solid var(--section-accent) !important; }
+#reportCardsContainer .rc-descriptors-table, .rc-descriptors-table { width: 100% !important; border-collapse: collapse !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+#reportCardsContainer .rc-descriptors-table th, #reportCardsContainer .rc-descriptors-table td,
+.rc-descriptors-table th, .rc-descriptors-table td { padding: 3px 6px !important; font-size: 9pt !important; border: 1px solid #000 !important; line-height: 1.2 !important; }
+.rc-descriptors-table th { background: #E9ECF0 !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.02em !important; }
+.rc-descriptors-table td:first-child, .rc-descriptors-table th:first-child { text-align: left !important; font-weight: 700 !important; background: #F8FAFC !important; }
+.rc-descriptors-table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+
+#reportCardsContainer .footer-dates, .footer-dates {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+    width: 100% !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+#reportCardsContainer .date-box, .date-box {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 6px 8px !important;
+    font-size: 10pt !important;
+    font-weight: 700 !important;
+    color: #1E293B !important;
+    border-radius: 6px !important;
+    border: 1px solid #E2E8F0 !important;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+}
+#reportCardsContainer .date-box span:first-child, .date-box span:first-child { font-size: 9pt !important; color: #64748B !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; }
+
+.system-footer, .rc-print-watermark { display: none !important; }
+.global-header, .mobile-global-header, .premium-sidebar, .sidebar, .sidebar-overlay,
+.sub-nav-bar, .rc-topbar, .rc-action-buttons, .rc-info-bar, .rc-context-card,
+.rc-loading-overlay, .hamburger-btn, .global-loader-overlay, .bottom-nav,
+.mobile-menu-sheet, .mobile-menu-panel, .mobile-menu-body, .mobile-menu-header,
+.mobile-menu-backdrop, nav, header, .navbar, .left-menu, .control-panel,
+.mobile-topbar, .topbar, .topbar-right, .workspace-toggle {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+}
+</script>
+
 {% if view_mode == 'individual' %}
 <div class="rv-shell">
     <div class="rv-header">

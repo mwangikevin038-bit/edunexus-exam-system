@@ -295,8 +295,41 @@
         }
 
         function writePopup(sharedCSS, broadsheetCSS) {
-            var templateCSS = pageStyle ? pageStyle.textContent : broadsheetCSS;
+            var pageCSS = pageStyle && pageStyle.textContent ? pageStyle.textContent : '';
+            var isReportCard =
+                selector === '#reportCardsContainer' ||
+                selector === '.rv-scroll' ||
+                (!!container && !!container.querySelector('.report-card'));
+
+            var templateCSS;
+            if (pageCSS) {
+                templateCSS = pageCSS;
+            } else if (isReportCard) {
+                // Report cards must never inherit broadsheet A4 landscape.
+                templateCSS = '';
+            } else {
+                templateCSS = broadsheetCSS;
+            }
+
             var combinedCSS = (sharedCSS || '') + '\n' + (templateCSS || '');
+
+            if (isReportCard) {
+                // Force portrait last so any earlier @page size cannot win.
+                combinedCSS += [
+                    '',
+                    '@page { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }',
+                    '@page landscape { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }',
+                    '@media print {',
+                    '  @page { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }',
+                    '  .report-card { page-break-inside: avoid !important; break-inside: avoid !important; }',
+                    '  .report-card + .report-card { page-break-before: always !important; break-before: page !important; }',
+                    '  .rc-descriptors, .rc-descriptors-table, .footer-dates, .rc-remarks-grid {',
+                    '    page-break-inside: avoid !important; break-inside: avoid !important;',
+                    '  }',
+                    '}'
+                ].join('\n');
+            }
+
             try {
                 var doc = printWin.document;
                 doc.open();
@@ -335,9 +368,16 @@
             _track(iv);
         }
 
+        var isReportCardPrint =
+            selector === '#reportCardsContainer' ||
+            selector === '.rv-scroll' ||
+            (!!container && !!container.querySelector('.report-card'));
+
         Promise.all([
             fetch('/static/css/print-shared.css').then(function(r) { return r.ok ? r.text() : ''; }).catch(function() { return ''; }),
-            fetch('/static/css/broadsheet.css').then(function(r) { return r.ok ? r.text() : ''; }).catch(function() { return ''; })
+            isReportCardPrint
+                ? Promise.resolve('')
+                : fetch('/static/css/broadsheet.css').then(function(r) { return r.ok ? r.text() : ''; }).catch(function() { return ''; })
         ]).then(function(results) { writePopup(results[0], results[1]); })
           .catch(function() { writePopup('', ''); });
     }
