@@ -21,11 +21,13 @@ from django.shortcuts import redirect, render
 from .constants import GRADE_CHOICES, TERM_CHOICES, get_streams_for_school, normalize_exam_display_name
 from ..forms import StudentForm
 from .helpers import (
+    dedup_marks_latest_by_code,
     get_class_teacher_scope,
     get_learner_contexts_for_user,
     get_next_admission_no,
     get_teacher_for_user,
     resolve_term_dates,
+    safe_pdf_filename,
 )
 from ..models import Guardian, RemovedStudent, Student
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
@@ -1408,6 +1410,7 @@ def admin_student_analytics(request, student_id):
             if mk.subject_id and mk.subject_id not in latest_subj_ids:
                 latest_subj_ids.add(mk.subject_id)
                 latest_marks.append(mk)
+        latest_marks = dedup_marks_latest_by_code(latest_marks)
         subject_names_map = {
             s.code: s.name for s in Subject.all_objects.filter(school=school)
         }
@@ -1450,7 +1453,7 @@ def admin_student_analytics(request, student_id):
             subj_scores = defaultdict(list)
             seen_per_student = {}
             for m in all_students_marks:
-                key = (m.student_id, m.subject_id)
+                key = (m.student_id, m.subject.code if m.subject else '')
                 if key not in seen_per_student:
                     seen_per_student[key] = m
                     code = m.subject.code if m.subject else ''
@@ -2665,6 +2668,7 @@ def teacher_student_analytics(request, student_id):
             if mk.subject_id and mk.subject_id not in latest_subj_ids:
                 latest_subj_ids.add(mk.subject_id)
                 latest_marks.append(mk)
+        latest_marks = dedup_marks_latest_by_code(latest_marks)
         subject_names_map = {
             s.code: s.name for s in Subject.all_objects.filter(school=school)
         }
@@ -2707,7 +2711,7 @@ def teacher_student_analytics(request, student_id):
             subj_scores = defaultdict(list)
             seen_per_student = {}
             for m in all_students_marks:
-                key = (m.student_id, m.subject_id)
+                key = (m.student_id, m.subject.code if m.subject else '')
                 if key not in seen_per_student:
                     seen_per_student[key] = m
                     code = m.subject.code if m.subject else ''
@@ -3731,16 +3735,8 @@ def merit_list(request):
         context['section_accent'] = section_colors['PRIMARY']
         context['section_key'] = 'primary'
     else:
-        sec = exam_object.school_section or 'JSS'
-        if sec == 'PRIMARY' and exam_object.sub_section == 'LOWER':
-            context['section_accent'] = section_colors['LOWER_PRIMARY']
-            context['section_key'] = 'lower'
-        elif sec == 'PRIMARY':
-            context['section_accent'] = section_colors['PRIMARY']
-            context['section_key'] = 'primary'
-        else:
-            context['section_accent'] = section_colors.get(sec, '#305CDE')
-            context['section_key'] = 'jss'
+        context['section_accent'] = section_colors['JSS']
+        context['section_key'] = 'jss'
 
     # HTMX ASYNCHRONOUS PIPELINE INTERCEPTOR:
     context['is_teacher_view'] = not is_admin
@@ -3793,7 +3789,7 @@ def analysis_report_pdf(request):
     pdf = HTML(string=html_string).write_pdf(optimize_size='images')
     grade_name = data.get('grade_name', 'Report')
     exam_name = data.get('exam', {}).get('name', '')
-    filename = f"Analysis_Report_{grade_name}_{exam_name}.pdf".replace(' ', '_')
+    filename = safe_pdf_filename('Analysis_Report', grade_name, exam_name)
     return HttpResponse(pdf, content_type='application/pdf', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 
 
@@ -3855,6 +3851,7 @@ def api_analysis_data(request):
 
     summaries_all = ExamSummary.all_objects.filter(
         school=school, exam_name=exam.name, term=exam.term, year=exam.year,
+        student__is_active=True,
     )
     if class_name_filter:
         summaries_all = summaries_all.filter(student__class_name=class_name_filter)
@@ -3887,7 +3884,6 @@ def api_analysis_data(request):
     grading_scale_obj = get_grading_scale(school.pk, section, sub_section, subject_id=None)
 
     total_students = all_students.count()
-    students_who_sat = summaries.values('student_id').distinct().count()
     student_ids = summaries.values_list('student_id', flat=True).distinct()
 
     # streams for chart = ALL streams in the grade; streams for breakdown = filtered
@@ -3904,19 +3900,26 @@ def api_analysis_data(request):
     all_marks = Mark.all_objects.filter(
         student__school=school,
         student_id__in=student_ids_all,
+        student__is_active=True,
         term=exam.term,
         year=exam.year,
         exam_type=exam.name,
-    ).select_related('subject', 'student')
+    ).exclude(is_absent=True).select_related('subject', 'student')
 
     # filtered marks = for stats only (selected stream)
     filtered_marks = Mark.all_objects.filter(
         student__school=school,
         student_id__in=student_ids,
+        student__is_active=True,
         term=exam.term,
         year=exam.year,
         exam_type=exam.name,
-    ).select_related('subject', 'student')
+    ).exclude(is_absent=True).select_related('subject', 'student')
+
+    # Students who actually sat = distinct students with at least one
+    # non-absent mark in scope (stream-scoped when a stream filter is set,
+    # and can never exceed the active roster).
+    students_who_sat = filtered_marks.values('student_id').distinct().count()
 
     PLV_LABELS = {
         'EE1': 'Exceeding Expectations', 'EE2': 'Exceeding Expectations',
@@ -3990,26 +3993,28 @@ def api_analysis_data(request):
     if prev_exam:
         prev_summaries = ExamSummary.all_objects.filter(
             school=school, exam_name=prev_exam.name, term=prev_exam.term, year=prev_exam.year,
+            student__is_active=True,
         )
         if class_name_filter:
             prev_summaries = prev_summaries.filter(student__class_name=class_name_filter)
         prev_student_ids = prev_summaries.values_list('student_id', flat=True).distinct()
         prev_all_marks = Mark.all_objects.filter(
             student__school=school, student_id__in=prev_student_ids,
+            student__is_active=True,
             term=prev_exam.term, year=prev_exam.year, exam_type=prev_exam.name,
-        )
-        prev_stream_pts = []
-        prev_stream_marks = []
+        ).exclude(is_absent=True)
+        prev_total_pts = 0
+        prev_total_mks = 0
+        prev_total_count = 0
         for s in streams_all:
             s_ids = prev_summaries.filter(student__stream=s).values_list('student_id', flat=True).distinct()
             s_marks = prev_all_marks.filter(student_id__in=s_ids)
-            count = s_marks.count() if s_marks.count() > 0 else 1
-            prev_stream_pts.append(sum((m.points or 0) for m in s_marks) / count)
-            prev_stream_marks.append(sum(m.score for m in s_marks) / count)
-        if prev_stream_marks:
-            prev_mean_marks = round(sum(prev_stream_marks) / len(prev_stream_marks), 1)
-        if prev_stream_pts:
-            prev_mean_points = round(sum(prev_stream_pts) / len(prev_stream_pts), 4)
+            prev_total_pts += sum((m.points or 0) for m in s_marks)
+            prev_total_mks += sum(m.score for m in s_marks)
+            prev_total_count += s_marks.count()
+        if prev_total_count:
+            prev_mean_marks = round(prev_total_mks / prev_total_count, 1)
+            prev_mean_points = round(prev_total_pts / prev_total_count, 4)
         for mark in prev_all_marks:
             if mark.subject_id and mark.subject:
                 sn = mark.subject.name
@@ -4029,37 +4034,46 @@ def api_analysis_data(request):
         s_ids = summaries_all.filter(student__stream=s).values_list('student_id', flat=True).distinct()
         s_marks = all_marks.filter(student_id__in=s_ids)
         total_pts = sum((m.points or 0) for m in s_marks)
-        count = s_marks.count() if s_marks.count() > 0 else 1
         total_marks_sum = sum(m.score for m in s_marks)
+        count = s_marks.count()
         stream_stats[s] = {
-            'mean_points': round(total_pts / count, 4),
-            'mean_marks': round(total_marks_sum / count, 1),
+            'mean_points': round(total_pts / count, 4) if count else 0,
+            'mean_marks': round(total_marks_sum / count, 1) if count else 0,
             'entries': len(s_ids),
+            '_total_pts': total_pts,
+            '_total_marks': total_marks_sum,
+            '_count': count,
         }
 
     # Overall = from selected stream (summary card data)
+    def _weighted_means(stats_dict):
+        t_pts = sum(v.get('_total_pts', 0) for v in stats_dict.values())
+        t_mks = sum(v.get('_total_marks', 0) for v in stats_dict.values())
+        t_cnt = sum(v.get('_count', 0) for v in stats_dict.values())
+        if not t_cnt:
+            return 0, 0
+        return round(t_mks / t_cnt, 1), round(t_pts / t_cnt, 4)
+
     if stream_filter and stream_filter in stream_stats:
         overall_mean_points = stream_stats[stream_filter]['mean_points']
         overall_mean_marks = stream_stats[stream_filter]['mean_marks']
     else:
-        all_stream_pts = [v['mean_points'] for v in stream_stats.values()]
-        overall_mean_points = round(sum(all_stream_pts) / len(all_stream_pts), 4) if all_stream_pts else 0
-        all_stream_marks = [v['mean_marks'] for v in stream_stats.values()]
-        overall_mean_marks = round(sum(all_stream_marks) / len(all_stream_marks), 1) if all_stream_marks else 0
+        overall_mean_marks, overall_mean_points = _weighted_means(stream_stats)
     mm_change = round(overall_mean_marks - prev_mean_marks, 1) if prev_mean_marks else 0
     mp_change = round(overall_mean_points - prev_mean_points, 4) if prev_mean_points else 0
 
-    # True overall means (from ALL streams) for grade breakdown deviations
-    all_stream_pts_list = [v['mean_points'] for v in stream_stats.values()]
-    all_stream_mks_list = [v['mean_marks'] for v in stream_stats.values()]
-    grade_overall_mean_marks = round(sum(all_stream_mks_list) / len(all_stream_mks_list), 1) if all_stream_mks_list else 0
-    grade_overall_mean_points = round(sum(all_stream_pts_list) / len(all_stream_pts_list), 4) if all_stream_pts_list else 0
+    # True overall means (from ALL streams) for grade breakdown deviations —
+    # weighted by mark entries so a bigger stream can't be out-voted.
+    grade_overall_mean_marks, grade_overall_mean_points = _weighted_means(stream_stats)
 
     # ── Overall PLV ──────────────────────────────────────────────────────
     overall_plv = '-'
     if grading_scale_obj and grading_scale_obj.total_scale:
+        # overall_mean_marks is a 0-100 mean; total_scale is the aggregated
+        # 0-800 scale — scale up before banding (same ×8 as the row builders).
+        overall_plv_m = overall_mean_marks * 8
         for ld in grading_scale_obj.total_scale:
-            if ld.get('min_marks', 0) <= overall_mean_marks <= ld.get('max_marks', 0):
+            if ld.get('min_marks', 0) <= overall_plv_m <= ld.get('max_marks', 0):
                 overall_plv = ld.get('level', '-')
                 break
 
@@ -4083,27 +4097,28 @@ def api_analysis_data(request):
             if raw_plv and raw_plv != '-' and raw_plv in row:
                 row[raw_plv] += 1
             else:
+                # Band from marks; students with no sat marks (all-absent)
+                # band at 0 so ENTRIES always equals the distribution sum.
                 s_marks = all_marks.filter(student_id=summ.student_id)
-                if s_marks.exists():
-                    total_pts = sum((m.points or 0) for m in s_marks)
-                    total_mks = sum(m.score for m in s_marks)
-                    count = s_marks.count()
-                    avg_pts = total_pts / count if count else 0
-                    if grading_scale_obj and grading_scale_obj.total_scale:
-                        total_m = (total_mks / count) * 8 if count else 0
-                        for ld in grading_scale_obj.total_scale:
-                            if ld.get('min_marks', 0) <= total_m <= ld.get('max_marks', 0):
-                                computed_plv = ld.get('level', '-')
-                                if computed_plv in row:
-                                    row[computed_plv] += 1
-                                break
-                    elif grade_descriptors:
-                        for ld in grade_descriptors:
-                            if ld.get('points') == round(avg_pts):
-                                computed_plv = ld.get('level', '-')
-                                if computed_plv in row:
-                                    row[computed_plv] += 1
-                                break
+                total_pts = sum((m.points or 0) for m in s_marks)
+                total_mks = sum(m.score for m in s_marks)
+                count = s_marks.count()
+                avg_pts = total_pts / count if count else 0
+                if grading_scale_obj and grading_scale_obj.total_scale:
+                    total_m = (total_mks / count) * 8 if count else 0
+                    for ld in grading_scale_obj.total_scale:
+                        if ld.get('min_marks', 0) <= total_m <= ld.get('max_marks', 0):
+                            computed_plv = ld.get('level', '-')
+                            if computed_plv in row:
+                                row[computed_plv] += 1
+                            break
+                elif grade_descriptors:
+                    for ld in grade_descriptors:
+                        if ld.get('points') == round(avg_pts):
+                            computed_plv = ld.get('level', '-')
+                            if computed_plv in row:
+                                row[computed_plv] += 1
+                            break
         row['mean_marks'] = stream_stats.get(s, {}).get('mean_marks', 0)
         row['mm_dev'] = round(row['mean_marks'] - grade_overall_mean_marks, 4)
         row['mean_points'] = stream_stats.get(s, {}).get('mean_points', 0)
@@ -4187,8 +4202,11 @@ def api_analysis_data(request):
                     plv_key = m.primary_descriptor
                 else:
                     if grade_descriptors:
+                        # m.score is already a 0-100 percentage — re-dividing
+                        # by maximum_marks produced values like 108 (max 50)
+                        # that fell outside every band.
+                        converted = m.score or 0
                         for ld in grade_descriptors:
-                            converted = (m.score / m.maximum_marks * 100) if m.maximum_marks else 0
                             if ld.get('min_score', 0) <= converted <= ld.get('max_score', 0):
                                 plv_key = ld.get('level', '-')
                                 break
@@ -4213,9 +4231,15 @@ def api_analysis_data(request):
                         break
             subj_rows.append(row)
 
-        # compute subject-wide mean for deviations + total row
-        subj_mean_marks = round(sum(r['mean_marks'] for r in subj_rows) / len(subj_rows), 1) if subj_rows else 0
-        subj_mean_points = round(sum(r['mean_points'] for r in subj_rows) / len(subj_rows), 4) if subj_rows else 0
+        # compute subject-wide mean for deviations + total row — weighted by
+        # each stream's entries so empty streams can't drag the mean
+        _sw_entries = sum(r['entries'] for r in subj_rows)
+        subj_mean_marks = round(
+            sum(r['mean_marks'] * r['entries'] for r in subj_rows) / _sw_entries, 1
+        ) if _sw_entries and subj_rows else 0
+        subj_mean_points = round(
+            sum(r['mean_points'] * r['entries'] for r in subj_rows) / _sw_entries, 4
+        ) if _sw_entries and subj_rows else 0
         for r in subj_rows:
             r['mm_dev'] = round(r['mean_marks'] - subj_mean_marks, 4)
             r['mp_dev'] = round(r['mean_points'] - subj_mean_points, 4)
@@ -4232,8 +4256,9 @@ def api_analysis_data(request):
         for lvl in breakdown_levels:
             subj_total[lvl] = sum(r.get(lvl, 0) for r in subj_rows)
         if grading_scale_obj and grading_scale_obj.total_scale:
+            subj_total_m = subj_mean_marks * 8
             for ld in grading_scale_obj.total_scale:
-                if ld.get('min_marks', 0) <= subj_mean_marks <= ld.get('max_marks', 0):
+                if ld.get('min_marks', 0) <= subj_total_m <= ld.get('max_marks', 0):
                     subj_total['performance_level'] = ld.get('level', '-')
                     break
 
@@ -4261,8 +4286,10 @@ def api_analysis_data(request):
                     plv_key = m.primary_descriptor
                 else:
                     if grade_descriptors:
+                        # m.score is already a 0-100 percentage — never
+                        # re-normalize by maximum_marks here.
+                        converted = m.score or 0
                         for ld in grade_descriptors:
-                            converted = (m.score / m.maximum_marks * 100) if m.maximum_marks else 0
                             if ld.get('min_score', 0) <= converted <= ld.get('max_score', 0):
                                 plv_key = ld.get('level', '-')
                                 break
@@ -4338,27 +4365,28 @@ def api_analysis_data(request):
             if raw_plv and raw_plv != '-' and raw_plv in g_row:
                 g_row[raw_plv] += 1
             else:
+                # Band from marks; students with no sat marks (all-absent)
+                # band at 0 so ENTRIES always equals the distribution sum.
                 s_marks = all_marks.filter(student_id=summ.student_id)
-                if s_marks.exists():
-                    total_pts = sum((m.points or 0) for m in s_marks)
-                    total_mks = sum(m.score for m in s_marks)
-                    cnt = s_marks.count()
-                    avg_pts = total_pts / cnt if cnt else 0
-                    if grading_scale_obj and grading_scale_obj.total_scale:
-                        total_m = (total_mks / cnt) * 8 if cnt else 0
-                        for ld in grading_scale_obj.total_scale:
-                            if ld.get('min_marks', 0) <= total_m <= ld.get('max_marks', 0):
-                                computed_plv = ld.get('level', '-')
-                                if computed_plv in g_row:
-                                    g_row[computed_plv] += 1
-                                break
-                    elif grade_descriptors:
-                        for ld in grade_descriptors:
-                            if ld.get('points') == round(avg_pts):
-                                computed_plv = ld.get('level', '-')
-                                if computed_plv in g_row:
-                                    g_row[computed_plv] += 1
-                                break
+                total_pts = sum((m.points or 0) for m in s_marks)
+                total_mks = sum(m.score for m in s_marks)
+                cnt = s_marks.count()
+                avg_pts = total_pts / cnt if cnt else 0
+                if grading_scale_obj and grading_scale_obj.total_scale:
+                    total_m = (total_mks / cnt) * 8 if cnt else 0
+                    for ld in grading_scale_obj.total_scale:
+                        if ld.get('min_marks', 0) <= total_m <= ld.get('max_marks', 0):
+                            computed_plv = ld.get('level', '-')
+                            if computed_plv in g_row:
+                                g_row[computed_plv] += 1
+                            break
+                elif grade_descriptors:
+                    for ld in grade_descriptors:
+                        if ld.get('points') == round(avg_pts):
+                            computed_plv = ld.get('level', '-')
+                            if computed_plv in g_row:
+                                g_row[computed_plv] += 1
+                            break
             # accumulate mean marks / points
             s_data = student_totals.get(summ.student_id)
             if s_data and s_data['subject_count']:
@@ -4417,8 +4445,10 @@ def api_analysis_data(request):
             student_name = student_obj.name or student_obj.admission_no or f'Student {sid}'
         plv = '-'
         if grading_scale_obj and grading_scale_obj.total_scale:
+            # mean_marks is 0-100; band against the aggregated total_scale.
+            ranked_m = mean_marks * 8
             for ld in grading_scale_obj.total_scale:
-                if ld.get('min_marks', 0) <= mean_marks <= ld.get('max_marks', 0):
+                if ld.get('min_marks', 0) <= ranked_m <= ld.get('max_marks', 0):
                     plv = ld.get('level', '-')
                     break
         mm_dev = round(mean_marks - grade_overall_mean_marks, 4)
@@ -4599,9 +4629,15 @@ def api_analysis_data(request):
         row_data = {
             'name': subj_name,
             'entries': sum(r.get('entries', 0) for r in s_rows),
-            'mean_marks': round(sum(r.get('mean_marks', 0) for r in s_rows) / len(s_rows), 1) if s_rows else 0,
+            'mean_marks': round(
+                sum(r.get('mean_marks', 0) * r.get('entries', 0) for r in s_rows)
+                / sum(r.get('entries', 0) for r in s_rows), 1
+            ) if s_rows and sum(r.get('entries', 0) for r in s_rows) else 0,
             'mm_dev': 0,
-            'mean_points': round(sum(r.get('mean_points', 0) for r in s_rows) / len(s_rows), 4) if s_rows else 0,
+            'mean_points': round(
+                sum(r.get('mean_points', 0) * r.get('entries', 0) for r in s_rows)
+                / sum(r.get('entries', 0) for r in s_rows), 4
+            ) if s_rows and sum(r.get('entries', 0) for r in s_rows) else 0,
             'mp_dev': 0,
             'performance_level': '-',
             'teacher': subject_teachers.get(subj_name, '-'),

@@ -36,6 +36,7 @@ from .helpers import (
     calculate_broadsheet_plv,
     calculate_primary_plv,
     calculate_report_plv,
+    dedup_marks_latest_by_code,
     get_cached_class_averages,
     get_class_teacher_scope,
     get_performance_level,
@@ -286,12 +287,15 @@ def results_list(request):
                 sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section=active_sub)
             elif section == 'JSS':
                 sa_qs = sa_qs.filter(school_section='JSS')
-            for a in sa_qs:
+            for a in sa_qs.order_by('id'):
                 code = a.subject.code if a.subject else None
                 if code:
-                    teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title() if a.teacher_profile else '—'
+                    label = subject_label_map.get(code, subject_map.get(code, code))
+                    name = a.teacher_profile.get_full_title() if a.teacher_profile else ''
+                    if name and name not in teacher_map.setdefault(label, []):
+                        teacher_map[label].append(name)
             for short in analysis_data:
-                analysis_data[short]['teacher_name'] = teacher_map.get(short, '—')
+                analysis_data[short]['teacher_name'] = ', '.join(teacher_map.get(short, [])) or '—'
 
             # ── Read from ExamSummary cache (populated by Celery task on Publish) ──
             from ..models import ExamSummary
@@ -308,27 +312,33 @@ def results_list(request):
             summaries_qs = ExamSummary.all_objects.filter(
                 school=school,
                 student__class_name=grade,
+                student__is_active=True,
                 year=year,
                 term=term,
                 exam_name=exam_type,
                 school_section=db_section,
                 sub_section=db_sub,
             )
-            totals_map = {s.student_id: s for s in summaries_qs}
+            totals_map = {s.student_id: s for s in summaries_qs.select_related('student')}
 
             # Fetch all marks for this class in ONE query (no N+1 prefetch)
             all_marks = Mark.all_objects.filter(
                 school=school,
                 student__class_name=grade,
                 student__stream=stream,
+                student__is_active=True,
                 year=year, term=term, exam_type=exam_type,
                 subject__in=published_subjects_qs,
             ).select_related('subject').order_by('subject', '-date_recorded', '-id')
 
-            # Group marks by student_id
+            # Group marks by student_id, keeping only the latest mark per
+            # subject code so a stray duplicate can't inflate entries/means.
             marks_by_student = {}
             for mark in all_marks:
                 marks_by_student.setdefault(mark.student_id, []).append(mark)
+            for _sid in marks_by_student:
+                marks_by_student[_sid] = dedup_marks_latest_by_code(marks_by_student[_sid])
+            deduped_marks = [m for _lst in marks_by_student.values() for m in _lst]
 
             students = Student.all_objects.filter(
                 school=school, class_name=grade, stream=stream, is_active=True,
@@ -336,7 +346,7 @@ def results_list(request):
             student_count = students.count()
 
             # ── Pre-compute per-subject analysis from flat mark query (single pass) ──
-            for mark in all_marks:
+            for mark in deduped_marks:
                 if mark.is_absent or mark.score is None:
                     continue
                 code = mark.subject.code
@@ -346,9 +356,12 @@ def results_list(request):
                 analysis_data[short]['entries'] += 1
                 analysis_data[short]['total_score'] += mark.score
                 if is_primary:
-                    lv, _ = _get_primary_performance(mark.score, school=school, section=section, sub_section=active_sub if is_primary else None)
+                    lv, _ = _get_primary_performance(mark.score, school=school, section=section, sub_section=active_sub if is_primary else None, subject_id=mark.subject_id)
                 else:
-                    lv, _ = get_performance_level(mark.score)
+                    lv, _ = get_performance_level(
+                        mark.score, sub_section=active_sub,
+                        subject_id=mark.subject_id, school=school, section=section,
+                    )
                 if lv in analysis_data[short]['distribution']:
                     analysis_data[short]['distribution'][lv] += 1
 
@@ -378,7 +391,10 @@ def results_list(request):
                         if m.is_absent:
                             row_scores.append({'score': 'AB', 'level': 'AB'})
                         else:
-                            level, points = _get_primary_performance(m.score, school=school, section=section, sub_section=active_sub if is_primary else None) if is_primary else get_performance_level(m.score)
+                            level, points = _get_primary_performance(m.score, school=school, section=section, sub_section=active_sub if is_primary else None, subject_id=m.subject_id) if is_primary else get_performance_level(
+                                m.score, sub_section=active_sub,
+                                subject_id=m.subject_id, school=school, section=section,
+                            )
                             row_scores.append({'score': m.score, 'level': level})
                     else:
                         row_scores.append({'score': '-', 'level': '-'})
@@ -388,7 +404,7 @@ def results_list(request):
                     'scores':  row_scores,
                     'tps':     total_points,
                     'total':   total_marks,
-                    'plv':     calculate_primary_plv(total_marks, assessed_subjects, sub_section=active_sub if is_primary else None, school=school, section=section) if is_primary else calculate_broadsheet_plv(total_marks, total_points),
+                    'plv':     calculate_primary_plv(total_marks, assessed_subjects, sub_section=active_sub if is_primary else None, school=school, section=section) if is_primary else calculate_broadsheet_plv(total_marks, total_points, sub_section=active_sub if is_primary else None, school=school, section=section),
                 })
 
             # Sort by DB-computed rank (total_marks DESC, total_points DESC)
@@ -629,8 +645,8 @@ def individual_report(request, student_id):
     from ..models import Subject
     published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
 
-    # Fetch marks for this student
-    marks        = Mark.all_objects.filter(
+    # Fetch marks for this student (one row per subject code, latest wins)
+    marks        = dedup_marks_latest_by_code(list(Mark.all_objects.filter(
         school=school,
         student=student,
         year=year,
@@ -638,7 +654,7 @@ def individual_report(request, student_id):
         exam_type=db_assessment,
         subject__in=published_subjects_qs,
         school_section=student.school_section,
-    )
+    )))
     # Sort marks by SUBJECT_DISPLAY_ORDER instead of alphabetical
     marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
 
@@ -1280,19 +1296,23 @@ def _build_merit_list_from_snapshots(
     from ..models import Student, ExamResultSnapshot, Stream
     from django.core.cache import cache
 
-    section = exam.school_section or 'JSS'
+    # The grade — not the exam row — defines the section for a class-scoped
+    # view: a whole-school exam carries a single school_section/sub_section
+    # that cannot classify every grade, while ExamSummary rows are keyed to
+    # the grade's section (Grades 1-3 PRIMARY/LOWER, 4-6 PRIMARY/UPPER,
+    # 7-9 JSS). Deriving it from the exam made totals/gender lookups miss
+    # the summaries and silently fall back to marks (snap ≠ live).
+    if grade in LOWER_PRIMARY_GRADE_CHOICES:
+        section = 'PRIMARY'
+        active_sub = 'LOWER'
+    elif grade in PRIMARY_GRADE_CHOICES:
+        section = 'PRIMARY'
+        active_sub = 'UPPER'
+    else:
+        section = 'JSS'
+        active_sub = None
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
-
-    # Resolve active_sub identically to live path
-    if is_lower_primary:
-        active_sub = 'LOWER'
-    elif is_primary:
-        active_sub = exam.sub_section or 'UPPER'
-        if active_sub not in ('LOWER', 'UPPER'):
-            active_sub = 'UPPER'
-    else:
-        active_sub = None
 
     if is_lower_primary or (is_primary and active_sub == 'LOWER'):
         subject_map = LOWER_PRIMARY_SUBJECT_SHORT_MAP
@@ -1318,12 +1338,54 @@ def _build_merit_list_from_snapshots(
         if snap:
             all_snapshots.append(snap)
 
-    # Merge published subjects across all snapshots
+    # Merge published subjects across the snapshots that belong to the
+    # current view (all streams when Combined, the selected stream only
+    # otherwise) so the Class Grade Summary matches the broadsheet body.
+    # Entries/distribution are SUMMED and teacher names joined — taking the
+    # first snapshot wholesale hid every other stream's marks and teachers.
+    _view_streams = set(actual_streams or all_streams) if is_combined else {stream}
     merged_subjects = {}
     for snap in all_snapshots:
-        for code, data in snap.broadsheet_data.items():
-            if code not in merged_subjects:
-                merged_subjects[code] = data
+        if snap.stream not in _view_streams:
+            continue
+        for code, data in (snap.broadsheet_data or {}).items():
+            m = merged_subjects.get(code)
+            if m is None:
+                m = {
+                    **data,
+                    'distribution': dict(data.get('distribution') or {}),
+                    '_teachers': [],
+                }
+                merged_subjects[code] = m
+            else:
+                prev_n = m.get('student_count') or 0
+                new_n = data.get('student_count') or 0
+                m['student_count'] = prev_n + new_n
+                m['absent_count'] = (m.get('absent_count') or 0) + (data.get('absent_count') or 0)
+                m['total_score'] = (m.get('total_score') or 0) + (data.get('total_score') or 0)
+                for lvl, cnt in (data.get('distribution') or {}).items():
+                    m['distribution'][lvl] = m['distribution'].get(lvl, 0) + (cnt or 0)
+                if new_n:
+                    if prev_n:
+                        m['highest'] = max(m.get('highest') or 0, data.get('highest') or 0)
+                        m['lowest'] = min(m.get('lowest') or 100, data.get('lowest') or 100)
+                    else:
+                        m['highest'] = data.get('highest') or 0
+                        m['lowest'] = data.get('lowest') or 0
+            t_name = (data.get('teacher_name') or '').strip()
+            if t_name and t_name not in m['_teachers']:
+                m['_teachers'].append(t_name)
+    # Finalize merged rows: means from raw sums, teachers joined, temp keys out
+    for m in merged_subjects.values():
+        _teachers = m.pop('_teachers', [])
+        _n = m.get('student_count') or 0
+        if _n > 0:
+            m['mean_score'] = round((m.get('total_score') or 0) / _n, 2)
+            m['class_average'] = m['mean_score']
+        if _teachers:
+            m['teacher_name'] = ', '.join(_teachers)
+        elif not m.get('teacher_name'):
+            m['teacher_name'] = ''
 
     published_subjects = sort_subjects([
         (code, subject_map.get(code, data.get('subject_name', code)))
@@ -1431,22 +1493,27 @@ def _build_merit_list_from_snapshots(
                 continue
             tm = s_data.get('total_marks', 0)
             tp = s_data.get('total_points', 0)
-            if tm == 0 and tp == 0:
-                continue
             entries += 1
             total_marks += tm
             total_subj_count += s_data.get('subject_count', 0)
             plv = (s_data.get('overall_plv') or '-').strip().upper()
-            if plv not in dist and tm:
-                # Snapshot built before ExamSummary existed — derive PLV from totals
-                if is_primary:
+            if plv not in dist:
+                # Missing/'-' PLV — derive it (band zero totals at 0) so
+                # ENTRIES always equals the distribution sum.
+                if tm == 0 and tp == 0:
+                    plv = (get_performance_level(
+                        0, sub_section=active_sub, is_total_calculation=True,
+                        school=school, section=section,
+                    )[0] or '-').strip().upper()
+                elif is_primary:
                     plv = (calculate_primary_plv(
                         tm, s_data.get('subject_count') or 0,
                         sub_section=active_sub, school=school, section=section,
                     ) or '-').strip().upper()
                 else:
                     plv = (calculate_report_plv(
-                        tp, tm, school=school, section=section,
+                        tp, tm, sub_section=active_sub,
+                        school=school, section=section,
                     ) or '-').strip().upper()
             if plv in dist:
                 dist[plv] += 1
@@ -1454,8 +1521,7 @@ def _build_merit_list_from_snapshots(
         mean_m = round(total_marks / total_subj_count, 1) if total_subj_count else 0
         mean_p = round(
             sum(s_data.get('mean_points', 0) for s_data in all_student_data.values()
-                if s_data.get('stream', '') == s_name
-                and (s_data.get('total_marks', 0) != 0 or s_data.get('total_points', 0) != 0))
+                if s_data.get('stream', '') == s_name)
             / entries, 4
         ) if entries else 0
         if entries:
@@ -1477,8 +1543,7 @@ def _build_merit_list_from_snapshots(
 
     ov_mean = round(ov_total_marks / ov_total_subj_count, 1) if ov_total_subj_count else 0
     ov_pts = round(
-        sum(s_data.get('mean_points', 0) for s_data in all_student_data.values()
-            if (s_data.get('total_marks', 0) != 0 or s_data.get('total_points', 0) != 0))
+        sum(s_data.get('mean_points', 0) for s_data in all_student_data.values())
         / ov_entries, 4
     ) if ov_entries else 0
     if ov_entries:
@@ -1525,23 +1590,37 @@ def _build_merit_list_from_snapshots(
             g_key = 'Female' if gender_label == 'Girls' else 'Male'
             if s_data.get('gender', '') != g_key:
                 continue
+            # Scope to the streams shown in this view — grade-wide totals
+            # leaked into single-stream Gender Summary rows before.
+            if is_combined:
+                if s_data.get('stream', '') not in (actual_streams or []):
+                    continue
+            else:
+                if s_data.get('stream', '') != stream:
+                    continue
             tm = s_data.get('total_marks', 0)
             tp = s_data.get('total_points', 0)
-            if tm == 0 and tp == 0:
-                continue
             g_entries += 1
             g_total_marks += tm
             g_total_subj_count += s_data.get('subject_count', 0)
             plv = (s_data.get('overall_plv') or '-').strip().upper()
-            if plv not in g_dist and tm:
-                if is_primary:
+            if plv not in g_dist:
+                # Missing/'-' PLV — derive it (band zero totals at 0) so
+                # ENTRIES always equals the distribution sum.
+                if tm == 0 and tp == 0:
+                    plv = (get_performance_level(
+                        0, sub_section=active_sub, is_total_calculation=True,
+                        school=school, section=section,
+                    )[0] or '-').strip().upper()
+                elif is_primary:
                     plv = (calculate_primary_plv(
                         tm, s_data.get('subject_count') or 0,
                         sub_section=active_sub, school=school, section=section,
                     ) or '-').strip().upper()
                 else:
                     plv = (calculate_report_plv(
-                        tp, tm, school=school, section=section,
+                        tp, tm, sub_section=active_sub,
+                        school=school, section=section,
                     ) or '-').strip().upper()
             if plv in g_dist:
                 g_dist[plv] += 1
@@ -1549,7 +1628,8 @@ def _build_merit_list_from_snapshots(
         g_pts = round(
             sum(s_data.get('mean_points', 0) for s_data in all_student_data.values()
                 if s_data.get('gender', '') == ('Female' if gender_label == 'Girls' else 'Male')
-                and (s_data.get('total_marks', 0) != 0 or s_data.get('total_points', 0) != 0))
+                and ((s_data.get('stream', '') in (actual_streams or [])) if is_combined
+                     else s_data.get('stream', '') == stream))
             / g_entries, 4
         ) if g_entries else 0
         if g_entries:
@@ -1566,8 +1646,7 @@ def _build_merit_list_from_snapshots(
             'performance_text': g_plv,
         })
 
-    # Section accent — prefer grade (Grade 1-3 = lower primary amber), exam section only as fallback
-    from .constants import LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES
+    # Section accent — grade-based for both paths (mirrors the live path)
     section_colors = {'JSS': '#305CDE', 'PRIMARY': '#00674F', 'LOWER_PRIMARY': '#B45309'}
     if grade in LOWER_PRIMARY_GRADE_CHOICES:
         section_accent = section_colors['LOWER_PRIMARY']
@@ -1576,16 +1655,8 @@ def _build_merit_list_from_snapshots(
         section_accent = section_colors['PRIMARY']
         section_key = 'primary'
     else:
-        sec = exam.school_section or 'JSS'
-        if sec == 'PRIMARY' and exam.sub_section == 'LOWER':
-            section_accent = section_colors['LOWER_PRIMARY']
-            section_key = 'lower'
-        elif sec == 'PRIMARY':
-            section_accent = section_colors['PRIMARY']
-            section_key = 'primary'
-        else:
-            section_accent = section_colors.get(sec, '#305CDE')
-            section_key = 'jss'
+        section_accent = section_colors['JSS']
+        section_key = 'jss'
 
     result = {
         'broadsheet': broadsheet,
@@ -1641,7 +1712,17 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
     from django.core.cache import cache
 
     is_admin_view = user_has_main_school_admin_override(request.user)
-    section = exam.school_section or 'JSS'
+    # Grade, not exam row, defines section/active_sub for a class-scoped view
+    # (whole-school exams carry one section that cannot classify every grade).
+    if grade in LOWER_PRIMARY_GRADE_CHOICES:
+        section = 'PRIMARY'
+        active_sub = 'LOWER'
+    elif grade in PRIMARY_GRADE_CHOICES:
+        section = 'PRIMARY'
+        active_sub = 'UPPER'
+    else:
+        section = 'JSS'
+        active_sub = None
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
     is_combined = stream == 'Combined' or not stream
@@ -1704,15 +1785,7 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
 
     # ── Fallback: live computation ─────────────────────────────────────
 
-    # Map workspace section to active_sub for Primary
-    if is_lower_primary:
-        active_sub = 'LOWER'
-    elif is_primary:
-        active_sub = exam.sub_section or 'UPPER'
-        if active_sub not in ('LOWER', 'UPPER'):
-            active_sub = 'UPPER'
-    else:
-        active_sub = None
+    # active_sub was resolved grade-based at function start.
 
     if is_lower_primary or (is_primary and active_sub == 'LOWER'):
         subject_map = LOWER_PRIMARY_SUBJECT_SHORT_MAP
@@ -1770,12 +1843,13 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
         summaries_qs = summaries_qs.filter(sub_section=db_sub)
     else:
         summaries_qs = summaries_qs.filter(Q(sub_section__isnull=True) | Q(sub_section=''))
-    totals_map = {s.student_id: s for s in summaries_qs}
+    totals_map = {s.student_id: s for s in summaries_qs.select_related('student')}
 
     all_marks = Mark.all_objects.filter(
         school=school,
         student__class_name=grade,
         student__stream__in=actual_streams if is_combined else [stream],
+        student__is_active=True,
         year=exam.year, term=exam.term, exam_type=exam.name,
         subject__in=published_subjects_qs,
     ).select_related('subject').order_by('subject', '-date_recorded', '-id')
@@ -1783,6 +1857,9 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
     marks_by_student = {}
     for mark in all_marks:
         marks_by_student.setdefault(mark.student_id, []).append(mark)
+    for _sid in marks_by_student:
+        marks_by_student[_sid] = dedup_marks_latest_by_code(marks_by_student[_sid])
+    deduped_marks = [m for _lst in marks_by_student.values() for m in _lst]
 
     students = Student.all_objects.filter(
         school=school, class_name=grade, stream__in=actual_streams if is_combined else [stream], is_active=True,
@@ -1800,10 +1877,13 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
         total_points = t.total_points if t else 0
         assessed_subjects = t.subject_count if t else 0
 
-        if not t or (total_marks == 0 and total_points == 0):
-            # student_marks is a list, not a queryset — aggregate manually
-            total_marks = sum(m.score for m in student_marks if m.score is not None)
-            total_points = sum(m.points for m in student_marks if m.points is not None)
+        if not t:
+            # No ExamSummary row — aggregate exactly like
+            # build_exam_result_snapshot (published, deduped, non-absent
+            # marks) so live rows match the snapshot path. A zero summary
+            # must stay zero: the snapshot prefers ExamSummary over marks.
+            total_marks = sum(m.score for m in student_marks if m.score is not None and not m.is_absent)
+            total_points = sum(m.points for m in student_marks if m.points is not None and not m.is_absent)
             assessed_subjects = sum(1 for m in student_marks if m.score is not None and not m.is_absent)
 
         row_scores = []
@@ -1881,15 +1961,18 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
         sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section=active_sub)
     elif section == 'JSS':
         sa_qs = sa_qs.filter(school_section='JSS')
-    for a in sa_qs:
+    for a in sa_qs.order_by('stream', 'id'):
         code = a.subject.code if a.subject else None
         if code:
-            teacher_map[subject_label_map.get(code, subject_map.get(code, code))] = a.teacher_profile.get_full_title() if a.teacher_profile else '—'
+            label = subject_label_map.get(code, subject_map.get(code, code))
+            name = a.teacher_profile.get_full_title() if a.teacher_profile else ''
+            if name and name not in teacher_map.setdefault(label, []):
+                teacher_map[label].append(name)
     for short in analysis_data:
-        analysis_data[short]['teacher_name'] = teacher_map.get(short, '—')
+        analysis_data[short]['teacher_name'] = ', '.join(teacher_map.get(short, [])) or '—'
 
     # ── FIXED SINGLE-PASS EXAM MARK AGGREGATOR ──
-    for mark in all_marks:
+    for mark in deduped_marks:
         # Guarantee we only look at valid, recorded scores for the active exam sheet
         if mark.is_absent or mark.score is None:
             continue
@@ -1941,50 +2024,52 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
     ]
 
     # ── Grade Breakdown: per-stream performance ──────────────────────────
-    # Prefer ExamSummary; when Celery never ran (or summaries lag), synthesize
-    # equivalent records from Student + Mark so these tables are never zeros.
+    # Roster-driven: every active student must count in ENTRIES (matching
+    # the snapshot path, which iterates report_card_data = the roster) even
+    # when the Celery ExamSummary task hasn't created their row yet.
     all_summaries = list(totals_map.values())
-    if not any(
-        (s.total_marks or 0) != 0 or (s.total_points or 0) != 0
-        for s in all_summaries
-    ):
+    _have_ids = set(totals_map)
+    _missing_students = list(Student.all_objects.filter(
+        school=school, class_name=grade, is_active=True,
+    ).exclude(id__in=_have_ids).order_by('admission_no'))
+    if _missing_students:
         from types import SimpleNamespace
         from ..models import Mark as _Mark
 
-        _grade_students = list(Student.all_objects.filter(
-            school=school, class_name=grade, is_active=True,
-        ))
-        _grade_marks = _Mark.all_objects.filter(
+        _m_marks = _Mark.all_objects.filter(
             school=school,
-            student__class_name=grade,
+            student_id__in=[s.id for s in _missing_students],
             year=exam.year, term=exam.term, exam_type=exam.name,
-        ).only('student_id', 'score', 'points', 'is_absent')
+            subject__in=published_subjects_qs,
+        ).select_related('subject').order_by('-date_recorded', '-id')
         _marks_by_sid = {}
-        for _m in _grade_marks:
-            if _m.is_absent or _m.score is None:
-                continue
+        for _m in _m_marks:
             _marks_by_sid.setdefault(_m.student_id, []).append(_m)
+        for _sid in _marks_by_sid:
+            _marks_by_sid[_sid] = dedup_marks_latest_by_code(_marks_by_sid[_sid])
 
-        all_summaries = []
-        for _st in _grade_students:
+        # Mirror build_exam_result_snapshot's summary-less branch exactly.
+        for _st in _missing_students:
             _ms = _marks_by_sid.get(_st.id, [])
-            if not _ms:
-                continue
-            _tm = sum(m.score for m in _ms)
-            _tp = sum(m.points or 0 for m in _ms)
-            _sc = len(_ms)
-            if _tm == 0 and _tp == 0:
-                continue
-            if is_primary:
-                _plv = calculate_primary_plv(
-                    _tm, _sc, sub_section=active_sub,
-                    school=school, section=section,
-                )
+            _tm = sum(m.score for m in _ms if not m.is_absent and m.score is not None)
+            _tp = sum(m.points or 0 for m in _ms if not m.is_absent and m.score is not None)
+            _sc = sum(1 for m in _ms if not m.is_absent and m.score is not None)
+            if _sc and _tm:
+                if is_primary:
+                    _plv = calculate_primary_plv(
+                        _tm, _sc, sub_section=active_sub,
+                        school=school, section=section,
+                    )
+                else:
+                    _plv = calculate_report_plv(
+                        _tp, _tm, school=school, section=section,
+                    )
+                _mp = float(_tp) / float(_sc)
             else:
-                _plv = calculate_report_plv(
-                    _tp, _tm, school=school, section=section,
-                )
-            _mp = (float(_tp) / float(_sc)) if _sc else 0.0
+                # No marks / all zero — the distribution derivation bands
+                # zero totals at 0 at read time, exactly like the snapshot.
+                _plv = '-'
+                _mp = 0.0
             all_summaries.append(SimpleNamespace(
                 student=_st,
                 total_marks=_tm,
@@ -2015,21 +2100,36 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
         for summ in all_summaries:
             if summ.student.stream != s_name:
                 continue
-            if summ.total_marks == 0 and summ.total_points == 0:
-                continue
             entries += 1
             total_marks += summ.total_marks
             total_subj_count += summ.subject_count or 0
             plv = (summ.overall_plv or '-').strip().upper()
+            if plv not in dist:
+                # Missing/'-' PLV (e.g. all-absent zero totals) — band at 0 so
+                # ENTRIES always equals the distribution sum.
+                if (summ.total_marks or 0) == 0 and (summ.total_points or 0) == 0:
+                    plv = (get_performance_level(
+                        0, sub_section=active_sub, is_total_calculation=True,
+                        school=school, section=section,
+                    )[0] or '-').strip().upper()
+                elif is_primary:
+                    plv = (calculate_primary_plv(
+                        summ.total_marks, summ.subject_count or 0,
+                        sub_section=active_sub, school=school, section=section,
+                    ) or '-').strip().upper()
+                else:
+                    plv = (calculate_report_plv(
+                        summ.total_points, summ.total_marks,
+                        sub_section=active_sub, school=school, section=section,
+                    ) or '-').strip().upper()
             if plv in dist:
                 dist[plv] += 1
 
         # Mean marks = total marks across all students / total subject entries
         mean_m = round(total_marks / total_subj_count, 1) if total_subj_count else 0
         # Mean points from ExamSummary.mean_points (already per-student mean)
-        s_summ_list = [summ for summ in all_summaries if summ.student.stream == s_name
-                       and (summ.total_marks != 0 or summ.total_points != 0)]
-        mean_p = round(sum(summ.mean_points for summ in s_summ_list) / entries, 4) if entries else 0
+        s_summ_list = [summ for summ in all_summaries if summ.student.stream == s_name]
+        mean_p = round(sum(float(summ.mean_points or 0) for summ in s_summ_list) / entries, 4) if entries else 0
         if entries:
             if is_primary:
                 plv_txt, _ = _get_primary_performance(mean_m, school=school, section=section, sub_section=active_sub)
@@ -2054,8 +2154,7 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
 
     # Overall row
     ov_mean = round(ov_total_marks / ov_total_subj_count, 1) if ov_total_subj_count else 0
-    ov_pts = round(sum(summ.mean_points for summ in all_summaries
-                       if (summ.total_marks != 0 or summ.total_points != 0)) / ov_entries, 4) if ov_entries else 0
+    ov_pts = round(sum(float(summ.mean_points or 0) for summ in all_summaries) / ov_entries, 4) if ov_entries else 0
     if ov_entries:
         if is_primary:
             ov_plv, _ = _get_primary_performance(ov_mean, school=school, section=section, sub_section=active_sub)
@@ -2091,20 +2190,35 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
                     continue
             if summ.student.gender != gender_val:
                 continue
-            if summ.total_marks == 0 and summ.total_points == 0:
-                continue
             g_entries += 1
             g_total_marks += summ.total_marks
             g_total_subj_count += summ.subject_count or 0
             plv = (summ.overall_plv or '-').strip().upper()
+            if plv not in g_dist:
+                # Missing/'-' PLV (e.g. all-absent zero totals) — band at 0 so
+                # ENTRIES always equals the distribution sum.
+                if (summ.total_marks or 0) == 0 and (summ.total_points or 0) == 0:
+                    plv = (get_performance_level(
+                        0, sub_section=active_sub, is_total_calculation=True,
+                        school=school, section=section,
+                    )[0] or '-').strip().upper()
+                elif is_primary:
+                    plv = (calculate_primary_plv(
+                        summ.total_marks, summ.subject_count or 0,
+                        sub_section=active_sub, school=school, section=section,
+                    ) or '-').strip().upper()
+                else:
+                    plv = (calculate_report_plv(
+                        summ.total_points, summ.total_marks,
+                        sub_section=active_sub, school=school, section=section,
+                    ) or '-').strip().upper()
             if plv in g_dist:
                 g_dist[plv] += 1
 
         g_mean = round(g_total_marks / g_total_subj_count, 1) if g_total_subj_count else 0
         g_summ_list = [summ for summ in all_summaries if (summ.student.stream in actual_streams if is_combined else summ.student.stream == stream)
-                       and summ.student.gender == gender_val
-                       and (summ.total_marks != 0 or summ.total_points != 0)]
-        g_pts = round(sum(summ.mean_points for summ in g_summ_list) / g_entries, 4) if g_entries else 0
+                       and summ.student.gender == gender_val]
+        g_pts = round(sum(float(summ.mean_points or 0) for summ in g_summ_list) / g_entries, 4) if g_entries else 0
         if g_entries:
             if is_primary:
                 g_plv, _ = _get_primary_performance(g_mean, school=school, section=section, sub_section=active_sub)
@@ -2122,19 +2236,21 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
             'performance_text': g_plv,
         })
 
-    # Section accent color based on exam section
+    # Section accent color based on the grade (mirrors the snapshot path)
     section_colors = {
         'JSS':           '#305CDE',
         'PRIMARY':       '#00674F',
         'LOWER_PRIMARY': '#B45309',
     }
-    sec = exam.school_section or 'JSS'
-    if sec == 'PRIMARY' and exam.sub_section == 'LOWER':
+    if grade in LOWER_PRIMARY_GRADE_CHOICES:
         section_accent = section_colors['LOWER_PRIMARY']
-    elif sec == 'PRIMARY':
+        section_key = 'lower'
+    elif grade in PRIMARY_GRADE_CHOICES:
         section_accent = section_colors['PRIMARY']
+        section_key = 'primary'
     else:
-        section_accent = section_colors.get(sec, '#305CDE')
+        section_accent = section_colors['JSS']
+        section_key = 'jss'
 
     result = {
         'broadsheet': broadsheet,
@@ -2149,6 +2265,7 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
         'grade_breakdown_rows': grade_breakdown_rows,
         'gender_rows': gender_rows,
         'section_accent': section_accent,
+        'section_key': section_key,
     }
 
     # Cache live result too so subsequent loads hit Redis

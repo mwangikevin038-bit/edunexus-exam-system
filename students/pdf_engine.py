@@ -17,6 +17,7 @@ Usage:
 import asyncio
 import logging
 import os
+import sys
 import threading
 from pathlib import Path
 
@@ -39,7 +40,14 @@ def _get_event_loop():
     if _loop is not None and _loop.is_running():
         return _loop
 
-    _loop = asyncio.new_event_loop()
+    if sys.platform == 'win32':
+        # Playwright spawns Chromium via asyncio subprocesses, which on
+        # Windows require a Proactor loop. Django's runtime imports install
+        # the Selector policy (no subprocess support), so build a Proactor
+        # loop explicitly WITHOUT mutating the global policy.
+        _loop = asyncio.WindowsProactorEventLoopPolicy().new_event_loop()
+    else:
+        _loop = asyncio.new_event_loop()
     _loop_thread = threading.Thread(target=_loop.run_forever, daemon=True)
     _loop_thread.start()
     return _loop
@@ -73,12 +81,21 @@ async def _ensure_browser():
     return _browser
 
 
+def _static_css_path(filename):
+    """Resolve a static CSS file against the project root (settings.BASE_DIR)."""
+    try:
+        from django.conf import settings
+        base = str(settings.BASE_DIR)
+    except Exception:
+        base = None
+    if not base:
+        base = os.environ.get('DJANGO_BASE_DIR') or str(Path(__file__).resolve().parent.parent)
+    return Path(base) / 'static' / 'css' / filename
+
+
 def _load_print_css():
     """Load the shared print CSS from disk (cached after first read)."""
-    css_path = Path(os.environ.get(
-        'DJANGO_BASE_DIR',
-        str(Path(__file__).resolve().parent.parent.parent)
-    )) / 'static' / 'css' / 'print-shared.css'
+    css_path = _static_css_path('print-shared.css')
     try:
         return css_path.read_text(encoding='utf-8')
     except FileNotFoundError:
@@ -88,10 +105,7 @@ def _load_print_css():
 
 def _load_weasyprint_css():
     """Load the WeasyPrint-compatible CSS from disk (cached after first read)."""
-    css_path = Path(os.environ.get(
-        'DJANGO_BASE_DIR',
-        str(Path(__file__).resolve().parent.parent.parent)
-    )) / 'static' / 'css' / 'print-weasyprint.css'
+    css_path = _static_css_path('print-weasyprint.css')
     try:
         return css_path.read_text(encoding='utf-8')
     except FileNotFoundError:
@@ -126,6 +140,8 @@ async def _render_html_to_pdf_async(
     margins=None,
     base_url=None,
     timeout_ms=30000,
+    scale=0.75,
+    footer_template=None,
 ):
     """
     Render an HTML string to PDF bytes using headless Chromium.
@@ -136,6 +152,10 @@ async def _render_html_to_pdf_async(
         margins: Optional dict with top/bottom/left/right margin strings (e.g. {"top": "10mm"}).
         base_url: Optional base URL for resolving relative resource paths.
         timeout_ms: Timeout in milliseconds for page rendering.
+        scale: Page scale factor (1.0 = browser-view parity, 0.75 = fit more).
+        footer_template: Optional Chrome header/footer HTML fragment (uses
+            .pageNumber / .totalNumber placeholders). When set, the footer is
+            rendered into the bottom margin area.
 
     Returns:
         PDF bytes, or None on failure.
@@ -177,19 +197,26 @@ async def _render_html_to_pdf_async(
             'format': 'A4',
             'print_background': True,
             'prefer_css_page_size': True,
-            'scale': 0.75,  # Slight scale-down to fit more content
+            'scale': scale,
         }
 
         if landscape:
             pdf_kwargs['landscape'] = True
 
+        if footer_template:
+            # Chrome renders header/footer into the margin area — the bottom
+            # margin must be >= ~14mm for the footer text to fit.
+            pdf_kwargs['display_header_footer'] = True
+            pdf_kwargs['footer_template'] = footer_template
+
         if margins:
             pdf_kwargs['margin'] = margins
         else:
-            # Default margins match our @page CSS
+            # Default margins match our @page CSS. When a footer is shown,
+            # give it enough room (>= 14mm) so it never clips.
             pdf_kwargs['margin'] = {
                 'top': '5mm',
-                'bottom': '8mm',
+                'bottom': '16mm' if footer_template else '8mm',
                 'left': '5mm',
                 'right': '5mm',
             }
@@ -211,6 +238,8 @@ def render_html_to_pdf(
     margins=None,
     base_url=None,
     timeout_ms=30000,
+    scale=0.75,
+    footer_template=None,
 ):
     """
     Synchronous wrapper: render HTML string to PDF bytes.
@@ -227,6 +256,8 @@ def render_html_to_pdf(
             margins=margins,
             base_url=base_url,
             timeout_ms=timeout_ms,
+            scale=scale,
+            footer_template=footer_template,
         ),
         loop,
     )

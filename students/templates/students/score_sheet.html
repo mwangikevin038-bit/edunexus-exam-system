@@ -58,18 +58,17 @@
   .ss-sheet{display:none;background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;font-family:'Times New Roman',Times,serif;font-size:12pt;color:#1e293b;box-shadow:0 4px 24px rgba(0,0,0,0.06)}
   .ss-sheet.visible{display:block}
 
-  .sheet-heading{display:flex;align-items:center;justify-content:center;margin-bottom:0;position:relative;padding:28px 140px;min-height:120px;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);border-radius:12px 12px 0 0;border:1px solid #e2e8f0;border-bottom:none;box-shadow:0 2px 8px rgba(0,0,0,0.03)}
-  .ss-sheet .sheet-heading{border-radius:12px 12px 0 0;border:none}
+  .sheet-heading{display:flex;align-items:center;gap:14px;padding:14px 20px 12px;margin:0;background:#fff;border:none;border-bottom:2px solid var(--section-accent,#305CDE);border-radius:12px 12px 0 0}
+  .ss-sheet .sheet-heading{border-radius:12px 12px 0 0}
   .ss-sheet .ss-table-wrap{border-radius:0 0 12px 12px;margin:0 24px 24px;overflow:hidden}
   .ss-sheet .ss-table-wrap .ss-table{border:1.5px solid #111827;border-radius:0 0 11px 11px}
-  .sheet-accent-bar{height:4px;background:{{ section_accent|default:'#305CDE' }};border-radius:2px;margin:0 24px 12px}
-  .sheet-logo{position:absolute;left:24px;top:50%;transform:translateY(-50%);width:100px;height:100px;object-fit:contain;border-radius:10px;border:2px solid #f1f5f9;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
-  .sheet-heading-copy{text-align:center}
-  .sheet-heading-copy h2{font-family:'Times New Roman',Times,serif;font-size:26px;font-weight:900;text-transform:uppercase;color:{{ section_accent|default:'#0f1727' }};margin:0;letter-spacing:0.06em;line-height:1.1}
-  .sheet-heading-copy .sheet-subtitle{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:12px;color:#64748b;margin:6px 0 0;font-weight:600;letter-spacing:0.04em;text-transform:uppercase}
-  .sheet-heading-copy .sheet-year{display:inline-block;background:{{ section_accent|default:'#305CDE' }};color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;margin-left:6px;letter-spacing:0.03em}
-  .sheet-addr{font-size:12px;color:#374151;font-weight:600;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
-  .sheet-contact{font-size:12px;color:#374151;font-weight:500;margin:2px 0 0;font-family:'Times New Roman',Times,serif}
+  .sheet-logo-wrap{flex-shrink:0;width:72px;height:72px;display:flex;align-items:center;justify-content:center}
+  .sheet-logo{width:72px;height:72px;object-fit:contain;border-radius:6px;display:block}
+  .sheet-heading-copy{flex:1;min-width:0;text-align:left}
+  .sheet-heading-copy h2{font-family:'Plus Jakarta Sans','Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;text-transform:uppercase;color:var(--section-accent,#305CDE);margin:0;letter-spacing:0.02em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sheet-heading-copy .sheet-meta{display:flex;align-items:center;gap:6px;font-family:'Plus Jakarta Sans','Segoe UI',Arial,sans-serif;font-size:10.5px;font-weight:700;color:#64748b;margin:4px 0 0;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sheet-meta-dot{color:#94a3b8;font-weight:900}
+  .sheet-badge{flex-shrink:0;background:var(--section-accent,#305CDE);color:#fff;font-family:'Plus Jakarta Sans','Segoe UI',Arial,sans-serif;font-size:10.5px;font-weight:700;padding:7px 15px;border-radius:50px;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;margin-right:4px}
 
   .ss-table-wrap{overflow-x:auto}
   .ss-table{width:100%;border-collapse:collapse;border:none;background:#fff;font-family:"Times New Roman",Times,serif;font-size:12pt;table-layout:fixed}
@@ -124,13 +123,12 @@
     .ss-btn-download{background:linear-gradient(135deg,#4CAF50 0%,#3d8b40 100%)!important;border:none!important;color:#fff!important;box-shadow:0 4px 14px rgba(76,175,80,0.35)!important}
 
     .ss-sheet{border-radius:16px!important;border:none!important;box-shadow:0 1px 3px rgba(0,0,0,0.04),0 6px 20px rgba(0,0,0,0.06)!important;margin:0 12px!important;overflow:hidden!important}
-    .sheet-heading{padding:20px 16px!important;min-height:auto!important;border-radius:16px 16px 0 0!important;background:#fff!important}
-    .sheet-logo{position:static!important;transform:none!important;width:56px!important;height:56px!important;margin:0 auto 10px!important;display:block!important;border-radius:12px!important}
-    .sheet-heading-copy{text-align:center!important}
-    .sheet-heading-copy h2{font-size:18px!important;letter-spacing:0!important;color:#0f172a!important}
-    .sheet-heading-copy .sheet-subtitle{font-size:11px!important;margin-top:4px!important}
-    .sheet-addr,.sheet-contact{font-size:11px!important}
-    .sheet-accent-bar{height:3px!important;margin:0 16px 10px!important;border-radius:2px!important}
+    .sheet-heading{padding:12px 14px!important;border-radius:16px 16px 0 0!important;gap:10px!important}
+    .sheet-logo-wrap{width:52px!important;height:52px!important}
+    .sheet-logo{width:52px!important;height:52px!important;border-radius:10px!important}
+    .sheet-heading-copy h2{font-size:17px!important;letter-spacing:0!important}
+    .sheet-heading-copy .sheet-meta{font-size:9.5px!important;margin-top:3px!important}
+    .sheet-badge{font-size:9px!important;padding:5px 11px!important}
 
     .ss-table-wrap{margin:0 12px 12px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;border-radius:10px!important;border:1px solid #e2e8f0!important}
     .ss-table{min-width:600px!important;font-size:10pt!important}
@@ -153,23 +151,26 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
 .sub-nav-bar,.ss-card,.ss-sheet-toolbar,.global-header,.mobile-global-header,.bottom-nav,.ss-loading,.ss-empty{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important}
 .ss-wrap{padding:0!important;margin:0!important;max-width:none!important;background:#fff!important}
 .ss-sheet{display:block!important;border:none!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;margin:0!important;background:#fff!important}
-.sheet-heading{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:0!important;border:none!important;border-bottom:2px solid __ACCENT__!important;padding:8px 0 6px 100px!important;min-height:auto!important;background:#fff!important}
+.sheet-heading{position:relative!important;display:flex!important;align-items:center!important;gap:14px!important;border-radius:0!important;border:none!important;border-bottom:2px solid var(--section-accent,#305CDE)!important;padding:12px 4px 10px!important;min-height:auto!important;background:#fff!important}
 .sheet-accent-bar{display:none!important}
-.sheet-logo{position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:80px!important;height:80px!important;object-fit:contain!important;display:block!important;border-radius:6px!important}
-.sheet-heading-copy{text-align:center!important}
-.sheet-heading-copy h2{font-family:"Times New Roman",Times,serif!important;font-size:22px!important;font-weight:900!important;text-transform:uppercase!important;color:__ACCENT__!important;margin:0!important;line-height:1.1!important;letter-spacing:0.06em!important}
-.sheet-heading-copy .sheet-subtitle{font-family:"Times New Roman",Times,serif!important;font-size:11px!important;color:#374151!important;margin:2px 0 0!important;font-weight:600!important;letter-spacing:0.04em!important;text-transform:uppercase!important}
-.sheet-heading-copy .sheet-year{display:inline-block!important;background:__ACCENT__!important;color:#fff!important;font-size:9px!important;font-weight:700!important;padding:1px 7px!important;border-radius:20px!important;margin-left:4px!important}
-.sheet-heading-copy .sheet-addr{font-size:11px!important;color:#374151!important;font-weight:600!important;margin:1px 0 0!important;font-family:"Times New Roman",Times,serif!important}
-.sheet-heading-copy .sheet-contact{font-size:11px!important;color:#374151!important;font-weight:500!important;margin:1px 0 0!important;font-family:"Times New Roman",Times,serif!important}
+.sheet-logo-wrap{flex-shrink:0!important;width:72px!important;height:72px!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.sheet-logo{position:static!important;transform:none!important;width:72px!important;height:72px!important;object-fit:contain!important;display:block!important;border-radius:6px!important;border:none!important;box-shadow:none!important}
+.sheet-heading-copy{flex:1!important;min-width:0!important;text-align:left!important}
+.sheet-heading-copy h2{font-family:"Plus Jakarta Sans","Segoe UI",Arial,sans-serif!important;font-size:24px!important;font-weight:800!important;text-transform:uppercase!important;color:var(--section-accent,#305CDE)!important;margin:0!important;line-height:1.1!important;letter-spacing:0.02em!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.sheet-heading-copy .sheet-meta{display:flex!important;align-items:center!important;gap:6px!important;font-family:"Plus Jakarta Sans","Segoe UI",Arial,sans-serif!important;font-size:10.5px!important;font-weight:700!important;color:#64748b!important;text-transform:uppercase!important;letter-spacing:0.06em!important;margin:4px 0 0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.sheet-meta-dot{color:#94a3b8!important;font-weight:900!important}
+.sheet-badge{flex-shrink:0!important;background:var(--section-accent,#305CDE)!important;color:#fff!important;font-family:"Plus Jakarta Sans","Segoe UI",Arial,sans-serif!important;font-size:10.5px!important;font-weight:700!important;padding:7px 15px!important;border-radius:50px!important;text-transform:uppercase!important;letter-spacing:0.05em!important;white-space:nowrap!important;margin-right:4px!important}
 .ss-table-wrap{margin:0!important;border-radius:0!important;overflow:visible!important}
 .ss-table,.ss-table *,.ss-table *::before,.ss-table *::after{font-family:"Times New Roman",Times,serif!important}
 .ss-table{width:100%!important;min-width:0!important;border-collapse:collapse!important;border:1px solid #000!important;font-size:12pt!important;table-layout:fixed!important}
-.ss-table th{background:#e2e6ea!important;color:#000!important;font-size:12pt!important;font-weight:900!important;padding:5px 8px!important;border:1px solid #000!important;text-transform:uppercase!important;text-align:left!important;line-height:1.3!important}
-.ss-table td{padding:4px 8px!important;border:1px solid #000!important;color:#000!important;font-weight:400!important;font-size:11.5pt!important;line-height:1.3!important;vertical-align:middle!important}
+.ss-table th{background:#e2e6ea!important;color:#000!important;font-size:12pt!important;font-weight:900!important;padding:5px 6px!important;border:1px solid #000!important;text-transform:uppercase!important;text-align:center!important;line-height:1.3!important}
+.ss-table th.col-name{text-align:left!important}
+.ss-table td{padding:4px 6px!important;border:1px solid #000!important;color:#000!important;font-weight:400!important;font-size:11.5pt!important;line-height:1.3!important;vertical-align:middle!important;text-align:center!important}
+.ss-table td.col-name{text-align:left!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
 .ss-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
 .ss-table a{color:#000!important;text-decoration:none!important}
 .ss-loading,.ss-empty,.ss-loading *,.ss-empty *{font-family:"Times New Roman",Times,serif!important;font-size:12pt!important;color:#000!important}
+.grid-cell{width:auto!important;height:28px!important;background:#fff!important;font-size:12pt!important}
 </script>
 
 <div class="ss-wrap">
@@ -231,27 +232,20 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
     </button>
   </div>
 
-  <div class="ss-sheet" id="ssSheet">
+  <div class="ss-sheet" id="ssSheet" style="--section-accent: {{ section_accent|default:'#305CDE' }};">
     <div class="sheet-heading">
       {% if school_logo %}
+      <div class="sheet-logo-wrap">
         <img class="sheet-logo" src="{{ school_logo }}" alt="{{ school_name }}" onerror="this.style.display='none';">
+      </div>
       {% endif %}
       <div class="sheet-heading-copy">
         <h2 id="ssSchoolName">{{ school_name }}</h2>
-        {% if school_address %}<p class="sheet-addr">Address: {{ school_address }}</p>{% endif %}
-        {% if school_phone or school_email %}
-        <p class="sheet-contact">
-          {% if school_phone %}Tel {{ school_phone }}{% endif %}
-          {% if school_phone and school_email %} &nbsp;|&nbsp; {% endif %}
-          {% if school_email %}Email {{ school_email }}{% endif %}
-        </p>
-        {% endif %}
-        <p class="sheet-subtitle" id="ssInfoBar"></p>
-        <p class="sheet-subtitle" id="ssTeacherName"></p>
+        <p class="sheet-meta" id="ssInfoBar"></p>
+        <p class="sheet-meta" id="ssTeacherName"></p>
       </div>
+      <span class="sheet-badge">Score Sheet</span>
     </div>
-    <div class="sheet-accent-bar" id="ssAccentBar"></div>
-
     <div class="ss-table-wrap">
       <table class="ss-table" id="ssTable">
         <colgroup>
@@ -320,7 +314,6 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
       infoBar=document.getElementById('ssInfoBar'),
       teacherName=document.getElementById('ssTeacherName'),
       ssTable=document.getElementById('ssTable'),
-      accentBar=document.getElementById('ssAccentBar'),
       schoolNameH1=document.getElementById('ssSchoolName');
 
   var SECTION_COLORS={% autoescape off %}{{ section_colors_json }}{% endautoescape %};
@@ -337,15 +330,7 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
   function updateAccentForGrade(){
     var section=getSectionForGrade(grade.value);
     if(!section||!SECTION_COLORS[section])return;
-    var color=SECTION_COLORS[section];
-    accentBar.style.background=color;
-    schoolNameH1.style.color=color;
-    var cssEl=document.getElementById('pagePrintCSS');
-    if(cssEl){
-      var orig=cssEl.getAttribute('data-original')||cssEl.textContent;
-      if(!cssEl.getAttribute('data-original'))cssEl.setAttribute('data-original',orig);
-      cssEl.textContent=orig.replace(/__ACCENT__/g,color);
-    }
+    sheet.style.setProperty('--section-accent',SECTION_COLORS[section]);
   }
 
   function fetchJSON(url){
@@ -383,8 +368,7 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
         if(subText)parts.push(subText);
       }
       parts.push(new Date().getFullYear());
-      parts.push('SCORE SHEET');
-      infoBar.textContent=parts.join(' \u2013 ');
+      infoBar.textContent=parts.join(' \u00b7 ');
     } else {
       infoBar.textContent='';
     }
@@ -533,27 +517,41 @@ html,body,.app-content,.main-content{overflow:visible!important;margin:0!importa
   });
 
   printBtn.addEventListener('click',function(){
-    EDUNEXUSPrint.openPrintWindow('.ss-sheet', {title:'{{ selected_grade|default:"Score" }} {{ selected_stream|default:"Sheet" }} - Score Sheet'});
+    EDUNEXUSPrint.openPrintWindow('.ss-sheet', {title:'Score Sheet'});
   });
 
   downloadBtn.addEventListener('click',function(){
-    EDUNEXUSPrint.openPrintWindow('.ss-sheet', {title:'{{ selected_grade|default:"Score" }} {{ selected_stream|default:"Sheet" }} - Score Sheet'});
+    if(downloadBtn.disabled)return;
+    if(!grade.value){alert('Select a Form / Grade first.');return;}
+    var orig=downloadBtn.innerHTML;
+    downloadBtn.disabled=true;
+    downloadBtn.textContent='Generating PDF\u2026';
+    var url='{% url "download_score_sheet_pdf" %}?grade='+encodeURIComponent(grade.value)
+      +(stream.value?'&stream='+encodeURIComponent(stream.value):'')
+      +(subject.value?'&subject_id='+encodeURIComponent(subject.value):'');
+    fetch(url)
+      .then(function(r){if(!r.ok)throw new Error('PDF failed');return r.blob();})
+      .then(function(b){
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(b);
+        a.download='Score_Sheet_'+grade.value+(stream.value?'_'+stream.value:'')+'.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+      })
+      .catch(function(){alert('Failed to generate PDF. Please try again.');})
+      .then(function(){downloadBtn.disabled=false;downloadBtn.innerHTML=orig;});
   });
 
   updateGetBtn();
   updateClearBtns();
 
-  var cssEl=document.getElementById('pagePrintCSS');
-  if(cssEl){
-    cssEl.setAttribute('data-original',cssEl.textContent);
-    cssEl.textContent=cssEl.textContent.replace(/__ACCENT__/g,'{{ section_accent|default:"#0f1727" }}');
-  }
-
   document.addEventListener('keydown',function(e){
     if((e.ctrlKey||e.metaKey)&&e.key==='p'){
       e.preventDefault();
       if(typeof EDUNEXUSPrint!=='undefined'&&EDUNEXUSPrint.openPrintWindow){
-        EDUNEXUSPrint.openPrintWindow('.ss-sheet',{title:'{{ selected_grade|default:"Score" }} {{ selected_stream|default:"Sheet" }} - Score Sheet'});
+        EDUNEXUSPrint.openPrintWindow('.ss-sheet',{title:'Score Sheet'});
       }
     }
   });

@@ -8,6 +8,7 @@ various view layers.
 
 import bisect
 import random
+import re
 import secrets
 import string
 
@@ -25,6 +26,27 @@ from .constants import (
 from ..models import Mark, MarkSubmission, Student, SubjectAssignment, Teacher, TermDate
 from ..school_scope import get_current_school, get_current_school_section
 from ..security import user_has_main_school_admin_override
+
+
+def safe_pdf_filename(*parts):
+    """Build a professional, header-safe PDF filename (Type-First, case-preserving).
+
+    Joins non-empty parts with underscores, replaces spaces with underscores,
+    strips characters that are unsafe in Content-Disposition headers, and
+    appends ``.pdf`` when missing.
+
+    Example: ``safe_pdf_filename('Merit_List', 'Grade 7', 'Blue', 2026)``
+    → ``Merit_List_Grade_7_Blue_2026.pdf``
+    """
+    raw = '_'.join(str(p).strip() for p in parts if p is not None and str(p).strip())
+    raw = raw.replace(' ', '_')
+    raw = re.sub(r'[^A-Za-z0-9_\-.]+', '_', raw)
+    raw = re.sub(r'_+', '_', raw).strip('._')
+    if not raw:
+        raw = 'document'
+    if not raw.lower().endswith('.pdf'):
+        raw += '.pdf'
+    return raw
 
 
 # ── Term-date fallback for report cards ──────────────────────────────────────
@@ -1256,6 +1278,33 @@ def get_student_totals_with_rank(school, class_name, stream, year, term, assessm
 
 # ── Exam result snapshot builder ─────────────────────────────────────────────
 
+def dedup_marks_latest_by_code(marks):
+    """Keep one mark per subject code — the latest by (date_recorded, id).
+
+    A student can end up with two Mark rows sharing one subject code (e.g. a
+    stray row written under another grade's Subject object with the same code).
+    Downstream entries/means/totals must count each subject once; the most
+    recently recorded mark wins. Comparison is date-based so the result does
+    not depend on queryset ordering.
+    """
+    from datetime import datetime as _dt
+
+    latest = {}
+    for m in marks:
+        code = m.subject.code if getattr(m, 'subject', None) else None
+        if code is None:
+            continue
+        cur = latest.get(code)
+        if cur is None:
+            latest[code] = m
+            continue
+        m_key = (m.date_recorded or _dt.min, m.pk or 0)
+        c_key = (cur.date_recorded or _dt.min, cur.pk or 0)
+        if m_key > c_key:
+            latest[code] = m
+    return list(latest.values())
+
+
 def build_exam_result_snapshot(school, exam, class_name, stream):
     """
     Build and save a snapshot of exam results for one stream.
@@ -1307,16 +1356,22 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
         school=school,
         student__class_name=class_name,
         student__stream=stream,
+        student__is_active=True,
         term=exam.term,
         exam_type=exam.name,
         year=exam.year,
         subject__in=published_subjects_qs,
-    ).select_related('subject')
+    ).select_related('subject').order_by('-date_recorded', '-id')
 
-    # Group marks by student
+    # Group marks by student, then keep only the latest mark per subject code
+    # so a stray duplicate can never inflate entries/means/totals.
     marks_by_student = {}
     for mark in all_marks:
         marks_by_student.setdefault(mark.student_id, []).append(mark)
+    for _sid in marks_by_student:
+        marks_by_student[_sid] = dedup_marks_latest_by_code(marks_by_student[_sid])
+    # Deduped flat list — feeds class_averages / subject_data / marks_by_gender
+    deduped_marks = [m for _lst in marks_by_student.values() for m in _lst]
 
     # 5. Get ExamSummary for all students (pre-computed rankings)
     summaries = {
@@ -1339,7 +1394,10 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
     if is_lower_primary:
         sub_section = 'LOWER'
     elif is_primary:
-        sub_section = exam.sub_section or 'UPPER'
+        # Derive from the student roster, not the exam: a Primary exam row can
+        # carry a JSS/blank sub_section (e.g. whole-school opener picked from
+        # the JSS exam) while the grade's assignments live under sample's.
+        sub_section = sample.sub_section or exam.sub_section or 'UPPER'
         if sub_section not in ('LOWER', 'UPPER'):
             sub_section = 'UPPER'
     else:
@@ -1358,16 +1416,15 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
         sa_qs = sa_qs.filter(school_section='PRIMARY', sub_section=sub_section)
     elif section == 'JSS':
         sa_qs = sa_qs.filter(school_section='JSS')
-    assignments = {
-        a.subject.code: a
-        for a in sa_qs
-        if a.subject
-    }
+    assignments = {}
+    for a in sa_qs.order_by('id'):
+        if a.subject:
+            assignments.setdefault(a.subject.code, []).append(a)
 
     # 7. Compute class averages per subject
     class_averages = {}
     for sub_code in published_subject_codes:
-        sub_marks = [m for m in all_marks if m.subject.code == sub_code]
+        sub_marks = [m for m in deduped_marks if m.subject.code == sub_code]
         valid_scores = [m.score for m in sub_marks if not m.is_absent and m.score is not None]
         if valid_scores:
             class_averages[sub_code] = round(sum(valid_scores) / len(valid_scores), 1)
@@ -1455,8 +1512,12 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
 
     subject_data = {}
     for sub_code in published_subject_codes:
-        assignment = assignments.get(sub_code)
-        sub_marks = [m for m in all_marks if m.subject.code == sub_code]
+        teacher_names = []
+        for _a in assignments.get(sub_code) or []:
+            _t = _a.teacher_profile.get_full_title() if _a.teacher_profile else ''
+            if _t and _t not in teacher_names:
+                teacher_names.append(_t)
+        sub_marks = [m for m in deduped_marks if m.subject.code == sub_code]
         valid_scores = [m.score for m in sub_marks if not m.is_absent and m.score is not None]
 
         # Build distribution for this subject
@@ -1486,7 +1547,7 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
         subject_data[sub_code] = {
             'subject_name': sub_marks[0].subject.name if sub_marks else '',
             'subject_code': sub_code,
-            'teacher_name': assignment.teacher_profile.get_full_title() if assignment and assignment.teacher_profile else '',
+            'teacher_name': ', '.join(teacher_names),
             'class_average': class_averages.get(sub_code, 0),
             'total_score': sum(valid_scores),
             'highest': max(valid_scores) if valid_scores else 0,
@@ -1501,7 +1562,7 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
     # 10. Build analysis data
     # Gender distributions for Gender Summary table
     marks_by_gender = {'Male': [], 'Female': []}
-    for mark in all_marks:
+    for mark in deduped_marks:
         if mark.student_id:
             for sid, sdata in student_data.items():
                 if sid == mark.student_id:
@@ -1552,23 +1613,35 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
         'gender_analysis': gender_analysis,
     }
 
-    # 11. Save snapshot
-    snapshot = ExamResultSnapshot(
-        school=school,
-        term=exam.term,
-        year=exam.year,
-        exam_name=exam.name,
-        class_name=class_name,
-        stream=stream,
-        school_section=sample.school_section,
-        sub_section=sample.sub_section,
-        report_card_data=student_data,
-        broadsheet_data=subject_data,
-        analysis_data=analysis,
-        student_count=len(students),
-        published_by=None,
-    )
-    snapshot.save()
+    # 11. Save snapshot (replace any existing row — unique on
+    # school/term/year/exam/class/stream; a plain save() INSERTs and blows up
+    # with IntegrityError if invalidate_report_caches didn't run first).
+    from django.db import transaction
+    with transaction.atomic():
+        ExamResultSnapshot.all_objects.filter(
+            school=school,
+            term=exam.term,
+            year=exam.year,
+            exam_name=exam.name,
+            class_name=class_name,
+            stream=stream,
+        ).delete()
+        snapshot = ExamResultSnapshot(
+            school=school,
+            term=exam.term,
+            year=exam.year,
+            exam_name=exam.name,
+            class_name=class_name,
+            stream=stream,
+            school_section=sample.school_section,
+            sub_section=sample.sub_section,
+            report_card_data=student_data,
+            broadsheet_data=subject_data,
+            analysis_data=analysis,
+            student_count=len(students),
+            published_by=None,
+        )
+        snapshot.save()
 
     return snapshot
 
@@ -1652,11 +1725,52 @@ def build_analysis_from_snapshot(school, exam):
     students_who_sat = len(student_ids)
 
     # ── Subject performance from broadsheet_data ────────────────────────
+    # Merge across ALL snapshots: sum entries/scores/distribution, join
+    # teachers. Taking the first snapshot wholesale showed only one
+    # class/stream's numbers as the exam-wide total.
     merged_subjects = {}
     for snap in snapshots:
-        for code, data in snap.broadsheet_data.items():
-            if code not in merged_subjects:
-                merged_subjects[code] = data
+        for code, data in (snap.broadsheet_data or {}).items():
+            m = merged_subjects.get(code)
+            if m is None:
+                m = {
+                    **data,
+                    'distribution': dict(data.get('distribution') or {}),
+                    '_teachers': [],
+                    '_pts_total': (data.get('mean_points') or 0) * (data.get('student_count') or 0),
+                }
+                merged_subjects[code] = m
+            else:
+                prev_n = m.get('student_count') or 0
+                new_n = data.get('student_count') or 0
+                m['student_count'] = prev_n + new_n
+                m['absent_count'] = (m.get('absent_count') or 0) + (data.get('absent_count') or 0)
+                m['total_score'] = (m.get('total_score') or 0) + (data.get('total_score') or 0)
+                m['_pts_total'] += (data.get('mean_points') or 0) * new_n
+                for lvl, cnt in (data.get('distribution') or {}).items():
+                    m['distribution'][lvl] = m['distribution'].get(lvl, 0) + (cnt or 0)
+                if new_n:
+                    if prev_n:
+                        m['highest'] = max(m.get('highest') or 0, data.get('highest') or 0)
+                        m['lowest'] = min(m.get('lowest') or 100, data.get('lowest') or 100)
+                    else:
+                        m['highest'] = data.get('highest') or 0
+                        m['lowest'] = data.get('lowest') or 0
+            t_name = (data.get('teacher_name') or '').strip()
+            if t_name and t_name not in m['_teachers']:
+                m['_teachers'].append(t_name)
+    for m in merged_subjects.values():
+        _teachers = m.pop('_teachers', [])
+        _pts_total = m.pop('_pts_total', 0)
+        _n = m.get('student_count') or 0
+        if _n > 0:
+            m['mean_score'] = round((m.get('total_score') or 0) / _n, 2)
+            m['class_average'] = m['mean_score']
+            m['mean_points'] = round(_pts_total / _n, 4)
+        if _teachers:
+            m['teacher_name'] = ', '.join(_teachers)
+        elif not m.get('teacher_name'):
+            m['teacher_name'] = ''
 
     # Resolve subject codes to names
     from ..models import Subject
@@ -1667,12 +1781,17 @@ def build_analysis_from_snapshot(school, exam):
     subject_perf = {}
     for code, data in merged_subjects.items():
         subj_name = subject_code_to_name.get(str(code), str(code))
-        subject_perf[subj_name] = {
-            'total_points': data.get('mean_points', 0) * data.get('student_count', 0),
-            'count': data.get('student_count', 0),
-            'total_score': data.get('total_score', 0),
-            'plv_counts': data.get('distribution', {}),
-        }
+        # Different codes can share one subject name (e.g. 902/KIS) —
+        # accumulate instead of overwriting.
+        sp = subject_perf.setdefault(
+            subj_name,
+            {'total_points': 0, 'count': 0, 'total_score': 0, 'plv_counts': {}, 'changes': []},
+        )
+        sp['total_points'] += data.get('mean_points', 0) * data.get('student_count', 0)
+        sp['count'] += data.get('student_count', 0)
+        sp['total_score'] += data.get('total_score', 0)
+        for lvl, cnt in (data.get('distribution') or {}).items():
+            sp['plv_counts'][lvl] = sp['plv_counts'].get(lvl, 0) + (cnt or 0)
 
     # ── Stream stats from per-stream student data ───────────────────────
     stream_stats = {}
@@ -1996,6 +2115,9 @@ def build_report_card_context(
     marks_by_student = {}
     for mark in all_marks_qs:
         marks_by_student.setdefault(mark.student_id, []).append(mark)
+    # One cell per subject code — a stray/duplicate row must not print twice
+    for _sid in marks_by_student:
+        marks_by_student[_sid] = dedup_marks_latest_by_code(marks_by_student[_sid])
 
     # ── 6. Grade-wide ExamSummary for rank + counts ──────────────────────────
     summaries_qs = ExamSummary.all_objects.filter(

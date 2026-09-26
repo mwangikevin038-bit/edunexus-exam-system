@@ -140,6 +140,8 @@ from .pdf_exports import (  # noqa: F401
     download_classlist_pdf,
     download_generated_pdf,
     download_individual_report_pdf,
+    download_merit_list_pdf,
+    download_score_sheet_pdf,
     individual_report_print_html,
     pdf_progress,
     cancel_bulk_pdf,

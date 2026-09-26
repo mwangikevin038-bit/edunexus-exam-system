@@ -144,7 +144,7 @@ class ForcePasswordChangeMiddleware:
     Only allows through: password-change page, logout, static/media, and login.
     """
 
-    EXEMPT_PREFIXES = ("/password-change/", "/logout/", "/static/", "/media/", "/login/", "/super/", "/results/download-pdf/", "/class-lists/download-pdf/", "/bulk-reports/download-pdf/", "/report/")
+    EXEMPT_PREFIXES = ("/password-change/", "/logout/", "/static/", "/media/", "/login/", "/super/", "/results/download-pdf/", "/class-lists/download-pdf/", "/bulk-reports/download-pdf/", "/report/", "/printouts/score-sheet/download-pdf/")
 
     def __init__(self, get_response):
         self.get_response = get_response

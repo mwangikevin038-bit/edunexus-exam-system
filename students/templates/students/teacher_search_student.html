@@ -41,9 +41,215 @@
   body { background: #eaecf0 !important; }
 
   /* ── Mobile styles for teacher search, profile, analytics ─── */
-  @media (max-width: 1023px) {
+  @media (max-width: 1023px) and (screen) {
 
-    /* ── Search Results: table scroll ─────────────────────────── */
+    body, .app-content { background: #F5F7F6 !important; }
+
+    /* ── Search form card ───────────────────────────────────── */
+    #search-card-container {
+      padding: 0 12px !important;
+      margin: 0 !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    #search-card-container > div {
+      background: #fff !important;
+      padding: 20px 16px 24px !important;
+      border-radius: 20px !important;
+      border: 1px solid rgba(0,0,0,0.04) !important;
+      box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05) !important;
+      box-sizing: border-box !important;
+      margin-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 16px) !important;
+    }
+
+    #search-card-container > div > h3 {
+      margin: 0 0 14px !important;
+      color: #1A1A1A !important;
+      font-size: 1.125rem !important;
+      font-weight: 800 !important;
+      letter-spacing: -0.02em !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+    }
+
+    /* ── Search-type chips (2×2) ────────────────────────────── */
+    #search-type-radios {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+      margin: 0 0 16px !important;
+      border-bottom: none !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    #search-type-radios label {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 8px !important;
+      flex: none !important;
+      min-width: 0 !important;
+      min-height: 48px !important;
+      padding: 10px 10px !important;
+      margin: 0 !important;
+      cursor: pointer !important;
+      font-size: 0.78rem !important;
+      font-weight: 700 !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+      color: #374151 !important;
+      background: #F8FAFC !important;
+      border: 1.5px solid #E2E8F0 !important;
+      border-radius: 14px !important;
+      box-sizing: border-box !important;
+      line-height: 1.25 !important;
+      text-align: left !important;
+      transition: background 0.15s, border-color 0.15s !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+
+    #search-type-radios label:has(input:checked) {
+      background: rgba(36,229,94,0.12) !important;
+      border-color: #24E55E !important;
+      color: #0F8A34 !important;
+      box-shadow: 0 0 0 1px rgba(36,229,94,0.2) !important;
+    }
+
+    #search-type-radios input[type="radio"] {
+      flex-shrink: 0 !important;
+      width: 16px !important;
+      height: 16px !important;
+      margin: 0 !important;
+      accent-color: #199E41 !important;
+      cursor: pointer !important;
+    }
+
+    /* ── Fields: full-width stack ───────────────────────────── */
+    #dynamic-fields {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 14px !important;
+      margin: 0 0 18px !important;
+      width: 100% !important;
+    }
+
+    #dynamic-fields > div {
+      grid-column: span 1 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 6px !important;
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+
+    #dynamic-fields label {
+      font-size: 0.6875rem !important;
+      font-weight: 700 !important;
+      color: #6B7280 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+      margin: 0 !important;
+      line-height: 1.3 !important;
+    }
+
+    #dynamic-fields label span {
+      color: #ef4444 !important;
+    }
+
+    #dynamic-fields input,
+    #dynamic-fields select {
+      width: 100% !important;
+      height: 48px !important;
+      padding: 0 16px !important;
+      border: 1px solid rgba(0,0,0,0.08) !important;
+      border-radius: 14px !important;
+      box-sizing: border-box !important;
+      background-color: #fff !important;
+      background: #fff !important;
+      background-image: none !important;
+      font-size: 0.9375rem !important;
+      font-weight: 600 !important;
+      color: #1A1A1A !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      transition: border-color 0.2s, box-shadow 0.2s !important;
+      margin: 0 !important;
+    }
+
+    #dynamic-fields input::placeholder {
+      color: #9CA3AF !important;
+      font-weight: 500 !important;
+    }
+
+    #dynamic-fields select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 14px center !important;
+      background-size: 16px 16px !important;
+      padding-right: 40px !important;
+      color: #1A1A1A !important;
+    }
+
+    #dynamic-fields select:invalid,
+    #dynamic-fields select option[value=""] {
+      color: #9CA3AF !important;
+    }
+
+    #dynamic-fields input:focus,
+    #dynamic-fields select:focus {
+      outline: none !important;
+      border-color: #24E55E !important;
+      box-shadow: 0 0 0 3px rgba(36,229,94,0.14) !important;
+    }
+
+    /* ── Full-width green Search button ─────────────────────── */
+    #search-form > div:last-child {
+      display: flex !important;
+      justify-content: stretch !important;
+      width: 100% !important;
+      margin-top: 4px !important;
+    }
+
+    #search-form button[type="submit"] {
+      width: 100% !important;
+      height: 52px !important;
+      min-height: 52px !important;
+      padding: 0 24px !important;
+      border: none !important;
+      border-radius: 14px !important;
+      background: linear-gradient(135deg,#24E55E 0%,#199E41 100%) !important;
+      background-color: #199E41 !important;
+      color: #fff !important;
+      font-size: 0.9375rem !important;
+      font-weight: 800 !important;
+      letter-spacing: -0.01em !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+      cursor: pointer !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 8px !important;
+      box-shadow: 0 4px 16px rgba(34,197,94,0.28) !important;
+      box-sizing: border-box !important;
+      transition: transform 0.15s, box-shadow 0.2s !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+
+    #search-form button[type="submit"]:active {
+      transform: scale(0.97) !important;
+      box-shadow: 0 2px 8px rgba(34,197,94,0.22) !important;
+    }
+
+    #search-form button[type="submit"] svg {
+      width: 18px !important;
+      height: 18px !important;
+      flex-shrink: 0 !important;
+    }
+
+    /* ── Search Results: table scroll ───────────────────────── */
     #search-card-container > div > div:first-child {
       font-size: 16px !important;
       margin-bottom: 14px !important;
@@ -385,6 +591,171 @@
       padding: 8px !important;
       font-size: 11px !important;
     }
+  }
+
+  /* force-mobile: phones spoofing desktop viewport */
+  html.force-mobile body,
+  html.force-mobile .app-content { background: #F5F7F6 !important; }
+
+  html.force-mobile #search-card-container { padding: 0 12px !important; margin: 0 !important; width: 100% !important; box-sizing: border-box !important; }
+
+  html.force-mobile #search-card-container > div {
+    background: #fff !important;
+    padding: 20px 16px 24px !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(0,0,0,0.04) !important;
+    box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05) !important;
+    box-sizing: border-box !important;
+    margin-bottom: calc(var(--bottomnav-height, 56px) + env(safe-area-inset-bottom, 0px) + 16px) !important;
+  }
+
+  html.force-mobile #search-card-container > div > h3 {
+    margin: 0 0 14px !important;
+    color: #1A1A1A !important;
+    font-size: 1.125rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+  }
+
+  html.force-mobile #search-type-radios {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin: 0 0 16px !important;
+    border-bottom: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  html.force-mobile #search-type-radios label {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    flex: none !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    padding: 10px 10px !important;
+    margin: 0 !important;
+    cursor: pointer !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    color: #374151 !important;
+    background: #F8FAFC !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    box-sizing: border-box !important;
+    line-height: 1.25 !important;
+    text-align: left !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  html.force-mobile #search-type-radios label:has(input:checked) {
+    background: rgba(36,229,94,0.12) !important;
+    border-color: #24E55E !important;
+    color: #0F8A34 !important;
+    box-shadow: 0 0 0 1px rgba(36,229,94,0.2) !important;
+  }
+
+  html.force-mobile #search-type-radios input[type="radio"] {
+    flex-shrink: 0 !important;
+    width: 16px !important;
+    height: 16px !important;
+    margin: 0 !important;
+    accent-color: #199E41 !important;
+  }
+
+  html.force-mobile #dynamic-fields {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    margin: 0 0 18px !important;
+    width: 100% !important;
+  }
+
+  html.force-mobile #dynamic-fields > div {
+    grid-column: span 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  html.force-mobile #dynamic-fields label {
+    font-size: 0.6875rem !important;
+    font-weight: 700 !important;
+    color: #6B7280 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    margin: 0 !important;
+  }
+
+  html.force-mobile #dynamic-fields label span { color: #ef4444 !important; }
+
+  html.force-mobile #dynamic-fields input,
+  html.force-mobile #dynamic-fields select {
+    width: 100% !important;
+    height: 48px !important;
+    padding: 0 16px !important;
+    border: 1px solid rgba(0,0,0,0.08) !important;
+    border-radius: 14px !important;
+    box-sizing: border-box !important;
+    background-color: #fff !important;
+    background: #fff !important;
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+    color: #1A1A1A !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+
+  html.force-mobile #dynamic-fields select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 14px center !important;
+    background-size: 16px 16px !important;
+    padding-right: 40px !important;
+  }
+
+  html.force-mobile #dynamic-fields input:focus,
+  html.force-mobile #dynamic-fields select:focus {
+    outline: none !important;
+    border-color: #24E55E !important;
+    box-shadow: 0 0 0 3px rgba(36,229,94,0.14) !important;
+  }
+
+  html.force-mobile #search-form > div:last-child {
+    display: flex !important;
+    justify-content: stretch !important;
+    width: 100% !important;
+  }
+
+  html.force-mobile #search-form button[type="submit"] {
+    width: 100% !important;
+    height: 52px !important;
+    padding: 0 24px !important;
+    border: none !important;
+    border-radius: 14px !important;
+    background: linear-gradient(135deg,#24E55E 0%,#199E41 100%) !important;
+    background-color: #199E41 !important;
+    color: #fff !important;
+    font-size: 0.9375rem !important;
+    font-weight: 800 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    box-shadow: 0 4px 16px rgba(34,197,94,0.28) !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
   }
 </style>
 <div style="display:flex;flex-direction:column;gap:16px;width:100%;">

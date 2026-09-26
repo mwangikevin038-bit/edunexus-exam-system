@@ -52,6 +52,7 @@ from .helpers import (
     get_class_teacher_scope,
     get_performance_level,
     get_teacher_for_user,
+    safe_pdf_filename,
     user_can_edit_learner_profile,
     user_can_view_learner_profile,
 )
@@ -1403,7 +1404,7 @@ def download_teachers_list_pdf(request):
         return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
-    filename = f"Teachers_List_{school.code}_{datetime.date.today().year}.pdf"
+    filename = safe_pdf_filename('Teachers_List', school.code, datetime.date.today().year)
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 

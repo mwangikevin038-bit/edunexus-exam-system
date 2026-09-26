@@ -3,12 +3,41 @@ Unified Grading Engine — production-safe source of truth for grade resolution.
 Uses Django's native thread-safe cache framework to support high-concurrency environments.
 """
 import logging
+import time
 from django.core.cache import cache
 from ..models import GradingAssignment
 
 logger = logging.getLogger("students.grading_engine")
 
 _GRADED_CACHE_KEYS = set()
+
+# Process-local memo of fully-resolved scale data.
+# Each resolve_scale_fast call used to walk candidate Redis keys one GET at a
+# time; on Windows that costs ~40ms per roundtrip (delayed ACK), so a single
+# snapshot build issued 1600+ GETs and blocked for over a minute. Memoizing
+# the resolved result + batched get_many keeps a request to 1-2 Redis calls.
+_RESOLVED_MEMO = {}
+_RESOLVED_MEMO_TTL = 60.0
+
+
+def _memo_get(mkey):
+    hit = _RESOLVED_MEMO.get(mkey)
+    if not hit:
+        return None
+    ts, data = hit
+    if time.monotonic() - ts > _RESOLVED_MEMO_TTL:
+        _RESOLVED_MEMO.pop(mkey, None)
+        return None
+    return data
+
+
+def _memo_put(mkey, data):
+    _RESOLVED_MEMO[mkey] = (time.monotonic(), data)
+
+
+def _memo_clear_school(school_id):
+    for k in [k for k in _RESOLVED_MEMO if k[0] == school_id]:
+        _RESOLVED_MEMO.pop(k, None)
 
 
 def _make_safe_cache_key(school_id, section, sub_section, subject_id):
@@ -33,10 +62,20 @@ def prefetch_school_grading(school):
         school=school,
     ).select_related('grading_scale', 'subject')
     
+    mapping = {}
     for assign in assignments:
         key = _make_safe_cache_key(assign.school_id, assign.school_section, assign.sub_section, assign.subject_id)
-        cache.set(key, assign.grading_scale, timeout=86400)
+        mapping[key] = assign.grading_scale
         _GRADED_CACHE_KEYS.add(key)
+
+    # Drop stale process memo first so the next resolve reads these values
+    _memo_clear_school(school_id)
+    if mapping:
+        try:
+            cache.set_many(mapping, timeout=86400)
+        except Exception:
+            for k, v in mapping.items():
+                cache.set(k, v, timeout=86400)
         
     logger.debug("Prefetched %d grading assignments for school_id=%s into global cache", len(assignments), school.pk)
 
@@ -103,16 +142,35 @@ def resolve_scale_fast(school_id, section, sub_section, subject_id=None, is_tota
 
     Falls back through related section/sub keys, then DB, so mark entry
     with sub_section=None still finds the school's PRIMARY UPPER/LOWER scale.
+    Results are memoized per-process (60s) and multi-key lookups use a single
+    cache.get_many roundtrip — sequential per-key GETs were the publish bottleneck.
     """
+    memo_key = (
+        school_id,
+        str(section).strip() if section is not None else None,
+        str(sub_section).strip() if sub_section is not None else None,
+        subject_id,
+        bool(is_total_calculation),
+    )
+    cached = _memo_get(memo_key)
+    if cached is not None:
+        return cached
+
     keys = _candidate_keys(school_id, section, sub_section, subject_id)
 
-    for key in keys:
-        scale = cache.get(key)
-        if not scale:
-            continue
-        data = scale.total_scale if is_total_calculation else scale.subject_scale
-        if data:
-            return data
+    if keys:
+        try:
+            found = cache.get_many(keys)
+        except Exception:
+            found = {}
+        for key in keys:
+            scale = found.get(key)
+            if not scale:
+                continue
+            data = scale.total_scale if is_total_calculation else scale.subject_scale
+            if data:
+                _memo_put(memo_key, data)
+                return data
 
     # Rebuild priority as (section, sub, subject) tuples for DB fallback
     keys_meta = []
@@ -138,8 +196,12 @@ def resolve_scale_fast(school_id, section, sub_section, subject_id=None, is_tota
                     cache.set(k, scale, timeout=86400)
             except Exception:
                 pass
+            _memo_put(memo_key, data)
             return data
 
+    # Memoize the miss briefly so a missing scale doesn't hammer Redis+DB on
+    # every mark. prefetch_school_grading / clear_grading_cache invalidate it.
+    _memo_put(memo_key, [])
     return []
 
 
@@ -156,6 +218,7 @@ def get_grading_scale(school_id, section, sub_section, subject_id=None):
 
 
 def clear_grading_cache():
+    _RESOLVED_MEMO.clear()
     if _GRADED_CACHE_KEYS:
         cache.delete_many(list(_GRADED_CACHE_KEYS))
         _GRADED_CACHE_KEYS.clear()

@@ -205,7 +205,7 @@
   <!-- Premium Action Toolbar — sits OUTSIDE the broadsheet card so it cannot clip into the table -->
   <div class="broadsheet-actions-toolbar no-print"
        id="broadsheetActionsToolbar"
-       data-pdf-base="{% url 'download_broadsheet_pdf' %}"
+       data-pdf-base="{% url 'download_merit_list_pdf' %}"
        style="{% if show_table %}display: flex{% else %}display: none{% endif %}; justify-content: flex-end; align-items: center; gap: 12px; margin: 3.5rem 0 1.5rem; padding: 0; width: 100%; clear: both; box-sizing: border-box;">
     <button type="button"
             onclick="EDUNEXUSPrint.openPrintWindow('.broadsheet-document', {title:'{{ selected_grade|default:"Merit" }} {{ selected_stream|default:"List" }} - Merit List'})"
@@ -218,7 +218,7 @@
             class="action-btn btn-pdf-premium"
             id="broadsheetPdfLink"
             onclick="clpDownloadPdf(this)"
-            data-url="{% if show_table %}{% url 'download_broadsheet_pdf' %}?context={{ selected_context_key|urlencode }}{% endif %}"
+            data-url="{% if show_table %}{% url 'download_merit_list_pdf' %}?grade={{ selected_grade|urlencode }}&stream={{ selected_stream|urlencode }}&exam_id={{ selected_exam_id|urlencode }}{% endif %}"
             style="display: inline-flex; align-items: center; gap: 7px; background: #4CAF50; border: 1.5px solid #4CAF50; color: #ffffff; padding: 9px 20px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
       <i class="ph ph-download-simple" style="font-size: 1.1rem;"></i> Download PDF
     </button>
@@ -333,7 +333,7 @@
       .catch(function(err){console.error('Exams fetch error:',err)});
   });
 
-  // Build the PDF context key from the current form selection + update the toolbar link
+  // Build the merit PDF URL from the current form selection + update the button
   function refreshPdfLink(){
     var toolbar=document.getElementById('broadsheetActionsToolbar');
     var pdfLink=document.getElementById('broadsheetPdfLink');
@@ -341,13 +341,17 @@
     var gradeVal=grade.value;
     var streamVal=stream.value;
     var examOpt=exam.options[exam.selectedIndex];
-    if(!gradeVal || !streamVal || !examOpt || !examOpt.dataset.year){
+    if(!gradeVal || !streamVal || !examOpt || !examOpt.dataset.year || !exam.value){
+      pdfLink.removeAttribute('data-url');
       pdfLink.href='#';
       return;
     }
-    var ctxKey=examOpt.dataset.year+'|'+examOpt.dataset.term+'|'+examOpt.dataset.name+'|'+gradeVal+'|'+streamVal;
     var base=toolbar.getAttribute('data-pdf-base') || '';
-    pdfLink.href=base+'?context='+encodeURIComponent(ctxKey);
+    var url=base+'?grade='+encodeURIComponent(gradeVal)
+           +'&stream='+encodeURIComponent(streamVal)
+           +'&exam_id='+encodeURIComponent(exam.value);
+    pdfLink.setAttribute('data-url', url);
+    pdfLink.href=url;
   }
 
   // Reveal the toolbar (called after HTMX success or when show_table is already true)
@@ -424,15 +428,21 @@
 <script>
 function clpDownloadPdf(btn) {
     if (btn.disabled) return;
+    var url = btn.getAttribute('data-url');
+    if (!url) { alert('Select a Form, Stream and Exam first.'); return; }
     var orig = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<span class="clp-spinner"><i></i><i></i><i></i><i></i><i></i></span> Generating\u2026';
-    fetch(btn.dataset.url)
-    .then(function(r) { if (!r.ok) throw new Error('PDF failed'); return r.blob(); })
-    .then(function(blob) {
+    fetch(url)
+    .then(function(r) { if (!r.ok) throw new Error('PDF failed'); return r.blob().then(function(blob) {
+        var cd = r.headers.get('content-disposition') || '';
+        var m = /filename="?([^";]+)"?/i.exec(cd);
+        return { blob: blob, name: m ? m[1] : '' };
+    }); })
+    .then(function(res) {
         var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = '';
+        a.href = URL.createObjectURL(res.blob);
+        a.download = res.name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

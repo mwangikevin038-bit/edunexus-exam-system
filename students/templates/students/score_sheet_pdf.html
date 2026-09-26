@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>{{ selected_grade }} {{ selected_stream }} — Class List</title>
+  <title>{{ selected_grade }} — Score Sheet</title>
   <style>
     @page {
       size: A4 portrait;
@@ -122,8 +122,8 @@
       margin-right: 4px;
     }
 
-    /* ── Table — matches print template register-table ───────────────── */
-    .register-table {
+    /* ── Table — mirrors .ss-table print rules ───────────────────────── */
+    .ss-table {
       width: 100%;
       min-width: 0;
       border-collapse: collapse;
@@ -132,7 +132,7 @@
       font-size: 12pt;
       table-layout: fixed;
     }
-    .register-table th {
+    .ss-table th {
       background: #e2e6ea;
       color: #000;
       font-weight: 900;
@@ -143,40 +143,35 @@
       text-align: center;
       line-height: 1.2;
     }
-    .register-table td {
+    .ss-table th.col-name { text-align: left; }
+    .ss-table td {
       padding: 4px 6px;
       border: 1px solid #000;
       color: #000;
       font-weight: 400;
-      font-size: 12pt;
+      font-size: 11.5pt;
       line-height: 1.2;
       vertical-align: middle;
       text-align: center;
     }
-    .register-table .col-name { text-align: left; }
-    .register-table .col-assess { text-align: left; }
-    .register-table tr {
+    .ss-table td.col-name {
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ss-table tr {
       page-break-inside: avoid;
       break-inside: avoid;
     }
-    .register-table thead {
+    .ss-table thead {
       display: table-header-group;
     }
-    .col-adm { width: 6.5%; }
-    .col-stream { width: 7%; }
-    .col-name { width: 30%; }
-    .col-gender { width: 9%; }
-    .col-assess { width: 12%; }
     .grid-cell {
       width: auto;
       height: 28px;
       background: #fff;
       font-size: 12pt;
-    }
-    .col-name-cell {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
   </style>
 </head>
@@ -191,45 +186,57 @@
       <div class="pdf-heading-copy">
         <h2>{{ school.name }}</h2>
         <p class="pdf-meta">
-          <span>{{ selected_grade }} {{ selected_stream }}</span>
+          <span>{{ selected_grade }}</span>
+          {% if selected_stream %}<span class="pdf-meta-dot">·</span><span>{{ selected_stream }}</span>{% endif %}
+          {% if subject_label %}<span class="pdf-meta-dot">·</span><span>{{ subject_label }}</span>{% endif %}
           <span class="pdf-meta-dot">·</span>
           <span>{% now "Y" %}</span>
-          <span class="pdf-meta-dot">·</span>
-          <span>Class List</span>
         </p>
+        {% if teacher_name %}
+        <p class="pdf-meta">Teacher: {{ teacher_name }}</p>
+        {% endif %}
       </div>
-      <span class="pdf-badge">Teacher Mark Entry Sheet</span>
+      <span class="pdf-badge">Score Sheet</span>
     </div>
 
     {% if students %}
-    <table class="register-table">
+    <table class="ss-table">
+      <colgroup>
+        <col style="width:5%">
+        <col style="width:12%">
+        <col style="width:35%">
+        <col style="width:13%">
+        <col style="width:9%">
+        <col style="width:9%">
+        <col style="width:9%">
+        <col style="width:8%">
+      </colgroup>
       <thead>
         <tr>
-          <th class="col-adm">Adm</th>
-          {% if selected_stream == 'Combined' %}
-            <th class="col-stream">Stream</th>
-          {% endif %}
-          <th class="col-name">Learner Name</th>
-          <th class="col-gender">Sex</th>
-          <th class="col-assess">Ass. No</th>
-          {% for i in "1234567890" %}
-            <th class="grid-cell"></th>
-          {% endfor %}
+          <th rowspan="2">#</th>
+          <th rowspan="2">ADMNO</th>
+          <th rowspan="2" class="col-name">NAME</th>
+          <th rowspan="2">STREAM</th>
+          <th colspan="4">SCORE</th>
+        </tr>
+        <tr>
+          <th>T1</th>
+          <th>T2</th>
+          <th>T3</th>
+          <th>TOT</th>
         </tr>
       </thead>
       <tbody>
         {% for s in students %}
         <tr>
+          <td>{{ s.index }}</td>
           <td>{{ s.admission_no }}</td>
-          {% if selected_stream == 'Combined' %}
-            <td>{{ s.stream }}</td>
-          {% endif %}
-          <td class="col-name col-name-cell">{{ s.name }}</td>
-          <td>{{ s.gender|default:"-" }}</td>
-          <td class="col-assess">{{ s.assessment_no|default:"-" }}</td>
-          {% for i in "1234567890" %}
-            <td class="grid-cell"></td>
-          {% endfor %}
+          <td class="col-name">{{ s.name }}</td>
+          <td>{{ s.stream }}</td>
+          <td class="grid-cell"></td>
+          <td class="grid-cell"></td>
+          <td class="grid-cell"></td>
+          <td class="grid-cell"></td>
         </tr>
         {% endfor %}
       </tbody>

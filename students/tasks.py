@@ -450,8 +450,12 @@ def populate_exam_summaries(
         return {"status": "error", "message": "School not found"}
 
     try:
-        # ── 1. Aggregate marks per student (single DB query) ──────────────
-        mark_agg = (
+        # ── 1. Aggregate marks per student (deduped by subject code) ──────
+        # Display paths keep only the latest mark per subject code (a stray
+        # row under a duplicate Subject or a double-submit must not count
+        # twice), so summaries must aggregate the same way or totals would
+        # be inflated relative to the printed cells.
+        raw_marks = (
             Mark.all_objects.filter(
                 school=school,
                 student__class_name=grade,
@@ -461,22 +465,33 @@ def populate_exam_summaries(
                 school_section=school_section,
                 sub_section=sub_section,
             )
-            .values('student_id')
-            .annotate(
-                total_marks=Sum('score'),
-                total_points=Sum('points'),
-                subject_count=Count('subject_id', distinct=True),
-            )
+            .values('student_id', 'subject__code', 'score', 'points',
+                    'date_recorded', 'id')
         )
 
-        student_marks = {
-            row['student_id']: {
-                'total_marks': row['total_marks'] or 0,
-                'total_points': row['total_points'] or 0,
-                'subject_count': row['subject_count'] or 0,
-            }
-            for row in mark_agg
-        }
+        latest = {}
+        for row in raw_marks:
+            code = row['subject__code']
+            if code is None:
+                continue
+            key = (row['student_id'], code)
+            rank_key = (
+                (1, row['date_recorded'], row['id'])
+                if row['date_recorded'] is not None
+                else (0, None, row['id'])
+            )
+            cur = latest.get(key)
+            if cur is None or rank_key > cur[0]:
+                latest[key] = (rank_key, row['score'] or 0, row['points'] or 0)
+
+        student_marks = {}
+        for (sid, _code), (_rk, score, points) in latest.items():
+            agg = student_marks.setdefault(
+                sid, {'total_marks': 0, 'total_points': 0, 'subject_count': 0}
+            )
+            agg['total_marks'] += score
+            agg['total_points'] += points
+            agg['subject_count'] += 1
 
         # ── 2. Fetch ALL students in the grade ────────────────────────────
         student_filter = {
@@ -924,6 +939,7 @@ def generate_bulk_report_pdf(
     )
 
     status = "completed" if not failed else "completed_with_errors"
+    from .views.helpers import safe_pdf_filename
     _pdf_send_complete(job_id, {
         "status": status,
         "compiled": compiled,
@@ -931,7 +947,7 @@ def generate_bulk_report_pdf(
         "failed": failed,
         "failed_students": failed_students[:20],
         "message": f"Done: {compiled} compiled, {failed} failed out of {total} students.",
-        "filename": f"Bulk_Report_Cards_{grade_name}_{stream_name}_{year}_{term}.pdf".replace(' ', '_'),
+        "filename": safe_pdf_filename('Report_Cards_Bulk', grade_name, stream_name, year, term),
         "size": len(pdf_bytes_final),
     })
 

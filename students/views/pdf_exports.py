@@ -37,6 +37,10 @@ try:
 except ImportError:
     _HAS_PLAYWRIGHT = False
 
+# A real rendered page is always >100KB; a blank page is ~0.7-2KB. Anything
+# below this threshold is treated as a failed/empty render, never shipped.
+_MIN_VALID_PDF_BYTES = 2048
+
 from .constants import ASSESSMENT_MAP, GRADE_CHOICES, JSS_GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_NAMES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_GRADE_CHOICES, PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_DISPLAY_ORDER, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
 from .reports import PRIMARY_ORDERED_LEVELS
 from .exams import _get_primary_performance
@@ -44,6 +48,7 @@ from .helpers import (
     calculate_broadsheet_plv,
     calculate_primary_plv,
     calculate_report_plv,
+    dedup_marks_latest_by_code,
     get_cached_class_averages,
     get_class_leaderboard,
     get_class_teacher_scope,
@@ -54,6 +59,7 @@ from .helpers import (
     get_selected_context,
     get_teacher_for_user,
     resolve_term_dates,
+    safe_pdf_filename,
     user_can_access_class_stream,
 )
 from ..models import ClassTeacherMasterComment, ExamSummary, Mark, SchoolHeadteacherComment, Student, Subject, SubjectAssignment, Teacher
@@ -91,6 +97,17 @@ def _build_playwright_html(template_html, request, *, landscape=False):
         f'{base_tag}<style id="pdf-override">{print_css}</style></head>',
         1,
     )
+
+    if landscape:
+        # The injected print-shared.css declares A4 portrait last in the
+        # cascade; with prefer_css_page_size Chromium would honour that.
+        # Re-assert landscape AFTER everything else (matches broadsheet.css).
+        html = html.replace(
+            '</head>',
+            '<style id="pdf-landscape">@page { size: A4 landscape; '
+            'margin: 8mm 10mm 18mm 10mm; }</style></head>',
+            1,
+        )
 
     return html
 
@@ -371,41 +388,67 @@ def _log_pdf_error(view_name, error, context=None):
 # WEASYPRESS PDF GENERATION
 # ==============================================================================
 
-def _generate_pdf(patched_html, *, landscape=False, margin=None, engine='auto', **kwargs):
+def _generate_pdf(patched_html, *, landscape=False, margin=None, engine='auto',
+                  scale=0.75, margins=None, **kwargs):
     """
     Generate PDF from HTML string. Tries Playwright first, falls back to WeasyPrint.
+
+    Watermark + page numbers come solely from the shared CSS @page margin boxes
+    (print-shared.css / broadsheet.css) — the same rules the browser print
+    popup uses. Do NOT add a Chromium footer_template on top of them: modern
+    Chromium renders the CSS margin boxes too, producing duplicate footers.
 
     Args:
         patched_html: Complete HTML document string.
         landscape: If True, use A4 landscape.
-        margin: Optional margin override.
+        margin: Optional single-value margin applied to all four sides.
         engine: 'playwright' | 'weasyprint' | 'auto' (default: try Playwright first).
+        scale: Playwright page scale (1.0 = browser-view parity).
+        margins: Optional dict with top/right/bottom/left margin strings.
     """
     # ── Try Playwright (pixel-perfect rendering) ──
     if engine in ('auto', 'playwright') and _HAS_PLAYWRIGHT:
-        try:
-            margins = None
-            if margin:
-                margins = {'top': margin, 'bottom': margin, 'left': margin, 'right': margin}
-            pdf_bytes = _playwright_render(
-                patched_html,
-                landscape=landscape,
-                margins=margins,
-                timeout_ms=30000,
-            )
-            if pdf_bytes:
+        last_error = None
+        for attempt in (1, 2):
+            try:
+                use_margins = margins
+                if use_margins is None and margin:
+                    use_margins = {'top': margin, 'bottom': margin, 'left': margin, 'right': margin}
+                pdf_bytes = _playwright_render(
+                    patched_html,
+                    landscape=landscape,
+                    margins=use_margins,
+                    timeout_ms=30000,
+                    scale=scale,
+                )
+            except Exception as e:
+                last_error = str(e)
+                if engine == 'playwright':
+                    logger.error(f"[pdf] Playwright generation failed: {last_error}")
+                    return {'pdf': None, 'error': last_error}
+                logger.warning(f"[pdf] Playwright failed, falling back to WeasyPrint: {last_error}")
+                break
+
+            if pdf_bytes and len(pdf_bytes) >= _MIN_VALID_PDF_BYTES:
                 return {'pdf': pdf_bytes}
-        except Exception as e:
+
+            # A real page renders to well over 100KB; <2KB means an empty
+            # document (observed once as a 761-byte blank page). Retry once,
+            # then fall through to the fallback engine.
+            last_error = f"blank PDF ({len(pdf_bytes or b'')} bytes)"
+            logger.warning("[pdf] Playwright produced a %s — attempt %d/2", last_error, attempt)
+        else:
             if engine == 'playwright':
-                logger.error(f"[pdf] Playwright generation failed: {str(e)}")
-                return {'pdf': None, 'error': str(e)}
-            logger.warning(f"[pdf] Playwright failed, falling back to WeasyPrint: {str(e)}")
+                return {'pdf': None, 'error': last_error}
 
     # ── Fallback: WeasyPrint ──
     try:
         from weasyprint import HTML as _WeasyHTML
         html_doc = _WeasyHTML(string=patched_html)
         pdf_bytes = html_doc.write_pdf(optimize_size='images')
+        if not pdf_bytes or len(pdf_bytes) < _MIN_VALID_PDF_BYTES:
+            logger.error("[pdf] WeasyPrint produced a blank PDF (%s bytes)", len(pdf_bytes or b''))
+            return {'pdf': None, 'error': last_error or 'PDF generation produced an empty document'}
         return {'pdf': pdf_bytes}
     except Exception as e:
         logger.error(f"[pdf] WeasyPrint generation failed: {str(e)}")
@@ -455,6 +498,40 @@ def _embed_logo_base64(template_html, request):
     except Exception:
         logger.warning("Failed to embed school logo as base64", exc_info=True)
     return template_html
+
+
+_STANDALONE_CSS_CACHE = {}
+
+
+def _build_standalone_print_html(fragment_html, request, title='EduNexus Document'):
+    """Wrap a rendered template fragment in a complete HTML document.
+
+    Uses the exact CSS composition of the browser print popup
+    (EDUNEXUSPrint.openPrintWindow): print-shared.css first, then
+    broadsheet.css — guaranteeing on-screen/print/PDF parity.
+    """
+    shared_css = _get_playwright_css() if _HAS_PLAYWRIGHT else ''
+    broadsheet_css = _STANDALONE_CSS_CACHE.get('broadsheet')
+    if broadsheet_css is None:
+        try:
+            from django.contrib.staticfiles import finders
+            found = finders.find('css/broadsheet.css')
+            broadsheet_css = Path(found).read_text(encoding='utf-8') if found else ''
+        except Exception:
+            logger.warning("broadsheet.css not found for standalone PDF", exc_info=True)
+            broadsheet_css = ''
+        _STANDALONE_CSS_CACHE['broadsheet'] = broadsheet_css
+
+    html = _embed_logo_base64(fragment_html, request)
+    base_tag = f'<base href="{request.build_absolute_uri("/")}">'
+    return (
+        '<!DOCTYPE html><html><head><meta charset="utf-8">'
+        f'<title>{title}</title>{base_tag}'
+        f'<style id="pdf-override">{shared_css}\n{broadsheet_css}</style>'
+        '</head><body>'
+        f'{html}'
+        '</body></html>'
+    )
 
 
 # ==============================================================================
@@ -615,6 +692,7 @@ def download_broadsheet_pdf(request):
                     'teacher_name': '—',
                 })
 
+            _teacher_map = {}
             for a in SubjectAssignment.all_objects.filter(
                 school=school, class_name=grade, stream=stream, is_active=True
             ).select_related('teacher_profile__user', 'subject'):
@@ -626,7 +704,12 @@ def download_broadsheet_pdf(request):
                         'distribution': {lvl: 0 for lvl in active_levels},
                         'teacher_name': '—',
                     })
-                    analysis_data[short]['teacher_name'] = a.teacher_profile.get_full_title() if a.teacher_profile else '—'
+                    name = a.teacher_profile.get_full_title() if a.teacher_profile else ''
+                    if name and name not in _teacher_map.setdefault(short, []):
+                        _teacher_map[short].append(name)
+            for short, names in _teacher_map.items():
+                if names:
+                    analysis_data[short]['teacher_name'] = ', '.join(names)
 
             marks_prefetch = Prefetch(
                 'marks',
@@ -642,8 +725,8 @@ def download_broadsheet_pdf(request):
 
             for student in students:
                 marks_dict   = {}
-                for mark in student.cached_marks:
-                    marks_dict.setdefault(mark.subject.code, mark)
+                for mark in dedup_marks_latest_by_code(student.cached_marks):
+                    marks_dict[mark.subject.code] = mark
                 row_scores   = []
                 total_marks  = 0
                 total_points = 0
@@ -655,7 +738,10 @@ def download_broadsheet_pdf(request):
                         if m.is_absent:
                             row_scores.append({'score': 'AB', 'level': 'AB'})
                         else:
-                            level, points = _get_primary_performance(m.score, school=school, section=section, sub_section=active_sub if is_primary else None) if is_primary else get_performance_level(m.score)
+                            level, points = _get_primary_performance(m.score, school=school, section=section, sub_section=active_sub if is_primary else None, subject_id=m.subject_id) if is_primary else get_performance_level(
+                                m.score, sub_section=active_sub,
+                                subject_id=m.subject_id, school=school, section=section,
+                            )
                             row_scores.append({'score': m.score, 'level': level})
                             total_marks  += m.score
                             total_points += points
@@ -673,7 +759,7 @@ def download_broadsheet_pdf(request):
                     'scores':  row_scores,
                     'tps':     total_points,
                     'total':   total_marks,
-                    'plv':     calculate_primary_plv(total_marks, assessed_subjects, sub_section=active_sub if is_primary else None, school=school, section=section) if is_primary else calculate_broadsheet_plv(total_marks, total_points),
+                    'plv':     calculate_primary_plv(total_marks, assessed_subjects, sub_section=active_sub if is_primary else None, school=school, section=section) if is_primary else calculate_broadsheet_plv(total_marks, total_points, sub_section=active_sub if is_primary else None, school=school, section=section),
                 })
 
             broadsheet.sort(key=lambda x: (-x['total'], -x['tps']))
@@ -732,7 +818,10 @@ def download_broadsheet_pdf(request):
 
     # ── 4. Generate PDF ──
     try:
-        pdf_data = _generate_pdf(patched_html, landscape=True, engine='auto')
+        pdf_data = _generate_pdf(
+            patched_html, landscape=True, engine='auto', scale=1.0,
+            margins={'top': '8mm', 'right': '10mm', 'bottom': '18mm', 'left': '10mm'},
+        )
     except Exception as e:
         _log_pdf_error('download_broadsheet_pdf', e, {
             'year': year, 'term': term, 'section': section,
@@ -742,16 +831,129 @@ def download_broadsheet_pdf(request):
 
     # ── 5. Return as download or inline ────────────────────────────────────────
     if pdf_data.get('pdf'):
-        slug_grade  = slugify(grade  or "class")
-        slug_stream = slugify(stream or "stream")
-        current_year = datetime.date.today().year
-        filename    = f"{slug_grade}_{slug_stream}_Premium_Results_List_{year or current_year}.pdf"
+        filename = safe_pdf_filename('Results_List', grade, stream, exam_type, year)
 
         response = HttpResponse(pdf_data['pdf'], content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     else:
         return HttpResponse("Error generating report", status=500)
+
+
+# ==============================================================================
+# download_merit_list_pdf
+# ==============================================================================
+
+@login_required(login_url='login')
+@rate_limit("report_download", max_requests=10, window_seconds=60, methods=["GET", "POST"])
+def download_merit_list_pdf(request):
+    """
+    Premium merit-list PDF — same data and markup as the on-screen merit list
+    (broadsheet_snippet.html), rendered with the browser print CSS composition,
+    A4 landscape at scale 1.0, paginated with watermark + page numbers.
+    """
+    from ..models import Exam
+    from .grading_engine import prefetch_school_grading
+    from .reports import build_broadsheet_for_merit_list
+
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'error': 'School context is required.'}, status=400)
+
+    grade = request.GET.get('grade', '').strip()
+    stream = request.GET.get('stream', '').strip()
+    exam_id = request.GET.get('exam_id', '').strip()
+    if not (grade and exam_id):
+        return JsonResponse({'error': 'grade and exam_id are required.'}, status=400)
+
+    is_admin = user_has_main_school_admin_override(request.user)
+    section = get_request_school_section(request)
+    prefetch_school_grading(school)
+
+    # ── Section access for teachers (mirrors merit_list) ──────────────────────
+    if not is_admin:
+        if section == 'LOWER_PRIMARY':
+            allowed_grades = LOWER_PRIMARY_GRADE_CHOICES
+        elif section == 'PRIMARY':
+            allowed_grades = PRIMARY_GRADE_CHOICES
+        else:
+            allowed_grades = JSS_GRADE_CHOICES
+        if grade not in allowed_grades:
+            return JsonResponse({'error': 'You do not have access to that grade section.'}, status=403)
+
+    try:
+        exam_object = Exam.all_objects.get(id=exam_id, school=school, is_deleted=False)
+    except (Exam.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Selected exam not found.'}, status=404)
+
+    if not is_admin:
+        exam_section = exam_object.school_section or 'JSS'
+        exam_sub = exam_object.sub_section
+        if section == 'LOWER_PRIMARY' and not (exam_section == 'PRIMARY' and exam_sub == 'LOWER'):
+            return JsonResponse({'error': 'Access denied for this exam section.'}, status=403)
+        elif section == 'PRIMARY' and not (exam_section == 'PRIMARY' and exam_sub == 'UPPER'):
+            return JsonResponse({'error': 'Access denied for this exam section.'}, status=403)
+        elif section == 'JSS' and exam_section != 'JSS':
+            return JsonResponse({'error': 'Access denied for this exam section.'}, status=403)
+
+    # ── Build the same context as the merit list page ─────────────────────────
+    try:
+        context = build_broadsheet_for_merit_list(request, school, grade, stream, exam_object)
+    except Exception as e:
+        _log_pdf_error('download_merit_list_pdf', e, {
+            'grade': grade, 'stream': stream, 'exam_id': exam_id,
+        })
+        return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
+
+    context['show_table'] = True
+    context['selected_grade'] = grade
+    context['selected_stream'] = stream
+    context['selected_exam'] = exam_object.name
+
+    # Grade-based accent/key (mirrors merit_list + both builder paths)
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if grade in LOWER_PRIMARY_GRADE_CHOICES:
+        context['section_accent'] = section_colors['LOWER_PRIMARY']
+        context['section_key'] = 'lower'
+    elif grade in PRIMARY_GRADE_CHOICES:
+        context['section_accent'] = section_colors['PRIMARY']
+        context['section_key'] = 'primary'
+    else:
+        context['section_accent'] = section_colors['JSS']
+        context['section_key'] = 'jss'
+
+    try:
+        from django.template.loader import render_to_string
+        snippet = render_to_string(
+            'students/partials/broadsheet_snippet.html', context, request=request,
+        )
+        patched_html = _build_standalone_print_html(
+            snippet, request,
+            title=f'{grade} {stream} Merit List - {exam_object.name}',
+        )
+        pdf_data = _generate_pdf(
+            patched_html, landscape=True, engine='auto', scale=1.0,
+            margins={'top': '8mm', 'right': '10mm', 'bottom': '18mm', 'left': '10mm'},
+        )
+    except Exception as e:
+        _log_pdf_error('download_merit_list_pdf', e, {
+            'grade': grade, 'stream': stream, 'exam_id': exam_id,
+        })
+        return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
+
+    if not pdf_data.get('pdf'):
+        return HttpResponse("Error generating report", status=500)
+
+    filename = safe_pdf_filename(
+        'Merit_List', grade, stream, exam_object.name, exam_object.year,
+    )
+    response = HttpResponse(pdf_data['pdf'], content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 # ==============================================================================
@@ -835,7 +1037,10 @@ def download_classlist_pdf(request):
     patched_html = _build_playwright_html(template_html, request, landscape=False)
 
     try:
-        pdf_data = _generate_pdf(patched_html, landscape=False, engine='auto')
+        pdf_data = _generate_pdf(
+            patched_html, landscape=False, engine='auto', scale=1.0,
+            margins={'top': '5mm', 'right': '5mm', 'bottom': '8mm', 'left': '5mm'},
+        )
     except Exception as e:
         _log_pdf_error('download_classlist_pdf', e, {
             'grade': grade_name, 'stream': stream_name,
@@ -844,10 +1049,147 @@ def download_classlist_pdf(request):
         return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     if pdf_data.get('pdf'):
-        slug_grade  = slugify(grade_name  or "class")
-        slug_stream = slugify(stream_name or "stream")
         year = datetime.date.today().year
-        filename = f"{slug_grade}_{slug_stream}_Class_List_{year}.pdf"
+        filename = safe_pdf_filename('Class_List', grade_name, stream_name, year)
+
+        response = HttpResponse(pdf_data['pdf'], content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    else:
+        return HttpResponse("Error generating report", status=500)
+
+
+# ==============================================================================
+# download_score_sheet_pdf
+# ==============================================================================
+@rate_limit("report_download", max_requests=10, window_seconds=60, methods=["GET", "POST"])
+def download_score_sheet_pdf(request):
+    """
+    Renders the Score Sheet (mark entry grid) and converts it to a
+    premium PDF matching the class list / merit list standard.
+    Params: grade (required), stream (optional), subject_id (optional).
+    """
+    school = get_request_school(request)
+    if not school:
+        return JsonResponse({'error': 'School context is required.'}, status=400)
+
+    from ..models import Student, Subject, SubjectAssignment
+    from django.db.models import IntegerField
+    from django.db.models.functions import Substr, Length, Cast
+    from .constants import RELIGION_SUBJECTS, RELIGION_TAG
+
+    grade_name = request.GET.get('grade', '').strip()
+    stream_name = request.GET.get('stream', '').strip()
+    subject_id = request.GET.get('subject_id', '').strip()
+
+    if not grade_name:
+        return JsonResponse({'error': 'grade parameter is required.'}, status=400)
+
+    # Section-aware accent color based on grade
+    section_colors = {
+        'JSS':           '#305CDE',
+        'PRIMARY':       '#00674F',
+        'LOWER_PRIMARY': '#B45309',
+    }
+    if grade_name in ['Grade 1', 'Grade 2', 'Grade 3']:
+        section_accent = section_colors['LOWER_PRIMARY']
+    elif grade_name in ['Grade 4', 'Grade 5', 'Grade 6']:
+        section_accent = section_colors['PRIMARY']
+    else:
+        section_accent = section_colors['JSS']
+
+    # Section access check — teachers can only download for their section
+    is_admin_view = user_has_main_school_admin_override(request.user)
+    if not is_admin_view and grade_name:
+        section = get_request_school_section(request)
+        from .constants import LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES, JSS_GRADE_CHOICES
+        if section == 'LOWER_PRIMARY' and grade_name not in LOWER_PRIMARY_GRADE_CHOICES:
+            return HttpResponse("Access denied: you can only download score sheets for your section.", status=403)
+        elif section == 'PRIMARY' and grade_name not in PRIMARY_GRADE_CHOICES:
+            return HttpResponse("Access denied: you can only download score sheets for your section.", status=403)
+        elif section == 'JSS' and grade_name not in JSS_GRADE_CHOICES:
+            return HttpResponse("Access denied: you can only download score sheets for your section.", status=403)
+
+    # ── Students — mirrors api_class_list (incl. religion-aware filtering) ──
+    students_qs = Student.all_objects.filter(
+        school=school, class_name=grade_name, is_active=True
+    )
+    if stream_name:
+        students_qs = students_qs.filter(stream=stream_name)
+
+    religion_tag = None
+    if subject_id:
+        try:
+            subject_obj = Subject.all_objects.get(id=int(subject_id), school=school)
+            if subject_obj.code in RELIGION_SUBJECTS:
+                religion_tag = RELIGION_TAG.get(subject_obj.code, '')
+        except (Subject.DoesNotExist, ValueError, TypeError):
+            pass
+
+    if religion_tag:
+        tagged = students_qs.filter(religion=religion_tag)
+        if tagged.exists():
+            students_qs = tagged
+
+    students_qs = (
+        students_qs
+        .annotate(adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField()))
+        .order_by('adm_int')
+    )
+    student_list = []
+    for idx, s in enumerate(students_qs, start=1):
+        student_list.append({
+            'index': idx,
+            'admission_no': s.admission_no or '',
+            'name': s.name or '',
+            'stream': s.stream or '',
+        })
+
+    # ── Subject label + assigned teacher (same data the page shows) ──
+    subject_label = ''
+    teacher_name = ''
+    if subject_id:
+        try:
+            subject_obj = Subject.all_objects.get(id=int(subject_id), school=school)
+            subject_label = subject_obj.name or ''
+        except (Subject.DoesNotExist, ValueError, TypeError):
+            subject_label = ''
+        assignment = SubjectAssignment.all_objects.filter(
+            school=school, class_name=grade_name, subject_id=subject_id, is_active=True
+        )
+        if stream_name:
+            assignment = assignment.filter(stream=stream_name)
+        assignment = assignment.select_related('teacher_profile__user').first()
+        if assignment and assignment.teacher_profile and assignment.teacher_profile.user:
+            teacher_name = (assignment.teacher_profile.user.get_full_name()
+                            or assignment.teacher_profile.user.username)
+
+    template_html = render_to_string('students/score_sheet_pdf.html', {
+        'school':           school,
+        'students':         student_list,
+        'selected_grade':   grade_name,
+        'selected_stream':  stream_name,
+        'section_accent':   section_accent,
+        'subject_label':    subject_label,
+        'teacher_name':     teacher_name,
+    }, request=request)
+
+    patched_html = _build_playwright_html(template_html, request, landscape=False)
+
+    try:
+        pdf_data = _generate_pdf(
+            patched_html, landscape=False, engine='auto', scale=1.0,
+            margins={'top': '5mm', 'right': '5mm', 'bottom': '8mm', 'left': '5mm'},
+        )
+    except Exception as e:
+        _log_pdf_error('download_score_sheet_pdf', e, {
+            'grade': grade_name, 'stream': stream_name, 'subject_id': subject_id,
+        })
+        return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
+
+    if pdf_data.get('pdf'):
+        year = datetime.date.today().year
+        filename = safe_pdf_filename('Score_Sheet', grade_name, stream_name or subject_label, year)
 
         response = HttpResponse(pdf_data['pdf'], content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -908,12 +1250,10 @@ def download_individual_report_pdf(request, student_id):
         school_section=student.school_section,
     ).select_related('subject')
 
-    totals = marks.aggregate(
-        total_score=Sum('score'),
-        total_pts=Sum('points'),
-    )
-    total_marks = totals['total_score'] or 0
-    total_points = totals['total_pts'] or 0
+    # One row per subject code (latest wins) so totals match the cells
+    marks = dedup_marks_latest_by_code(list(marks))
+    total_marks = sum(m.score or 0 for m in marks)
+    total_points = sum(m.points or 0 for m in marks)
 
     marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
 
@@ -1152,7 +1492,7 @@ def download_individual_report_pdf(request, student_id):
 
     # ── Generate PDF ──
     try:
-        pdf_data = _generate_pdf(patched_html, landscape=False, engine='auto')
+        pdf_data = _generate_pdf(patched_html, landscape=False, engine='auto', scale=1.0)
     except Exception as e:
         _log_pdf_error('download_individual_report_pdf', e, {
             'student_id': student_id, 'year': year, 'term': term,
@@ -1161,8 +1501,7 @@ def download_individual_report_pdf(request, student_id):
         return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     if pdf_data.get('pdf'):
-        safe_student_name = student.name.strip().replace(" ", "_")
-        filename = f"{safe_student_name}_report.pdf"
+        filename = safe_pdf_filename('Report_Card', student.name, year, term)
 
         mode = request.GET.get('mode', 'attachment')
         disposition = 'inline' if mode == 'inline' else 'attachment'
@@ -1220,12 +1559,10 @@ def individual_report_print_html(request, student_id):
         school_section=student.school_section,
     ).select_related('subject')
 
-    totals = marks.aggregate(
-        total_score=Sum('score'),
-        total_pts=Sum('points'),
-    )
-    total_marks = totals['total_score'] or 0
-    total_points = totals['total_pts'] or 0
+    # One row per subject code (latest wins) so totals match the cells
+    marks = dedup_marks_latest_by_code(list(marks))
+    total_marks = sum(m.score or 0 for m in marks)
+    total_points = sum(m.points or 0 for m in marks)
 
     marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
 
@@ -1638,7 +1975,7 @@ def download_generated_pdf(request, job_id):
     if not pdf_bytes:
         return JsonResponse({'error': 'PDF data expired. Please regenerate.'}, status=404)
 
-    filename = result.get('filename', 'report_cards.pdf')
+    filename = result.get('filename') or safe_pdf_filename('Report_Cards')
 
     # Clean up cache
     pdf_cache.delete(f"pdf_data_{job_id}")

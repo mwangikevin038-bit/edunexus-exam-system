@@ -10,9 +10,16 @@
     .app-content { width: 100% !important; max-width: none !important; margin-left: 0 !important; margin-top: 0 !important; padding: 0 !important; }
     .main-content { padding: 0 !important; max-width: none !important; margin-left: 0 !important; }
     body { background: #f8fafc !important; overflow-x: hidden !important; }
-    html { zoom: 1 !important; overflow-x: hidden !important; }
     html.force-mobile .app-content,
     html.force-mobile .main-content { margin-left: 0 !important; width: 100% !important; max-width: none !important; padding: 0 !important; }
+    /* layout.css force-mobile rules re-show mobile chrome with higher specificity —
+       the landing page must stay chrome-free on phones too. */
+    html.force-mobile .mobile-global-header,
+    html.force-mobile .bottom-nav,
+    html.force-mobile .global-header,
+    html.force-mobile .premium-sidebar,
+    html.force-mobile .sub-nav-bar,
+    html.force-mobile .mobile-menu-sheet { display: none !important; }
 </style>
 {% endblock %}
 
@@ -28,7 +35,10 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body {
+/* Body-only horizontal clip: html must keep overflow visible so the
+   viewport keeps normal vertical scroll propagation (html overflow-x
+   flips overflow-y to auto and can trap/clip the document on phones). */
+body {
     overflow-x: hidden;
     max-width: 100%;
 }
@@ -59,6 +69,7 @@ html, body {
     color: var(--lp-gray-600);
     font-family: var(--lp-font);
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     width: 100%;
@@ -834,6 +845,16 @@ html, body {
    portrait + landscape AND Chrome "Desktop site" (forces 980px).
    Desktop chrome only at ≥1024px (real desktops). */
 @media (max-width: 1023px) {
+    /* Flatten the flex height chain so nothing can shrink the document
+       vertically (app-content/main-content default flex:1). */
+    .app-content, .main-content {
+        display: block !important;
+        flex: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
     .lp-nav { padding: 0 16px; height: 64px; gap: 8px; min-width: 0; }
     .lp-nav-brand { gap: 8px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
     .lp-nav-brand img { width: 36px; height: 36px; }
@@ -841,7 +862,7 @@ html, body {
     .lp-nav-links { display: none; }
     .lp-nav-actions { flex-shrink: 0; }
     .lp-nav-login { padding: 9px 14px; font-size: 0.82rem; border-radius: 10px; }
-    .lp-hero { padding: 96px 18px 64px; min-height: auto; }
+    .lp-hero { padding: 112px 20px 72px; min-height: auto !important; height: auto !important; }
     .lp-hero-badge {
         font-size: 0.68rem;
         letter-spacing: 0.4px;
@@ -872,8 +893,8 @@ html, body {
         white-space: normal;
         text-align: center;
     }
-    .lp-section { padding: 56px 18px; }
-    .lp-why { padding: 56px 18px; }
+    .lp-section { padding: 64px 20px; }
+    .lp-why { padding: 64px 20px; }
     .lp-section-title { font-size: clamp(1.45rem, 5.5vw, 1.85rem) !important; }
     .lp-section-sub { font-size: 0.95rem; margin-bottom: 32px; }
     .lp-modules-grid { grid-template-columns: 1fr; gap: 14px; }
@@ -901,28 +922,88 @@ html, body {
 @media (max-width: 480px) {
     .lp-nav { padding: 0 12px; }
     .lp-nav-brand-text { font-size: 0.98rem; }
-    .lp-hero { padding: 88px 14px 56px; }
+    .lp-hero { padding: 100px 16px 64px; }
     .lp-hero h1 { font-size: clamp(1.55rem, 8vw, 2rem) !important; }
     .lp-hero-badge { font-size: 0.64rem; padding: 6px 12px; }
-    .lp-section, .lp-why { padding: 48px 14px; }
+    .lp-section, .lp-why { padding: 56px 16px; }
     .lp-cta { padding: 28px 16px; }
 }
 
-/* Same mobile landing when force-mobile is set even if viewport reports wide */
-html.force-mobile .lp-nav { padding: 0 16px; height: 64px; }
+/* Same mobile landing when force-mobile is set even if viewport reports
+   wide (Chrome Desktop site on phones can report ≥1024px). Full parity
+   with the ≤1023px block above so nothing falls back to desktop rules. */
+html.force-mobile .app-content,
+html.force-mobile .main-content {
+    display: block !important;
+    flex: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+html.force-mobile .lp-nav { padding: 0 16px; height: 64px; gap: 8px; min-width: 0; }
+html.force-mobile .lp-nav-brand { gap: 8px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
+html.force-mobile .lp-nav-brand img { width: 36px; height: 36px; }
+html.force-mobile .lp-nav-brand-text { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 html.force-mobile .lp-nav-links { display: none !important; }
-html.force-mobile .lp-nav-brand-text { font-size: 1.05rem; white-space: nowrap; }
-html.force-mobile .lp-hero { padding: 96px 18px 64px; min-height: auto; }
-html.force-mobile .lp-hero h1 { font-size: clamp(1.75rem, 7.5vw, 2.35rem) !important; }
-html.force-mobile .lp-hero-badge { font-size: 0.68rem; white-space: normal; text-align: center; max-width: 100%; }
-html.force-mobile .lp-hero-cta { flex-direction: column; align-items: stretch; }
+html.force-mobile .lp-nav-actions { flex-shrink: 0; }
+html.force-mobile .lp-nav-login { padding: 9px 14px; font-size: 0.82rem; border-radius: 10px; }
+html.force-mobile .lp-hero { padding: 112px 20px 72px; min-height: auto !important; height: auto !important; }
+html.force-mobile .lp-hero-badge {
+    font-size: 0.68rem;
+    letter-spacing: 0.4px;
+    padding: 7px 14px;
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.35;
+    margin-bottom: 22px;
+}
+html.force-mobile .lp-hero h1 {
+    font-size: clamp(1.75rem, 7.5vw, 2.35rem) !important;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+html.force-mobile .lp-hero p {
+    font-size: 0.95rem !important;
+    line-height: 1.6;
+    margin-bottom: 28px;
+}
+html.force-mobile .lp-hero-cta { flex-direction: column; align-items: stretch; gap: 12px; }
 html.force-mobile .lp-btn-primary,
-html.force-mobile .lp-btn-outline { justify-content: center; white-space: normal; }
-html.force-mobile .lp-modules-grid { grid-template-columns: 1fr !important; }
-html.force-mobile .lp-why-inner { grid-template-columns: 1fr !important; }
+html.force-mobile .lp-btn-outline {
+    justify-content: center;
+    padding: 14px 20px;
+    font-size: 0.9rem;
+    white-space: normal;
+    text-align: center;
+}
+html.force-mobile .lp-section { padding: 64px 20px; }
+html.force-mobile .lp-why { padding: 64px 20px; }
+html.force-mobile .lp-section-title { font-size: clamp(1.45rem, 5.5vw, 1.85rem) !important; }
+html.force-mobile .lp-section-sub { font-size: 0.95rem; margin-bottom: 32px; }
+html.force-mobile .lp-modules-grid { grid-template-columns: 1fr !important; gap: 14px; }
+html.force-mobile .lp-module-card { padding: 24px 20px; border-radius: 16px; }
+html.force-mobile .lp-why-inner { grid-template-columns: 1fr !important; gap: 40px; }
 html.force-mobile .lp-mock { display: none !important; }
-html.force-mobile .lp-stats { grid-template-columns: repeat(2, 1fr) !important; }
-html.force-mobile .lp-footer-top { grid-template-columns: 1fr !important; }
+html.force-mobile .lp-stats { grid-template-columns: repeat(2, 1fr) !important; padding: 20px 12px; }
+html.force-mobile .lp-stat { border-bottom: 1px solid var(--lp-gray-200); padding: 16px 10px; }
+html.force-mobile .lp-stat:nth-child(2n) { border-right: none; }
+html.force-mobile .lp-stat-value { font-size: 1.45rem; }
+html.force-mobile .lp-stat-label { font-size: 0.68rem; letter-spacing: 0.3px; }
+html.force-mobile .lp-cta-wrap { padding: 0 18px 48px; }
+html.force-mobile .lp-cta { padding: 32px 20px; flex-direction: column; text-align: center; border-radius: 18px; gap: 24px; }
+html.force-mobile .lp-cta-text h2 { font-size: 1.35rem !important; }
+html.force-mobile .lp-cta-text p { font-size: 0.92rem; max-width: none; }
+html.force-mobile .lp-cta-btn,
+html.force-mobile .lp-cta-btn .lp-btn-primary { width: 100%; white-space: normal !important; padding: 16px 18px !important; }
+html.force-mobile .lp-footer { padding: 36px 18px 24px; }
+html.force-mobile .lp-footer-top { grid-template-columns: 1fr !important; gap: 28px; }
+html.force-mobile .lp-footer-bottom { flex-direction: column; text-align: center; }
+html.force-mobile .lp-footer-legal { justify-content: center; }
+html.force-mobile .lp-footer-col a { word-break: break-word; }
 html.force-mobile .app-content,
 html.force-mobile .main-content,
 html.force-mobile .lp-root { margin-left: 0 !important; max-width: none !important; width: 100% !important; }
