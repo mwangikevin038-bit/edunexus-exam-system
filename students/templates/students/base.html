@@ -37,18 +37,12 @@
     })();
     </script>
 
-    <!-- Chrome "Desktop site" can force a ~980px layout on phones. Do NOT
-         apply html zoom (it makes text explode and varies by network/cache).
-         Phone detection above + force-mobile CSS is enough for a stable view. -->
-    <script>
-    (function () {
-        function clearBadZoom() {
-            try { document.documentElement.style.zoom = ''; } catch (e) {}
-        }
-        clearBadZoom();
-        window.addEventListener('resize', clearBadZoom, { passive: true });
-    })();
-    </script>
+    <!-- Anti-tiny: when a phone browser forces a wide layout ("Desktop
+         site"), shrink-to-fit scales the whole page down. This applies
+         html zoom = innerWidth/screen.width (exact inverse of the
+         downscale) and clears it again when the viewport is normal.
+         See static/js/viewport_fit.js. -->
+    <script src="{% static 'js/viewport_fit.js' %}?v=1"></script>
 
     <!-- PWA -->
     <link rel="icon" type="image/png" href="{% static 'images/edunexus_logo_192.png' %}">
@@ -85,12 +79,12 @@
     <link rel="stylesheet" href="{% static 'css/variables.css' %}">
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
-    <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layout.css' %}?v=2">
     <link rel="stylesheet" href="{% static 'css/animations.css' %}">
     <link rel="stylesheet" href="{% static 'css/broadsheet.css' %}">
     <link rel="stylesheet" href="{% static 'css/premium-sidebar.css' %}">
     <link rel="stylesheet" href="{% static 'css/sub-nav.css' %}">
-    <link rel="stylesheet" href="{% static 'css/print-shared.css' %}" media="print">
+    <link rel="stylesheet" href="{% static 'css/print-shared.css' %}?v=2" media="print">
 
     {% block extra_head %}{% endblock %}
 </head>
@@ -255,7 +249,7 @@
                     <i class="ph ph-chalkboard-teacher"></i>
                     <span class="nav-label">Teachers</span>
                 </a>
-                <a class="ps-nav-link {% if request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'report_forms_display' or request.resolver_match.url_name == 'merit_list' %}active{% endif %}" href="{% url 'printouts_hub' %}">
+                <a class="ps-nav-link {% if request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'report_forms_display' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'report_card_lookup' %}active{% endif %}" href="{% url 'printouts_hub' %}">
                     <i class="ph ph-printer"></i>
                     <span class="nav-label">Printouts</span>
                 </a>
@@ -288,6 +282,10 @@
                 <a class="ps-nav-link {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' or request.resolver_match.url_name == 'teacher_class_comments' %}active{% endif %}" href="{% url 'merit_list' %}">
                     <i class="ph ph-chart-bar"></i>
                     <span class="nav-label">Results</span>
+                </a>
+                <a class="ps-nav-link {% if request.resolver_match.url_name == 'report_card_lookup' %}active{% endif %}" href="{% url 'report_card_lookup' %}">
+                    <i class="ph ph-file-search"></i>
+                    <span class="nav-label">Find Report</span>
                 </a>
                 <a class="ps-nav-link {% if request.resolver_match.url_name == 'class_lists' or request.resolver_match.url_name == 'teacher_search_student' %}active{% endif %}" href="{% url 'class_lists' %}">
                     <i class="ph ph-student"></i>
@@ -362,7 +360,7 @@
                 <span>Classes</span>
             </a>
             <button type="button"
-                    class="bottom-nav-item {% if request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'grading_configuration' or request.resolver_match.url_name == 'report_card_select' %}active{% endif %}"
+                    class="bottom-nav-item {% if request.resolver_match.url_name == 'manage_faculty_matrix' or request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'grading_configuration' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'report_card_lookup' %}active{% endif %}"
                     id="mobileMenuBtn"
                     aria-label="Open menu"
                     aria-expanded="false"
@@ -405,7 +403,7 @@
                 </a>
             {% endif %}
             {% endwith %}
-            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' or request.resolver_match.url_name == 'teacher_class_comments' %}active{% endif %}"
+            <a class="bottom-nav-item {% if request.resolver_match.url_name == 'results_list' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'report_card_select' or request.resolver_match.url_name == 'individual_report' or request.resolver_match.url_name == 'bulk_report_cards' or request.resolver_match.url_name == 'teacher_class_comments' or request.resolver_match.url_name == 'report_card_lookup' %}active{% endif %}"
                href="{% url 'merit_list' %}"
                aria-label="Results">
                 <i class="ph ph-chart-bar"></i>
@@ -474,6 +472,10 @@
                     <div class="mobile-menu-section">
                         <div class="mobile-menu-section-label">Quick Links</div>
                         <div class="mm-grid" style="grid-template-columns: repeat(2, 1fr);">
+                            <a class="mm-card" href="{% url 'report_card_lookup' %}">
+                                <div class="mm-card-icon green"><i class="ph ph-file-search"></i></div>
+                                <span class="mm-card-label">Find Report</span>
+                            </a>
                             <a class="mm-card" href="{% url 'home_alt' %}">
                                 <div class="mm-card-icon blue"><i class="ph ph-identification-badge"></i></div>
                                 <span class="mm-card-label">Faculty Profile</span>
@@ -579,9 +581,17 @@
         });
 
         // ── Global Loading Overlay ───────────────────────────────
+        // showLoader(passive): the initial page-load overlay is passive so
+        // it never blocks scrolling/touch while the page is still arriving;
+        // navigation/submit loaders stay blocking (double-tap protection).
         const globalLoader = document.getElementById('globalLoader');
-        function showLoader() { if (globalLoader) globalLoader.classList.add('active'); }
-        function hideLoader() { if (globalLoader) globalLoader.classList.remove('active'); }
+        function showLoader(passive) {
+            if (globalLoader) {
+                globalLoader.classList.add('active');
+                globalLoader.classList.toggle('passive', !!passive);
+            }
+        }
+        function hideLoader() { if (globalLoader) globalLoader.classList.remove('active', 'passive'); }
 
         // ── Toast Notifications ─────────────────────────────────
         function showToast(message, type) {
@@ -617,9 +627,14 @@
         });
         document.addEventListener('htmx:sendError', function() {
             showToast('Network error — check your connection.', 'error');
+            hideLoader();
         });
 
-        showLoader();
+        document.addEventListener('htmx:afterRequest', function() {
+            hideLoader();
+        });
+
+        showLoader(true);
         window.addEventListener('load', hideLoader);
         setTimeout(hideLoader, 3000);
 
@@ -801,7 +816,7 @@
     <script>
     </script>
 
-    <script src="{% static 'js/edunexus_print.js' %}?v=6"></script>
+    <script src="{% static 'js/edunexus_print.js' %}?v=7"></script>
 
     {% block extra_js %}{% endblock %}
 </body>

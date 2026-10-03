@@ -9,7 +9,11 @@ from django.db.models import Q
 from django.http import Http404
 from django.utils.functional import cached_property
 
-from students.school_scope import get_current_school, get_current_school_section
+from students.school_scope import (
+    get_current_school,
+    get_current_school_section,
+    resolve_class_teacher_workspace,
+)
 from students.security.roles import user_has_main_school_admin_override
 
 logger = logging.getLogger("students.security.tenant")
@@ -48,6 +52,15 @@ def get_request_school_section(request):
             workspace = request.session.get("workspace_section")
             if workspace in ("LOWER_PRIMARY", "PRIMARY", "JSS"):
                 return workspace
+            # Class teachers resolve to the section of the class they teach
+            # (mirrors CurrentSchoolMiddleware) so section checks — search
+            # filters, IDOR guards, PDF downloads — match their own class.
+            resolved = resolve_class_teacher_workspace(getattr(request, "user", None))
+            if resolved:
+                if hasattr(request, "session"):
+                    request.session["workspace_section"] = resolved
+                    request.session.modified = True
+                return resolved
             return "PRIMARY"
     if not section:
         section = get_current_school_section()

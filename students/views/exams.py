@@ -992,7 +992,6 @@ def manage_exams(request):
                 target_fields=['status'],
                 old_values={'status': old_status},
                 new_values={'status': exam.status},
-                school=school,
                 school_id_snapshot=school.pk if school else None,
             )
 

@@ -1,0 +1,883 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/rc-mobile.css' %}">
+{% endblock %}
+
+{% block sub_tabs %}
+<nav class="sub-nav-bar dm-subnav">
+  <ul class="sub-nav-list">
+    {% if is_admin_view %}
+    <li class="sub-nav-item">
+      <a href="{% url 'printouts_hub' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Printouts
+      </a>
+    </li>
+    {% else %}
+    <li class="sub-nav-item">
+      <a href="{% url 'merit_list' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+        Results
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'teacher_report_forms' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Report Cards
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'report_card_lookup' %}" class="sub-nav-link active">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Find Report
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'teacher_class_comments' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Class Comments
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/rc-select.css' %}">
+<link rel="stylesheet" href="{% static 'css/report-card.css' %}?v=4">
+<style>
+    /* ═══════════════════════════════════════════════════════════
+       FIND REPORT — iOS 18 Premium · EduNexus Green
+       Tokens mirrored from variables.css + dashboard-mobile.css
+       ═══════════════════════════════════════════════════════════ */
+    :root { --section-accent: #22C55E; }
+
+    .rf-page {
+        --rf-green: #22C55E;
+        --rf-green-dark: #15803D;
+        --rf-ink: #1C1C1E;
+        --rf-muted: #8E8E93;
+        background: #F2F2F7;
+        background-image: linear-gradient(180deg, #E3F4E8 0%, #F2F2F7 360px);
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── Staggered entrance (dash-ios pattern) ─────────────────── */
+    @keyframes rfFadeUp {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .rf-stack > * {
+        animation: rfFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .rf-stack > *:nth-child(1) { animation-delay: 30ms; }
+    .rf-stack > *:nth-child(2) { animation-delay: 100ms; }
+    .rf-stack > *:nth-child(3) { animation-delay: 170ms; }
+    .rf-stack > *:nth-child(4) { animation-delay: 240ms; }
+    .rf-stack > *:nth-child(5) { animation-delay: 300ms; }
+
+    /* ── HERO — deep green gradient + frosted glass ────────────── */
+    .rf-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 24px;
+        padding: 27px 30px;
+        margin-bottom: 18px;
+        color: #ffffff;
+        background: linear-gradient(135deg, #16A34A 0%, #15803D 52%, #166534 100%);
+        box-shadow: 0 6px 26px -8px rgba(22, 163, 74, 0.5),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    }
+    .rf-hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(130% 160% at 100% 0%, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0) 55%);
+        pointer-events: none;
+    }
+    .rf-hero::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -90%;
+        width: 55%;
+        height: 100%;
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.10), transparent);
+        transform: skewX(-18deg);
+        animation: rfSheen 4.5s ease-in-out infinite;
+        pointer-events: none;
+    }
+    @keyframes rfSheen {
+        0%, 55%  { left: -90%; }
+        100%     { left: 140%; }
+    }
+
+    .rf-hero-main {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        gap: 18px;
+    }
+    .rf-hero-icon {
+        width: 54px;
+        height: 54px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    }
+    .rf-hero-icon i { font-size: 26px; color: #ffffff; }
+    .rf-hero-copy { flex: 1; min-width: 0; }
+    .rf-kicker {
+        display: block;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.70);
+        margin-bottom: 7px;
+    }
+    .rf-hero-copy h1 {
+        margin: 0;
+        font-size: 31px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1.12;
+        color: #ffffff;
+    }
+    .rf-hero-copy p {
+        margin: 9px 0 0;
+        font-size: 14px;
+        line-height: 1.55;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.82);
+        max-width: 640px;
+    }
+    .rf-hero-pill {
+        margin-left: auto;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 15px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #ffffff;
+        white-space: nowrap;
+    }
+    .rf-pill-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #9be816;
+        box-shadow: 0 0 8px rgba(155, 232, 22, 0.95);
+        animation: rfPulse 2.2s ease-in-out infinite;
+    }
+    @keyframes rfPulse {
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.4; }
+    }
+
+    /* Context picker — iOS menu field on the hero */
+    .rf-context {
+        position: relative;
+        z-index: 1;
+        margin-top: 21px;
+        max-width: 620px;
+    }
+    .rf-context label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.72);
+        margin-bottom: 8px;
+    }
+    .rf-context label i { font-size: 13px; }
+    .rf-context-row { display: flex; gap: 10px; }
+    .rf-context-row .rf-select { min-width: 0; }
+    .rf-context-row .rf-select-class { flex: 0 1 38%; }
+    .rf-context-row .rf-select-exam { flex: 1 1 62%; }
+    .rf-select { position: relative; }
+    .rf-select select {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 100%;
+        min-height: 50px;
+        padding: 0 44px 0 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        background: rgba(255, 255, 255, 0.96);
+        color: #0f172a;
+        font-family: inherit;
+        font-size: 14.5px;
+        font-weight: 700;
+        outline: none;
+        cursor: pointer;
+        box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.45);
+        transition: box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .rf-select select:focus-visible {
+        border-color: #ffffff;
+        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.35);
+    }
+    .rf-select i {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #15803D;
+        font-size: 16px;
+        pointer-events: none;
+    }
+
+    /* ── STAT TILES — iOS glass cards ──────────────────────────── */
+    .rf-stats {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+    .rf-stat {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px 16px;
+        min-width: 0;
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.75);
+        border-radius: 18px;
+        box-shadow: 0 2px 12px -3px rgba(15, 23, 42, 0.08);
+        transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+    }
+    .rf-stat:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 26px -10px rgba(15, 23, 42, 0.16);
+    }
+    .rf-stat-ico {
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+    .rf-stat-ico.green   { background: rgba(34, 197, 94, 0.10);  color: #16A34A; }
+    .rf-stat-ico.blue    { background: rgba(59, 130, 246, 0.10); color: #2563EB; }
+    .rf-stat-ico.purple  { background: rgba(139, 92, 246, 0.10); color: #7C3AED; }
+    .rf-stat-ico.emerald { background: rgba(16, 185, 129, 0.10); color: #059669; }
+    .rf-stat-ico.amber   { background: rgba(245, 158, 11, 0.12); color: #D97706; }
+    .rf-stat > div:last-child { min-width: 0; }
+    .rf-stat span {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--rf-muted);
+        line-height: 1.3;
+        margin-bottom: 3px;
+    }
+    .rf-stat strong {
+        display: block;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--rf-ink);
+        line-height: 1.3;
+    }
+
+    /* ── SEARCH PANEL — inset grouped card ─────────────────────── */
+    .rc-lookup-search.rf-search {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 22px;
+        box-shadow: 0 2px 14px -6px rgba(15, 23, 42, 0.10),
+                    0 16px 40px -22px rgba(15, 23, 42, 0.18);
+        padding: 24px 26px;
+        margin-bottom: 20px;
+    }
+    .rf-search-head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+    .rf-search-ico {
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        border-radius: 13px;
+        background: rgba(34, 197, 94, 0.10);
+        color: #16A34A;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+    .rf-search-head strong {
+        display: block;
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--rf-ink);
+    }
+    .rf-search-head span {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--rf-muted);
+        margin-top: 2px;
+    }
+
+    /* iOS 18 segmented control */
+    .rf-seg {
+        display: flex;
+        gap: 2px;
+        padding: 3px;
+        background: rgba(118, 118, 128, 0.12);
+        border-radius: 999px;
+        margin-bottom: 16px;
+        width: 100%;
+        max-width: 560px;
+    }
+    .rf-seg-item {
+        position: relative;
+        flex: 1 1 0;
+        min-width: 0;
+        cursor: pointer;
+    }
+    .rf-seg-item input {
+        position: absolute;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+        margin: 0;
+        pointer-events: none;
+    }
+    .rf-seg-item span {
+        display: block;
+        text-align: center;
+        padding: 9px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #48484A;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+    .rf-seg-item:hover span { color: var(--rf-ink); }
+    .rf-seg-item input:checked + span {
+        background: #ffffff;
+        color: var(--rf-ink);
+        font-weight: 800;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+    .rf-seg-item input:focus-visible + span {
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4), 0 3px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Search field + button */
+    .rf-search-row {
+        display: flex;
+        gap: 10px;
+        align-items: stretch;
+    }
+    .rf-input {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        background: #F7F7F9;
+        border: 1px solid rgba(0, 0, 0, 0.07);
+        border-radius: 15px;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+    .rf-input:focus-within {
+        background: #ffffff;
+        border-color: rgba(34, 197, 94, 0.65);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+    }
+    .rf-input > i {
+        position: absolute;
+        left: 16px;
+        font-size: 17px;
+        color: #8E8E93;
+        pointer-events: none;
+        transition: color 0.18s ease;
+    }
+    .rf-input:focus-within > i { color: #16A34A; }
+    .rf-input .search-input {
+        flex: 1;
+        min-width: 0;
+        width: auto;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        min-height: 52px;
+        padding: 0 16px 0 44px;
+        font-size: 15px;
+        font-weight: 650;
+        color: var(--rf-ink);
+        outline: none;
+        border-radius: 0;
+    }
+    .rf-input .search-input::placeholder { color: #9CA3AF; font-weight: 550; }
+    .rf-btn-search {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 52px;
+        padding: 0 26px;
+        border: none;
+        border-radius: 15px;
+        cursor: pointer;
+        background: linear-gradient(135deg, #22C55E 0%, #15803D 100%);
+        color: #ffffff;
+        font-family: inherit;
+        font-size: 14.5px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        box-shadow: 0 8px 18px -8px rgba(21, 128, 61, 0.7),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+        transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+                    box-shadow 0.18s ease, filter 0.18s ease;
+        white-space: nowrap;
+    }
+    .rf-btn-search:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.06);
+        box-shadow: 0 13px 26px -9px rgba(21, 128, 61, 0.75),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    }
+    .rf-btn-search:active { transform: scale(0.97); }
+    .rf-search.htmx-request .rf-btn-search,
+    .rf-btn-search.htmx-request {
+        opacity: 0.65;
+        pointer-events: none;
+    }
+
+    /* ── Results & messages ────────────────────────────────────── */
+    #rcLookupResults:empty, #rcLookupCard:empty { display: none; }
+    #rcLookupResults { margin-bottom: 20px; }
+    #rcLookupCard { margin-bottom: 30px; }
+
+    .rc-lookup-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin: 0 2px 10px;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 750;
+    }
+    .rc-lookup-meta span { display: inline-flex; align-items: center; gap: 6px; }
+    .rc-lookup-meta span:first-child i { color: #16A34A; }
+    .rc-lookup-meta-hint { color: #94a3b8; font-weight: 650; }
+
+    .rf-page .reports-table-card {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 18px;
+        box-shadow: 0 2px 14px -8px rgba(15, 23, 42, 0.12);
+        overflow: hidden;
+    }
+    /* Search results table is wider than a phone viewport — let the CARD
+       scroll horizontally (touch) instead of clipping the Action buttons.
+       Same specificity as the rule above; placed after it on purpose. */
+    .rf-page .rc-lookup-results {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+    .rf-page .rc-lookup-results::-webkit-scrollbar { display: none; }
+    .rf-page .reports-table th {
+        background: #F7F8FA;
+        color: #6B7280;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+    }
+    .rf-page .reports-table tbody tr { transition: background 0.15s ease; }
+    .rf-page .reports-table tbody tr:hover td { background: #F8FBF9; }
+    .rf-page .rc-lookup-row-active td { background: rgba(34, 197, 94, 0.07); }
+
+    .rf-page .btn-dark {
+        background: linear-gradient(135deg, #22C55E 0%, #15803D 100%);
+        color: #ffffff;
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 6px 14px -8px rgba(21, 128, 61, 0.75);
+        transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+    }
+    .rf-page .btn-dark:hover {
+        color: #ffffff;
+        transform: translateY(-1px);
+        filter: brightness(1.06);
+    }
+    .rf-page .btn-light-action {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+        transition: background 0.15s ease, transform 0.15s ease;
+    }
+    .rf-page .btn-light-action:hover { background: #F7F7F9; transform: translateY(-1px); }
+
+    .rc-lookup-msg {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 14px -8px rgba(15, 23, 42, 0.14);
+        padding: 22px 26px;
+    }
+    .rc-lookup-msg > i { font-size: 26px; line-height: 1.2; }
+    .rc-lookup-msg strong {
+        display: block;
+        color: var(--rf-ink);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 15px;
+        font-weight: 800;
+        margin-bottom: 4px;
+    }
+    .rc-lookup-msg p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.5;
+    }
+    .rc-lookup-msg-error { border-color: #fecaca; }
+    .rc-lookup-msg-error > i, .rc-lookup-msg-error strong { color: #dc2626; }
+    .rc-lookup-msg-empty { border-style: dashed; border-color: #B7E3C6; }
+    .rc-lookup-msg-empty > i { color: #6FCF97; }
+    .rc-lookup-msg-info { border-color: #cfe8dc; background: linear-gradient(135deg, #f3fbf6 0%, #ffffff 70%); }
+    .rc-lookup-msg-info > i, .rc-lookup-msg-info strong { color: #15803D; }
+    .rc-lookup-msg-info p { color: #4b6b58; }
+    .rc-lookup-hint { margin-top: 4px !important; font-size: 12.5px !important; color: #94a3b8 !important; }
+
+    .rc-lookup-row-active td { background: rgba(34, 197, 94, 0.07); }
+    .rc-lookup-view-btn.htmx-request { opacity: 0.6; pointer-events: none; }
+
+    .rc-lookup-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+    .rc-lookup-actions .rv-btn {
+        flex: 0 1 auto;
+        min-width: 150px;
+        padding: 0 20px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-sizing: border-box;
+    }
+    .rc-lookup-card .rv-scroll { padding: 0; overflow: visible; }
+    .rc-lookup-card .rv-card-container { max-width: 100%; }
+
+    .empty-state {
+        background: #ffffff;
+        border: 1px dashed #B7E3C6;
+        border-radius: 20px;
+        box-shadow: 0 2px 14px -10px rgba(15, 23, 42, 0.14);
+        padding: 46px 26px;
+        text-align: center;
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    /* ── Responsive ────────────────────────────────────────────── */
+    /* Bottom clearance so the Search button can scroll clear of the
+       fixed bottom-nav (rc-select.css sets `padding: 14px !important`
+       at <=640px, which used to wipe the nav padding away). */
+    @media (max-width: 1023px) {
+        .rc-lookup-search, .reports-table-card { min-width: 0 !important; }
+        .reports-page.rf-page { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important; }
+        .rf-stats { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+        .rf-hero-copy h1 { font-size: 27px; }
+        .rf-hero { padding: 22px 20px; }
+    }
+    @media (max-width: 640px) {
+        .rf-hero { padding: 20px 18px; border-radius: 20px; }
+        .rf-hero-main { flex-wrap: wrap; gap: 14px; }
+        .rf-hero-icon { width: 46px; height: 46px; border-radius: 14px; }
+        .rf-hero-icon i { font-size: 22px; }
+        .rf-hero-copy h1 { font-size: 23px; }
+        .rf-hero-copy p { font-size: 13px; }
+        .rf-hero-pill {
+            order: -1;
+            margin-left: 0;
+            flex: 0 0 100%;
+            justify-content: center;
+            margin-bottom: 2px;
+        }
+        .rf-context { margin-top: 16px; }
+        .rf-context-row { flex-direction: column; }
+        .rf-context-row .rf-select-class,
+        .rf-context-row .rf-select-exam { flex: 1 1 auto; }
+        .rf-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+        .rf-stats .rf-stat:last-child { grid-column: span 2; }
+        .rf-stat { padding: 13px 14px; border-radius: 16px; gap: 10px; }
+        .rf-stat strong { font-size: 14px; }
+        .rc-lookup-search.rf-search { padding: 18px 16px; border-radius: 20px; }
+        .rf-seg { max-width: none; }
+        .rf-seg-item span { padding: 9px 4px; font-size: 12px; }
+        .rf-search-row { flex-direction: column; }
+        .rf-btn-search { width: 100%; }
+        .rc-lookup-actions .rv-btn { flex: 1 1 100%; }
+        /* ── Results: premium swipeable table on phones ───────── */
+        /* Edge fades hint that the table continues sideways
+           (wrapper is added by report_card_lookup_results.html). */
+        .rc-scroll-wrap { position: relative; }
+        .rc-scroll-wrap::before,
+        .rc-scroll-wrap::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 22px;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .rc-scroll-wrap::before {
+            left: 0;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
+        }
+        .rc-scroll-wrap::after {
+            right: 0;
+            background: linear-gradient(to left, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
+        }
+        /* Row numbers are noise on a small screen — drop the # column
+           so the table needs less sideways travel. */
+        .rf-page .rc-lookup-results .reports-table th:first-child,
+        .rf-page .rc-lookup-results .reports-table td:first-child { display: none; }
+    }
+    /* Desktop-site / coarse devices wider than 1023px still show the
+       bottom-nav via force-mobile, so mirror the clearance there too. */
+    html.force-mobile .reports-page.rf-page {
+        padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    @media print {
+        .rc-lookup-search, .rc-lookup-meta, .rc-lookup-actions,
+        .sub-nav-bar, .bottom-nav, .rc-lookup-results { display: none !important; }
+        .rf-page { background: #ffffff !important; background-image: none !important; }
+        .reports-page.rf-page { padding-bottom: 0 !important; }
+        .rf-hero {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            box-shadow: none !important;
+            border: 1px solid #dddddd;
+        }
+        .rf-hero::before, .rf-hero::after, .rf-hero-pill { display: none !important; }
+        .rf-hero-copy h1 { color: #0f172a !important; }
+        .rf-kicker, .rf-hero-copy p { color: #475569 !important; }
+        .rf-hero-icon { background: rgba(34, 197, 94, 0.1) !important; border-color: rgba(34, 197, 94, 0.35) !important; }
+        .rf-hero-icon i { color: #16A34A !important; }
+        .rf-context label { color: #475569 !important; }
+        .rf-select select { border-color: #dddddd !important; box-shadow: none !important; }
+        .rf-stat { box-shadow: none !important; border: 1px solid #e2e8f0 !important; backdrop-filter: none !important; }
+        .rf-stack > * { animation: none !important; }
+    }
+</style>
+
+<div class="reports-page rf-page">
+    <div class="rf-stack">
+        <section class="rf-hero">
+            <div class="rf-hero-main">
+                <div class="rf-hero-icon"><i class="ph ph-magnifying-glass"></i></div>
+                <div class="rf-hero-copy">
+                    <h1>Find Report</h1>
+                    <p>Search for a learner to view, print, or download their report card.</p>
+                </div>
+                <span class="rf-hero-pill"><span class="rf-pill-dot"></span>{{ access_label }}</span>
+            </div>
+
+            {% if published_contexts|length > 1 %}
+                <form method="GET" class="rf-context" data-context-cascade>
+                    {% if active_sub %}<input type="hidden" name="sub" value="{{ active_sub }}">{% endif %}
+                    {% regroup published_contexts by group_label as context_groups %}
+                    <label for="rfExamSelect"><i class="ph ph-compass"></i> {% if context_groups|length > 1 %}Class &amp; assessment{% else %}Assessment{% endif %}</label>
+                    <div class="rf-context-row">
+                        {% if context_groups|length > 1 %}
+                        <div class="rf-select rf-select-class">
+                            <select id="rfClassSelect" data-cascade-role="class" aria-label="Class stream" title="Class stream">
+                                {% for group in context_groups %}
+                                <option value="{{ group.grouper }}">{{ group.grouper }}</option>
+                                {% endfor %}
+                            </select>
+                            <i class="ph ph-caret-down"></i>
+                        </div>
+                        {% endif %}
+                        <div class="rf-select rf-select-exam">
+                            <select id="rfExamSelect" name="context" data-cascade-role="exam" onchange="this.form.submit()" aria-label="Assessment" title="Assessment">
+                                {% for group in context_groups %}
+                                <optgroup label="{{ group.grouper }}">
+                                    {% for item in group.list %}
+                                    <option value="{{ item.context_key }}" data-group="{{ group.grouper }}" data-exam="{{ item.exam_name }}" data-term="{{ item.term }}" data-year="{{ item.year }}" {% if item.context_key == selected_context_key %}selected{% endif %}>{{ item.exam_name }} &middot; {{ item.term }} {{ item.year }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endfor %}
+                            </select>
+                            <i class="ph ph-caret-down"></i>
+                        </div>
+                    </div>
+                </form>
+            {% endif %}
+        </section>
+
+        {% if selected_grade and selected_stream %}
+            <section class="rf-stats" aria-label="Assessment context summary">
+                <div class="rf-stat">
+                    <div class="rf-stat-ico green"><i class="ph ph-certificate"></i></div>
+                    <div><span>Assessment</span><strong>{{ selected_exam }}</strong></div>
+                </div>
+                <div class="rf-stat">
+                    <div class="rf-stat-ico blue"><i class="ph ph-calendar-blank"></i></div>
+                    <div><span>Academic term</span><strong>{{ selected_term }}</strong></div>
+                </div>
+                <div class="rf-stat">
+                    <div class="rf-stat-ico purple"><i class="ph ph-clock-countdown"></i></div>
+                    <div><span>Academic year</span><strong>{{ selected_year }}</strong></div>
+                </div>
+                <div class="rf-stat">
+                    <div class="rf-stat-ico emerald"><i class="ph ph-graduation-cap"></i></div>
+                    <div><span>Class stream</span><strong>{{ selected_grade }} {{ selected_stream }}</strong></div>
+                </div>
+                <div class="rf-stat">
+                    <div class="rf-stat-ico amber"><i class="ph ph-check-circle"></i></div>
+                    <div><span>Published subjects</span><strong>{{ published_subject_count }}/{{ total_required_subjects }}</strong></div>
+                </div>
+            </section>
+
+            <form class="rc-lookup-search rf-search"
+                  hx-get="{% url 'report_card_lookup_search' %}"
+                  hx-target="#rcLookupResults" hx-swap="innerHTML" hx-trigger="submit">
+                <div class="rf-search-head">
+                    <div class="rf-search-ico"><i class="ph ph-magnifying-glass"></i></div>
+                    <div>
+                        <strong>Find a learner</strong>
+                        <span>Administrators search all streams · class teachers search their own class</span>
+                    </div>
+                </div>
+                <div class="rf-seg" id="rcLookupRadios">
+                    <label class="rf-seg-item"><input type="radio" name="search_type" value="adm_no" checked><span>Admission No</span></label>
+                    <label class="rf-seg-item"><input type="radio" name="search_type" value="name"><span>Name</span></label>
+                    <label class="rf-seg-item"><input type="radio" name="search_type" value="assessment_no"><span>Assessment No</span></label>
+                </div>
+                <div class="rf-search-row">
+                    <div class="rf-input">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" name="query" class="search-input" id="rcLookupQuery"
+                               placeholder="Enter admission number..." autocomplete="off" required>
+                    </div>
+                    <button type="submit" class="rf-btn-search"><i class="ph ph-magnifying-glass"></i>Search</button>
+                </div>
+                {% if selected_year %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+                {% if selected_term %}<input type="hidden" name="term" value="{{ selected_term }}">{% endif %}
+                {% if selected_assessment %}<input type="hidden" name="assessment" value="{{ selected_assessment }}">{% endif %}
+            </form>
+
+            <div id="rcLookupResults"></div>
+            <div id="rcLookupCard"></div>
+        {% elif published_contexts %}
+            <div class="empty-state">
+                Select a published assessment above to start searching for learners.
+            </div>
+        {% else %}
+            <div class="empty-state">
+                No report cards are ready yet. Report cards appear after the assessment administrator publishes results for your permitted class stream.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include "students/partials/report_card_print_css.html" %}
+
+<script>
+window.rcLookupNewSearch = function() {
+    var card = document.getElementById('rcLookupCard');
+    if (card) card.innerHTML = '';
+    var results = document.getElementById('rcLookupResults');
+    if (results) results.innerHTML = '';
+    var input = document.getElementById('rcLookupQuery');
+    if (input) { input.value = ''; input.focus(); }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+(function() {
+    var placeholders = {
+        adm_no: 'Enter admission number...',
+        name: 'Enter learner name...',
+        assessment_no: 'Enter assessment number...'
+    };
+    var radios = document.querySelectorAll('#rcLookupRadios input[type="radio"]');
+    radios.forEach(function(r) {
+        r.addEventListener('change', function() {
+            var inp = document.getElementById('rcLookupQuery');
+            if (inp) inp.placeholder = placeholders[r.value] || 'Search...';
+            if (inp) inp.focus();
+        });
+    });
+})();
+
+document.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail && e.detail.target && e.detail.target.id === 'rcLookupCard' && e.detail.target.innerHTML.trim()) {
+        var el = document.querySelector('.rc-lookup-card');
+        if (!el) return;
+        var cover = 0;
+        var all = document.querySelectorAll('body *');
+        for (var i = 0; i < all.length; i++) {
+            var cs = getComputedStyle(all[i]);
+            if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
+            if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+            var cr = all[i].getBoundingClientRect();
+            if (cr.width >= window.innerWidth * 0.5 && cr.height < 300 &&
+                cr.top < 220 && cr.bottom > 0) {
+                cover = Math.max(cover, cr.bottom);
+            }
+        }
+        var top = el.getBoundingClientRect().top + window.pageYOffset - (cover + 16);
+        window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
+    }
+});
+</script>
+<script src="{% static 'js/context_cascade.js' %}?v=1"></script>
+<script src="{% static 'js/report_card_fit.js' %}?v=6"></script>
+{% endblock %}

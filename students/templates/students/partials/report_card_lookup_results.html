@@ -1,0 +1,59 @@
+{% if search_error %}
+<div class="rc-lookup-msg rc-lookup-msg-error">
+    <i class="ph ph-warning-circle"></i>
+    <div>
+        <strong>Search unavailable</strong>
+        <p>{{ search_error }}</p>
+    </div>
+</div>
+{% elif students %}
+<div class="rc-lookup-meta">
+    <span><i class="ph ph-student"></i> {{ result_count }} learner{{ result_count|pluralize }} found</span>
+    <span class="rc-lookup-meta-hint">{% if truncated %}Showing the first {{ students|length }} — refine your search to narrow it down{% else %}Choose View Report to open the card below{% endif %}</span>
+</div>
+<div class="rc-scroll-wrap">
+<section class="reports-table-card rc-lookup-results">
+    <table class="reports-table">
+        <thead>
+            <tr>
+                <th style="width:52px;">#</th>
+                <th style="width:140px;">Adm No</th>
+                <th>Learner Name</th>
+                <th style="width:150px;">Class Stream</th>
+                <th style="text-align:right;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <tr{% if forloop.first %} class="rc-lookup-row-active"{% endif %}>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ s.admission_no }}</td>
+                <td class="student-name">{{ s.name }}</td>
+                <td>{{ s.class_name }} {{ s.stream }}</td>
+                <td style="text-align:right; white-space:nowrap;">
+                    <a href="{% url 'individual_report' s.id %}{{ card_qs }}"
+                       class="btn-light-action" style="min-height:38px; padding:0 14px; font-size:13px; margin-right:8px;"
+                       title="Open the full-page report view">
+                        <i class="ph ph-arrow-square-out" style="margin-right:6px;"></i>Full Page
+                    </a>
+                    <a hx-get="{% url 'report_card_lookup_card' s.id %}{{ card_qs }}"
+                       hx-target="#rcLookupCard" hx-swap="innerHTML"
+                       class="btn-dark rc-lookup-view-btn" style="min-height:38px; padding:0 16px; font-size:13px;">
+                        <i class="ph ph-file-text" style="margin-right:6px;"></i>View Report
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+</div>
+{% else %}
+<div class="rc-lookup-msg rc-lookup-msg-empty">
+    <i class="ph ph-magnifying-glass"></i>
+    <div>
+        <strong>No learners found</strong>
+        <p>No records match &ldquo;{{ query }}&rdquo;. Check the spelling or try a different search type.</p>
+    </div>
+</div>
+{% endif %}

@@ -42,7 +42,7 @@ except ImportError:
 _MIN_VALID_PDF_BYTES = 2048
 
 from .constants import ASSESSMENT_MAP, GRADE_CHOICES, JSS_GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_NAMES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_GRADE_CHOICES, PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_DISPLAY_ORDER, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
-from .reports import PRIMARY_ORDERED_LEVELS
+from .reports import PRIMARY_ORDERED_LEVELS, _build_individual_report_context
 from .exams import _get_primary_performance
 from .helpers import (
     calculate_broadsheet_plv,
@@ -112,7 +112,42 @@ def _build_playwright_html(template_html, request, *, landscape=False):
     return html
 
 
-def generate_premium_vector_chart_svg(labels, student_scores, class_averages):
+def _smooth_xy(x, y, samples=16):
+    """Catmull-Rom spline through every data point (matches Chart.js
+    tension smoothing so print curves look like the browser chart).
+
+    Endpoints are duplicated for the tangent estimate, so the curve passes
+    exactly through the first and last marks - no extrapolation drift.
+    """
+    import numpy as np
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    n = len(x)
+    if n < 3:
+        return x, y
+    px = np.concatenate(([2 * x[0] - x[1]], x, [2 * x[-1] - x[-2]]))
+    py = np.concatenate(([2 * y[0] - y[1]], y, [2 * y[-1] - y[-2]]))
+    t = np.linspace(0.0, 1.0, samples)
+    mt = 1.0 - t
+    out_x, out_y = [], []
+    for i in range(1, n):
+        x0, y0 = px[i - 1], py[i - 1]
+        x1, y1 = px[i], py[i]
+        x2, y2 = px[i + 1], py[i + 1]
+        x3, y3 = px[i + 2], py[i + 2]
+        c1x, c1y = x1 + (x2 - x0) / 6.0, y1 + (y2 - y0) / 6.0
+        c2x, c2y = x2 - (x3 - x1) / 6.0, y2 - (y3 - y1) / 6.0
+        bx = mt ** 3 * x1 + 3 * mt ** 2 * t * c1x + 3 * mt * t ** 2 * c2x + t ** 3 * x2
+        by = mt ** 3 * y1 + 3 * mt ** 2 * t * c1y + 3 * mt * t ** 2 * c2y + t ** 3 * y2
+        if out_x:
+            bx, by = bx[1:], by[1:]
+        out_x.append(bx)
+        out_y.append(by)
+    return np.concatenate(out_x), np.concatenate(out_y)
+
+
+def generate_premium_vector_chart_svg(labels, student_scores, class_averages,
+                                      student_name=None, class_name=None):
     """
     Render the student-performance chart with matplotlib.
 
@@ -132,24 +167,97 @@ def generate_premium_vector_chart_svg(labels, student_scores, class_averages):
 
     fig, ax = _get_chart_axes(labels, class_averages)
     try:
-        # Plot the student line on top of the (re-used) axes + class line.
+        # Clear leftovers from the previous render on this reused axes:
+        # value labels (ax.texts) and the student line from last time.
+        for _t in list(ax.texts):
+            _t.remove()
+        for _ln in list(ax.get_lines()):
+            if _ln.get_label() != 'Class Average':
+                _ln.remove()
+
         x = np.arange(len(labels))
+        sx, sy = _smooth_xy(x, student_scores)
+
+        # Premium fill: soft green wash under the student line (print reads
+        # better with a filled silhouette; browser keeps class-only fill).
+        # Tagged with a gid so the finally-block can strip them - otherwise
+        # they pile up on the reused axes and leak one student's band into
+        # the next student's chart.
+        if class_averages:
+            cx, cy = _smooth_xy(x, class_averages)
+        else:
+            cx, cy = sx, sy
+        _band1 = ax.fill_between(sx, sy, cy, where=(sy >= cy), color='#00C853',
+                                 alpha=0.10, interpolate=True, zorder=2, linewidth=0)
+        _band2 = ax.fill_between(sx, sy, cy, where=(sy < cy), color='#A1A7B3',
+                                 alpha=0.14, interpolate=True, zorder=2, linewidth=0)
+        for _c in (_band1, _band2):
+            _c.set_gid('rc-student-band')
+
+        # Student line - smooth spline, thick, round joins. Markers are drawn
+        # separately on the RAW points: passing the smoothed arrays into a
+        # marker-bearing plot would stamp a marker at every spline sample
+        # (~120 dots) and read as a dotted chain on paper.
         ax.plot(
-            x, student_scores,
-            color='#00C853', linewidth=2.5,
-            marker='o', markersize=6, markerfacecolor='#00C853',
-            markeredgecolor='white', markeredgewidth=1.5,
-            label='Student Score', zorder=3,
+            sx, sy,
+            color='#00C853', linewidth=3.2,
+            solid_capstyle='round', solid_joinstyle='round',
+            zorder=5,
+        )
+        ax.plot(
+            x, student_scores, linestyle='none',
+            marker='o', markersize=7, markerfacecolor='#00C853',
+            markeredgecolor='white', markeredgewidth=1.2,
+            label='Student Score', zorder=5.5,
         )
 
-        # If this render exposes more data than the cached axes assumed, raise
-        # the y-limit so the line doesn't get clipped.
+        # Marks are percentages — the axis is fixed 0-100. Only widen past
+        # 100 for anomalous data so nothing can ever be clipped.
         y_top_now = float(max(max(student_scores), float(max(class_averages) if class_averages else 0)))
-        if ax.get_ylim()[1] < y_top_now * 1.15:
-            ax.set_ylim(0, y_top_now * 1.15)
+        target_top = max(100.0, y_top_now * 1.05)
+        if ax.get_ylim()[1] != target_top:
+            ax.set_ylim(0, target_top)
+
+        # Bold value labels on every student point - print has no tooltips,
+        # so the numbers must live on the chart itself. A white halo keeps
+        # them legible where a rising/falling curve passes behind the text.
+        import matplotlib.patheffects as _pe
+        for xi, yi in zip(x, student_scores):
+            if yi is None:
+                continue
+            if yi >= 88:
+                _lab = ax.text(xi, float(yi) - 3.6, f'{yi:g}%', ha='center', va='top',
+                               fontsize=10, fontweight='bold', color='#0F7B2E', zorder=6)
+            else:
+                _lab = ax.text(xi, float(yi) + 3.6, f'{yi:g}%', ha='center', va='bottom',
+                               fontsize=10, fontweight='bold', color='#0F7B2E', zorder=6)
+            _lab.set_path_effects([_pe.withStroke(linewidth=3.5, foreground='white')])
+
+        # Legend above the plot, right-aligned — mirrors the Chart.js legend
+        # on the browser view (● Student  ● Class).
+        from matplotlib.lines import Line2D
+        legend_handles = [
+            Line2D([0], [0], color='#00C853', linewidth=3.2, marker='o', markersize=7,
+                   markerfacecolor='#00C853', markeredgecolor='white', markeredgewidth=1.2),
+            Line2D([0], [0], color='#A1A7B3', linewidth=2.6, marker='o', markersize=5.5,
+                   markerfacecolor='#A1A7B3', markeredgecolor='white', markeredgewidth=1.0,
+                   alpha=0.9),
+        ]
+        legend_labels = [student_name or 'Student', class_name or 'Class Average']
+        leg = ax.legend(
+            legend_handles, legend_labels,
+            loc='lower right', bbox_to_anchor=(1.0, 1.012),
+            ncol=2, frameon=False, fontsize=10.5,
+            handletextpad=0.4, columnspacing=1.6, borderaxespad=0,
+            labelspacing=0.3,
+        )
+        for txt in leg.get_texts():
+            txt.set_color('#374151')
+            txt.set_fontweight('bold')
 
         svg_buffer = io.StringIO()
-        fig.savefig(svg_buffer, format='svg', bbox_inches='tight', transparent=True)
+        fig.savefig(svg_buffer, format='svg', bbox_inches='tight',
+                    pad_inches=0.03, transparent=True)
         svg_string = svg_buffer.getvalue()
         svg_buffer.close()
 
@@ -161,13 +269,18 @@ def generate_premium_vector_chart_svg(labels, student_scores, class_averages):
         logger.exception("[pdf] chart render failed")
         return ""
     finally:
-        # Remove the just-plotted student line so the next render starts clean.
-        # We keep lines[0] (class average) and lines[1] (fill); we pop the rest.
+        # Remove per-render student artifacts so the next render starts
+        # clean. The class-average line/fill (label 'Class Average' or drawn
+        # at build time) persists.
         try:
-            lines = ax.get_lines()
-            if len(lines) > 2:
-                for ln in lines[2:]:
-                    ln.remove()
+            for _ln in list(ax.get_lines()):
+                if _ln.get_label() != 'Class Average':
+                    _ln.remove()
+            for _t in list(ax.texts):
+                _t.remove()
+            for _c in list(ax.collections):
+                if _c.get_gid() == 'rc-student-band':
+                    _c.remove()
         except Exception:
             pass
 
@@ -183,30 +296,44 @@ def _build_chart_axes(labels):
     import matplotlib
     matplotlib.use('SVG')  # Vector backend - mandatory
     import matplotlib.pyplot as plt
-    from matplotlib.ticker import MultipleLocator
+    from matplotlib.ticker import MultipleLocator, PercentFormatter
 
-    fig, ax = plt.subplots(figsize=(7, 3))
-    fig.patch.set_facecolor('none')
-    ax.set_facecolor('none')
-
-    # Font / colour rcParams - set once, persists for the figure's lifetime.
+    # Font / colour rcParams MUST be set BEFORE figure creation: the Axes
+    # caches tick defaults (size/colour) at construction time, so setting
+    # them afterwards left y-ticks at the 3.5pt black default (the stray
+    # dash next to "100%" and a +2pt wide viewBox).
     matplotlib.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Helvetica', 'Verdana']
     matplotlib.rcParams['font.family'] = 'sans-serif'
     matplotlib.rcParams['text.color'] = '#374151'
     matplotlib.rcParams['axes.labelcolor'] = '#374151'
     matplotlib.rcParams['xtick.color'] = '#374151'
     matplotlib.rcParams['ytick.color'] = '#374151'
+    # Tick label sizes are in viewBox units; the card prints this SVG at
+    # ~106mm width (scale ≈ 0.68), so 10u ≈ 6.8pt on paper - the floor for
+    # legible print typography. (7u printed ≈ 4.9pt and read as blurry.)
+    matplotlib.rcParams['ytick.labelsize'] = 10
+    matplotlib.rcParams['ytick.major.size'] = 0
+    matplotlib.rcParams['ytick.major.pad'] = 5
+    matplotlib.rcParams['xtick.labelsize'] = 10
+    matplotlib.rcParams['xtick.major.size'] = 0
+    matplotlib.rcParams['xtick.major.pad'] = 5
+
+    fig, ax = plt.subplots(figsize=(7, 3.0))
+    fig.patch.set_facecolor('none')
+    ax.set_facecolor('none')
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
-    ax.spines['bottom'].set_color('#D5D5DB')
-    ax.spines['bottom'].set_linewidth(1)
-    ax.grid(True, axis='y', linestyle='-', linewidth=0, color='none')
-    ax.grid(True, axis='x', linestyle='-', linewidth=0.5, color='#E5E7EB', zorder=1)
+    ax.spines['bottom'].set_visible(False)
+    ax.grid(True, axis='y', linestyle='-', linewidth=0.7, color='#E5E7EB')
+    ax.grid(True, axis='x', linestyle='-', linewidth=0.5, color='#EEF0F3', zorder=1)
     ax.set_axisbelow(True)
-    ax.set_ylim(0, 100)  # placeholder; _get_chart_axes raises this per render
+    ax.set_ylim(0, 100)  # Marks are percentages — fixed 0-100% axis
+    # Breathing room at both ends so edge markers/labels never clip.
+    ax.set_xlim(-0.6, max(len(labels) - 0.4, 0.6))
     ax.yaxis.set_major_locator(MultipleLocator(20))
+    ax.yaxis.set_major_formatter(PercentFormatter(xmax=100))
 
     return fig, ax
 
@@ -248,31 +375,49 @@ def _get_chart_axes(labels, class_averages):
             except Exception:
                 pass
         fig, ax = _build_chart_axes(labels)
-        # Draw the class-average line ONCE into the axes.
+        # Draw the class-average line ONCE into the axes (smoothed to match
+        # the browser's tension curves; cleaned up per-render by label).
         if class_averages:
             x = np.arange(len(labels))
+            cx, cy = _smooth_xy(x, class_averages)
             ax.plot(
-                x, class_averages,
-                color='#A1A7B3', linewidth=2.5,
-                linestyle='-', marker='o', markersize=4, markerfacecolor='#A1A7B3',
-                markeredgecolor='white', markeredgewidth=1.5, alpha=0.85,
-                label='Class Average', zorder=2,
+                cx, cy,
+                color='#A1A7B3', linewidth=2.6,
+                solid_capstyle='round', solid_joinstyle='round',
+                alpha=0.9, label='Class Average', zorder=4,
+            )
+            ax.plot(
+                x, class_averages, linestyle='none', marker='o', markersize=5.5,
+                markerfacecolor='#A1A7B3',
+                markeredgecolor='white', markeredgewidth=1.0, alpha=0.9,
+                label='Class Average', zorder=4.5,
             )
             ax.fill_between(x, class_averages, alpha=0.2, color='#D1D5DB', zorder=1)
-            ax.set_ylim(0, max(class_averages) * 1.15)
+            ax.set_ylim(0, 100)  # Fixed percentage axis — mathematically correct
         _chart_local.fig = fig
         _chart_local.ax = ax
         _chart_local.labels = labels
         _chart_local.avgs = class_averages
 
-    # Per-render x-tick labels (cheap).
+    # Per-render x-tick labels (cheap) - bold, print-scaled like the browser.
     x = np.arange(len(labels))
     ax.set_xticks(x)
     ax.set_xticklabels(
         labels, rotation=0, ha='center', fontsize=10,
         fontweight='bold', color='#374151',
     )
-    ax.tick_params(axis='x', which='major', labelsize=10, pad=6, colors='#374151')
+    ax.tick_params(axis='x', which='major', labelsize=10, pad=5, length=0, colors='#374151')
+    # Y ticks: force no tick marks + print colour/size regardless of when
+    # the figure was constructed (belt and braces over rcParams).
+    ax.tick_params(axis='y', which='major', labelsize=10, pad=5, length=0, colors='#374151')
+    # Y tick labels: bold like the browser's 600-weight % labels.
+    try:
+        for _t in ax.get_yticklabels():
+            _t.set_fontweight('bold')
+            _t.set_fontsize(10)
+            _t.set_color('#374151')
+    except Exception:
+        pass
     return fig, ax
 
 
@@ -1199,23 +1344,152 @@ def download_score_sheet_pdf(request):
 
 
 # ==============================================================================
-# download_individual_report_pdf
+# download_individual_report_pdf / individual_report_print_html
 # ==============================================================================
+
+# Auto-print IIFE served with print-html (?view_mode=print triggers print()).
+# Identical to the script embedded in report_card_print.html.
+AUTO_PRINT_JS = '''<script>
+(function() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('view_mode') !== 'print') { return; }
+
+    var CLOSED = false;
+
+    function safeClose() {
+        if (CLOSED) return;
+        CLOSED = true;
+        try { window.close(); } catch(e) {}
+    }
+
+    function firePrint() {
+        try {
+            window.focus();
+            window.print();
+            var called = false;
+            function afterPrintDone() {
+                if (called) return;
+                called = true;
+                setTimeout(safeClose, 500);
+            }
+            window.addEventListener('afterprint', afterPrintDone);
+            try {
+                var mql = window.matchMedia('print');
+                if (mql && mql.addEventListener) {
+                    mql.addEventListener('change', function(e) { if (!e.matches) afterPrintDone(); });
+                } else if (mql && mql.addListener) {
+                    mql.addListener(function(e) { if (!e.matches) afterPrintDone(); });
+                }
+            } catch(e2) {}
+        } catch (e) {
+            console.error('Auto-print failed:', e);
+        }
+    }
+
+    function start() {
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                setTimeout(firePrint, 600);
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start, { once: true });
+    } else {
+        start();
+    }
+
+    setTimeout(safeClose, 20000);
+})();
+</script>
+'''
+
+
+def _build_report_popup_html(request, context, *, title, disable_chart_animation=False, auto_print=False):
+    """
+    Compose the exact document EDUNEXUSPrint's print popup writes for report
+    cards (static/js/edunexus_print.js -> writePopup):
+
+        print-shared.css + #pagePrintCSS rules + portrait @page overrides
+        body = #reportCardsContainer > .rc-card-scroll > report card
+
+    Same data context, same CSS recipe and the same Chart.js canvas as the
+    on-screen card, so the downloaded PDF is identical to the print preview.
+    """
+    import re
+    from django.template import Template as _InlineTemplate, RequestContext
+    from django.utils.html import escape as html_escape
+
+    # The browser wraps this fragment in `{% for student_data in student_marks_list %}`
+    # (which also defines forloop used by the template) — render through the
+    # same loop so the markup is identical.
+    card_html = _InlineTemplate(
+        '{% for student_data in student_marks_list %}{% include "students/report_card_content.html" %}{% endfor %}'
+    ).render(RequestContext(request, context))
+    card_html = _embed_logo_base64(card_html, request)
+
+    # #pagePrintCSS payload — the stylesheet the popup reads off the page.
+    raw = render_to_string('students/partials/report_card_print_css.html')
+    m = re.search(r'<script[^>]*id="pagePrintCSS"[^>]*>(.*?)</script>', raw, re.S)
+    page_css = m.group(1) if m else ''
+
+    # Portrait block appended by writePopup for report-card selectors.
+    portrait_overrides = (
+        '\n@page { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }\n'
+        '@page landscape { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }\n'
+        '@media print {\n'
+        '  @page { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }\n'
+        '  .report-card { page-break-inside: avoid !important; break-inside: avoid !important; }\n'
+        '  .report-card + .report-card { page-break-before: always !important; break-before: page !important; }\n'
+        '  .rc-descriptors, .rc-descriptors-table, .footer-dates, .rc-remarks-grid {\n'
+        '    page-break-inside: avoid !important; break-inside: avoid !important;\n'
+        '  }\n'
+        '}\n'
+    )
+
+    # Chart.js animates the line for ~1s; a PDF captured mid-animation would
+    # show a half-drawn chart. Freeze it for PDF rendering only.
+    anim_js = (
+        '<script>try{if(window.Chart){Chart.defaults.animation=false;}}catch(e){}</script>\n'
+        if disable_chart_animation else ''
+    )
+
+    shared_css = _load_print_css()
+    base = request.build_absolute_uri('/')
+    return (
+        '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n'
+        f'<title>{html_escape(title)}</title>\n'
+        f'<base href="{base}">\n'
+        '<script src="/static/js/chart.min.js"></script>\n'
+        f'{anim_js}'
+        f'<style id="pdf-override">{shared_css}\n{page_css}{portrait_overrides}</style>\n'
+        '</head>\n<body>\n'
+        '<div id="reportCardsContainer"><div class="rc-card-scroll">\n'
+        f'{card_html}\n'
+        '</div></div>\n'
+        f'{AUTO_PRINT_JS if auto_print else ""}'
+        '</body>\n</html>\n'
+    )
+
 
 @login_required(login_url='login')
 @rate_limit("report_download", max_requests=10, window_seconds=60, methods=["GET", "POST"])
 def download_individual_report_pdf(request, student_id):
     """
     Server-side PDF for individual report cards.
-    Reuses the same data context as individual_report() and renders
-    via WeasyPrint for high-quality output.
-    """
 
+    Data comes from _build_individual_report_context — the exact context the
+    on-screen card and the print popup render (cached ExamSummary position,
+    PLV, totals, frozen comments). Layout comes from _build_report_popup_html,
+    which reproduces the popup's CSS recipe. The downloaded PDF therefore
+    matches the print preview and the browser view.
+    """
     school = get_request_school(request)
     if not school:
         return JsonResponse({'error': 'School context is required.'}, status=400)
 
-    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    from .grading_engine import prefetch_school_grading
     prefetch_school_grading(school)
 
     student = get_school_object_or_403(Student, request, using="all_objects", id=student_id)
@@ -1225,282 +1499,26 @@ def download_individual_report_pdf(request, student_id):
         return JsonResponse({'error': 'You are not allowed to print report cards for this class stream.'}, status=403)
 
     is_admin_view = user_has_main_school_admin_override(request.user)
+    context = _build_individual_report_context(request, school, student, is_admin_view)
 
-    year       = request.GET.get('year', datetime.date.today().year)
-    term       = request.GET.get('term', 'Term 1')
-    assessment = request.GET.get('assessment', 'opener')
-    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
-
-    # Term-date fallback for closing / opening dates
-    _term_closing, _term_opening = resolve_term_dates(school, int(year), term)
-
-    student_sub_section = 'LOWER' if student.class_name in LOWER_PRIMARY_GRADE_CHOICES else ('UPPER' if student.school_section == 'PRIMARY' else None)
-
-    published_subject_codes = get_published_subject_codes(
-        student.class_name, student.stream, year, term, db_assessment,
-        sub_section=student_sub_section,
-        is_admin=is_admin_view,
+    html = _build_report_popup_html(
+        request, context,
+        title=f'{student.name} Report Card',
+        disable_chart_animation=True,
     )
-    from ..models import Subject
-    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
 
-    marks = Mark.all_objects.filter(
-        school=school, student=student, year=year, term=term,
-        exam_type=db_assessment, subject__in=published_subjects_qs,
-        school_section=student.school_section,
-    ).select_related('subject')
-
-    # One row per subject code (latest wins) so totals match the cells
-    marks = dedup_marks_latest_by_code(list(marks))
-    total_marks = sum(m.score or 0 for m in marks)
-    total_points = sum(m.points or 0 for m in marks)
-
-    marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
-
-    grade_summaries = ExamSummary.all_objects.filter(
-        school=school,
-        year=year, term=term, exam_name=db_assessment,
-        school_section=student.school_section, sub_section=student.sub_section,
-    )
-    grade_sorted = sorted(grade_summaries, key=lambda s: (-s.total_marks, -s.total_points))
-    class_leaderboard_rank = {s.student_id: rank for rank, s in enumerate(grade_sorted, start=1)}
-    class_count = len(grade_sorted)
-    position = class_leaderboard_rank.get(student.id, 0)
-
-    is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
-    is_primary = student.school_section == 'PRIMARY'
-    if is_lower_primary:
-        subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
-    elif is_primary:
-        subject_mapping = PRIMARY_SUBJECT_NAMES
-    else:
-        subject_mapping = {s.code: s.name for s in published_subjects_qs}
-
-    teacher_map = {
-        a.subject.code: (a.teacher_profile.get_full_title() if a.teacher_profile else '—')
-        for a in SubjectAssignment.all_objects.filter(
-            school=school, class_name=student.class_name, stream=student.stream, is_active=True
-        ).select_related('teacher_profile__user', 'subject')
-        if a.subject
-    }
-
-    from ..models import Teacher
-    class_teacher_name = ""
-    ct_q = Teacher.all_objects.filter(
-        school=school, assigned_task__icontains=student.class_name,
-    ).filter(
-        Q(assigned_task__icontains=student.stream),
-    ).select_related('user').first()
-    if ct_q:
-        class_teacher_name = ct_q.get_full_title()
-    class_teacher_signature = ""
-    if ct_q and ct_q.signature:
-        class_teacher_signature = request.build_absolute_uri(ct_q.signature.url) if request else ct_q.signature.url
-
-    marks_list = list(marks)
-    for mark in marks_list:
-        mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
-        mark.teacher_name = teacher_map.get(mark.subject.code, '—')
-        if is_primary and not mark.is_absent:
-            pct = mark.score or 0
-            mark.performance_level, mark.points = _get_primary_performance(pct)
-
-    class_subject_avgs = (
-        Mark.all_objects.filter(
-            school=school,
-            student__class_name=student.class_name, student__stream=student.stream,
-            year=year, term=term, exam_type=db_assessment,
-            subject__in=published_subjects_qs,
-        )
-        .exclude(is_absent=True)
-        .values('subject__code')
-        .annotate(avg_score=Avg('score'))
-    )
-    class_avg_map = {row['subject__code']: round(row['avg_score'], 1) for row in class_subject_avgs}
-
-    for mark in marks_list:
-        class_avg = class_avg_map.get(mark.subject.code)
-        mark.class_average = class_avg
-        if class_avg is not None and mark.score is not None and not mark.is_absent:
-            mark.deviation = round(mark.score - class_avg, 1)
-        else:
-            mark.deviation = None
-
-    grade_descriptors = resolve_scale_fast(school.pk, student.school_section, student.sub_section)
-
-    assessed_subjects   = sum(1 for m in marks_list if m.score is not None and not m.is_absent)
-    max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
-    mean_points         = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
-    max_total_marks     = assessed_subjects * 100
-    max_total_points    = assessed_subjects * max_points_per_subj
-
-    chart_data_json = json.dumps({
-        'labels':    [m.subject_name for m in marks_list if not m.is_absent],
-        'student':   [m.score for m in marks_list if not m.is_absent],
-        'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
-    })
-
-    # Generate server-side vector SVG chart for PDF rendering (WeasyPrint compatible)
-    chart_labels = [m.subject_name for m in marks_list if not m.is_absent]
-    chart_student = [m.score for m in marks_list if not m.is_absent]
-    chart_class_avg = [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent]
-
-    # Check Redis cache first before generating new chart
-    from school.cache_keys import sanitize_cache_part
-    chart_cache_key = f"student_chart_{student.id}_{year}_{sanitize_cache_part(term)}"
-    chart_svg = cache.get(chart_cache_key)
-
-    if not chart_svg:
-        chart_svg = generate_premium_vector_chart_svg(chart_labels, chart_student, chart_class_avg)
-        if chart_svg:
-            cache.set(chart_cache_key, chart_svg, timeout=86400)
-
-    overall_plv = calculate_primary_plv(total_marks, assessed_subjects, sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks)
-
-    from ..models import ClassTeacherMasterComment, SchoolHeadteacherComment
-    master_comment = ClassTeacherMasterComment.objects.filter(
-        school=school, year=year, term=term, grade=student.class_name,
-        stream=student.stream, exam_type=db_assessment,
-    ).first()
-    school_ht_comment = SchoolHeadteacherComment.objects.filter(
-        school=school, year=year, term=term, exam_type=db_assessment,
-        school_section=student.school_section,
-    ).first()
-
-    class_teacher_remark = ""
-    headteacher_comment = ""
-    closing_date = None
-    opening_date = None
-    freeze_threshold = datetime.timedelta(days=30)
-    now = datetime.datetime.now(datetime.timezone.utc)
-
-    if master_comment and overall_plv != '-':
-        ct_comment_field = f"comment_{overall_plv.lower()}"
-        live_ct = getattr(master_comment, ct_comment_field, "") or ""
-        if live_ct.strip():
-            age = now - (master_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if master_comment.last_modified.tzinfo is None else master_comment.last_modified)
-            class_teacher_remark = live_ct
-            if age >= freeze_threshold:
-                for m in marks_list:
-                    if not m.frozen_class_teacher_comment:
-                        m.frozen_class_teacher_comment = live_ct
-                        m.frozen_closing_date = master_comment.closing_date
-                        m.frozen_opening_date = master_comment.opening_date
-                Mark.all_objects.filter(id__in=[m.id for m in marks_list]).update(
-                    frozen_class_teacher_comment=live_ct,
-                    frozen_closing_date=master_comment.closing_date,
-                    frozen_opening_date=master_comment.opening_date,
-                )
-        elif marks_list and marks_list[0].frozen_class_teacher_comment:
-            class_teacher_remark = marks_list[0].frozen_class_teacher_comment
-
-    if school_ht_comment and overall_plv != '-':
-        ht_comment_field = f"ht_comment_{overall_plv.lower()}"
-        live_ht = getattr(school_ht_comment, ht_comment_field, "") or ""
-        if live_ht.strip():
-            age = now - (school_ht_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if school_ht_comment.last_modified.tzinfo is None else school_ht_comment.last_modified)
-            headteacher_comment = live_ht
-            if age >= freeze_threshold:
-                for m in marks_list:
-                    if not m.frozen_headteacher_comment:
-                        m.frozen_headteacher_comment = live_ht
-                Mark.all_objects.filter(id__in=[m.id for m in marks_list]).update(
-                    frozen_headteacher_comment=live_ht,
-                )
-        elif marks_list and marks_list[0].frozen_headteacher_comment:
-            headteacher_comment = marks_list[0].frozen_headteacher_comment
-
-    if master_comment:
-        closing_date = master_comment.closing_date
-        opening_date = master_comment.opening_date
-    if not closing_date and marks_list and marks_list[0].frozen_closing_date:
-        closing_date = marks_list[0].frozen_closing_date
-    if not opening_date and marks_list and marks_list[0].frozen_opening_date:
-        opening_date = marks_list[0].frozen_opening_date
-    if not closing_date and _term_closing:
-        closing_date = _term_closing
-    if not opening_date and _term_opening:
-        opening_date = _term_opening
-
-    section_colors = {
-        'JSS':           '#305CDE',
-        'PRIMARY':       '#00674F',
-        'LOWER_PRIMARY': '#B45309',
-    }
-    if student.school_section == 'PRIMARY' and student.sub_section == 'LOWER':
-        section_accent = section_colors['LOWER_PRIMARY']
-    elif student.school_section == 'PRIMARY':
-        section_accent = section_colors['PRIMARY']
-    else:
-        section_accent = section_colors['JSS']
-
-# ── Render template ───────────────────────────────────────────────────────
-    template_html = render_to_string('students/report_card_print.html', {
-        'student':             student,
-        'marks':               marks_list,
-        'total_marks':         total_marks,
-        'total_points':        total_points,
-        'position':            position,
-        'class_count':         class_count,
-        'overall_plv':         overall_plv,
-        'mean_points':         mean_points,
-        'mean_points_max':     max_points_per_subj,
-        'max_total_marks':     max_total_marks,
-        'max_total_points':    max_total_points,
-        'grade_descriptors':   grade_descriptors,
-        'chart_data_json':     chart_data_json,
-        'chart_svg':           chart_svg,
-        'class_teacher_remark': class_teacher_remark,
-        'headteacher_comment': headteacher_comment,
-        'closing_date':        closing_date,
-        'opening_date':        opening_date,
-        'selected_year':       year,
-        'selected_term':       term,
-        'selected_assessment': ASSESSMENT_MAP.get(assessment, assessment),
-        'today':               datetime.date.today(),
-        'section_accent':      section_accent,
-        'view_mode':           'pdf',
-        'show_mobile_shell':   False,
-        'show_header':         False,
-        'show_control_panel':  False,
-        'student_marks_list':  [{
-            'student': student, 'marks': marks_list,
-            'total_marks': total_marks, 'total_points': total_points,
-            'overall_plv': overall_plv,
-            'mean_points': mean_points,
-            'mean_points_max': max_points_per_subj,
-            'max_total_marks': max_total_marks,
-            'max_total_points': max_total_points,
-            'grade_descriptors': grade_descriptors,
-            'chart_data_json': chart_data_json,
-            'chart_svg': chart_svg,
-            'class_teacher_remark': class_teacher_remark,
-            'class_teacher_name':   class_teacher_name,
-            'class_teacher_signature': class_teacher_signature,
-            'headteacher_comment': headteacher_comment,
-            'closing_date': closing_date,
-            'opening_date': opening_date,
-            'position': position, 'class_count': class_count,
-            'position_display': f"{position}/{class_count}" if position > 0 else "-",
-        }],
-    }, request=request)
-
-    template_html = _embed_logo_base64(template_html, request)
-
-    # ── Build Playwright-ready HTML ──
-    patched_html = _build_playwright_html(template_html, request, landscape=False)
-
-    # ── Generate PDF ──
     try:
-        pdf_data = _generate_pdf(patched_html, landscape=False, engine='auto', scale=1.0)
+        pdf_data = _generate_pdf(html, landscape=False, engine='auto', scale=1.0)
     except Exception as e:
         _log_pdf_error('download_individual_report_pdf', e, {
-            'student_id': student_id, 'year': year, 'term': term,
-            'assessment': assessment,
+            'student_id': student_id, 'year': request.GET.get('year'),
+            'term': request.GET.get('term'), 'assessment': request.GET.get('assessment'),
         })
         return JsonResponse({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
     if pdf_data.get('pdf'):
+        year = context.get('selected_year') or datetime.date.today().year
+        term = context.get('selected_term') or 'Term 1'
         filename = safe_pdf_filename('Report_Card', student.name, year, term)
 
         mode = request.GET.get('mode', 'attachment')
@@ -1516,16 +1534,17 @@ def download_individual_report_pdf(request, student_id):
 def individual_report_print_html(request, student_id):
     """
     GET /report/<student_id>/print-html/
-    
+
     Returns clean print-only HTML for the popup print system.
-    Same data as download_individual_report_pdf but returns HTML instead of PDF.
-    The popup window loads this URL, then fires window.print() on the clean content.
+    Same data context and CSS recipe as download_individual_report_pdf but
+    returns HTML instead of PDF. When the URL carries ?view_mode=print the
+    page fires window.print() on load.
     """
     school = get_request_school(request)
     if not school:
         return JsonResponse({'error': 'School context is required.'}, status=400)
 
-    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    from .grading_engine import prefetch_school_grading
     prefetch_school_grading(school)
 
     student = get_school_object_or_403(Student, request, using="all_objects", id=student_id)
@@ -1535,255 +1554,14 @@ def individual_report_print_html(request, student_id):
         return JsonResponse({'error': 'Not authorized.'}, status=403)
 
     is_admin_view = user_has_main_school_admin_override(request.user)
+    context = _build_individual_report_context(request, school, student, is_admin_view)
 
-    year       = request.GET.get('year', datetime.date.today().year)
-    term       = request.GET.get('term', 'Term 1')
-    assessment = request.GET.get('assessment', 'opener')
-    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
-
-    _term_closing, _term_opening = resolve_term_dates(school, int(year), term)
-
-    student_sub_section = 'LOWER' if student.class_name in LOWER_PRIMARY_GRADE_CHOICES else ('UPPER' if student.school_section == 'PRIMARY' else None)
-
-    published_subject_codes = get_published_subject_codes(
-        student.class_name, student.stream, year, term, db_assessment,
-        sub_section=student_sub_section,
-        is_admin=is_admin_view,
+    html = _build_report_popup_html(
+        request, context,
+        title=f'{student.name} Report Card',
+        auto_print=True,
     )
-    from ..models import Subject
-    published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
-
-    marks = Mark.all_objects.filter(
-        school=school, student=student, year=year, term=term,
-        exam_type=db_assessment, subject__in=published_subjects_qs,
-        school_section=student.school_section,
-    ).select_related('subject')
-
-    # One row per subject code (latest wins) so totals match the cells
-    marks = dedup_marks_latest_by_code(list(marks))
-    total_marks = sum(m.score or 0 for m in marks)
-    total_points = sum(m.points or 0 for m in marks)
-
-    marks = sorted(marks, key=lambda m: SUBJECT_DISPLAY_ORDER.get(m.subject.code, 99))
-
-    grade_summaries = ExamSummary.all_objects.filter(
-        school=school,
-        year=year, term=term, exam_name=db_assessment,
-        school_section=student.school_section, sub_section=student.sub_section,
-    )
-    grade_sorted = sorted(grade_summaries, key=lambda s: (-s.total_marks, -s.total_points))
-    class_leaderboard_rank = {s.student_id: rank for rank, s in enumerate(grade_sorted, start=1)}
-    class_count = len(grade_sorted)
-    position = class_leaderboard_rank.get(student.id, 0)
-
-    is_lower_primary = student.school_section == 'PRIMARY' and student.sub_section == 'LOWER'
-    is_primary = student.school_section == 'PRIMARY'
-    if is_lower_primary:
-        subject_mapping = LOWER_PRIMARY_SUBJECT_NAMES
-    elif is_primary:
-        subject_mapping = PRIMARY_SUBJECT_NAMES
-    else:
-        subject_mapping = {s.code: s.name for s in published_subjects_qs}
-
-    teacher_map = {
-        a.subject.code: (a.teacher_profile.get_full_title() if a.teacher_profile else '—')
-        for a in SubjectAssignment.all_objects.filter(
-            school=school, class_name=student.class_name, stream=student.stream, is_active=True
-        ).select_related('teacher_profile__user', 'subject')
-        if a.subject
-    }
-
-    from ..models import Teacher
-    class_teacher_name = ""
-    ct_q = Teacher.all_objects.filter(
-        school=school, assigned_task__icontains=student.class_name,
-    ).filter(
-        Q(assigned_task__icontains=student.stream),
-    ).select_related('user').first()
-    if ct_q:
-        class_teacher_name = ct_q.get_full_title()
-    class_teacher_signature = ""
-    if ct_q and ct_q.signature:
-        class_teacher_signature = request.build_absolute_uri(ct_q.signature.url) if request else ct_q.signature.url
-
-    marks_list = list(marks)
-    for mark in marks_list:
-        mark.subject_name = subject_mapping.get(mark.subject.code, mark.subject.code)
-        mark.teacher_name = teacher_map.get(mark.subject.code, '—')
-        if is_primary and not mark.is_absent:
-            pct = mark.score or 0
-            mark.performance_level, mark.points = _get_primary_performance(pct)
-
-    class_subject_avgs = (
-        Mark.all_objects.filter(
-            school=school,
-            student__class_name=student.class_name, student__stream=student.stream,
-            year=year, term=term, exam_type=db_assessment,
-            subject__in=published_subjects_qs,
-        )
-        .exclude(is_absent=True)
-        .values('subject__code')
-        .annotate(avg_score=Avg('score'))
-    )
-    class_avg_map = {row['subject__code']: round(row['avg_score'], 1) for row in class_subject_avgs}
-
-    for mark in marks_list:
-        class_avg = class_avg_map.get(mark.subject.code)
-        mark.class_average = class_avg
-        if class_avg is not None and mark.score is not None and not mark.is_absent:
-            mark.deviation = round(mark.score - class_avg, 1)
-        else:
-            mark.deviation = None
-
-    grade_descriptors = resolve_scale_fast(school.pk, student.school_section, student.sub_section)
-
-    assessed_subjects   = sum(1 for m in marks_list if m.score is not None and not m.is_absent)
-    max_points_per_subj = max((e['points'] for e in grade_descriptors), default=(4 if is_primary else 8))
-    mean_points         = round(total_points / assessed_subjects, 1) if assessed_subjects else 0
-    max_total_marks     = assessed_subjects * 100
-    max_total_points    = assessed_subjects * max_points_per_subj
-
-    chart_data_json = json.dumps({
-        'labels':    [m.subject_name for m in marks_list if not m.is_absent],
-        'student':   [m.score for m in marks_list if not m.is_absent],
-        'class_avg': [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent],
-    })
-
-    chart_labels = [m.subject_name for m in marks_list if not m.is_absent]
-    chart_student = [m.score for m in marks_list if not m.is_absent]
-    chart_class_avg = [class_avg_map.get(m.subject.code, 0) for m in marks_list if not m.is_absent]
-
-    from school.cache_keys import sanitize_cache_part
-    chart_cache_key = f"student_chart_{student.id}_{year}_{sanitize_cache_part(term)}"
-    chart_svg = cache.get(chart_cache_key)
-    if not chart_svg:
-        chart_svg = generate_premium_vector_chart_svg(chart_labels, chart_student, chart_class_avg)
-        if chart_svg:
-            cache.set(chart_cache_key, chart_svg, timeout=86400)
-
-    overall_plv = calculate_primary_plv(total_marks, assessed_subjects, sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks)
-
-    from ..models import ClassTeacherMasterComment, SchoolHeadteacherComment
-    master_comment = ClassTeacherMasterComment.all_objects.filter(
-        school=school, year=year, term=term, grade=student.class_name,
-        stream=student.stream, exam_type=db_assessment,
-    ).first()
-    school_ht_comment = SchoolHeadteacherComment.objects.filter(
-        school=school, year=year, term=term, exam_type=db_assessment,
-        school_section=student.school_section,
-    ).first()
-
-    class_teacher_remark = ""
-    headteacher_comment = ""
-    closing_date = None
-    opening_date = None
-    freeze_threshold = datetime.timedelta(days=30)
-    now = datetime.datetime.now(datetime.timezone.utc)
-
-    if master_comment and overall_plv != '-':
-        ct_comment_field = f"comment_{overall_plv.lower()}"
-        live_ct = getattr(master_comment, ct_comment_field, "") or ""
-        if live_ct.strip():
-            class_teacher_remark = live_ct
-        elif marks_list and marks_list[0].frozen_class_teacher_comment:
-            class_teacher_remark = marks_list[0].frozen_class_teacher_comment
-
-    if school_ht_comment and overall_plv != '-':
-        ht_comment_field = f"ht_comment_{overall_plv.lower()}"
-        live_ht = getattr(school_ht_comment, ht_comment_field, "") or ""
-        if live_ht.strip():
-            headteacher_comment = live_ht
-        elif marks_list and marks_list[0].frozen_headteacher_comment:
-            headteacher_comment = marks_list[0].frozen_headteacher_comment
-
-    if master_comment:
-        closing_date = master_comment.closing_date
-        opening_date = master_comment.opening_date
-    if not closing_date and marks_list and marks_list[0].frozen_closing_date:
-        closing_date = marks_list[0].frozen_closing_date
-    if not opening_date and marks_list and marks_list[0].frozen_opening_date:
-        opening_date = marks_list[0].frozen_opening_date
-    if not closing_date and _term_closing:
-        closing_date = _term_closing
-    if not opening_date and _term_opening:
-        opening_date = _term_opening
-
-    section_colors = {
-        'JSS':           '#305CDE',
-        'PRIMARY':       '#00674F',
-        'LOWER_PRIMARY': '#B45309',
-    }
-    if student.school_section == 'PRIMARY' and student.sub_section == 'LOWER':
-        section_accent = section_colors['LOWER_PRIMARY']
-    elif student.school_section == 'PRIMARY':
-        section_accent = section_colors['PRIMARY']
-    else:
-        section_accent = section_colors['JSS']
-
-    template_html = render_to_string('students/report_card_print.html', {
-        'student':             student,
-        'marks':               marks_list,
-        'total_marks':         total_marks,
-        'total_points':        total_points,
-        'position':            position,
-        'class_count':         class_count,
-        'overall_plv':         overall_plv,
-        'mean_points':         mean_points,
-        'mean_points_max':     max_points_per_subj,
-        'max_total_marks':     max_total_marks,
-        'max_total_points':    max_total_points,
-        'grade_descriptors':   grade_descriptors,
-        'chart_data_json':     chart_data_json,
-        'chart_svg':           chart_svg,
-        'class_teacher_remark': class_teacher_remark,
-        'class_teacher_name':   class_teacher_name,
-        'class_teacher_signature': class_teacher_signature,
-        'headteacher_comment': headteacher_comment,
-        'closing_date':        closing_date,
-        'opening_date':        opening_date,
-        'selected_year':       year,
-        'selected_term':       term,
-        'selected_assessment': ASSESSMENT_MAP.get(assessment, assessment),
-        'today':               datetime.date.today(),
-        'section_accent':      section_accent,
-        'view_mode':           'print',
-        'show_mobile_shell':   False,
-        'show_header':         False,
-        'show_control_panel':  False,
-        'student_marks_list':  [{
-            'student': student, 'marks': marks_list,
-            'total_marks': total_marks, 'total_points': total_points,
-            'overall_plv': overall_plv,
-            'mean_points': mean_points,
-            'mean_points_max': max_points_per_subj,
-            'max_total_marks': max_total_marks,
-            'max_total_points': max_total_points,
-            'grade_descriptors': grade_descriptors,
-            'chart_data_json': chart_data_json,
-            'chart_svg': chart_svg,
-            'class_teacher_remark': class_teacher_remark,
-            'class_teacher_name':   class_teacher_name,
-            'class_teacher_signature': class_teacher_signature,
-            'headteacher_comment': headteacher_comment,
-            'closing_date': closing_date,
-            'opening_date': opening_date,
-            'position': position, 'class_count': class_count,
-        }],
-    }, request=request)
-
-    template_html = _embed_logo_base64(template_html, request)
-
-    # The template already loads report_card_print.css and has an auto-print
-    # script that fires when view_mode=print is in the URL. We just need to
-    # ensure the <base> tag is set for static file resolution.
-    base_tag = f'<base href="{request.build_absolute_uri("/")}">'
-    patched_html = template_html.replace(
-        '</head>',
-        f'{base_tag}</head>',
-        1,
-    )
-
-    return HttpResponse(patched_html, content_type='text/html; charset=utf-8')
+    return HttpResponse(html, content_type='text/html; charset=utf-8')
 
 
 # ==============================================================================

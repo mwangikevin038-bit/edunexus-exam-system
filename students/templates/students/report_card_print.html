@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="{% static 'js/viewport_fit.js' %}?v=1"></script>
+<script src="{% static 'js/chart.min.js' %}"></script>
 <title>{% if student_marks_list.0 %}{{ student_marks_list.0.student.name }} — {{ selected_assessment|default:'' }} {{ selected_year|default:'' }}{% else %}Report Card{% endif %}</title>
 <style>
 @page { size: A4 portrait; margin: 5mm 5mm 8mm 5mm; }
@@ -29,7 +32,9 @@ html, body {
     font-family: 'Times New Roman', Times, serif !important;
     font-size: 11pt !important;
     color: #1C1C1E !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 283mm !important;
     page-break-inside: avoid !important;
     background: white;
 }
@@ -53,13 +58,18 @@ html, body {
     width: 100%;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    gap: 6px;
+    justify-content: space-between;
 }
 
 /* Header */
 .rc-header {
     width: 100%;
     padding-bottom: 5px;
-    margin-bottom: 4px;
+    margin-bottom: 0;
     border-bottom: none;
     overflow: hidden;
 }
@@ -88,11 +98,11 @@ html, body {
 /* Student + Chart (float layout for WeasyPrint) */
 .rc-top-grid {
     width: 100%;
-    margin-top: 6px;
+    margin-top: 0;
     overflow: hidden;
 }
 .rc-student-block { float: left; width: 35%; }
-.rc-chart-block { float: right; width: 60%; max-height: 40mm; overflow: hidden; }
+.rc-chart-block { float: right; width: 60%; max-height: 62mm; overflow: hidden; }
 .rc-chart-block::after { content: ''; display: table; clear: both; }
 
 .rc-initials-avatar {
@@ -106,24 +116,29 @@ html, body {
 .rc-detail { font-size: 11pt; margin-bottom: 3px; color: #1C1C1E; line-height: 1.4; }
 .rc-label { font-weight: 800; text-transform: uppercase; }
 
-.rc-chart-title { font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
-.rc-chart-svg { width: 100%; margin: 4px 0; }
-.rc-chart-svg svg { width: 100%; height: auto; max-height: 36mm; display: block; }
-.rc-chart-img { width: 100%; max-height: 36mm; object-fit: contain; }
+    .rc-chart-title { font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; color: #64748B; font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+    .rc-chart-title::before { content: ''; display: inline-block; width: 14px; height: 3px; background: #00C853; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+    .rc-chart-canvas-wrap { height: 56mm; max-height: 56mm; overflow: hidden; position: relative; z-index: 2; }
+    .rc-chart-canvas-wrap canvas { display: block; width: 100%; height: 100%; max-height: 56mm; }
+    .rc-chart-svg { width: 100%; margin: 3px 0; }
+.rc-chart-svg svg { width: 100%; height: auto; max-height: 56mm; display: block; }
+.rc-chart-img { width: 100%; max-height: 56mm; object-fit: contain; }
 
-/* Stats (table layout for WeasyPrint) */
+/* Stats (flex row — content uses .rc-stat divs) */
 .rc-stats {
     width: 100%;
-    border-collapse: collapse;
-    margin: 6px 0;
+    display: flex;
+    gap: 6px;
+    margin: 0;
 }
-.rc-stats td {
-    width: 20%;
+.rc-stat {
+    flex: 1;
     border: 1px solid #E2E8F0;
     border-top: 3px solid {{ section_accent|default:'#305CDE' }};
-    padding: 8px 6px;
+    border-radius: 10px;
+    padding: 10px 8px;
     text-align: center;
-    vertical-align: top;
+    background: #fff;
 }
 .rc-stat-label {
     display: block;
@@ -159,7 +174,7 @@ html, body {
 }
 .rc-table thead th:first-child { text-align: left; }
 .rc-table tbody tr { page-break-inside: avoid; }
-.rc-table tbody td { padding: 3px 6px; border: 1px solid #000; font-size: 11pt; color: #1C1C1E; vertical-align: middle; }
+.rc-table tbody td { padding: 3px 7px; border: 1px solid #000; font-size: 11pt; color: #1C1C1E; vertical-align: middle; }
 .rc-subj { font-weight: 700; text-align: left; white-space: nowrap; }
 .rc-center { text-align: center; }
 .rc-grade { font-weight: 800; color: #2563EB; }
@@ -174,41 +189,49 @@ html, body {
     letter-spacing: 0.06em; text-align: center;
     padding: 5px 14px;
     margin-left: -20px; margin-right: 20px;
+    margin-bottom: 4px;
     clear: both;
 }
 .rc-remarks-grid {
     width: 100%;
-    border-collapse: collapse;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 10px;
+    background: #F8FAFC;
     margin-left: -20px; margin-right: 20px;
     margin-top: 0;
 }
-.rc-remarks-grid td {
-    width: 50%;
-    padding: 10px;
-    background: #F8FAFC;
-    vertical-align: top;
+.rc-remark-box {
     border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    min-height: 30mm;
 }
 .rc-remark-title { font-size: 11pt; font-weight: 800; color: #1E293B; margin-bottom: 6px; }
-.rc-remark-text { font-size: 11pt; font-weight: 400; color: #334155; line-height: 1.4; margin-bottom: 6px; }
+.rc-remark-text { font-size: 11pt; font-weight: 400; color: #334155; line-height: 1.4; margin-bottom: 6px; flex-grow: 1; }
 .rc-signature { font-size: 9pt; font-weight: 600; color: #64748B; border-top: 1px dashed #CBD5E1; padding-top: 4px; margin-top: auto; }
 
 /* Descriptors */
-.rc-descriptors { margin-top: 6px; width: 100%; }
+.rc-descriptors { margin-top: 0; width: 100%; }
 .rc-descriptors-title { font-size: 9pt; font-weight: 800; color: #1E293B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 2px solid {{ section_accent|default:'#305CDE' }}; }
 .rc-descriptors-table { width: 100%; border-collapse: collapse; }
 .rc-descriptors-table th, .rc-descriptors-table td { border: 1px solid #000; padding: 5px 8px; font-size: 9pt; text-align: center; }
 .rc-descriptors-table th { background: #E9ECF0; color: #1E293B; font-weight: 800; text-transform: uppercase; }
 .rc-descriptors-table td:first-child, .rc-descriptors-table th:first-child { text-align: left; font-weight: 700; background: #F8FAFC; }
 
-/* Footer dates */
-.footer-dates { width: 100%; border-collapse: collapse; margin-top: 8px; }
-.footer-dates td { width: 50%; padding: 0 8px 0 0; vertical-align: top; }
-.footer-dates td:last-child { padding: 0 0 0 8px; }
-.date-box { display: block; padding: 8px 10px; border: 1px solid #E2E8F0; font-size: 11pt; font-weight: 700; color: #1E293B; overflow: hidden; }
+/* Footer dates (flex row — content uses .date-box divs) */
+.footer-dates { width: 100%; margin-top: 0; display: flex; gap: 8px; }
+.footer-dates .date-box { flex: 1; }
+.date-box { display: block; padding: 10px 12px; border: 1px solid #E2E8F0; font-size: 11pt; font-weight: 700; color: #1E293B; overflow: hidden; }
 .date-box span { display: inline; }
 .date-box span:first-child { color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; font-size: 9pt; float: left; }
 .date-box span:last-child { float: right; }
+
+.system-footer, .rc-print-watermark { display: none !important; }
 
 * { transition: none !important; animation: none !important; }
 </style>

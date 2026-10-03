@@ -333,6 +333,10 @@ def get_published_contexts_for_user(user, require_class_teacher=False, sub_secti
         qs = qs.filter(school_section='PRIMARY', sub_section='LOWER')
     elif sub_section == 'UPPER':
         qs = qs.filter(school_section='PRIMARY', sub_section='UPPER')
+    elif sub_section == 'ALL':
+        # Whole school: every published context (Primary Grades 1-6 AND
+        # Junior School Grades 7-9) — used by admin-facing pickers.
+        pass
     elif section == 'LOWER_PRIMARY':
         qs = qs.filter(school_section='PRIMARY', sub_section='LOWER')
     elif section == 'PRIMARY':
@@ -2046,6 +2050,7 @@ def build_report_card_context(
     from django.db.models import Q, Sum
     from .constants import (
         LOWER_PRIMARY_SUBJECT_NAMES,
+        LOWER_PRIMARY_SUBJECT_SHORT_MAP,
         PRIMARY_SUBJECT_NAMES,
         SUBJECT_DISPLAY_ORDER,
         SUBJECT_SHORT_MAP,
@@ -2177,7 +2182,12 @@ def build_report_card_context(
     now              = _dt.datetime.now(_dt.timezone.utc)
 
     # ── 12. Build per-student context dicts ───────────────────────────────────
-    _short_map = PRIMARY_SUBJECT_SHORT_MAP if is_primary else SUBJECT_SHORT_MAP
+    # Lower-primary subjects (ELA/KLA/MA/ILA) need their own short codes —
+    # merge so Grade 1-3 charts never fall back to full overlapping names.
+    _short_map = (
+        {**LOWER_PRIMARY_SUBJECT_SHORT_MAP, **PRIMARY_SUBJECT_SHORT_MAP}
+        if is_primary else SUBJECT_SHORT_MAP
+    )
 
     student_marks_list = []
     for student in selected_students:
@@ -2247,7 +2257,7 @@ def build_report_card_context(
         if include_chart_svg and chart_labels:
             from school.cache_keys import sanitize_cache_part
             chart_cache_key = (
-                f"student_chart_{student.id}_{year}_"
+                f"student_chart_v6_{student.id}_{year}_"
                 f"{sanitize_cache_part(term)}_{sanitize_cache_part(db_assessment)}"
             )
             from django.core.cache import cache as _cache
@@ -2256,7 +2266,9 @@ def build_report_card_context(
                 try:
                     from .pdf_exports import generate_premium_vector_chart_svg
                     chart_svg = generate_premium_vector_chart_svg(
-                        chart_labels, chart_student, chart_class_avg,
+                        chart_short_labels, chart_student, chart_class_avg,
+                        student_name=student.name.split()[0] if student.name else 'Student',
+                        class_name=f"{student.class_name} {student.stream}".strip(),
                     )
                     if chart_svg:
                         _cache.set(chart_cache_key, chart_svg, timeout=86400)

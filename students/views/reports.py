@@ -69,6 +69,41 @@ PRIMARY_ORDERED_LEVELS = ['EE', 'ME', 'AE', 'BE']
 
 
 # ==============================================================================
+# PUBLISHED-CONTEXT ORDERING (shared by Find Report + Report Cards pickers)
+# ==============================================================================
+def _context_sort_key(c):
+    """Professional ordering: grade -> stream -> newest exam first."""
+    grade_token = str(c.get('class_name') or '').replace('Grade', '').strip()
+    grade_no = int(grade_token) if grade_token.isdigit() else 99
+    term_token = str(c.get('term') or '').replace('Term', '').strip()
+    term_no = int(term_token) if term_token.isdigit() else 0
+    exam = str(c.get('exam_name') or '').lower()
+    if 'opener' in exam or 'opening' in exam:
+        exam_seq = 0
+    elif 'mid' in exam:
+        exam_seq = 1
+    elif 'end' in exam or 'final' in exam:
+        exam_seq = 2
+    else:
+        exam_seq = 5
+    return (grade_no, str(c.get('stream') or ''), -int(c.get('year') or 0),
+            -term_no, exam_seq, str(c.get('exam_name') or ''))
+
+
+def _sort_and_label_contexts(contexts):
+    """
+    Grade 1..9 ascending (Junior School sits after Grade 6), then each
+    class's own exams with the most recent term/year first and exams in
+    chronological sequence (Opener -> Mid Term -> End of Term).
+    Adds group_label ("Grade 1 Main") so templates can {% regroup %}.
+    """
+    contexts.sort(key=_context_sort_key)
+    for item in contexts:
+        item['group_label'] = f"{item['class_name']} {item['stream']}"
+    return contexts
+
+
+# ==============================================================================
 # SECTION 7 — RESULTS & REPORT VIEWS
 # ==============================================================================
 
@@ -530,6 +565,10 @@ def report_card_select(request):
         messages.error(request, "No published report cards are available for your class yet.")
         return redirect('results_list')
 
+    # Same professional ordering + group labels as the Find Report picker so
+    # the cascading class/assessment selects render contiguous class groups.
+    _sort_and_label_contexts(published_contexts)
+
     selected_context = get_selected_context(request, published_contexts) if request.GET.get("context") else None
 
     if not selected_context and published_contexts:
@@ -612,7 +651,7 @@ def individual_report(request, student_id):
         messages.error(request, "School context is required.")
         return redirect('report_card_select')
 
-    from .grading_engine import prefetch_school_grading, resolve_scale_fast
+    from .grading_engine import prefetch_school_grading
     prefetch_school_grading(school)
 
     student = get_school_object_or_403(Student, request, using="all_objects", id=student_id)
@@ -621,8 +660,23 @@ def individual_report(request, student_id):
         return redirect('report_card_select')
 
     is_admin_view = user_has_main_school_admin_override(request.user)
+    context = _build_individual_report_context(request, school, student, is_admin_view)
+    return render(request, 'students/report_card.html', context)
 
-    year       = request.GET.get('year', datetime.date.today().year)
+
+def _build_individual_report_context(request, school, student, is_admin_view):
+    """
+    Build the full context dict for one student's report card.
+
+    Extracted verbatim from individual_report so the Find Report lookup page
+    can render the identical card fragment without duplicating any
+    calculation logic. Reads year/term/assessment from request.GET.
+    """
+    from .grading_engine import resolve_scale_fast
+
+    year       = str(request.GET.get('year', datetime.date.today().year))
+    if not year.isdecimal() or len(year) != 4:
+        year = str(datetime.date.today().year)
     term       = request.GET.get('term', 'Term 1')
     assessment = request.GET.get('assessment', 'opener')
     db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
@@ -787,8 +841,14 @@ def individual_report(request, student_id):
     max_total_points    = assessed_subjects * max_points_per_subj
 
     # ── Chart payload: student score vs class average, per subject ─────────
-    from .constants import SUBJECT_SHORT_MAP as _JSS_SHORT, PRIMARY_SUBJECT_SHORT_MAP as _PRI_SHORT
-    _short = _PRI_SHORT if is_primary else _JSS_SHORT
+    from .constants import (
+        SUBJECT_SHORT_MAP as _JSS_SHORT,
+        PRIMARY_SUBJECT_SHORT_MAP as _PRI_SHORT,
+        LOWER_PRIMARY_SUBJECT_SHORT_MAP as _LOWER_PRI_SHORT,
+    )
+    _short = (
+        {**_LOWER_PRI_SHORT, **_PRI_SHORT} if is_primary else _JSS_SHORT
+    )
     chart_data_json = json.dumps({
         'labels':       [m.subject_name for m in marks_list if not m.is_absent],
         'short_labels': [_short.get(m.subject.code, m.subject_name) for m in marks_list if not m.is_absent],
@@ -885,7 +945,7 @@ def individual_report(request, student_id):
     else:
         section_accent = section_colors['JSS']
 
-    return render(request, 'students/report_card.html', {
+    return {
         'student':             student,
         'marks':               marks_list,
         'total_marks':         total_marks,
@@ -933,7 +993,293 @@ def individual_report(request, student_id):
             'opening_date': opening_date,
             'position': position, 'position_display': position_display, 'class_count': class_count,
         }],
+    }
+
+
+# ==============================================================================
+# FIND REPORT — single-student report card lookup (HTMX fragments)
+# ==============================================================================
+
+def _latest_published_context_for_class(school, student):
+    """Latest published assessment context for the student's own class stream."""
+    from ..models import MarkSubmission
+    qs = MarkSubmission.all_objects.filter(
+        status='published',
+        school=school,
+        class_name=student.class_name,
+        stream=student.stream,
+        school_section=student.school_section,
+    )
+    if student.school_section == 'PRIMARY':
+        qs = qs.filter(sub_section=student.sub_section)
+    return (
+        qs.order_by('-year', '-term')
+        .values('year', 'term', 'exam_name', 'class_name', 'stream')
+        .first()
+    )
+
+
+@login_required(login_url='login')
+@never_cache
+def report_card_lookup(request):
+    """
+    Find Report page: search a single learner and open their report card inline.
+    Shares the published-assessment context picker with report_card_select and
+    renders cards through _build_individual_report_context (identical numbers).
+    """
+    teacher = get_teacher_for_user(request.user)
+    is_admin_view = user_has_main_school_admin_override(request.user)
+    class_teacher_scope = get_class_teacher_scope(teacher)
+
+    section = get_request_school_section(request)
+    is_lower_primary = section == 'LOWER_PRIMARY'
+    is_primary = section == 'PRIMARY' or is_lower_primary
+
+    # ── Sub-section access control (parity with report_card_select) ──────────
+    teacher_sub_section = None
+    if is_admin_view:
+        can_switch_sub = True
+    elif teacher and teacher.school_section == 'PRIMARY' and teacher.sub_section:
+        can_switch_sub = False
+        teacher_sub_section = teacher.sub_section
+    elif teacher and teacher.school_section == 'BOTH':
+        can_switch_sub = True
+    elif is_lower_primary:
+        can_switch_sub = False
+        teacher_sub_section = 'LOWER'
+    else:
+        can_switch_sub = True
+
+    active_sub = request.GET.get('sub', '').strip().upper()
+    if is_lower_primary:
+        active_sub = 'LOWER'
+    elif is_primary:
+        if not can_switch_sub and teacher_sub_section:
+            active_sub = teacher_sub_section
+        elif active_sub not in ('LOWER', 'UPPER'):
+            active_sub = request.session.get('active_sub', 'UPPER')
+        if active_sub not in ('LOWER', 'UPPER'):
+            active_sub = 'UPPER'
+    if is_primary:
+        request.session['active_sub'] = active_sub
+        request.session.modified = True
+
+    if not is_admin_view and not class_teacher_scope:
+        messages.error(request, "Report cards are available to administrators and assigned class teachers only.")
+        return redirect('results_list')
+
+    # Admins see the whole school in every workspace: all published
+    # contexts — Primary Grades 1-6 AND Junior School Grades 7-9.
+    if is_admin_view:
+        context_sub = 'ALL'
+    else:
+        context_sub = active_sub if is_primary else None
+    published_contexts = get_published_contexts_for_user(
+        request.user,
+        require_class_teacher=True,
+        sub_section=context_sub,
+    )
+    if not is_admin_view and not published_contexts:
+        messages.error(request, "No published report cards are available for your class yet.")
+        return redirect('results_list')
+
+    # ── Professional ordering: grade -> stream -> newest exam first ──────────
+    _sort_and_label_contexts(published_contexts)
+
+    selected_context = get_selected_context(request, published_contexts) if request.GET.get('context') else None
+    if not selected_context and published_contexts:
+        selected_context = published_contexts[0]
+
+    grade     = selected_context['class_name'] if selected_context else None
+    stream    = selected_context['stream'] if selected_context else None
+    year      = str(selected_context['year']) if selected_context else None
+    term      = selected_context['term'] if selected_context else None
+    exam_name = selected_context['exam_name'] if selected_context else None
+    assessment = selected_context['assessment_slug'] if selected_context else 'opener'
+
+    # Admins: the active sub-section follows the selected Primary class so
+    # other screens stay in step. Junior School contexts leave it untouched.
+    if is_admin_view and is_primary and selected_context and grade not in JSS_GRADE_CHOICES:
+        active_sub = 'LOWER' if grade in LOWER_PRIMARY_GRADE_CHOICES else 'UPPER'
+        request.session['active_sub'] = active_sub
+        request.session.modified = True
+
+    school = get_request_school(request)
+    # Subject counts follow the SELECTED CONTEXT's grade, so a Junior School
+    # pick reports JSS subjects even while the workspace sits on Primary.
+    sa_filter = dict(school=school, class_name=grade, stream=stream)
+    if selected_context and grade in JSS_GRADE_CHOICES:
+        sa_filter['school_section'] = 'JSS'
+    elif selected_context and grade in LOWER_PRIMARY_GRADE_CHOICES:
+        sa_filter['school_section'] = 'PRIMARY'
+        sa_filter['sub_section'] = 'LOWER'
+    elif selected_context and grade in PRIMARY_GRADE_CHOICES:
+        sa_filter['school_section'] = 'PRIMARY'
+        sa_filter['sub_section'] = 'UPPER'
+    elif is_lower_primary:
+        sa_filter['school_section'] = 'PRIMARY'
+        sa_filter['sub_section'] = 'LOWER'
+    elif is_primary:
+        sa_filter['school_section'] = 'PRIMARY'
+        sa_filter['sub_section'] = active_sub
+    elif selected_context:
+        sa_filter['school_section'] = 'JSS'
+    total_required_subjects = SubjectAssignment.all_objects.filter(is_active=True, **sa_filter).values(
+        'subject__code'
+    ).distinct().count() if selected_context else 0
+
+    context_data = {
+        'published_contexts':   published_contexts,
+        'selected_context_key': selected_context['context_key'] if selected_context else '',
+        'selected_grade':       grade,
+        'selected_stream':      stream,
+        'selected_year':        year,
+        'selected_term':        term,
+        'selected_exam':        exam_name,
+        'selected_assessment':  assessment,
+        'published_subject_count': selected_context['subject_count'] if selected_context else 0,
+        'total_required_subjects': total_required_subjects,
+        'is_admin_view':        is_admin_view,
+        'is_primary':           is_primary,
+        'access_label':         'School-wide report cards' if is_admin_view else 'Class teacher report cards',
+        'class_teacher_scope':  class_teacher_scope,
+        'section':              section,
+        'active_sub':           active_sub,
+        'section_accent':       (
+            ('#305CDE' if grade in JSS_GRADE_CHOICES
+             else '#B45309' if grade in LOWER_PRIMARY_GRADE_CHOICES
+             else '#00674F')
+            if selected_context else
+            ('#B45309' if (is_primary and active_sub == 'LOWER') else ('#00674F' if is_primary else '#305CDE'))
+        ),
+    }
+
+    return render(request, 'students/report_card_lookup.html', context_data)
+
+
+@login_required(login_url='login')
+@never_cache
+def report_card_lookup_search(request):
+    """HTMX fragment: learner search results for the Find Report page."""
+    import re
+    from urllib.parse import urlencode
+
+    school = get_request_school(request)
+    section = get_request_school_section(request)
+    is_admin_view = user_has_main_school_admin_override(request.user)
+    teacher = get_teacher_for_user(request.user)
+    class_teacher_scope = get_class_teacher_scope(teacher)
+
+    search_type = request.GET.get('search_type', 'adm_no')
+    query = request.GET.get('query', '').strip()
+
+    students = Student.all_objects.none()
+    error = ''
+    total_matches = 0
+    if not query:
+        error = 'Enter an admission number, name or assessment number to search.'
+    elif not school:
+        error = 'School context is required.'
+    else:
+        if search_type == 'name':
+            format_ok = bool(re.match(r"^[A-Za-z\s.'-]+$", query))
+        else:
+            format_ok = bool(re.match(r'^[A-Za-z0-9]+$', query))
+
+        if not format_ok:
+            error = 'That search format is not allowed. Use letters for names, numbers for admission numbers.'
+        elif not is_admin_view and not class_teacher_scope:
+            error = 'Search is available to administrators and assigned class teachers only.'
+        else:
+            qs = Student.all_objects.filter(school=school, is_active=True)
+            if not is_admin_view:
+                if section in ('LOWER_PRIMARY', 'PRIMARY'):
+                    qs = qs.filter(school_section='PRIMARY')
+                    if section == 'LOWER_PRIMARY':
+                        qs = qs.filter(class_name__in=LOWER_PRIMARY_GRADE_CHOICES)
+                    else:
+                        qs = qs.filter(class_name__in=PRIMARY_GRADE_CHOICES)
+                elif section == 'JSS':
+                    qs = qs.filter(school_section='JSS', class_name__in=JSS_GRADE_CHOICES)
+                qs = qs.filter(class_name=class_teacher_scope[0], stream=class_teacher_scope[1])
+            if search_type == 'name':
+                qs = qs.filter(name__icontains=query)
+            elif search_type == 'assessment_no':
+                qs = qs.filter(assessment_no__icontains=query)
+            else:
+                qs = qs.filter(admission_no__icontains=query)
+            students = qs.order_by('name')
+            total_matches = students.count()
+            students = students[:25]
+
+    link_params = urlencode({
+        k: v for k, v in {
+            'year': request.GET.get('year'),
+            'term': request.GET.get('term'),
+            'assessment': request.GET.get('assessment'),
+        }.items() if v
     })
+
+    return render(request, 'students/partials/report_card_lookup_results.html', {
+        'students':     students,
+        'query':        query,
+        'search_type':  search_type,
+        'search_error': error,
+        'card_qs':      ('?' + link_params) if link_params else '',
+        'result_count': total_matches,
+        'truncated':    total_matches > 25,
+    })
+
+
+@login_required(login_url='login')
+@never_cache
+def report_card_lookup_card(request, student_id):
+    """HTMX fragment: one learner's report card, rendered inline on Find Report."""
+    from .grading_engine import prefetch_school_grading
+
+    school = get_request_school(request)
+    student = Student.all_objects.filter(school=school, id=student_id).first() if school else None
+    if not student:
+        return render(request, 'students/partials/report_card_lookup_card.html', {
+            'lookup_error': 'Learner not found in your school.',
+        })
+    if not user_can_access_class_stream(request.user, student.class_name, student.stream, require_class_teacher=True):
+        return render(request, 'students/partials/report_card_lookup_card.html', {
+            'lookup_error': 'You are not allowed to open report cards for this class stream.',
+        })
+
+    is_admin_view = user_has_main_school_admin_override(request.user)
+    prefetch_school_grading(school)
+    context = _build_individual_report_context(request, school, student, is_admin_view)
+
+    # Context mismatch fallback: retry with the latest published assessment
+    # for the student's own class stream (school-wide search can surface a
+    # learner from a different class than the selected context).
+    if not context.get('marks'):
+        fallback = _latest_published_context_for_class(school, student)
+        if fallback and (
+            str(fallback['year']) != str(context.get('selected_year'))
+            or fallback['term'] != context.get('selected_term')
+            or fallback['exam_name'] != context.get('selected_assessment')
+        ):
+            g = request.GET.copy()
+            g['year'] = str(fallback['year'])
+            g['term'] = fallback['term']
+            g['assessment'] = fallback['exam_name']
+            request.GET = g
+            context = _build_individual_report_context(request, school, student, is_admin_view)
+            if context.get('marks'):
+                context['context_fallback'] = (
+                    f"{fallback['class_name']} {fallback['stream']} \u00b7 {fallback['exam_name']} \u00b7 "
+                    f"{fallback['term']} {fallback['year']}"
+                )
+
+    if not context.get('marks'):
+        return render(request, 'students/partials/report_card_lookup_card.html', {
+            'lookup_error': f"No published marks found for {student.name} for the selected assessment.",
+        })
+
+    return render(request, 'students/partials/report_card_lookup_card.html', context)
 
 
 @login_required(login_url='login')
@@ -1131,8 +1477,14 @@ def bulk_report_cards(request):
         max_total_marks   = assessed_subjects * 100
         max_total_points  = assessed_subjects * max_points_per_subj
 
-        from .constants import SUBJECT_SHORT_MAP as _JSS_SHORT2, PRIMARY_SUBJECT_SHORT_MAP as _PRI_SHORT2
-        _short2 = _PRI_SHORT2 if is_primary else _JSS_SHORT2
+        from .constants import (
+            SUBJECT_SHORT_MAP as _JSS_SHORT2,
+            PRIMARY_SUBJECT_SHORT_MAP as _PRI_SHORT2,
+            LOWER_PRIMARY_SUBJECT_SHORT_MAP as _LOWER_PRI_SHORT2,
+        )
+        _short2 = (
+            {**_LOWER_PRI_SHORT2, **_PRI_SHORT2} if is_primary else _JSS_SHORT2
+        )
         chart_data_json = json.dumps({
             'labels':       [m.subject_name for m in marks if not m.is_absent],
             'short_labels': [_short2.get(m.subject.code, m.subject_name) for m in marks if not m.is_absent],

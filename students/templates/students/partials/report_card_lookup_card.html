@@ -1,0 +1,49 @@
+{% if lookup_error %}
+<div class="rc-lookup-msg rc-lookup-msg-error">
+    <i class="ph ph-warning-circle"></i>
+    <div>
+        <strong>Report unavailable</strong>
+        <p>{{ lookup_error }}</p>
+        <p class="rc-lookup-hint">Try another published assessment above, or start a new search.</p>
+    </div>
+</div>
+{% else %}
+<div class="rc-lookup-card">
+    {% if context_fallback %}
+    <div class="rc-lookup-msg rc-lookup-msg-info">
+        <i class="ph ph-info"></i>
+        <div><p>Showing the latest published assessment for this class: {{ context_fallback }}</p></div>
+    </div>
+    {% endif %}
+
+    <div class="rc-lookup-actions">
+        <button type="button" class="rv-btn rv-btn-ghost"
+                onclick="EDUNEXUSPrint.openPrintWindow('#rcLookupCardInner', {title:'{{ student_marks_list.0.student.name|escapejs }} Report Card'})">
+            <i class="ph ph-printer"></i> Print
+        </button>
+        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term|urlencode }}&assessment={{ selected_assessment|urlencode }}"
+           class="rv-btn rv-btn-green" style="text-decoration:none;">
+            <i class="ph ph-file-pdf"></i> Download PDF
+        </a>
+        <button type="button" class="rv-btn rv-btn-ghost" onclick="rcLookupNewSearch()">
+            <i class="ph ph-magnifying-glass"></i> New Search
+        </button>
+    </div>
+
+    <div class="rv-scroll" id="rcLookupCardInner">
+        {% for student_data in student_marks_list %}
+        <div class="rv-card-container"><div class="rv-card-scroll">{% include "students/report_card_content.html" %}</div></div>
+        {% endfor %}
+    </div>
+</div>
+<script>
+(function() {
+    var name = '{{ student_marks_list.0.student.name|escapejs }}' || '';
+    document.querySelectorAll('#rcLookupCardInner .rc-initials-avatar').forEach(function(el) {
+        if (el.textContent.trim()) return;
+        var parts = name.trim().split(/\s+/);
+        el.textContent = ((parts[0] || '?').charAt(0) + (parts[1] || '').charAt(0)).toUpperCase();
+    });
+})();
+</script>
+{% endif %}

@@ -65,7 +65,25 @@
 
 .context-switcher {
     margin-top: 22px;
-    max-width: 520px;
+    max-width: 660px;
+}
+
+/* Cascading Class → Assessment context picker (context_cascade.js) */
+.context-switcher-row {
+    display: flex;
+    gap: 10px;
+}
+
+.context-switcher-row select {
+    min-width: 0;
+}
+
+.context-switcher-row select[data-cascade-role="class"] {
+    flex: 0 1 38%;
+}
+
+.context-switcher-row select[data-cascade-role="exam"] {
+    flex: 1 1 62%;
 }
 
 .context-switcher label,

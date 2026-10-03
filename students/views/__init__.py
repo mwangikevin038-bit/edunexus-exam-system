@@ -115,6 +115,9 @@ from .reports import (  # noqa: F401
     results_list,
     report_card_select,
     individual_report,
+    report_card_lookup,
+    report_card_lookup_search,
+    report_card_lookup_card,
     bulk_report_cards,
     report_card_poll_status,
 )

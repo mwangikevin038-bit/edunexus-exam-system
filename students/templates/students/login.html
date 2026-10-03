@@ -9,21 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/bootstrap-icons.min.css">
-    <script>
-    (function () {
-        function fitMobile() {
-            try {
-                if (screen.width > 500) return;
-                if (window.innerWidth < 900) return;
-                var ratio = window.innerWidth / screen.width;
-                if (ratio < 1.15) return;
-                document.documentElement.style.zoom = String(ratio);
-            } catch (e) {}
-        }
-        fitMobile();
-        window.addEventListener('resize', fitMobile, { passive: true });
-    })();
-    </script>
+    <!-- Anti-tiny: compensate shrink-to-fit when a phone browser forces a
+         desktop layout ("Desktop site"). See static/js/viewport_fit.js. -->
+    <script src="{% static 'js/viewport_fit.js' %}?v=1"></script>
     <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

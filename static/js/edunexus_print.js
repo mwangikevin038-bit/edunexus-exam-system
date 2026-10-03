@@ -341,22 +341,38 @@
                 doc.close();
             } catch(e) { _safeClose(printWin); retry(); return; }
 
-            var checkCount = 0;
-            var maxChecks = 60;
-            var iv = setInterval(function() {
-                checkCount++;
-                try {
-                    var w = printWin;
-                    if (!w || w.closed) { clearInterval(iv); _untrack(iv); done(); return; }
-                    var hasCanvas = w.document.querySelectorAll('canvas').length > 0;
-                    var chartsReady = w.Chart && hasCanvas;
-                    var scriptsDone = w.document.readyState === 'complete';
-                    var noChartsNeeded = !hasCanvas && scriptsDone;
-                    if ((chartsReady && scriptsDone) || noChartsNeeded || checkCount >= maxChecks) {
-                        clearInterval(iv); _untrack(iv);
-                        var dt = setTimeout(function() { _untrack(dt); firePrint(); }, 600);
-                        _track(dt);
-                    }
+        /* Repaint charts in the popup: a chart initialised during document
+           write can finish with a partially painted legend (e.g. the class
+           average entry missing). resize()+update() forces a clean redraw
+           so what prints matches the on-screen card. */
+        function _repaintCharts(win) {
+            try {
+                if (!win.Chart || !win.Chart.getChart) return;
+                var cs = win.document.querySelectorAll('canvas');
+                for (var i = 0; i < cs.length; i++) {
+                    var ch = win.Chart.getChart(cs[i]);
+                    if (ch) { try { ch.resize(); ch.update('none'); } catch(e) {} }
+                }
+            } catch(e) {}
+        }
+
+        var checkCount = 0;
+        var maxChecks = 60;
+        var iv = setInterval(function() {
+            checkCount++;
+            try {
+                var w = printWin;
+                if (!w || w.closed) { clearInterval(iv); _untrack(iv); done(); return; }
+                var hasCanvas = w.document.querySelectorAll('canvas').length > 0;
+                var chartsReady = w.Chart && hasCanvas;
+                var scriptsDone = w.document.readyState === 'complete';
+                var noChartsNeeded = !hasCanvas && scriptsDone;
+                if ((chartsReady && scriptsDone) || noChartsNeeded || checkCount >= maxChecks) {
+                    clearInterval(iv); _untrack(iv);
+                    _repaintCharts(w);
+                    var dt = setTimeout(function() { _untrack(dt); firePrint(); }, 600);
+                    _track(dt);
+                }
                 } catch(e) {
                     if (checkCount >= maxChecks) {
                         clearInterval(iv); _untrack(iv);

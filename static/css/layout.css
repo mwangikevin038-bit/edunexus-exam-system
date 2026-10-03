@@ -290,6 +290,12 @@
     pointer-events: auto;
 }
 
+/* Initial page-load overlay: visible but never blocks touch/scroll
+   (content may still be arriving — users must be able to scroll). */
+.global-loader-overlay.active.passive {
+    pointer-events: none;
+}
+
 .loader-bars {
     display: flex;
     gap: 8px;

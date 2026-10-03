@@ -289,6 +289,33 @@
     box-shadow: 0 0 0 3px var(--rc-green-subtle);
 }
 
+/* Cascading Class → Assessment context picker (context_cascade.js) */
+.rc-switcher-row {
+    display: flex;
+    gap: 8px;
+}
+
+.rc-switcher-row .rc-switcher-select {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 62%;
+}
+
+.rc-switcher-row .rc-switcher-select[data-cascade-role="class"] {
+    flex: 0 1 38%;
+}
+
+.rc-switcher-row .rc-switcher-select[data-cascade-role="exam"] {
+    flex: 1 1 62%;
+}
+
+@media (max-width: 480px) {
+    .rc-switcher-row { flex-direction: column; }
+    .rc-switcher-row .rc-switcher-select,
+    .rc-switcher-row .rc-switcher-select[data-cascade-role="class"],
+    .rc-switcher-row .rc-switcher-select[data-cascade-role="exam"] { flex: 1 1 auto; }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    ACTION BUTTONS — Comments + Remarks
    ═══════════════════════════════════════════════════════════════ */

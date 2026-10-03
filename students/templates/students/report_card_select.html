@@ -21,6 +21,12 @@
       </a>
     </li>
     <li class="sub-nav-item">
+      <a href="{% url 'report_card_lookup' %}" class="sub-nav-link">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Find Report
+      </a>
+    </li>
+    <li class="sub-nav-item">
       <a href="{% url 'teacher_class_comments' %}" class="sub-nav-link">
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         Class Comments
@@ -59,15 +65,28 @@
         </div>
 
         {% if published_contexts|length > 1 %}
-            <form method="GET" class="context-switcher">
+            <form method="GET" class="context-switcher" data-context-cascade>
+                {% if active_sub %}<input type="hidden" name="sub" value="{{ active_sub }}">{% endif %}
                 <label>Published Assessment Context</label>
-                <select name="context" onchange="this.form.submit()">
-                    {% for item in published_contexts %}
-                        <option value="{{ item.context_key }}" {% if item.context_key == selected_context_key %}selected{% endif %}>
-                            {{ item.class_name }} {{ item.stream }} - {{ item.exam_name }} | {{ item.term }} {{ item.year }}
-                        </option>
-                    {% endfor %}
-                </select>
+                {% regroup published_contexts by group_label as context_groups %}
+                <div class="context-switcher-row">
+                    {% if context_groups|length > 1 %}
+                    <select data-cascade-role="class" aria-label="Class stream" title="Class stream">
+                        {% for group in context_groups %}
+                        <option value="{{ group.grouper }}">{{ group.grouper }}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                    <select name="context" data-cascade-role="exam" onchange="this.form.submit()" aria-label="Assessment" title="Assessment">
+                        {% for group in context_groups %}
+                        <optgroup label="{{ group.grouper }}">
+                            {% for item in group.list %}
+                            <option value="{{ item.context_key }}" data-group="{{ group.grouper }}" data-exam="{{ item.exam_name }}" data-term="{{ item.term }}" data-year="{{ item.year }}" {% if item.context_key == selected_context_key %}selected{% endif %}>{{ item.exam_name }} | {{ item.term }} {{ item.year }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
             </form>
         {% endif %}
     </section>
@@ -237,15 +256,28 @@
 
             {# ── Context Switcher ── #}
             {% if published_contexts|length > 1 %}
-                <form method="GET" class="rc-switcher">
+                <form method="GET" class="rc-switcher" data-context-cascade>
+                    {% if active_sub %}<input type="hidden" name="sub" value="{{ active_sub }}">{% endif %}
                     <label class="rc-switcher-label">Switch View</label>
-                    <select name="context" class="rc-switcher-select" onchange="this.form.submit()">
-                        {% for item in published_contexts %}
-                            <option value="{{ item.context_key }}" {% if item.context_key == selected_context_key %}selected{% endif %}>
-                                {{ item.class_name }} {{ item.stream }} — {{ item.exam_name }} | {{ item.term }} {{ item.year }}
-                            </option>
-                        {% endfor %}
-                    </select>
+                    {% regroup published_contexts by group_label as context_groups %}
+                    <div class="rc-switcher-row">
+                        {% if context_groups|length > 1 %}
+                        <select class="rc-switcher-select" data-cascade-role="class" aria-label="Class stream" title="Class stream">
+                            {% for group in context_groups %}
+                            <option value="{{ group.grouper }}">{{ group.grouper }}</option>
+                            {% endfor %}
+                        </select>
+                        {% endif %}
+                        <select class="rc-switcher-select" name="context" data-cascade-role="exam" onchange="this.form.submit()" aria-label="Assessment" title="Assessment">
+                            {% for group in context_groups %}
+                            <optgroup label="{{ group.grouper }}">
+                                {% for item in group.list %}
+                                <option value="{{ item.context_key }}" data-group="{{ group.grouper }}" data-exam="{{ item.exam_name }}" data-term="{{ item.term }}" data-year="{{ item.year }}" {% if item.context_key == selected_context_key %}selected{% endif %}>{{ item.exam_name }} | {{ item.term }} {{ item.year }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </form>
             {% endif %}
 
@@ -587,4 +619,5 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 <script src="{% static 'js/bulk_pdf_poll.js' %}"></script>
+<script src="{% static 'js/context_cascade.js' %}?v=1"></script>
 {% endblock %}

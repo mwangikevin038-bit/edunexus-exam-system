@@ -43,6 +43,36 @@ def get_current_school_section():
     """Get the current school section filter ('PRIMARY', 'JSS', or 'BOTH')."""
     return _current_school_section.get()
 
+
+def resolve_class_teacher_workspace(user):
+    """
+    Resolve the workspace section for a BOTH-section class teacher from the
+    class they are assigned to teach.
+
+    Example: teacher profile section 'BOTH' + assigned task
+    'Class Teacher Grade 8 Main' -> 'JSS'; a Grades 1-3 class -> 'LOWER_PRIMARY'.
+    Returns None when the user is not an assigned class teacher (callers keep
+    their default fallback), so subject teachers and admins are unaffected.
+    """
+    if not user or not user.is_authenticated:
+        return None
+    try:
+        from students.views.helpers import get_teacher_for_user, get_class_teacher_scope
+        from students.views.constants import section_for_class
+        scope = get_class_teacher_scope(get_teacher_for_user(user))
+        if not scope:
+            return None
+        db_section, sub_section = section_for_class(scope[0])
+        if db_section == 'PRIMARY':
+            return 'LOWER_PRIMARY' if sub_section == 'LOWER' else 'PRIMARY'
+        if db_section == 'JSS':
+            return 'JSS'
+    except Exception:
+        logger.exception("resolve_class_teacher_workspace failed for user=%s",
+                         getattr(user, 'pk', None))
+    return None
+
+
 class SchoolScopedQuerySet(models.QuerySet):
     def for_school(self, school):
         if school is None:
@@ -223,12 +253,15 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
                 section = request.session.get("school_section")
                 if section == "BOTH":
                     workspace = request.session.get("workspace_section")
-                    if workspace in ("LOWER_PRIMARY", "PRIMARY", "JSS"):
-                        section = workspace
-                    else:
-                        section = "PRIMARY"
-                        request.session["workspace_section"] = "PRIMARY"
+                    if workspace not in ("LOWER_PRIMARY", "PRIMARY", "JSS"):
+                        # A BOTH-section class teacher's workspace is the
+                        # section of the class they teach (never blanket
+                        # PRIMARY — that would lock a JSS/LOWER teacher out
+                        # of their own class).
+                        workspace = resolve_class_teacher_workspace(user) or "PRIMARY"
+                        request.session["workspace_section"] = workspace
                         request.session.modified = True
+                    section = workspace
         if not section:
             section = user_authoritative
         request._current_school_section_token = set_current_school_section(section or "BOTH")

@@ -21,7 +21,7 @@
 
         <div class="rc-top-grid">
             <div class="rc-student-block">
-                <div class="rc-initials-avatar" data-student-name="{{ student_data.student.name }}"></div>
+                <div class="rc-initials-avatar" data-student-name="{{ student_data.student.name }}">{% with np=student_data.student.name.split %}{% if np|length > 1 %}{{ np.0|first|upper }}{{ np.1|first|upper }}{% elif np %}{{ np.0|upper }}{% else %}?{% endif %}{% endwith %}</div>
                 <div class="rc-student-info">
                     <div class="rc-student-name">{{ student_data.student.name }}</div>
                     <div class="rc-detail"><span class="rc-label">ADMNO:</span> {{ student_data.student.admission_no }}</div>
@@ -32,11 +32,16 @@
             </div>
             <div class="rc-chart-block">
                 <div class="rc-chart-title">Subject Performance - Student vs Class</div>
-                {% if view_mode == 'pdf' %}
+                {% if view_mode == 'pdf' or view_mode == 'print' %}
                 {% if student_data.chart_svg %}
                 <div class="rc-chart-svg">{{ student_data.chart_svg|safe }}</div>
                 {% elif student_data.chart_base64_image %}
                 <img src="{{ student_data.chart_base64_image }}" class="rc-chart-img rc-chart-fallback" alt="Performance Chart" />
+                {% else %}
+                <div class="rc-chart-canvas-wrap">
+                    <canvas id="rc-chart-canvas-{{ student_data.student.pk|default:forloop.counter }}"></canvas>
+                </div>
+                <script type="application/json" id="rc-chart-payload-{{ student_data.student.pk|default:forloop.counter }}">{% if student_data.chart_data_json %}{{ student_data.chart_data_json|safe }}{% else %}{"labels":[],"student":[],"class_avg":[]}{% endif %}</script>
                 {% endif %}
                 {% else %}
                 <div class="rc-chart-canvas-wrap">
@@ -49,8 +54,12 @@
             <script>
             (function() {
                 var uid = "{{ student_data.student.pk|default:forloop.counter }}";
-                var payloadEl = document.getElementById("rc-chart-payload-" + uid);
-                var canvasEl = document.getElementById("rc-chart-canvas-" + uid);
+                // Scope to THIS card's subtree: the page may render the same card
+                // twice (preview container + list container) with duplicate ids,
+                // and getElementById would always hit the first (hidden) copy.
+                var scope = (document.currentScript && document.currentScript.closest('.report-content')) || document;
+                var payloadEl = scope.querySelector('[id="rc-chart-payload-' + uid + '"]') || document.getElementById('rc-chart-payload-' + uid);
+                var canvasEl = scope.querySelector('[id="rc-chart-canvas-' + uid + '"]') || document.getElementById('rc-chart-canvas-' + uid);
                 if (!payloadEl || !canvasEl) return;
                 if (typeof Chart === 'undefined') return;
                 var payload;
@@ -145,8 +154,9 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
+                                max: 100,
                                 title: { display: false },
-                                ticks: { stepSize: 20, font: { size: 11, weight: '600', family: "'Plus Jakarta Sans', sans-serif" }, color: '#374151', padding: 10, callback: function(v) { return v; } },
+                                ticks: { stepSize: 20, font: { size: 11, weight: '600', family: "'Plus Jakarta Sans', sans-serif" }, color: '#374151', padding: 10, callback: function(v) { return v + '%'; } },
                                 grid: { color: '#E5E7EB', drawBorder: false, lineWidth: 0.5 },
                                 border: { display: false }
                             },
@@ -219,23 +229,25 @@
         </table>
         </div>
 
-        <div class="rc-comments-header">Comments</div>
-        <div class="rc-remarks-grid">
-            <div class="rc-remark-box">
-                <div class="rc-remark-title">Class Teacher Remarks{% if student_data.class_teacher_name %}: {{ student_data.class_teacher_name }}{% endif %}</div>
-                <div class="rc-remark-text">{{ student_data.class_teacher_remark }}</div>
-                <div class="rc-signature">
-                    {% if student_data.class_teacher_signature %}
-                        <img src="{{ student_data.class_teacher_signature }}" alt="Class teacher signature" class="rc-signature-img">
-                    {% else %}
-                        Signature: ____________________
-                    {% endif %}
+        <div class="rc-comments-section">
+            <div class="rc-comments-header">Comments</div>
+            <div class="rc-remarks-grid">
+                <div class="rc-remark-box">
+                    <div class="rc-remark-title">Class Teacher Remarks{% if student_data.class_teacher_name %}: {{ student_data.class_teacher_name }}{% endif %}</div>
+                    <div class="rc-remark-text">{{ student_data.class_teacher_remark }}</div>
+                    <div class="rc-signature">
+                        {% if student_data.class_teacher_signature %}
+                            <img src="{{ student_data.class_teacher_signature }}" alt="Class teacher signature" class="rc-signature-img">
+                        {% else %}
+                            Signature: ____________________
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
-            <div class="rc-remark-box">
-                <div class="rc-remark-title">Principal Remarks</div>
-                <div class="rc-remark-text">{{ student_data.headteacher_comment }}</div>
-                <div class="rc-signature">Signature: ____________________</div>
+                <div class="rc-remark-box">
+                    <div class="rc-remark-title">Principal Remarks</div>
+                    <div class="rc-remark-text">{{ student_data.headteacher_comment }}</div>
+                    <div class="rc-signature">Signature: ____________________</div>
+                </div>
             </div>
         </div>
 

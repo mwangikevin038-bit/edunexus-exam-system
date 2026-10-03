@@ -1,10 +1,10 @@
-/* ═══════════════════════════════════════════════════════════════
-   EDUNEXUS — WeasyPrint-Compatible Print CSS
+﻿/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   EDUNEXUS â€” WeasyPrint-Compatible Print CSS
    Fallback for Celery/background tasks where speed > perfect fidelity.
    Uses table layouts, no CSS variables, no gap, no grid.
-   ═══════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Font Face (local paths for WeasyPrint) ───────────────── */
+/* â”€â”€ Font Face (local paths for WeasyPrint) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @font-face {
     font-family: 'Inter';
     src: url('../fonts/Inter-Regular.woff2') format('woff2');
@@ -139,9 +139,9 @@ html, body {
     width: 100% !important;
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    REPORT CARD (WeasyPrint-compatible)
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 #reportCardsContainer { width: 100%; margin: 0; padding: 0; }
 .rv-card-scroll, .rc-card-scroll { overflow: visible; margin: 0; padding: 0; }
@@ -157,7 +157,9 @@ html, body {
     font-family: "Times New Roman", Times, serif !important;
     font-size: 11pt !important;
     color: #1C1C1E !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 283mm !important;
     page-break-inside: avoid !important;
     background: white;
 }
@@ -172,7 +174,7 @@ html, body {
     top: 0;
     bottom: 0;
     width: 19px;
-    /* Accent color must be resolved at render time — no var() in WeasyPrint */
+    /* Accent color must be resolved at render time â€” no var() in WeasyPrint */
     background: #305CDE;
     border-radius: 0 20px 20px 0;
     z-index: 1;
@@ -182,13 +184,18 @@ html, body {
     width: 100%;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    gap: 6px;
+    justify-content: space-between;
 }
 
 /* Header */
 .rc-header {
     width: 100%;
     padding-bottom: 5px;
-    margin-bottom: 4px;
+    margin-bottom: 0;
     border-bottom: none;
     overflow: hidden;
 }
@@ -217,11 +224,11 @@ html, body {
 /* Student + Chart (table layout for WeasyPrint) */
 .rc-top-grid {
     width: 100%;
-    margin-top: 6px;
+    margin-top: 0;
     overflow: hidden;
 }
 .rc-student-block { float: left; width: 35%; }
-.rc-chart-block { float: right; width: 60%; max-height: 40mm; overflow: hidden; }
+.rc-chart-block { float: right; width: 60%; max-height: 62mm; overflow: hidden; }
 .rc-chart-block::after { content: ''; display: table; clear: both; }
 
 .rc-initials-avatar {
@@ -235,30 +242,33 @@ html, body {
 .rc-detail { font-size: 11pt; margin-bottom: 3px; color: #1C1C1E; line-height: 1.4; }
 .rc-label { font-weight: 800; text-transform: uppercase; }
 
-.rc-chart-title { font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
-.rc-chart-svg { width: 100%; margin: 4px 0; }
-.rc-chart-svg svg { width: 100%; height: auto; max-height: 36mm; display: block; }
-.rc-chart-img { width: 100%; max-height: 36mm; object-fit: contain; }
+.rc-chart-title { font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; color: #64748B; font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+.rc-chart-title::before { content: ''; display: inline-block; width: 14px; height: 3px; background: #00C853; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.rc-chart-svg { width: 100%; margin: 3px 0; }
+.rc-chart-svg svg { width: 100%; height: auto; max-height: 56mm; display: block; }
+.rc-chart-img { width: 100%; max-height: 56mm; object-fit: contain; }
 
-/* Stats (table fallback) */
+/* Stats (flex row â€” content uses .rc-stat divs, not table cells) */
 .rc-stats {
     width: 100%;
-    border-collapse: collapse;
-    margin: 6px 0;
+    display: flex;
+    gap: 6px;
+    margin: 0;
 }
-.rc-stats td {
-    width: 20%;
+.rc-stat {
+    flex: 1;
     border: 1px solid #E2E8F0;
-    border-top: 3px solid #305CDE;
-    padding: 8px 6px;
+    border-top: 3px solid var(--section-accent, #305CDE);
+    border-radius: 10px;
+    padding: 10px 8px;
     text-align: center;
-    vertical-align: top;
+    background: #FFFFFF;
 }
 .rc-stat-label {
     display: block;
     font-size: 8pt;
     font-weight: 800;
-    color: #305CDE;
+    color: var(--section-accent, #305CDE);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin-bottom: 4px;
@@ -288,7 +298,7 @@ html, body {
 }
 .rc-table thead th:first-child { text-align: left; }
 .rc-table tbody tr { page-break-inside: avoid; }
-.rc-table tbody td { padding: 3px 6px; border: 1px solid #000; font-size: 11pt; color: #1C1C1E; vertical-align: middle; }
+.rc-table tbody td { padding: 3px 7px; border: 1px solid #000; font-size: 11pt; color: #1C1C1E; vertical-align: middle; }
 .rc-subj { font-weight: 700; text-align: left; white-space: nowrap; }
 .rc-center { text-align: center; }
 .rc-grade { font-weight: 800; color: #2563EB; }
@@ -303,46 +313,52 @@ html, body {
     letter-spacing: 0.06em; text-align: center;
     padding: 5px 14px;
     margin-left: -20px; margin-right: 20px;
+    margin-bottom: 4px;
     clear: both;
 }
 .rc-remarks-grid {
     width: 100%;
-    border-collapse: collapse;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 10px;
+    background: #F8FAFC;
     margin-left: -20px; margin-right: 20px;
     margin-top: 0;
 }
-.rc-remarks-grid td {
-    width: 50%;
-    padding: 10px;
-    background: #F8FAFC;
-    vertical-align: top;
+.rc-remark-box {
     border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    min-height: 30mm;
 }
 .rc-remark-title { font-size: 11pt; font-weight: 800; color: #1E293B; margin-bottom: 6px; }
-.rc-remark-text { font-size: 11pt; font-weight: 400; color: #334155; line-height: 1.4; margin-bottom: 6px; }
+.rc-remark-text { font-size: 11pt; font-weight: 400; color: #334155; line-height: 1.4; margin-bottom: 6px; flex-grow: 1; }
 .rc-signature { font-size: 9pt; font-weight: 600; color: #64748B; border-top: 1px dashed #CBD5E1; padding-top: 4px; margin-top: auto; }
 .rc-signature-img { display: block; height: 36px; max-width: 160px; object-fit: contain; margin-top: 2px; }
 
 /* Descriptors */
-.rc-descriptors { margin-top: 6px; width: 100%; }
+.rc-descriptors { margin-top: 0; width: 100%; }
 .rc-descriptors-title { font-size: 9pt; font-weight: 800; color: #1E293B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 2px solid #305CDE; }
 .rc-descriptors-table { width: 100%; border-collapse: collapse; }
 .rc-descriptors-table th, .rc-descriptors-table td { border: 1px solid #000; padding: 5px 8px; font-size: 9pt; text-align: center; }
 .rc-descriptors-table th { background: #E9ECF0; color: #1E293B; font-weight: 800; text-transform: uppercase; }
 .rc-descriptors-table td:first-child, .rc-descriptors-table th:first-child { text-align: left; font-weight: 700; background: #F8FAFC; }
 
-/* Footer dates */
-.footer-dates { width: 100%; border-collapse: collapse; margin-top: 8px; }
-.footer-dates td { width: 50%; padding: 0 8px 0 0; vertical-align: top; }
-.footer-dates td:last-child { padding: 0 0 0 8px; }
-.date-box { display: block; padding: 8px 10px; border: 1px solid #E2E8F0; font-size: 11pt; font-weight: 700; color: #1E293B; overflow: hidden; }
+/* Footer dates (flex row â€” content uses .date-box divs, not table cells) */
+.footer-dates { width: 100%; margin-top: 0; display: flex; gap: 8px; }
+.footer-dates .date-box { flex: 1; }
+.date-box { display: block; padding: 10px 12px; border: 1px solid #E2E8F0; font-size: 11pt; font-weight: 700; color: #1E293B; overflow: hidden; }
 .date-box span { display: inline; }
 .date-box span:first-child { color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; font-size: 9pt; float: left; }
 .date-box span:last-child { float: right; }
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    BROADSHEET (WeasyPrint-compatible)
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .broadsheet-document { width: 100%; border: none; margin: 0; padding: 0; background: #fff; }
 .broadsheet-card { position: relative; background: #fff; border: none; overflow: visible; padding: 0; }
@@ -455,7 +471,7 @@ html, body {
 .badge-ae { background-color: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; }
 .badge-be { background-color: #fee2e2 !important; color: #991b1b !important; font-weight: 700; }
 
-/* ── Class List — must match browser print CSS exactly ──────── */
+/* â”€â”€ Class List â€” must match browser print CSS exactly â”€â”€â”€â”€â”€â”€â”€â”€ */
 .pdf-sheet { width: 100%; }
 .pdf-heading { width: 100%; padding: 8px 0 6px 100px; margin: 0 0 8px; text-align: center; background: #fff; border: none; border-bottom: 2px solid #0f1727; position: relative; display: flex; align-items: center; justify-content: center; }
 .pdf-logo { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 80px; height: 80px; object-fit: contain; display: block; border-radius: 6px; }

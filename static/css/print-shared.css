@@ -156,6 +156,7 @@ html, body {
     flex-direction: column !important;
     box-sizing: border-box !important;
     flex-shrink: 0 !important;
+    min-height: 283mm !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     background: white !important;
@@ -189,7 +190,8 @@ html, body {
     display: flex !important;
     flex-direction: column !important;
     flex: 1 !important;
-    gap: 4px !important;
+    gap: 6px !important;
+    justify-content: space-between !important;
 }
 
 /* ── Report Card Header ───────────────────────────────────── */
@@ -198,7 +200,7 @@ html, body {
     align-items: center !important;
     gap: 10px !important;
     padding-bottom: 4px !important;
-    margin-bottom: 2px !important;
+    margin-bottom: 0 !important;
     position: relative !important;
     border-bottom: none !important;
     width: 100% !important;
@@ -278,7 +280,7 @@ html, body {
     flex: 2 !important;
     min-width: 0 !important;
     min-height: 0 !important;
-    max-height: 40mm !important;
+    max-height: 62mm !important;
     overflow: hidden !important;
 }
 
@@ -315,7 +317,8 @@ html, body {
 
 /* ── Chart ─────────────────────────────────────────────────── */
 .rc-chart-title {
-    font-family: 'Times New Roman', Times, serif !important;
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif !important;
+    color: #64748B !important;
     font-size: 9pt !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
@@ -324,9 +327,25 @@ html, body {
     text-align: left !important;
     line-height: 1 !important;
 }
+.rc-chart-title::before {
+    content: '' !important;
+    display: inline-block !important;
+    width: 14px !important;
+    height: 3px !important;
+    background: #00C853 !important;
+    border-radius: 2px !important;
+    margin-right: 6px !important;
+    vertical-align: middle !important;
+}
 .rc-chart-canvas-wrap {
-    height: auto !important;
-    max-height: 36mm !important;
+    /* Fixed width so the chart is laid out at the same size in every
+       standalone context (print popup window, server-side PDF render) —
+       otherwise Chart.js initialises at the container's screen width and
+       the download differs from the print preview. */
+    width: 531px !important;
+    max-width: 100% !important;
+    height: 56mm !important;
+    max-height: 56mm !important;
     overflow: hidden !important;
     position: relative !important;
     z-index: 2 !important;
@@ -334,29 +353,30 @@ html, body {
 .rc-chart-canvas-wrap canvas {
     display: block !important;
     width: 100% !important;
-    max-height: 36mm !important;
+    height: 100% !important;
+    max-height: 56mm !important;
 }
 .rc-chart-canvas-wrap img {
     display: block !important;
     width: 100% !important;
-    max-height: 36mm !important;
+    max-height: 56mm !important;
     object-fit: contain !important;
     margin: 0 auto !important;
 }
 .rc-chart-svg {
     width: 100% !important;
-    margin: 4px 0 !important;
+    margin: 3px 0 !important;
     overflow: hidden !important;
 }
 .rc-chart-svg svg {
     width: 100% !important;
     height: auto !important;
-    max-height: 36mm !important;
+    max-height: 56mm !important;
     display: block !important;
 }
 .rc-chart-img {
     width: 100% !important;
-    max-height: 36mm !important;
+    max-height: 56mm !important;
     object-fit: contain !important;
 }
 
@@ -371,7 +391,7 @@ html, body {
     border: 1px solid #E2E8F0 !important;
     border-top: 3px solid var(--section-accent) !important;
     border-radius: 10px !important;
-    padding: 8px 6px !important;
+    padding: 10px 8px !important;
     text-align: center !important;
     background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
 }
@@ -431,7 +451,7 @@ html, body {
 .rc-table tbody tr { page-break-inside: avoid !important; }
 .rc-table tbody td {
     font-family: 'Times New Roman', Times, serif !important;
-    padding: 3px 6px !important;
+    padding: 3px 7px !important;
     border: 1px solid #000 !important;
     font-size: 11pt !important;
     color: #1C1C1E !important;
@@ -463,6 +483,7 @@ html, body {
     border-radius: 0 20px 0 0 !important;
     margin-left: -20px !important;
     margin-right: 20px !important;
+    margin-bottom: 4px !important;
     box-decoration-break: clone !important;
     -webkit-box-decoration-break: clone !important;
 }
@@ -479,10 +500,11 @@ html, body {
 .rc-remark-box {
     border: 1px solid #E2E8F0 !important;
     border-radius: 10px !important;
-    padding: 10px 12px !important;
+    padding: 14px 16px !important;
     background: #fff !important;
     display: flex !important;
     flex-direction: column !important;
+    min-height: 30mm !important;
 }
 .rc-remark-title {
     font-family: 'Times New Roman', Times, serif !important;
@@ -521,7 +543,7 @@ html, body {
 
 /* ── Grade Descriptors ─────────────────────────────────────── */
 .rc-descriptors {
-    margin-top: 6px !important;
+    margin-top: 0 !important;
     width: 100% !important;
 }
 .rc-descriptors-title {
@@ -567,7 +589,7 @@ html, body {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     gap: 10px !important;
-    margin-top: 8px !important;
+    margin-top: 0 !important;
     width: 100% !important;
 }
 .date-box {
@@ -578,7 +600,7 @@ html, body {
     font-size: 11pt !important;
     font-weight: 700 !important;
     color: #1E293B !important;
-    padding: 8px 10px !important;
+    padding: 10px 12px !important;
     border-radius: 8px !important;
     border: 1px solid #E2E8F0 !important;
     background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
