@@ -11,6 +11,10 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Fresh clones (Docker builds, CI, new machines) may not have the logs/
+# directory — the RotatingFileHandlers below would crash Django at startup.
+os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
 
 def env_csv(name, default=""):
     return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
@@ -231,11 +235,32 @@ UNLINKED_GUARDIAN_NAME = os.environ.get(
     'EDUNEXUS_UNLINKED_GUARDIAN_NAME', 'Unlinked — link in Faculty admin',
 )
 
-# Development: HTTP is fine. Production: set both to True.
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+# ── HTTPS / proxy behaviour ────────────────────────────────────────────────
+# Every flag is env-overridable so the same image works behind an
+# HTTPS-terminating proxy (cloudflared tunnel, Caddy) or plain HTTP.
+def env_flag(name, default):
+    return os.environ.get(name, str(default)).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+# Trust X-Forwarded-Proto from the reverse proxy so Django knows the original
+# request was HTTPS. Without this, SECURE_SSL_REDIRECT would loop forever
+# behind cloudflared/Caddy.
+if env_flag('EDUNEXUS_SECURE_PROXY', not DEBUG):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+SESSION_COOKIE_SECURE = env_flag('SESSION_COOKIE_SECURE', not DEBUG)
+CSRF_COOKIE_SECURE = env_flag('CSRF_COOKIE_SECURE', not DEBUG)
 CSRF_COOKIE_HTTPONLY = False       # JS must read csrftoken cookie for AJAX CSRF
 CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Development: HTTP is fine. Production: redirect everything to HTTPS.
+SECURE_SSL_REDIRECT = env_flag('SECURE_SSL_REDIRECT', not DEBUG)
+
+# Production only — don't enable in dev (breaks HTTP).
+if not DEBUG and env_flag('EDUNEXUS_HSTS', True):
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 # ==============================================================================
 # SECURITY HEADERS
@@ -246,21 +271,11 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
-# Production only — don't enable in dev (breaks HTTP)
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-else:
-    # Prepared for production HTTPS without breaking local HTTP development.
-    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False') == 'True'
-
 
 # ==============================================================================
-# CSRF TRUSTED ORIGINS (local network dev)
+# CSRF TRUSTED ORIGINS (local network dev + deploy override)
 # ==============================================================================
-CSRF_TRUSTED_ORIGINS = [
+_DEFAULT_CSRF_ORIGINS = [
     'http://*.localhost:8000',
     'http://192.168.60.204:8000',
     'http://192.168.56.116:8000',
@@ -289,6 +304,9 @@ CSRF_TRUSTED_ORIGINS = [
     'http://192.168.40.20:8000',
     'http://192.168.100.35:8000',
 ]
+
+# Deploy override, e.g. CSRF_TRUSTED_ORIGINS=https://my-app.trycloudflare.com
+CSRF_TRUSTED_ORIGINS = env_csv('CSRF_TRUSTED_ORIGINS', ','.join(_DEFAULT_CSRF_ORIGINS))
 
 
 # ==============================================================================
@@ -418,11 +436,14 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 }
 
 # ── Django Channels (WebSocket) ──────────────────────────────────────────
+# Host is env-driven so Docker can point at the redis service name.
+REDIS_HOST = os.environ.get('REDIS_HOST', '127.0.0.1')
+REDIS_PORT = int(os.environ.get('REDIS_PORT', '6379'))
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
             "capacity": 1000,
         },
     },

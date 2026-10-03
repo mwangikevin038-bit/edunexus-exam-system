@@ -673,6 +673,214 @@ def get_class_teacher_scope(teacher):
     return result
 
 
+def resolve_class_teacher(school, grade, stream):
+    """Reverse lookup for get_class_teacher_scope: return the ACTIVE teacher
+    whose assigned_task ('Class Teacher <grade> <stream>') exactly names the
+    given class stream, or None.
+
+    Exact matching matters: loose icontains lookups pick the wrong teacher on
+    prefix collisions ('Grade 1' vs 'Grade 10'), can match non-class-teachers
+    and can select inactive staff — printing the wrong name and signature on
+    report cards.
+    """
+    if not school or not grade or not stream:
+        return None
+    target = ' '.join(f"{grade} {stream}".split())
+    candidates = Teacher.all_objects.filter(
+        school=school,
+        is_active=True,
+        assigned_task__startswith='Class Teacher',
+    ).select_related('user')
+    for teacher in candidates:
+        remainder = (teacher.assigned_task or '')[len('Class Teacher'):].strip()
+        if ' '.join(remainder.split()) == target:
+            return teacher
+    return None
+
+
+def resolve_class_teachers_for_grade(school, grade, stream=None):
+    """Active class teachers whose assigned_task exactly names this grade
+    (and stream, when given). Exact boundary matching avoids 'Grade 1'
+    matching 'Class Teacher Grade 10 ...', non-class-teachers, and inactive
+    staff. Returns a list ordered by the model's default ordering."""
+    if not school or not grade:
+        return []
+    grade_target = ' '.join(grade.split())
+    stream_target = ' '.join(stream.split()) if stream else None
+    out = []
+    candidates = Teacher.all_objects.filter(
+        school=school,
+        is_active=True,
+        assigned_task__startswith='Class Teacher',
+    ).select_related('user')
+    for teacher in candidates:
+        remainder = ' '.join((teacher.assigned_task or '')[len('Class Teacher'):].split())
+        if stream_target:
+            if remainder == f"{grade_target} {stream_target}":
+                out.append(teacher)
+        elif remainder == grade_target or remainder.startswith(grade_target + ' '):
+            out.append(teacher)
+    return out
+
+
+SIGNATURE_ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
+SIGNATURE_ALLOWED_CONTENT_TYPES = {'image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'}
+SIGNATURE_MAX_BYTES = 5 * 1024 * 1024
+
+
+def validate_signature_upload(file):
+    """Server-side guard for signature uploads. Model validators do NOT run on
+    a plain save(), so every upload endpoint must call this. Web-safe formats
+    only — browsers and WeasyPrint cannot render HEIC. Returns an error
+    message, or None when the file is acceptable."""
+    if not file:
+        return 'No signature file received.'
+    if file.size > SIGNATURE_MAX_BYTES:
+        return f'Signature image is too large ({file.size // (1024 * 1024)}MB). Maximum allowed is 5MB.'
+    name = (getattr(file, 'name', '') or '').lower()
+    ext = '.' + name.rsplit('.', 1)[-1] if '.' in name else ''
+    if ext not in SIGNATURE_ALLOWED_EXTENSIONS:
+        return 'Signature must be a JPG, PNG, WEBP or GIF image. HEIC and other formats are not supported.'
+    ctype = (getattr(file, 'content_type', '') or '').lower()
+    if ctype and ctype not in SIGNATURE_ALLOWED_CONTENT_TYPES:
+        return 'Signature must be a JPG, PNG, WEBP or GIF image.'
+    return None
+
+
+def discard_media_file(name):
+    """Best-effort removal of a replaced or cleared upload from storage, so
+    signature swaps never accumulate orphaned files."""
+    if not name:
+        return
+    try:
+        from django.core.files.storage import default_storage
+        if default_storage.exists(name):
+            default_storage.delete(name)
+    except Exception:
+        pass
+
+
+def polish_signature_upload(file, teacher_pk=None):
+    """Clean an accepted signature for professional presentation on report
+    cards. Pipeline: EXIF-correct rotation, flatten transparency onto white,
+    flood-fill the desk/backdrop to pure white from each frame corner (area
+    guards make it impossible to eat signature ink), Otsu paper-vs-ink level
+    stretch using one luminance-derived curve shared by all channels (pen
+    colours survive) with near-white snapped to pure white, trim margins,
+    then fit the content into the 640x240 render-safe box - zooming tiny
+    signatures up to 8x with an unsharp pass so they stay crisp at the card's
+    160x36px display size - and re-encode as optimized PNG. Returns a
+    ContentFile; on any failure the original file is returned untouched so
+    an upload can never be lost to polishing."""
+    try:
+        from io import BytesIO
+        import time as _time
+        from PIL import Image, ImageOps, ImageDraw, ImageChops, ImageFilter
+        from django.core.files.base import ContentFile
+
+        file.seek(0)
+        img = Image.open(file)
+        img = ImageOps.exif_transpose(img)
+        if img.mode in ("RGBA", "LA", "PA") or (img.mode == "P" and "transparency" in img.info):
+            img = img.convert("RGBA")
+            bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
+            bg.alpha_composite(img)
+            img = bg.convert("RGB")
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
+
+        def whiten_border(image, thresh, min_frac, dark_min_frac):
+            """Flood the background colour outward from the 4 corners to pure
+            white. The area guard protects signature ink: a dark flood is
+            accepted only when it covers a large share of the frame (a desk),
+            a light flood only past a small share (paper/shadow)."""
+            w, h = image.size
+            area = w * h or 1
+            for xy in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+                seed = image.getpixel(xy)
+                lum = (seed[0] * 299 + seed[1] * 587 + seed[2] * 114) // 1000
+                trial = image.copy()
+                ImageDraw.floodfill(trial, xy, (255, 255, 255), thresh=thresh)
+                diff = ImageChops.difference(image, trial).convert("L")
+                diff = diff.point(lambda p: 255 if p else 0)
+                frac = diff.histogram()[255] / area if diff.getbbox() else 0.0
+                if frac >= (dark_min_frac if lum < 150 else min_frac):
+                    image = trial
+            return image
+
+        img = whiten_border(img, 80, 0.03, 0.25)
+
+        lum = img.convert("L")
+        hist = lum.histogram()
+        hist[255] = 0  # exclude exact white (already-flooded background)
+        total = sum(hist)
+
+        # Otsu: split paper vs ink bimodally, then map each mode's mean so
+        # paper becomes pure white and ink deepens - far more reliable than
+        # fixed percentiles when the signature is small on the page.
+        weighted = sum(i * n for i, n in enumerate(hist)) if total >= 200 else 0
+        sum_b, w_b, best_t, best_var = 0, 0, 0, -1.0
+        if total >= 200:
+            for t in range(256):
+                w_b += hist[t]
+                if w_b == 0:
+                    continue
+                w_f = total - w_b
+                if w_f == 0:
+                    break
+                sum_b += t * hist[t]
+                m_b = sum_b / w_b
+                m_f = (weighted - sum_b) / w_f
+                var = w_f * w_b * (m_b - m_f) ** 2
+                if var > best_var:
+                    best_var, best_t = var, t
+        below = sum(hist[:best_t]) or 0
+        above = total - below
+        black = (sum(i * hist[i] for i in range(best_t)) / below) if below else 0.0
+        white = (sum(i * hist[i] for i in range(best_t, 256)) / above) if above else 255.0
+        if total >= 200 and white - black >= 30:
+            scale = 255.0 / (white - black)
+
+            def _map(v):
+                mapped = max(0, min(255, int((v - black) * scale)))
+                return 255 if mapped >= 220 else mapped
+
+            lut = [_map(v) for v in range(256)]
+            img = Image.merge("RGB", [band.point(lut) for band in img.split()])
+
+        img = whiten_border(img, 45, 0.01, 0.03)
+
+        mask = img.convert("L").point(lambda p: 255 if p < 220 else 0)
+        bbox = mask.getbbox()
+        if bbox:
+            pad = 6
+            img = img.crop((
+                max(0, bbox[0] - pad), max(0, bbox[1] - pad),
+                min(img.width, bbox[2] + pad), min(img.height, bbox[3] + pad),
+            ))
+
+        resample = getattr(Image, "Resampling", Image).LANCZOS
+        target_w, target_h = 640, 240
+        scale = min(target_w / img.width, target_h / img.height, 8.0)
+        if abs(scale - 1.0) > 0.02:
+            img = img.resize(
+                (max(1, round(img.width * scale)), max(1, round(img.height * scale))),
+                resample,
+            )
+            if scale > 1.0:
+                img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=110, threshold=3))
+
+        buf = BytesIO()
+        img.save(buf, format="PNG", optimize=True)
+        return ContentFile(buf.getvalue(), name=f"signature_{teacher_pk or 'x'}_{int(_time.time())}.png")
+    except Exception:
+        try:
+            file.seek(0)
+        except Exception:
+            pass
+        return file
+
+
 def user_can_access_class_stream(user, grade, stream, require_class_teacher=False):
     """Check whether a user is permitted to access a particular class stream."""
     if user_has_main_school_admin_override(user):
@@ -2159,13 +2367,9 @@ def build_report_card_context(
         if a.subject
     }
 
-    # ── 10. Class teacher name (string match on assigned_task) ────────────────
-    class_teacher_name = ""
-    ct_q = Teacher.all_objects.filter(
-        school=school, assigned_task__icontains=grade,
-    ).filter(Q(assigned_task__icontains=stream)).select_related('user').first()
-    if ct_q:
-        class_teacher_name = ct_q.get_full_title()
+    # ── 10. Class teacher (exact assigned_task match, active teachers only) ──
+    ct_q = resolve_class_teacher(school, grade, stream)
+    class_teacher_name = ct_q.get_full_title() if ct_q else ""
     class_teacher_signature = ct_q.signature.url if (ct_q and ct_q.signature) else ""
 
     # ── 11. Master comments (class teacher + headteacher) ─────────────────────

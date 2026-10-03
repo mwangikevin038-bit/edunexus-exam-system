@@ -2947,15 +2947,29 @@ def review_submission(request):
 
             # ── Rebuild ExamSummary snapshots for this grade ───────────
             from students.tasks import populate_exam_summaries
-            populate_exam_summaries.delay(
-                school_id=school.pk,
-                grade=assignment.class_name,
-                year=exam.year,
-                term=exam.term,
-                exam_name=exam.name,
-                school_section=assignment.school_section,
-                sub_section=assignment.sub_section,
-            )
+            try:
+                populate_exam_summaries.delay(
+                    school_id=school.pk,
+                    grade=assignment.class_name,
+                    year=exam.year,
+                    term=exam.term,
+                    exam_name=exam.name,
+                    school_section=assignment.school_section,
+                    sub_section=assignment.sub_section,
+                )
+            except Exception as broker_exc:
+                # Broker briefly unavailable — run inline so summaries stay
+                # fresh instead of failing the whole request.
+                logger.warning("populate_exam_summaries broker unavailable (%s); running inline", broker_exc)
+                populate_exam_summaries(
+                    school_id=school.pk,
+                    grade=assignment.class_name,
+                    year=exam.year,
+                    term=exam.term,
+                    exam_name=exam.name,
+                    school_section=assignment.school_section,
+                    sub_section=assignment.sub_section,
+                )
 
             invalidate_report_caches(
                 school.pk, assignment.class_name, assignment.stream,
@@ -5378,15 +5392,27 @@ def upload_results(request):
             )
 
         from students.tasks import populate_exam_summaries
-        populate_exam_summaries.delay(
-            school_id=school.pk,
-            grade=assignment.class_name,
-            year=exam.year,
-            term=exam.term,
-            exam_name=exam.name,
-            school_section=assignment.school_section,
-            sub_section=assignment.sub_section,
-        )
+        try:
+            populate_exam_summaries.delay(
+                school_id=school.pk,
+                grade=assignment.class_name,
+                year=exam.year,
+                term=exam.term,
+                exam_name=exam.name,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
+            )
+        except Exception as broker_exc:
+            logger.warning("populate_exam_summaries broker unavailable (%s); running inline", broker_exc)
+            populate_exam_summaries(
+                school_id=school.pk,
+                grade=assignment.class_name,
+                year=exam.year,
+                term=exam.term,
+                exam_name=exam.name,
+                school_section=assignment.school_section,
+                sub_section=assignment.sub_section,
+            )
 
         invalidate_report_caches(
             school.pk, assignment.class_name, assignment.stream,

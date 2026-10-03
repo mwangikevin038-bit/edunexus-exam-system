@@ -1,0 +1,131 @@
+# EduNexus Exam System — full stack in containers (works on any Docker host,
+# tuned for an Oracle Cloud Always Free ARM instance).
+#
+#   docker compose --profile tunnel up -d --build     # app + free HTTPS tunnel
+#   docker compose logs -f cloudflared                # copy the https://...trycloudflare.com URL
+#
+# One-time setup: copy .env.example -> .env and fill in the secrets.
+
+name: edunexus
+
+x-app-env: &app-env
+  # ── Secrets & core (read from .env) ──
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY in .env}
+  DB_NAME: ${DB_NAME:-school_exam_db}
+  DB_USER: ${DB_USER:-postgres}
+  DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+  EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+  EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+  SITE_URL: ${SITE_URL:-http://localhost:8080}
+  # ── Production behaviour (safe defaults for a tunnel deployment) ──
+  DJANGO_DEBUG: "False"
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+  EDUNEXUS_SECURE_PROXY: "True"
+  SECURE_SSL_REDIRECT: "True"
+  SESSION_COOKIE_SECURE: "True"
+  CSRF_COOKIE_SECURE: "True"
+  EDUNEXUS_SERVE_MEDIA: "True"
+  EDUNEXUS_PDF_ENGINE: ${EDUNEXUS_PDF_ENGINE:-auto}
+  # ── Internal service addresses (override the localhost defaults) ──
+  DB_HOST: db
+  DB_PORT: "5432"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  EDUNEXUS_REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/1
+  EDUNEXUS_INTERNAL_URL: http://web:8080
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-school_exam_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-school_exam_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *app-env
+    ports:
+      # Bound to localhost only: the cloudflared tunnel reaches it over the
+      # Docker network. To expose it directly instead, change to "8080:8080"
+      # and open port 8080 in your cloud firewall (and turn OFF HTTPS flags
+      # if you have no certificate).
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn school.wsgi:application
+             --bind 0.0.0.0:8080
+             --workers $${GUNICORN_WORKERS:-2}
+             --threads 4 --timeout 180 --graceful-timeout 30
+             --access-logfile - --error-logfile -"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8080/login/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  worker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    command: >
+      celery -A school worker -l info
+      -Q pdf_generation,default,csv_upload
+      --concurrency=$${CELERY_CONCURRENCY:-2}
+      --max-tasks-per-child=25
+
+  # Free HTTPS: a Cloudflare quick tunnel (no domain, no open inbound ports).
+  # The https://<random>.trycloudflare.com URL is printed in these logs and
+  # stays up until cloudflared restarts (it changes only on restart).
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: ["tunnel", "--url", "http://web:8080", "--no-autoupdate"]
+
+volumes:
+  pgdata:
+  redisdata:
+  media:

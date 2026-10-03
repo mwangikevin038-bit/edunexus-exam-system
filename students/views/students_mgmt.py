@@ -26,6 +26,8 @@ from .helpers import (
     get_learner_contexts_for_user,
     get_next_admission_no,
     get_teacher_for_user,
+    resolve_class_teacher,
+    resolve_class_teachers_for_grade,
     resolve_term_dates,
     safe_pdf_filename,
 )
@@ -4138,9 +4140,7 @@ def api_analysis_data(request):
                     best_lvl = lvl
             if best_count > 0:
                 row['performance_level'] = best_lvl
-        ct_for_stream = Teacher.all_objects.filter(
-            school=school, assigned_task__icontains=grade_name,
-        ).filter(Q(assigned_task__icontains=s)).select_related('user').first()
+        ct_for_stream = resolve_class_teacher(school, grade_name, s)
         if ct_for_stream and ct_for_stream.user:
             row['teacher'] = ct_for_stream.user.get_full_name() or ct_for_stream.user.username
         else:
@@ -4164,12 +4164,8 @@ def api_analysis_data(request):
 
     # Class teacher for this grade — via assigned_task field (matches reports.py pattern)
     class_teacher_name = '-'
-    ct_filters = [Q(assigned_task__icontains=grade_name)]
-    if stream_filter:
-        ct_filters.append(Q(assigned_task__icontains=stream_filter))
-    ct_qs = Teacher.all_objects.filter(school=school, *ct_filters).select_related('user')
     ct_names = []
-    for t in ct_qs:
+    for t in resolve_class_teachers_for_grade(school, grade_name, stream_filter or None):
         name = t.user.get_full_name() or t.user.username if t.user else '-'
         if name not in ct_names:
             ct_names.append(name)

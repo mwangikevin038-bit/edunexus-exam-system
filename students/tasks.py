@@ -825,7 +825,12 @@ def generate_bulk_report_pdf(
             'show_control_panel':   False,
         })
 
-    base_url = ""  # No request in Celery — relative URLs won't work, but logo is base64
+    # No request in Celery — the logo is base64 so it always renders.
+    # Relative media URLs (teacher signatures) need an origin: when
+    # EDUNEXUS_INTERNAL_URL is set (e.g. http://web:8080 inside Docker) the
+    # <base> tag points at the internal web service so WeasyPrint can fetch
+    # them; empty string keeps the old base64-only behaviour.
+    base_url = os.environ.get("EDUNEXUS_INTERNAL_URL", "")
 
     # ── Process in chunks of 50 with retry ─────────────────────────────
     from django.db import connection

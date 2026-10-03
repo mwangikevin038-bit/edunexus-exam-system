@@ -15,7 +15,14 @@ from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 
 from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES, JSS_GRADE_CHOICES
-from .helpers import get_teacher_for_user, get_class_teacher_scope, get_published_contexts_for_user
+from .helpers import (
+    discard_media_file,
+    get_class_teacher_scope,
+    get_published_contexts_for_user,
+    get_teacher_for_user,
+    polish_signature_upload,
+    validate_signature_upload,
+)
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
 from ..models import (
     Event,
@@ -61,12 +68,31 @@ def profile_view(request):
             elif request.POST.get('delete_profile_picture') == '1':
                 teacher.profile_picture = None
 
-            if request.FILES.get('signature'):
-                teacher.signature = request.FILES['signature']
-            elif request.POST.get('delete_signature') == '1':
+            # ── Signature: class teachers only, validated server-side ────────
+            # The model validators do not run on a plain save(), so every
+            # upload is checked here (type + size) before being accepted.
+            is_class_teacher = bool(get_class_teacher_scope(teacher))
+            sig_file = request.FILES.get('signature')
+            want_delete_sig = request.POST.get('delete_signature') == '1'
+            signature_cleanup = None
+            if (sig_file or want_delete_sig) and not is_class_teacher:
+                messages.warning(request, 'Signatures are only available to class teachers.')
+            elif sig_file:
+                sig_error = validate_signature_upload(sig_file)
+                if sig_error:
+                    messages.error(request, sig_error)
+                else:
+                    signature_cleanup = teacher.signature.name if teacher.signature else None
+                    teacher.signature = polish_signature_upload(sig_file, teacher.pk)
+            elif want_delete_sig:
+                signature_cleanup = teacher.signature.name if teacher.signature else None
                 teacher.signature = None
 
             teacher.save()
+            if signature_cleanup and (
+                not teacher.signature or teacher.signature.name != signature_cleanup
+            ):
+                discard_media_file(signature_cleanup)
 
         messages.success(request, 'Profile updated successfully.')
         return redirect('home_alt')

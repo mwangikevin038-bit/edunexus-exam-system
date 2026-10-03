@@ -74,3 +74,10 @@ node_modules/
 # ── Runtime / Binaries ─────────────────────────────────────────────────────
 cloudflared.exe
 redis_data/
+*.rdb
+
+# ── Sensitive / machine-local data (never commit) ──────────────────────────
+/*.csv
+android-apk/android-keystore.jks
+.gradle/
+android-apk/.gradle/

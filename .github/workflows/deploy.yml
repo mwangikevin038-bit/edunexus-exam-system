@@ -1,0 +1,29 @@
+# Optional: auto-deploy on push to main.
+# Requires repository secrets (Settings > Secrets and variables > Actions):
+#   DEPLOY_HOST   - server IP or hostname
+#   DEPLOY_USER   - ssh user (e.g. ubuntu / opc)
+#   DEPLOY_SSH_KEY- private key (PEM) with access to the server
+#   DEPLOY_PATH   - checkout path on the server (e.g. /opt/edunexus)
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency: deploy
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git pull --ff-only
+            docker compose --profile tunnel up -d --build
+            docker compose exec -T web python manage.py migrate --noinput

@@ -551,6 +551,10 @@ def _generate_pdf(patched_html, *, landscape=False, margin=None, engine='auto',
         scale: Playwright page scale (1.0 = browser-view parity).
         margins: Optional dict with top/right/bottom/left margin strings.
     """
+    # Env override — low-memory servers can force one engine, e.g.
+    # EDUNEXUS_PDF_ENGINE=weasyprint skips launching Chromium entirely.
+    engine = (os.environ.get('EDUNEXUS_PDF_ENGINE') or engine).strip().lower()
+
     # ── Try Playwright (pixel-perfect rendering) ──
     if engine in ('auto', 'playwright') and _HAS_PLAYWRIGHT:
         last_error = None
@@ -1689,18 +1693,26 @@ def start_bulk_report_pdf(request):
     job_id = _uuid.uuid4().hex[:16]
 
     from .tasks import generate_bulk_report_pdf
-    generate_bulk_report_pdf.delay(
-        job_id=job_id,
-        school_id=school.id,
-        grade_name=grade_name,
-        stream_name=stream_name,
-        exam_id=int(exam_id),
-        year=year,
-        term=term,
-        assessment=assessment,
-        student_ids=student_ids,
-        user_id=request.user.id,
-    )
+    try:
+        generate_bulk_report_pdf.delay(
+            job_id=job_id,
+            school_id=school.id,
+            grade_name=grade_name,
+            stream_name=stream_name,
+            exam_id=int(exam_id),
+            year=year,
+            term=term,
+            assessment=assessment,
+            student_ids=student_ids,
+            user_id=request.user.id,
+        )
+    except Exception as broker_exc:
+        # Broker down — don't 500; tell the client to retry shortly.
+        logger.warning("generate_bulk_report_pdf broker unavailable: %s", broker_exc)
+        return JsonResponse(
+            {'error': 'PDF service is temporarily unavailable. Please retry in a moment.'},
+            status=503,
+        )
 
     return JsonResponse({
         'job_id': job_id,

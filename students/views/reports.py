@@ -45,6 +45,7 @@ from .helpers import (
     get_selected_context,
     get_students_ordered,
     get_teacher_for_user,
+    resolve_class_teacher,
     resolve_term_dates,
     user_can_access_class_stream,
 )
@@ -789,17 +790,10 @@ def _build_individual_report_context(request, school, student, is_admin_view):
         ).select_related('teacher_profile__user', 'subject')
         if a.subject
     }
-    # Class teacher name for this class/stream — determined by assigned_task field
-    from ..models import Teacher
-    class_teacher_name = ""
-    ct_q = Teacher.all_objects.filter(
-        school=school,
-        assigned_task__icontains=student.class_name,
-    ).filter(
-        Q(assigned_task__icontains=student.stream),
-    ).select_related('user').first()
-    if ct_q:
-        class_teacher_name = ct_q.get_full_title()
+    # Class teacher for this class/stream — exact assigned_task match,
+    # active teachers only (never a loose icontains pick).
+    ct_q = resolve_class_teacher(school, student.class_name, student.stream)
+    class_teacher_name = ct_q.get_full_title() if ct_q else ""
     class_teacher_signature = ct_q.signature.url if (ct_q and ct_q.signature) else ""
     marks_list = list(marks)
     for mark in marks_list:
@@ -1412,17 +1406,10 @@ def bulk_report_cards(request):
         ).select_related('teacher_profile__user', 'subject')
     }
 
-    # Class teacher name for this class/stream — determined by assigned_task field
-    from ..models import Teacher
-    class_teacher_name = ""
-    ct_q = Teacher.all_objects.filter(
-        school=school,
-        assigned_task__icontains=sample.class_name,
-    ).filter(
-        Q(assigned_task__icontains=sample.stream),
-    ).select_related('user').first()
-    if ct_q:
-        class_teacher_name = ct_q.get_full_title()
+    # Class teacher for this class/stream — exact assigned_task match,
+    # active teachers only (bulk is enforced single-class above).
+    ct_q = resolve_class_teacher(school, sample.class_name, sample.stream)
+    class_teacher_name = ct_q.get_full_title() if ct_q else ""
     class_teacher_signature = ct_q.signature.url if (ct_q and ct_q.signature) else ""
 
     ct_comment_mgr = ClassTeacherMasterComment.all_objects if is_admin_view else ClassTeacherMasterComment.objects

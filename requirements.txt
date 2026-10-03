@@ -1,4 +1,4 @@
-Django>=4.2,<6.0
+Django>=6.0,<6.1
 django-unfold
 django-axes
 python-dotenv
@@ -10,12 +10,16 @@ pypdf>=4.0
 playwright>=1.40
 Pillow>=10.0
 matplotlib>=3.7
+numpy
 celery>=5.4,<6.0
 redis>=5.0,<6.0
-django-channels>=4.0,<5.0
+channels>=4.0,<5.0
 daphne>=4.0,<5.0
 kombu>=5.3,<6.0
-billiard>=4.0,<5.0
+billiard>=4.0,<6.0
 asgiref>=3.6,<4.0
 channels-redis>=4.0,<5.0
 django-redis>=5.0,<8.0
+whitenoise>=6.0
+gunicorn>=22.0
+waitress>=3.0

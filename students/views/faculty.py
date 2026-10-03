@@ -48,13 +48,16 @@ from .helpers import (
     calculate_primary_plv,
     calculate_report_plv,
     clear_teacher_cache,
+    discard_media_file,
     generate_default_password,
     get_class_teacher_scope,
     get_performance_level,
     get_teacher_for_user,
+    polish_signature_upload,
     safe_pdf_filename,
     user_can_edit_learner_profile,
     user_can_view_learner_profile,
+    validate_signature_upload,
 )
 from ..models import (
     ClassTeacherMasterComment,
@@ -470,7 +473,7 @@ def manage_faculty_matrix(request):
                         first_name=full_name,
                         last_name=surname,
                     )
-                    Teacher.objects.create(
+                    new_teacher = Teacher.objects.create(
                         user=new_user, title=title, tsc_number=tsc_number,
                         phone_number=phone_number, email=email_address,
                         school=school,
@@ -485,6 +488,28 @@ def manage_faculty_matrix(request):
                         employee_number=request.POST.get('employee_number', '').strip(),
                         bio=request.POST.get('bio', '').strip(),
                     )
+
+                    # One class teacher per class stream: demote anyone the new
+                    # profile displaces (same rule as edit_profile) so report
+                    # cards never have two candidate signatures to pick from.
+                    if (new_teacher.assigned_task or '').startswith('Class Teacher'):
+                        conflict_list = list(Teacher.all_objects.filter(
+                            school=school, is_active=True,
+                            assigned_task=new_teacher.assigned_task,
+                        ).exclude(pk=new_teacher.pk))
+                        for conflict in conflict_list:
+                            conflict.assigned_task = 'Teacher'
+                            conflict.save(update_fields=['assigned_task'])
+                            clear_teacher_cache(conflict.user_id)
+                            try:
+                                from django.core.cache import cache
+                                cache.delete(f"ct_scope:{school.pk}:{conflict.pk}")
+                            except Exception:
+                                pass
+                        if conflict_list:
+                            names = ', '.join(c.get_full_title() for c in conflict_list)
+                            messages.warning(request,
+                                f"{names} was/were replaced as {new_teacher.assigned_task}.")
 
                 clear_teacher_cache(new_user.pk)
 
@@ -605,9 +630,28 @@ def manage_faculty_matrix(request):
                                 messages.warning(request,
                                     f"{names} was/were replaced as {new_task}.")
                         teacher.assigned_task = new_task
-                    if request.FILES.get('signature'):
-                        teacher.signature = request.FILES['signature']
+
+                    # ── Signature: class teachers only, validated server-side ──
+                    # Model validators do not run on a plain save(), so the
+                    # type/size check happens here before the file is accepted.
+                    signature_cleanup = None
+                    sig_upload = request.FILES.get('signature')
+                    if sig_upload:
+                        if not (teacher.assigned_task or '').startswith('Class Teacher'):
+                            messages.warning(request,
+                                "A signature can only be set for a class teacher — the upload was not saved.")
+                        else:
+                            sig_error = validate_signature_upload(sig_upload)
+                            if sig_error:
+                                messages.error(request, sig_error)
+                            else:
+                                signature_cleanup = teacher.signature.name if teacher.signature else None
+                                teacher.signature = polish_signature_upload(sig_upload, teacher.pk)
                     teacher.save()
+                    if signature_cleanup and (
+                        not teacher.signature or teacher.signature.name != signature_cleanup
+                    ):
+                        discard_media_file(signature_cleanup)
 
                 clear_teacher_cache(teacher.user_id)
                 messages.success(request, f"Demographics updated for {teacher.get_full_title()}.")

@@ -22,6 +22,7 @@ from students.views.password_reset import (
 )
 from django.conf import settings
 from django.conf.urls.static import static
+import os
 
 urlpatterns = [
     # ── Django admin ──────────────────────────────────────────────────────
@@ -56,6 +57,15 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif os.environ.get('EDUNEXUS_SERVE_MEDIA', 'False').strip().lower() in ('1', 'true', 'yes', 'on'):
+    # Production single-server mode: serve uploads straight from Django.
+    # (static() no-ops when DEBUG is False, so wire the view manually.
+    #  Swap for S3/Cloudinary or an nginx `location /media/` at scale.)
+    from django.urls import re_path
+    from django.views.static import serve as _serve_media
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', _serve_media, {'document_root': settings.MEDIA_ROOT}),
+    ]
 
 handler404 = 'students.views.custom_404'
 handler500 = 'students.views.custom_500'

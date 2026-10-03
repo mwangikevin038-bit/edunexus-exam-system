@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from ..security import get_request_school, school_admin_required
+from .helpers import resolve_class_teachers_for_grade
 
 
 # Section-to-grade mapping
@@ -211,20 +212,15 @@ def manage_classes(request):
         girls = students_qs.filter(gender='Female').count()
         total = students_qs.count()
 
-        # Class supervisor: teacher whose assigned_task mentions this grade
+        # Class supervisor: active class teacher of this grade (exact match)
         supervisor = ''
-        ct = Teacher.all_objects.filter(
-            school=school,
-            is_active=True,
-            assigned_task__icontains=grade.name,
-        ).filter(
-            assigned_task__icontains='Class Teacher'
-        ).filter(
-            school_section=grade.school_section,
-            sub_section=grade.sub_section,
-        ).first()
-        if ct:
-            supervisor = ct.get_full_title()
+        candidates = [
+            t for t in resolve_class_teachers_for_grade(school, grade.name)
+            if t.school_section == grade.school_section
+            and t.sub_section == grade.sub_section
+        ]
+        if candidates:
+            supervisor = candidates[0].get_full_title()
 
         grade_rows.append({
             'id': grade.id,
@@ -347,19 +343,13 @@ def manage_streams(request, grade_id):
         total = students_qs.count()
 
         supervisor = ''
-        ct = Teacher.all_objects.filter(
-            school=school, is_active=True,
-            assigned_task__icontains=grade.name,
-        ).filter(
-            assigned_task__icontains=stream.name,
-        ).filter(
-            assigned_task__icontains='Class Teacher',
-        ).filter(
-            school_section=grade.school_section,
-            sub_section=grade.sub_section,
-        ).first()
-        if ct:
-            supervisor = ct.get_full_title()
+        candidates = [
+            t for t in resolve_class_teachers_for_grade(school, grade.name, stream.name)
+            if t.school_section == grade.school_section
+            and t.sub_section == grade.sub_section
+        ]
+        if candidates:
+            supervisor = candidates[0].get_full_title()
 
         stream_rows.append({
             'id': stream.id,
@@ -1099,17 +1089,19 @@ def combine_streams(request, grade_id):
             SubjectAssignment.all_objects.bulk_create(new_assignments, ignore_conflicts=True)
 
         # 4. Update class teachers: demote to "Teacher", then promote one per subject
-        # Find class teachers of the old streams
-        old_ct_pattern = models.Q()
+        # Find class teachers of the old streams (exact grade + stream match)
+        class_teachers = []
+        seen_pks = set()
         for sname in stream_names:
-            old_ct_pattern |= models.Q(assigned_task__icontains=f"{grade.name} {sname}")
-        class_teachers = Teacher.all_objects.filter(
-            school=school, is_active=True,
-            assigned_task__startswith='Class Teacher',
-        ).filter(old_ct_pattern)
+            for t in resolve_class_teachers_for_grade(school, grade.name, sname):
+                if t.pk not in seen_pks:
+                    seen_pks.add(t.pk)
+                    class_teachers.append(t)
 
         # Demote all old class teachers to "Teacher"
-        class_teachers.update(assigned_task='Teacher')
+        for teacher in class_teachers:
+            teacher.assigned_task = 'Teacher'
+            teacher.save(update_fields=['assigned_task'])
 
         # Update Teacher.classes denormalized field for affected teachers
         for teacher in class_teachers:
@@ -1336,11 +1328,9 @@ def split_streams(request, grade_id):
                 )
 
         # 6. Demote class teacher of the source stream (if any)
-        Teacher.all_objects.filter(
-            school=school, is_active=True,
-            assigned_task__startswith='Class Teacher',
-            assigned_task__icontains=target_stream,
-        ).update(assigned_task='Teacher')
+        for t in resolve_class_teachers_for_grade(school, grade.name, target_stream):
+            t.assigned_task = 'Teacher'
+            t.save(update_fields=['assigned_task'])
 
     # Build summary
     parts = []
