@@ -7,19 +7,15 @@ various view layers.
 """
 
 import bisect
-import random
 import re
 import secrets
 import string
 
 from django.core.cache import cache
 from django.db.models import Avg, Count, Q, Sum, IntegerField, Value, F, Window
-from django.db.models.functions import Cast, Coalesce, DenseRank
-from django.db.models.fields import FloatField
+from django.db.models.functions import Cast, DenseRank
 
 from .constants import (
-    ASSESSMENT_SLUG_MAP,
-    GRADE_CHOICES,
     RELIGION_SUBJECTS,
     RELIGION_TAG,
 )
@@ -1195,7 +1191,6 @@ def calculate_report_plv(total_points, total_marks, sub_section=None, school=Non
     import logging
     from ..school_scope import get_current_school, get_current_school_section
 
-    pts = total_points or 0
     mks = total_marks  or 0
 
     if not school:
@@ -1298,7 +1293,6 @@ def get_students_ordered(grade, stream, school=None):
     Return students filtered by grade and stream, ordered by admission number.
     Handles P/J suffixed admission numbers. Non-numeric parts sorted to the end.
     """
-    from django.db.models import Value, CharField, Case, When, Q
     from django.db.models.functions import Substr, Length
     students = Student.all_objects.filter(
         class_name=grade, stream=stream, is_active=True
@@ -1530,7 +1524,6 @@ def build_exam_result_snapshot(school, exam, class_name, stream):
     The snapshot is used by broadsheet views and the merit list. Report card
     views still use build_report_card_context which reads from ExamSummary directly.
     """
-    from django.utils import timezone
     from ..models import ExamResultSnapshot, ExamSummary, Mark, Subject, SubjectAssignment
     from .exams import _get_primary_performance
     from .grading_engine import prefetch_school_grading
@@ -1907,7 +1900,7 @@ def build_analysis_from_snapshot(school, exam):
     gender_streams, total_girls, total_boys.
     Returns None if no snapshots exist.
     """
-    from ..models import ExamResultSnapshot, Student
+    from ..models import ExamResultSnapshot
     from collections import Counter
 
     # Find all snapshots for this exam
@@ -2240,22 +2233,18 @@ def build_report_card_context(
     keeps historical reports renderable even if the Celery snapshot is stale.
     """
     import base64
-    import datetime as _dt
     import json as _json
 
     from ..models import (
         ClassTeacherMasterComment,
-        Exam,
         ExamSummary,
         Mark,
         SchoolHeadteacherComment,
         Student,
         Subject,
         SubjectAssignment,
-        Teacher,
     )
-    from ..school_scope import get_current_school_section
-    from django.db.models import Q, Sum
+    from django.db.models import Sum
     from .constants import (
         LOWER_PRIMARY_SUBJECT_NAMES,
         LOWER_PRIMARY_SUBJECT_SHORT_MAP,
@@ -2381,9 +2370,6 @@ def build_report_card_context(
         school=school, year=year, term=term, exam_type=db_assessment,
         school_section=sample.school_section,
     ).first()
-
-    freeze_threshold = _dt.timedelta(days=30)
-    now              = _dt.datetime.now(_dt.timezone.utc)
 
     # ── 12. Build per-student context dicts ───────────────────────────────────
     # Lower-primary subjects (ELA/KLA/MA/ILA) need their own short codes —
@@ -2618,7 +2604,7 @@ def upsert_mark(
 
     Returns the mark ID.
     """
-    from django.db import transaction, connection
+    from django.db import transaction
     from ..security.integrity import compute_mark_checksum
 
     class _MarkProxy:

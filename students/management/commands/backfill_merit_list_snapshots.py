@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from students.models import Exam, ExamResultSnapshot, Mark, Student, Stream
+from students.models import Exam, ExamResultSnapshot, Mark
 
 
 class Command(BaseCommand):

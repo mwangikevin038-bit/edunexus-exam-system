@@ -5,11 +5,8 @@ Provides:
 2. Full audit trail for mark and student changes
 3. Role-based write protection for critical operations
 """
-import json
 import logging
 
-from django.contrib.auth.models import User
-from django.db import transaction
 
 logger = logging.getLogger("students.security.protection")
 
@@ -142,7 +139,6 @@ def log_student_stream_change(student, old_stream, new_stream, request=None):
     Log when a student's stream is changed. This is critical for tracking misplacements.
     """
     from students.models import SecurityAuditLog
-    from students.security.integrity import compute_audit_record_hash
 
     actor = None
     client_ip = None
@@ -186,7 +182,6 @@ def require_admin_for_destructive(view_func):
     """
     import functools
     from django.contrib import messages
-    from django.core.exceptions import PermissionDenied
     from django.shortcuts import redirect
     from students.security.roles import user_has_main_school_admin_override
 

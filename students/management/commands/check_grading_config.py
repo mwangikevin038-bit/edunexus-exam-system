@@ -13,7 +13,6 @@ Usage:
     python manage.py check_grading_config --fix-empty    # initialize missing configs
 """
 from django.core.management.base import BaseCommand
-from django.db.models import Count, Q
 
 from students.models import GradingConfig, Mark, School
 

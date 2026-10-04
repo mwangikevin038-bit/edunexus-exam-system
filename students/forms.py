@@ -4,7 +4,6 @@ Forms for the students app.
 Provides forms for student registration, mark entry, and password changes.
 """
 
-import re
 
 from django import forms
 from django.contrib.auth.forms import PasswordChangeForm

@@ -12,7 +12,6 @@ from django.contrib.auth.models import User
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
-from .helpers import get_teacher_for_user
 from ..security import rate_limit, user_has_main_school_admin_override
 from ..models import Teacher, SchoolAdmin
 
@@ -214,7 +213,7 @@ def custom_password_change(request):
 
             try:
                 form.save()
-            except Exception as exc:
+            except Exception:
                 logger.exception("Failed to save new password for user_id=%s", user.pk)
                 messages.error(
                     request,
@@ -275,7 +274,7 @@ def custom_password_change(request):
             try:
                 from django.contrib.auth import login as auth_login
                 auth_login(request, user, backend=user.backend)
-            except Exception as exc:
+            except Exception:
                 logger.exception("Failed to re-login user_id=%s after password change", user.pk)
                 # If re-login fails, force logout and redirect to login
                 logout(request)

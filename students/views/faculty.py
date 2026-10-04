@@ -5,7 +5,6 @@ Handles class teacher master comments, school headteacher remarks,
 teacher onboarding/assignment management, and longitudinal learner profiles.
 """
 
-import datetime
 import json
 
 from django.conf import settings
@@ -13,7 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Q
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.template.loader import render_to_string
@@ -28,7 +27,6 @@ from .constants import (
     OPPOSITE_RELIGION_SUBJECT,
     PRIMARY_SUBJECT_NAMES,
     PRIMARY_SUBJECT_SHORT_MAP,
-    SUBJECT_CHOICES,
     SUBJECT_SHORT_MAP,
 )
 
@@ -541,7 +539,7 @@ def manage_faculty_matrix(request):
                     email.content_subtype = 'html'
                     email.send(fail_silently=False)
                     email_sent = True
-                except Exception as e:
+                except Exception:
                     import logging
                     logger = logging.getLogger(__name__)
                     logger.exception("Failed to send welcome email to %s", email_address)
@@ -551,7 +549,7 @@ def manage_faculty_matrix(request):
                     messages.success(request, f"Profile '{title} {full_name}' created successfully. Login credentials have been sent to {email_address}.")
                 else:
                     messages.warning(request, f"Profile '{title} {full_name}' created. Email could not be sent. Username: {login_username} | Password: {default_password}. Use 'Reset Password' to set a new password.")
-            except Exception as e:
+            except Exception:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.exception("Profile creation failed for teacher %s", full_name)
@@ -657,7 +655,7 @@ def manage_faculty_matrix(request):
                 messages.success(request, f"Demographics updated for {teacher.get_full_title()}.")
             except Teacher.DoesNotExist:
                 messages.error(request, "Teacher record not found.")
-            except Exception as e:
+            except Exception:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.exception("Profile update failed for teacher_id=%s", request.POST.get('teacher_id'))
@@ -717,7 +715,7 @@ def manage_faculty_matrix(request):
                 messages.success(request, f"'{name}' and their login account were permanently deleted. {deactivated} subject assignment(s) deactivated.")
             except Teacher.DoesNotExist:
                 messages.error(request, "Teacher record not found.")
-            except Exception as e:
+            except Exception:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.exception("Profile deletion failed for teacher_id=%s", teacher_id)
@@ -817,7 +815,7 @@ def manage_faculty_matrix(request):
                 messages.success(request, msg)
             except Teacher.DoesNotExist:
                 messages.error(request, "Teacher record not found.")
-            except Exception as e:
+            except Exception:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.exception("Section reassignment failed for teacher_id=%s", request.POST.get('teacher_id'))
@@ -1457,7 +1455,7 @@ def download_teachers_list_pdf(request):
 def teacher_classes(request, teacher_id):
     """Show performance cards: one per subject assignment (previous exam), class teacher class last."""
     import datetime as _dt
-    from django.db.models import Avg, Count
+    from django.db.models import Avg
     from ..models import Teacher, SubjectAssignment, Mark, Student, Exam, GradingConfig
 
     school = get_request_school(request)
@@ -1495,9 +1493,6 @@ def teacher_classes(request, teacher_id):
         ).order_by('-created_at')
         if exams.exists():
             active_exams[section_key] = exams.first()
-
-    # Get grading config
-    grading_config = GradingConfig.objects.filter(school=school).first()
 
     def _mean_grade(avg_score, section_key='PRIMARY'):
         # Always use section-specific default scale

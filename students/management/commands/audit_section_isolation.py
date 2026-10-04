@@ -21,10 +21,8 @@ from django.core.management.base import BaseCommand
 
 from students.models import (
     Exam,
-    Grade,
     Mark,
     MarkSubmission,
-    School,
     Student,
     Subject,
     SubjectAssignment,

@@ -50,7 +50,6 @@ class Command(BaseCommand):
         skipped_already_suffixed = 0
         skipped_no_grade = 0
         updated = 0
-        errors = 0
 
         self.stdout.write(f"Processing {total} students...\n")
 

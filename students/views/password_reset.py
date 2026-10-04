@@ -8,15 +8,12 @@ Provides:
 - Session tracking for reset flow
 """
 
-import re
 import logging
 import time
 
-from django import forms
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
 from django.conf import settings
-from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.views import (
     PasswordResetView,
     PasswordResetDoneView,
@@ -25,10 +22,7 @@ from django.contrib.auth.views import (
 )
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.shortcuts import redirect, render
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
-from django.utils.crypto import get_random_string
+from django.shortcuts import redirect
 
 logger = logging.getLogger("students.security.password_reset")
 

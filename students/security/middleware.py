@@ -3,7 +3,6 @@ Security middleware: tenant enforcement, audit request binding, response headers
 """
 import logging
 
-from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseForbidden
 
 from students.security import get_user_school_id, get_user_school_object

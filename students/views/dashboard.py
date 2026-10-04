@@ -15,7 +15,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 
-from .constants import GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES, JSS_GRADE_CHOICES
+from .constants import LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES, JSS_GRADE_CHOICES
 from .helpers import (
     discard_media_file,
     get_class_teacher_scope,
@@ -583,7 +583,7 @@ def school_admin_dashboard(request):
     ).order_by("-year", "-term_num", "-name_order").first()
 
     # --- Headline counts (single aggregate query) ---
-    from django.db.models import Count as CountAgg, Q as CountQ
+    from django.db.models import Count as CountAgg
     counts = Student.all_objects.filter(school=school).aggregate(
         total_students=CountAgg('id'),
     )

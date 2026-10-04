@@ -23,12 +23,10 @@ from ..forms import StudentForm
 from .helpers import (
     dedup_marks_latest_by_code,
     get_class_teacher_scope,
-    get_learner_contexts_for_user,
     get_next_admission_no,
     get_teacher_for_user,
     resolve_class_teacher,
     resolve_class_teachers_for_grade,
-    resolve_term_dates,
     safe_pdf_filename,
 )
 from ..models import Exam, Guardian, RemovedStudent, Student
@@ -141,11 +139,6 @@ def admin_add_student(request):
     active_tab        = request.GET.get('tab', 'directory')
     school_section    = get_request_school_section(request) or 'JSS'
     next_admission_no = get_next_admission_no(school_section=school_section)
-    # Store the raw integer for bulk increment calculations
-    try:
-        next_no = int(next_admission_no[:-1])
-    except (ValueError, IndexError):
-        next_no = 1
 
     # --------------------------------------------------------------------------
     # POST — Action routing
@@ -599,7 +592,6 @@ def admin_search_fields(request):
 def admin_student_search_submit(request):
     """HTMX endpoint: run the directory search and return results HTML fragment."""
     import re
-    from django.db.models import Q
 
     school = get_request_school(request)
     search_type = request.GET.get('search_type', 'adm_no')
@@ -1283,9 +1275,8 @@ def admin_student_delete(request, student_id):
 @never_cache
 def admin_student_analytics(request, student_id):
     """HTMX endpoint: premium student analytics dashboard shell."""
-    from django.db.models import Avg, Sum, Count, F, Q
+    from django.db.models import Avg
     from ..models import ExamSummary, Mark, Subject
-    from .helpers import get_performance_level
 
     school = get_request_school(request)
     try:
@@ -1301,9 +1292,8 @@ def admin_student_analytics(request, student_id):
         )
 
     initials = ''.join([w[0] for w in student.name.split()[:2]]).upper()
-    guardian_name = student.guardian.name if student.guardian else '—'
 
-    from django.db.models import Case, When, Value, IntegerField
+    from django.db.models import Case, When, IntegerField
     exam_order = Case(
         When(exam_name__icontains='Opener', then=1),
         When(exam_name__icontains='Mid', then=2),
@@ -1337,14 +1327,12 @@ def admin_student_analytics(request, student_id):
         overall_pos = f"{latest.grade_rank}/{total_students_in_grade}" if latest.grade_rank else "—"
         stream_pos = f"{latest.stream_rank}/{total_students_in_class}" if latest.stream_rank else "—"
         mean_grade = latest.overall_plv or "—"
-        exam_label = f"{latest.exam_name} — {latest.term} {latest.year}"
     else:
         mean_marks = 0
         total_points = 0
         overall_pos = "—"
         stream_pos = "—"
         mean_grade = "—"
-        exam_label = "No exam data"
 
     prev_exam = all_exams[1] if len(all_exams) > 1 else None
     if latest and prev_exam and prev_exam.subject_count:
@@ -1542,7 +1530,7 @@ def admin_student_analytics(request, student_id):
         'End of Term Assessment': 'END TERM',
     }
 
-    from django.db.models import Case, When, Value, IntegerField as IntF
+    from django.db.models import Case, When, IntegerField as IntF
     exam_sort_expr = Case(
         When(exam_type__icontains='Opener', then=1),
         When(exam_type__icontains='Mid', then=2),
@@ -2100,7 +2088,6 @@ def teacher_search_student(request):
 
 
 # ── HTMX API: teacher search fields / submit / reset ────────────────────
-from django.http import HttpResponse
 from django.views.decorators.cache import never_cache
 
 def _teacher_section_query(school, section, is_admin_view):
@@ -2123,7 +2110,6 @@ def _teacher_section_query(school, section, is_admin_view):
 def teacher_search_fields(request):
     """HTMX partial: returns the search input field matching the selected radio type."""
     search_type = request.GET.get('type', 'adm_no')
-    school = get_request_school(request)
     section = get_request_school_section(request)
     is_admin_view = user_has_main_school_admin_override(request.user)
 
@@ -2519,9 +2505,8 @@ def teacher_student_profile_card(request, student_id):
 @never_cache
 def teacher_student_analytics(request, student_id):
     """HTMX endpoint: student analytics dashboard (teacher version — read-only)."""
-    from django.db.models import Avg, Sum, Count, F, Q
+    from django.db.models import Avg
     from ..models import ExamSummary, Mark, Subject
-    from .helpers import get_performance_level
 
     school = get_request_school(request)
     section = get_request_school_section(request)
@@ -2562,7 +2547,7 @@ def teacher_student_analytics(request, student_id):
 
     initials = ''.join([w[0] for w in student.name.split()[:2]]).upper()
 
-    from django.db.models import Case, When, Value, IntegerField
+    from django.db.models import Case, When, IntegerField
     exam_order = Case(
         When(exam_name__icontains='Opener', then=1),
         When(exam_name__icontains='Mid', then=2),
@@ -2596,14 +2581,12 @@ def teacher_student_analytics(request, student_id):
         overall_pos = f"{latest.grade_rank}/{total_students_in_grade}" if latest.grade_rank else "—"
         stream_pos = f"{latest.stream_rank}/{total_students_in_class}" if latest.stream_rank else "—"
         mean_grade = latest.overall_plv or "—"
-        exam_label = f"{latest.exam_name} — {latest.term} {latest.year}"
     else:
         mean_marks = 0
         total_points = 0
         overall_pos = "—"
         stream_pos = "—"
         mean_grade = "—"
-        exam_label = "No exam data"
 
     prev_exam = all_exams[1] if len(all_exams) > 1 else None
     if latest and prev_exam and prev_exam.subject_count:
@@ -2797,7 +2780,7 @@ def teacher_student_analytics(request, student_id):
         'End of Term Assessment': 'END TERM',
     }
 
-    from django.db.models import Case as C2, When as W2, Value as V2, IntegerField as IntF
+    from django.db.models import Case as C2, When as W2, IntegerField as IntF
     exam_sort_expr = C2(
         W2(exam_type__icontains='Opener', then=1),
         W2(exam_type__icontains='Mid', then=2),
@@ -3135,7 +3118,7 @@ def teacher_report_forms_display(request):
         build_report_card_context_from_snapshot,
         get_report_forms_cache_key,
     )
-    from ..models import Exam, Grade, Stream
+    from ..models import Exam
 
     school = get_request_school(request)
     if not school:
@@ -3223,7 +3206,6 @@ def teacher_report_forms_display(request):
 
 
 # ── HTMX API: section toggle for Add Student form ──────────────────────
-from django.http import JsonResponse
 
 def get_section_info(request):
     """Return next admission number and grade list for a given section."""
@@ -3245,7 +3227,6 @@ def get_streams_for_grade(request):
     if not school:
         return JsonResponse({'streams': []})
     grade_name = request.GET.get('grade', '').strip()
-    section = request.GET.get('section', 'JSS').strip()
     if not grade_name:
         return JsonResponse({'streams': []})
     from students.models import Stream, Grade
@@ -3328,7 +3309,7 @@ def score_sheet(request):
     """
     Score Sheet page — Form + Stream + Subject selection for entering marks.
     """
-    from ..models import Grade, Stream, Subject
+    from ..models import Grade
 
     school = get_request_school(request)
     if not school:
@@ -3394,7 +3375,7 @@ def api_exams_for_class(request):
     Result is cached in Redis for SCORE_SHEET_CACHE_TTL.
     """
     from django.http import JsonResponse
-    from django.db.models import Count, Q
+    from django.db.models import Q
     from ..models import Exam, MarkSubmission, SubjectAssignment
     from .constants import LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES
 
@@ -3403,7 +3384,6 @@ def api_exams_for_class(request):
         return JsonResponse({'exams': []})
 
     grade_name = request.GET.get('grade', '').strip()
-    stream_name = request.GET.get('stream', '').strip()
     if not grade_name:
         return JsonResponse({'exams': []})
 
@@ -3632,7 +3612,7 @@ def merit_list(request):
     """
     from ..models import Exam, Grade
     from .constants import (
-        GRADE_CHOICES, JSS_GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES,
+        JSS_GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES,
     )
     from .grading_engine import prefetch_school_grading
     from .reports import build_broadsheet_for_merit_list
@@ -3799,10 +3779,8 @@ def analysis_report_pdf(request):
 @school_admin_required
 def api_analysis_data(request):
     """JSON endpoint: returns all analysis data for a given exam+class for inline report rendering."""
-    import json
     from collections import Counter, defaultdict
-    from django.db.models import Q
-    from ..models import Exam, ExamSummary, Subject, Mark, Student, Teacher
+    from ..models import Exam, ExamSummary, Mark, Student
 
     school = get_request_school(request)
     if not school:
@@ -4621,7 +4599,6 @@ def api_analysis_data(request):
         if not bd:
             continue
         s_rows = bd.get('rows', [])
-        s_total = bd.get('total', {})
         row_data = {
             'name': subj_name,
             'entries': sum(r.get('entries', 0) for r in s_rows),

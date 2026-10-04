@@ -8,27 +8,17 @@ Hybrid rendering engine:
 
 import base64
 import datetime
-import hashlib
 import io
-import json
 import logging
 import mimetypes
 import os
 import traceback
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from functools import partial
 
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.cache import cache
-from django.db.models import Avg, Prefetch, Q, Sum, IntegerField
-from django.db.models.functions import Cast, Length, Substr
+from django.db.models import Prefetch
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.shortcuts import redirect
 from django.template.loader import render_to_string
-from django.utils.text import slugify
 from django.views.decorators.http import require_POST
-from pypdf import PdfWriter
 from pathlib import Path
 
 try:
@@ -41,28 +31,21 @@ except ImportError:
 # below this threshold is treated as a failed/empty render, never shipped.
 _MIN_VALID_PDF_BYTES = 2048
 
-from .constants import ASSESSMENT_MAP, GRADE_CHOICES, JSS_GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_NAMES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_GRADE_CHOICES, PRIMARY_SUBJECT_NAMES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_DISPLAY_ORDER, SUBJECT_SHORT_MAP, get_streams_for_school, sort_subjects
-from .reports import PRIMARY_ORDERED_LEVELS, _build_individual_report_context
+from .constants import JSS_GRADE_CHOICES, LOWER_PRIMARY_GRADE_CHOICES, LOWER_PRIMARY_SUBJECT_SHORT_MAP, ORDERED_LEVELS, PRIMARY_PERF_LEVELS, PRIMARY_GRADE_CHOICES, PRIMARY_SUBJECT_SHORT_MAP, SUBJECT_SHORT_MAP, sort_subjects
+from .reports import _build_individual_report_context
 from .exams import _get_primary_performance
 from .helpers import (
     calculate_broadsheet_plv,
     calculate_primary_plv,
-    calculate_report_plv,
     dedup_marks_latest_by_code,
-    get_cached_class_averages,
-    get_class_leaderboard,
-    get_class_teacher_scope,
-    get_learner_contexts_for_user,
     get_performance_level,
     get_published_contexts_for_user,
     get_published_subject_codes,
     get_selected_context,
-    get_teacher_for_user,
-    resolve_term_dates,
     safe_pdf_filename,
     user_can_access_class_stream,
 )
-from ..models import ClassTeacherMasterComment, Exam, ExamSummary, Mark, SchoolHeadteacherComment, Student, Subject, SubjectAssignment, Teacher
+from ..models import Exam, Mark, Student, SubjectAssignment
 from ..security import get_request_school, get_request_school_section, get_school_object_or_403, rate_limit, user_has_main_school_admin_override
 
 logger = logging.getLogger('pdf_export')
@@ -186,7 +169,7 @@ def generate_premium_vector_chart_svg(labels, student_scores, class_averages,
         if class_averages:
             cx, cy = _smooth_xy(x, class_averages)
         else:
-            cx, cy = sx, sy
+            cy = sy
         _band1 = ax.fill_between(sx, sy, cy, where=(sy >= cy), color='#00C853',
                                  alpha=0.10, interpolate=True, zorder=2, linewidth=0)
         _band2 = ax.fill_between(sx, sy, cy, where=(sy < cy), color='#A1A7B3',
@@ -429,8 +412,6 @@ def _compile_single_student_pdf(student_context, logo_base64, section_accent, ba
     This is the fast path used by Celery tasks where speed > perfect fidelity.
     """
     from django.template.loader import render_to_string
-    from weasyprint import HTML
-    from django.conf import settings
 
     # Render the stripped template — no base.html, no sidebar/topbar/context
     single_html = render_to_string(
@@ -732,7 +713,6 @@ def download_broadsheet_pdf(request):
         subject_map = PRIMARY_SUBJECT_SHORT_MAP
     else:
         subject_map = SUBJECT_SHORT_MAP
-    subject_codes = list(subject_map.keys())
     active_levels = PRIMARY_PERF_LEVELS if is_primary else ORDERED_LEVELS
 
     analysis_data = {
@@ -1120,8 +1100,7 @@ def download_classlist_pdf(request):
     if not school:
         return JsonResponse({'error': 'School context is required.'}, status=400)
 
-    from ..models import Grade, Stream, Student
-    from django.db.models import CharField, Value
+    from ..models import Student
     from django.db.models.functions import Substr, Length
     from django.db.models import IntegerField
     from django.db.models.functions import Cast
@@ -1655,7 +1634,6 @@ def start_bulk_report_pdf(request):
 
     # Resolve student IDs (same logic as synchronous view)
     from .helpers import build_report_card_context_from_snapshot
-    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
 
     is_admin_view = user_has_main_school_admin_override(request.user)
 
@@ -1663,8 +1641,6 @@ def start_bulk_report_pdf(request):
         _exam = Exam.all_objects.get(id=exam_id, school=school, is_deleted=False)
     except (Exam.DoesNotExist, ValueError):
         return JsonResponse({'error': 'Exam not found.'}, status=404)
-
-    db_assessment = _exam.name
 
     try:
         _resolved = build_report_card_context_from_snapshot(

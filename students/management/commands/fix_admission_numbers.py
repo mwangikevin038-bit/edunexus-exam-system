@@ -31,7 +31,6 @@ python manage.py fix_admission_numbers \\
     --renumber "Grade 7 Blue" --start 331
 """
 import csv
-import sys
 
 from django.core.management.base import BaseCommand
 from django.db import transaction

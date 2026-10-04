@@ -59,7 +59,7 @@ def process_csv_upload(self, upload_id, school_id, rows_json, section='JSS'):
     total = len(rows_json)
 
     try:
-        from students.models import Grade, Guardian, School, Stream, Student
+        pass
     except Exception as e:
         _send_complete(upload_id, {
             "status": "error", "processed": 0, "total": total,
@@ -437,9 +437,8 @@ def populate_exam_summaries(
     from decimal import Decimal
 
     from django.db import transaction
-    from django.db.models import Count, Q, Sum
 
-    from .models import ExamSummary, GradingConfig, Mark, School, Student
+    from .models import ExamSummary, Mark, School, Student
 
     logger = logging.getLogger("students.exam_summaries")
 
@@ -715,20 +714,14 @@ def generate_bulk_report_pdf(
     import base64
     import io
     import mimetypes
-    import time
-    from concurrent.futures import ThreadPoolExecutor
     from functools import partial
 
-    from django.contrib.auth import get_user_model
-    from django.template.loader import render_to_string
     from pypdf import PdfWriter
-    from weasyprint import HTML as WeasyHTML
 
-    from .models import Exam, School, Student
+    from .models import Exam, School
     from .views.helpers import build_report_card_context
-    from .views.pdf_exports import _compile_single_student_pdf, _load_print_css
+    from .views.pdf_exports import _compile_single_student_pdf
 
-    User = get_user_model()
     logger = logging.getLogger("students.pdf_tasks")
 
     total = len(student_ids)
@@ -769,8 +762,6 @@ def generate_bulk_report_pdf(
             "failed": total,
         })
         return {"status": "error", "message": "Exam not found"}
-
-    db_assessment = _exam.name
 
     # ── Build full context (same as synchronous view) ──────────────────
     try:

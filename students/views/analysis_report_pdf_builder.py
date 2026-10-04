@@ -11,7 +11,6 @@ def _plv_label(plv, labels):
 
 def _change_html(val, decimals=4):
     v = float(val or 0)
-    cls = 'up' if v > 0 else ('down' if v < 0 else 'neutral')
     sign = '+' if v > 0 else ''
     return f'{sign}{v:.{decimals}f}'
 

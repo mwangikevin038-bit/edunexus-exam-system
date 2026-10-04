@@ -5,7 +5,6 @@ load_dotenv()
 Django settings for EduNexus Exam System.
 """
 import os
-import multiprocessing
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 

@@ -76,7 +76,6 @@ def _write_audit_log_async(payload):
 
 
 def _audit_action(instance, action, changes=None):
-    from students.models import SecurityAuditLog
 
     request = getattr(_pre_save_cache, "request", None)
     actor = None

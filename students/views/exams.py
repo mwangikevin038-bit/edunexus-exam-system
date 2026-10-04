@@ -18,8 +18,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Avg, Count, F, IntegerField, Q
-from django.db.models.functions import Cast
+from django.db.models import Avg, Count, F, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -29,8 +28,6 @@ from django.views.decorators.http import require_POST
 from .helpers import invalidate_report_caches
 
 from .constants import (
-    ASSESSMENT_MAP,
-    GRADE_CHOICES,
     JSS_GRADE_CHOICES,
     OPPOSITE_RELIGION_SUBJECT,
     RELIGION_SUBJECTS,
@@ -54,8 +51,6 @@ from ..models import (
     Exam,
     ExamResultSnapshot,
     ExamSummary,
-    Grade,
-    GradingConfig,
     Mark,
     MarkSubmission,
     Student,
@@ -1752,7 +1747,7 @@ def analyse_exam(request):
         messages.error(request, "Exam not found.")
         return redirect('dashboard_alt')
 
-    from ..models import ExamSummary, Subject, GradingConfig
+    from ..models import ExamSummary
     from .constants import ORDERED_LEVELS
 
     section = exam.school_section
@@ -1797,12 +1792,8 @@ def analyse_exam(request):
             sub_section = sub_section_filtered[0] if sub_section_filtered else None
 
     breakdown_levels = PRIMARY_ORDERED_LEVELS if section == 'PRIMARY' else ORDERED_LEVELS
-    from .grading_engine import prefetch_school_grading, resolve_scale_fast, get_grading_scale
+    from .grading_engine import prefetch_school_grading, get_grading_scale
     prefetch_school_grading(school)
-    grade_descriptors = resolve_scale_fast(
-        school.pk, section, sub_section,
-        subject_id=None, is_total_calculation=False,
-    )
     grading_scale_obj = get_grading_scale(school.pk, section, sub_section, subject_id=None)
 
     if grading_scale_obj and grading_scale_obj.total_scale:
@@ -1828,8 +1819,6 @@ def analyse_exam(request):
     if snapshot_ctx:
         subject_perf = snapshot_ctx['subject_perf']
     else:
-        subjects = Subject.all_objects.filter(school=school)
-
         all_marks = Mark.all_objects.filter(
             student__school=school,
             student_id__in=student_ids,
@@ -3309,7 +3298,7 @@ def manage_assessment_locks(request):
                     }
                 )
             return JsonResponse({'status': 'success', 'is_locked': lock_obj.is_locked})
-        except Exception as e:
+        except Exception:
             import logging
             logger = logging.getLogger(__name__)
             logger.exception("Assessment lock toggle failed")
@@ -4740,27 +4729,20 @@ def update_maximum_marks(request):
     if not marks:
         return JsonResponse({'ok': True, 'updated': 0, 'new_maximum': new_maximum})
 
-    # ── Pre-fetch: Student + Subject in_bulk (zero N+1) ──────────────────
-    student_ids = {m.student_id for m in marks}
+    # ── Pre-fetch: Subject in_bulk (zero N+1)
     subject_ids = {m.subject_id for m in marks if m.subject_id}
-    students_map = Student.all_objects.filter(is_active=True).in_bulk(student_ids)
     subjects_map = Subject.all_objects.in_bulk(subject_ids)
 
     # ── Pre-fetch: GradingScale (single query) ──────────────────────────
     from .grading_engine import prefetch_school_grading, resolve_scale_fast
     prefetch_school_grading(school)
 
-    # ── Pre-fetch: HMAC key (single read) ────────────────────────────────
-    from ..security.integrity import compute_mark_checksum, _integrity_key
-    hmac_key = _integrity_key()
+    from ..security.integrity import compute_mark_checksum
 
     # ── Compute all updates in Python, then single bulk_update ────────────
     marks_to_update = []
     with transaction.atomic():
         for mark in marks:
-            subject_obj = subjects_map.get(mark.subject_id)
-            student_obj = students_map.get(mark.student_id)
-
             if mark.is_absent:
                 mark.maximum_marks = new_maximum
                 mark.integrity_checksum = compute_mark_checksum(mark)
@@ -4934,7 +4916,6 @@ def publish_results_overview(request):
         submitted = totals.get("submitted", 0)
         approved = totals.get("approved", 0)
         returned = totals.get("returned", 0)
-        ready_count = published + submitted + approved
 
         if total_subjects == 0:
             status_key = "no_assignments"

@@ -262,7 +262,6 @@ def grading_configuration(request):
     subject_overlaps = _detect_overlaps(active_config.subject_scale or [], 'min_score', 'max_score')
     total_overlaps   = _detect_overlaps(active_config.total_scale or [],   'min_marks', 'max_marks')
 
-    from django.http import HttpResponse
     response = render(request, 'students/grading_configuration.html', {
         'configs': configs,
         'primary_upper': primary_upper,

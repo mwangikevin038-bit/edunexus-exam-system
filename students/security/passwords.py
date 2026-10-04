@@ -14,17 +14,15 @@ A single source of truth for the rules means the change-password form
 and the password-reset confirm form always agree on what's allowed.
 """
 import logging
-from datetime import timedelta
 
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.sessions.models import Session
-from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
 
 from django.conf import settings
 
-from ..models import PasswordHistory, School, SchoolAdmin, Teacher
+from ..models import PasswordHistory
 
 logger = logging.getLogger("students.security.password")
 
@@ -92,7 +90,6 @@ def password_validation_errors(password, *, user=None, min_length=MIN_LENGTH):
     import re
     repeated_match = re.search(r'(.)\1{2,}', password)
     if repeated_match:
-        char = repeated_match.group(1)
         errors.append(
             f"Your password contains {repeated_match.group(0)} — "
             f"avoid repeating the same character 3+ times in a row."
@@ -180,7 +177,6 @@ def invalidate_other_sessions(user, *, keep_session_key=None):
     # Sessions store the user id under the auth key. We use Django's
     # SessionStore to decode each one. This is the same approach
     # django.contrib.sessions.backends.db uses internally.
-    from django.contrib.sessions.backends.db import SessionStore
 
     qs = Session.objects.filter(expire_date__gt=timezone.now())
     killed = 0
@@ -220,7 +216,6 @@ def send_password_changed_email(user, *, request=None):
 
     for attempt in range(1 + MAX_RETRIES):
         try:
-            from django.core.mail import EmailMessage
             from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'EDUNEXUS Portal <edunexus.system@gmail.com>')
             if request is not None:
                 site_url = f'{request.scheme}://{request.get_host()}'

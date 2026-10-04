@@ -16,16 +16,12 @@ from students.models import (
     School,
     Grade,
     Stream,
-    Subject,
     Guardian,
     Student,
-    Teacher,
     SubjectAssignment,
-    Exam,
     Mark,
     MarkSubmission,
     ClassTeacherMasterComment,
-    SchoolHeadteacherComment,
     AssessmentLock,
 )
 
@@ -58,11 +54,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING(
             f"\n{'[DRY RUN] ' if dry_run else ''}School: {school.name} (code={school.code})"
         ))
-
-        # Get Grade 5 IDs
-        grade5_ids = Grade.all_objects.filter(
-            school=school, school_section="PRIMARY", name="Grade 5"
-        ).values_list('id', flat=True)
 
         # Count records to be deleted
         counts = {}

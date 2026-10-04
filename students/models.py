@@ -19,7 +19,6 @@ def validate_image_size(file):
 from .security.integrity import (
     compute_exam_checksum,
     compute_mark_checksum,
-    verify_exam_checksum,
     verify_mark_checksum,
 )
 

@@ -51,7 +51,6 @@ from .helpers import (
 )
 from ..models import (
     ClassTeacherMasterComment,
-    GradingConfig,
     Mark,
     SchoolHeadteacherComment,
     Student,
@@ -190,7 +189,6 @@ def results_list(request):
         subject_map = PRIMARY_SUBJECT_SHORT_MAP
     else:
         subject_map = SUBJECT_SHORT_MAP
-    subject_codes = list(subject_map.keys())
     active_levels = PRIMARY_PERF_LEVELS if is_primary else ORDERED_LEVELS
 
     # Initialise per-subject analysis buckets
@@ -1595,7 +1593,6 @@ def report_card_poll_status(request):
     Returns JSON with {ready: bool, loaded: int, total: int, html: str}.
     """
     from django.http import JsonResponse
-    from django.template.loader import render_to_string
 
     school = get_request_school(request)
     if not school:
@@ -2039,12 +2036,10 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
     )
     from .exams import _get_primary_performance
     from .helpers import (
-        calculate_broadsheet_plv,
         calculate_primary_plv,
         calculate_report_plv,
         get_performance_level,
         get_published_subject_codes,
-        get_broadsheet_from_snapshot,
         user_has_main_school_admin_override,
     )
     from ..models import ExamSummary, Subject, ExamResultSnapshot
@@ -2214,7 +2209,6 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
         t = totals_map.get(student.id)
         total_marks = t.total_marks if t else 0
         total_points = t.total_points if t else 0
-        assessed_subjects = t.subject_count if t else 0
 
         if not t:
             # No ExamSummary row — aggregate exactly like
@@ -2223,7 +2217,6 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
             # must stay zero: the snapshot prefers ExamSummary over marks.
             total_marks = sum(m.score for m in student_marks if m.score is not None and not m.is_absent)
             total_points = sum(m.points for m in student_marks if m.points is not None and not m.is_absent)
-            assessed_subjects = sum(1 for m in student_marks if m.score is not None and not m.is_absent)
 
         row_scores = []
         for code, short in published_subjects:

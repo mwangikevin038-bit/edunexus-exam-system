@@ -184,7 +184,7 @@ def manage_classes(request):
             return redirect('manage_classes')
 
     # ── GET — build context ───────────────────────────────────────────────────
-    from ..models import Student, Teacher
+    from ..models import Student
 
     grades = (
         Grade.all_objects
@@ -254,7 +254,7 @@ def manage_streams(request, grade_id):
     School admin view to manage streams within a specific grade.
     Displays streams table with boy/girl counts, class teacher, and CRUD actions.
     """
-    from ..models import Grade, Stream, Student, Teacher
+    from ..models import Grade, Stream, Student
 
     school = get_request_school(request)
     if not school:
@@ -431,7 +431,6 @@ def api_class_list(request):
         if tagged.exists():
             students = tagged
 
-    from django.db.models import CharField, Value
     from django.db.models.functions import Substr, Length
     from django.db.models import IntegerField
     from django.db.models.functions import Cast
@@ -467,7 +466,6 @@ def manage_subjects(request, grade_id, stream_name):
     School admin view to manage subjects within a specific stream.
     Shows subjects table with teacher assignments, section-filtered teacher dropdowns.
     """
-    from django.http import JsonResponse
     from ..models import Grade, Stream, Subject, SubjectAssignment, Student, Teacher
 
     school = get_request_school(request)
@@ -885,7 +883,6 @@ def api_grade_subjects(request):
     AJAX endpoint: returns subjects grouped by category for a given grade.
     Usage: /school-admin/api/grade-subjects/?grade=Grade+7
     """
-    import json
     from django.http import JsonResponse
     from ..models import Subject
 
@@ -987,9 +984,8 @@ def combine_streams(request, grade_id):
     Archives old SubjectAssignments, creates new ones for the combined stream,
     and updates Teacher.assigned_task for class teachers.
     """
-    from django.http import JsonResponse
     from django.db import models, transaction
-    from ..models import Grade, Stream, Student, SubjectAssignment, Teacher
+    from ..models import Grade, Stream, Student, SubjectAssignment
 
     if request.method != 'POST':
         return redirect('manage_streams', grade_id=grade_id)
@@ -1152,9 +1148,8 @@ def split_streams(request, grade_id):
     SubjectAssignments are auto-created for new streams (no teachers assigned).
     Students are distributed by gender + performance balance.
     """
-    from django.http import JsonResponse
     from django.db import transaction
-    from ..models import Grade, Stream, Student, SubjectAssignment, ExamSummary, Teacher, current_year
+    from ..models import Grade, Stream, Student, SubjectAssignment, ExamSummary, current_year
 
     if request.method != 'POST':
         return redirect('manage_streams', grade_id=grade_id)
