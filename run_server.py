@@ -223,7 +223,7 @@ if __name__ == '__main__':
         call_command('showmigrations', '--plan', verbosity=1, stdout=out)
         plan_output = out.getvalue()
         if '[ ]' in plan_output:
-            pending = [l.strip() for l in plan_output.splitlines() if '[ ]' in l]
+            pending = [ln.strip() for ln in plan_output.splitlines() if '[ ]' in ln]
             warn(f"{len(pending)} unapplied migration(s) — run 'python manage.py migrate' soon")
         else:
             ok("All migrations applied")

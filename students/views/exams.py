@@ -3308,8 +3308,8 @@ def manage_assessment_locks(request):
     grade_choices = LOWER_PRIMARY_GRADE_CHOICES if section == 'LOWER_PRIMARY' else PRIMARY_GRADE_CHOICES if section == 'PRIMARY' else JSS_GRADE_CHOICES
     
     lock_map = {
-        (l.grade, l.exam_type): l.is_locked
-        for l in AssessmentLock.objects.filter(school=school, year=selected_year, term=current_term)
+        (lock.grade, lock.exam_type): lock.is_locked
+        for lock in AssessmentLock.objects.filter(school=school, year=selected_year, term=current_term)
     }
     assessments_list = ['Opener Assessment', 'Mid Term Assessment', 'End Term Assessment']
     portal_data = [

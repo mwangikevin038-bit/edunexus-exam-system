@@ -2556,10 +2556,14 @@ def build_report_card_context(
 
     # Display label for the assessment ("End Term", "Mid Term", "Opener")
     _lower = db_assessment.lower()
-    if 'end'   in _lower: display_assessment = 'End Term'
-    elif 'mid' in _lower: display_assessment = 'Mid Term'
-    elif 'open' in _lower: display_assessment = 'Opener'
-    else:                 display_assessment = db_assessment
+    if 'end' in _lower:
+        display_assessment = 'End Term'
+    elif 'mid' in _lower:
+        display_assessment = 'Mid Term'
+    elif 'open' in _lower:
+        display_assessment = 'Opener'
+    else:
+        display_assessment = db_assessment
 
     return {
         'student_marks_list':      student_marks_list,

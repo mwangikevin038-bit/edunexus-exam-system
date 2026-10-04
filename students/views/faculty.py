@@ -525,7 +525,7 @@ def manage_faculty_matrix(request):
                     }
                     html_message = render_to_string('email/teacher_welcome_email.html', email_context)
                     email = EmailMessage(
-                        subject=f'Welcome to EDUNEXUS - Your Login Credentials',
+                        subject='Welcome to EDUNEXUS - Your Login Credentials',
                         body=html_message,
                         from_email=settings.DEFAULT_FROM_EMAIL,
                         to=[email_address],

@@ -302,7 +302,7 @@ def admin_add_student(request):
                         dest = f"{target_class} {target_stream}" if target_stream else target_class
                         messages.success(request, f"✅ {affected_count} students moved to {dest}.")
                 else:
-                    messages.warning(request, f"⚠️ No valid students selected.")
+                    messages.warning(request, "⚠️ No valid students selected.")
             elif source_class:
                 # Promote/graduate all in source class
                 cohort = Student.all_objects.filter(school=school, class_name=source_class, is_active=True)
@@ -2060,7 +2060,7 @@ def teacher_search_student(request):
                 format_ok = False
 
         if not format_ok:
-            messages.warning(request, f"Invalid format. Please enter a valid value.")
+            messages.warning(request, "Invalid format. Please enter a valid value.")
             students = search_qs.none()
         elif search_type == 'adm_no':
             students = search_qs.filter(admission_no__icontains=query).order_by('name')

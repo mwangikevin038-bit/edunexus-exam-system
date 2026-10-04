@@ -51,7 +51,7 @@ class Command(BaseCommand):
                             total_scale=GradingConfig.get_default_total_scale(section),
                         )
                         self.stdout.write(self.style.SUCCESS(
-                            f"     -> Created default config"
+                            "     -> Created default config"
                         ))
                     continue
                 n_subj = len(cfg.subject_scale or [])
