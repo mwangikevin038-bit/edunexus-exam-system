@@ -3097,7 +3097,6 @@ def review_submission(request):
                 'sub_section': assignment.sub_section,
             })
 
-            from students.views.helpers import invalidate_report_caches
             invalidate_report_caches(
                 school.pk, assignment.class_name, assignment.stream,
                 exam.year, exam.term, exam.name,

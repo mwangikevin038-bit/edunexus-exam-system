@@ -23,7 +23,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Avg, Prefetch, Q, Sum, IntegerField
 from django.db.models.functions import Cast, Length, Substr
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.utils.text import slugify
@@ -62,7 +62,7 @@ from .helpers import (
     safe_pdf_filename,
     user_can_access_class_stream,
 )
-from ..models import ClassTeacherMasterComment, ExamSummary, Mark, SchoolHeadteacherComment, Student, Subject, SubjectAssignment, Teacher
+from ..models import ClassTeacherMasterComment, Exam, ExamSummary, Mark, SchoolHeadteacherComment, Student, Subject, SubjectAssignment, Teacher
 from ..security import get_request_school, get_request_school_section, get_school_object_or_403, rate_limit, user_has_main_school_admin_override
 
 logger = logging.getLogger('pdf_export')
@@ -1692,7 +1692,7 @@ def start_bulk_report_pdf(request):
     # Generate unique job ID and dispatch to Celery
     job_id = _uuid.uuid4().hex[:16]
 
-    from .tasks import generate_bulk_report_pdf
+    from ..tasks import generate_bulk_report_pdf
     try:
         generate_bulk_report_pdf.delay(
             job_id=job_id,

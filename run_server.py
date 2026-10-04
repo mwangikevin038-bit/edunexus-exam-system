@@ -12,6 +12,8 @@ import signal
 import time
 import socket
 
+from django.core.management.base import SystemCheckError
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'school.settings')
 
 if sys.stdout.encoding != 'utf-8':

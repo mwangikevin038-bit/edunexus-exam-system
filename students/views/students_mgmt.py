@@ -11,7 +11,7 @@ import datetime
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.db.models import IntegerField
+from django.db.models import IntegerField, Q
 from django.db.models.functions import Cast, Length, Substr
 from django.http import HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
@@ -31,7 +31,7 @@ from .helpers import (
     resolve_term_dates,
     safe_pdf_filename,
 )
-from ..models import Guardian, RemovedStudent, Student
+from ..models import Exam, Guardian, RemovedStudent, Student
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
 
 PRIMARY_GRADE_CHOICES = ['Grade 4', 'Grade 5', 'Grade 6']

@@ -58,6 +58,9 @@ class Command(BaseCommand):
                             help="ALSO rename DB students to match the sheet. "
                                  "Off by default — admission numbers only, "
                                  "the DB names are the source of truth.")
+        parser.add_argument("--retire", action="store_true",
+                            help="Set is_active=False on DB students missing from the sheet "
+                                 "(orphans). Off by default — orphans are only listed.")
 
     @staticmethod
     def _school_section_for(class_name):
@@ -79,6 +82,7 @@ class Command(BaseCommand):
         path = opts["csv"]
         dry = opts["dry_run"]
         allow_rename = opts["rename"]
+        retire = opts["retire"]
         class_name = opts["class_name"]
         stream = opts["stream"]
         school_code = opts["school"]
@@ -259,10 +263,6 @@ class Command(BaseCommand):
                 ))
                 if not dry:
                     Student.all_objects.filter(pk__in=[s.pk for s in real_orphans]).update(is_active=False)
-                # actually Student model has no is_active; skip retire
-                self.stdout.write(self.style.WARNING(
-                    "(Student model has no is_active field; orphans left in place — please delete manually if needed)"
-                ))
 
         if dry:
             transaction.savepoint_rollback(sid)

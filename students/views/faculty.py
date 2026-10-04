@@ -8,6 +8,7 @@ teacher onboarding/assignment management, and longitudinal learner profiles.
 import datetime
 import json
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -525,7 +526,6 @@ def manage_faculty_matrix(request):
                         'school_name': school.name,
                     }
                     html_message = render_to_string('email/teacher_welcome_email.html', email_context)
-                    from django.conf import settings
                     email = EmailMessage(
                         subject=f'Welcome to EDUNEXUS - Your Login Credentials',
                         body=html_message,
