@@ -1906,23 +1906,23 @@ body.sidebar-collapsed .main-content {
 /* ── Performance Analysis Grid (3-Column) ─────────────────── */
 .performance-analysis-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-4);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
     padding: var(--space-4);
     width: 100%;
 }
 
-/* ── Upgraded Premium Layout Cards ─────────────────────────── */
+/* ── Performance Cards ────────────────────────────────────── */
 .analysis-card {
     background-color: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-    overflow: hidden;
+    gap: 14px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border-top-width: 3px;
 }
 
 .analysis-card:hover {
@@ -1931,47 +1931,81 @@ body.sidebar-collapsed .main-content {
 }
 
 .analysis-card-header {
-    padding: var(--space-5) var(--space-5) var(--space-4) var(--space-5);
-    border-bottom: 1px solid var(--en-border);
     display: flex;
     flex-direction: column;
     gap: 4px;
-    background-color: #fafafa;
 }
 
 .class-level-title {
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 700;
-    color: var(--en-navy);
+    color: #1e293b;
     margin: 0;
     letter-spacing: -0.02em;
 }
 
 .exam-period-label {
-    font-size: 10px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 500;
     color: #64748b;
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
+    text-transform: uppercase;
 }
 
 .metrics-matrix-subgrid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    border-bottom: 1px solid var(--en-border);
-    background-color: #ffffff;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
 }
 
 .metric-cell {
-    padding: var(--space-4) var(--space-5);
+    background-color: #f1f5f9;
+    border-radius: 10px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
+    gap: 12px;
+}
+
+.cell-label-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 6px;
 }
 
 .cell-label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
-    color: #94a3b8;
+    color: #1f2937;
+    min-width: 0;
+}
+
+.cell-label-row .cell-label {
+    flex: 0 1 33%;
+}
+
+.dev-badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background-color: #e5e7eb;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.dev-badge .dev-arrow.up {
+    color: #16a34a;
+}
+
+.dev-badge .dev-arrow.down {
+    color: #dc2626;
 }
 
 .cell-value-group {
@@ -1981,9 +2015,10 @@ body.sidebar-collapsed .main-content {
 }
 
 .cell-number {
-    font-size: 16px;
+    font-size: 24px;
     font-weight: 700;
-    color: var(--en-navy);
+    color: #4caf50;
+    line-height: 1.1;
 }
 
 .cell-number.grade-txt {
@@ -2018,19 +2053,25 @@ body.sidebar-collapsed .main-content {
 
 .btn-view-analysis {
     width: 100%;
-    background-color: var(--en-green);
-    color: var(--en-navy);
+    background-color: #4caf50;
+    color: #ffffff;
     border: none;
-    padding: var(--space-4) 0;
+    border-radius: 8px;
+    padding: 13px;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
     text-align: center;
     transition: background-color 0.2s, opacity 0.2s;
-    border-top: 1px solid var(--en-border);
 }
 .btn-view-analysis:hover {
-    opacity: 0.88;
+    opacity: 0.9;
+}
+
+@media (max-width: 1199px) {
+    .performance-analysis-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 /* ── Global Workspace Footer ──────────────────────────────── */

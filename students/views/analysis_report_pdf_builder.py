@@ -6,7 +6,12 @@ def _esc(s):
 
 
 def _plv_label(plv, labels):
-    return labels.get(plv, plv) if plv else '-'
+    if not plv:
+        return '-'
+    if str(plv).strip().upper() == 'NO CONFIG':
+        # Legacy sentinel held by older rows — never print it as a grade.
+        return '-'
+    return labels.get(plv, plv)
 
 
 def _change_html(val, decimals=4):

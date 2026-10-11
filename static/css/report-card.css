@@ -377,13 +377,13 @@
 
     /* Logo + School Header */
     .rc-header {
-        display: flex; align-items: center; gap: 14px;
+        display: flex; align-items: center; gap: 10px;
         padding-bottom: 6px; margin-bottom: 4px; position: relative;
         border-bottom: none;
     }
     .rc-header::after { display: none; }
     .report-logo, .rc-logo-placeholder {
-        width: 88px; height: 88px; object-fit: contain; flex-shrink: 0; border-radius: 8px;
+        width: 95px; height: 95px; object-fit: contain; flex-shrink: 0; border-radius: 8px;
     }
     .rc-logo-placeholder {
         display: flex; align-items: center; justify-content: center;
@@ -398,7 +398,7 @@
     }
     .rc-schoolinfo .rc-address { font-size: 11pt; font-weight: 600; color: var(--rc-text); margin-bottom: 2px; font-family: 'Times New Roman', Times, serif; }
     .rc-schoolinfo .rc-contact-line { font-size: 11pt; color: #444; font-weight: 500; font-family: 'Times New Roman', Times, serif; margin: 0; }
-    .rc-logo-spacer { width: 88px; flex-shrink: 0; }
+    .rc-logo-spacer { width: 95px; flex-shrink: 0; }
 
     /* Banner */
     .rc-banner {

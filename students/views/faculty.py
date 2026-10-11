@@ -81,6 +81,57 @@ from ..security import (
 # SECTION 8 — COMMENTS VIEW
 # ==============================================================================
 
+def resolve_exam_type_name(school, year, term, assessment, section=None):
+    """Canonical ``exam_type`` for ClassTeacherMasterComment / SchoolHeadteacherComment.
+
+    Marks, ExamSummary and every report-card reader key comments on the Exam's
+    real name (``'Opener Assessment'``). Request params can arrive as a slug
+    (``'opener'``) or a shortened label (``'Opener'``), and writing those
+    straight through creates a row no reader ever matches — which is how an
+    ``'End of Term'`` comment ended up sitting next to the
+    ``'End of Term Assessment'`` one nobody could load.
+    """
+    from ..models import Exam
+    from .constants import ASSESSMENT_SLUG_MAP
+
+    raw = (assessment or '').strip()
+    if not raw:
+        return raw
+
+    base = Exam.all_objects.filter(school=school, is_deleted=False)
+    if year:
+        base = base.filter(year=year)
+    if term:
+        base = base.filter(term=term)
+
+    def _first(qs):
+        return qs.order_by('-id').values_list('name', flat=True).first()
+
+    exact = _first(base.filter(name=raw))
+    if exact:
+        return exact
+
+    slug = (
+        ASSESSMENT_SLUG_MAP.get(raw)
+        or ASSESSMENT_SLUG_MAP.get(ASSESSMENT_MAP.get(raw, raw), raw)
+    )
+    label = ASSESSMENT_MAP.get(slug, raw)
+
+    scoped = base.filter(school_section=section) if section else base
+    match = (
+        _first(scoped.filter(name__istartswith=label))
+        or _first(base.filter(name__istartswith=label))
+        # Nothing in this year/term yet (e.g. a comment written before the
+        # End-of-Term exam existed). Readers match on Exam.name exactly, so a
+        # shortened label would silently never be found again.
+        or _first(
+            Exam.all_objects.filter(school=school, is_deleted=False)
+            .filter(name__istartswith=label)
+        )
+    )
+    return match or ASSESSMENT_MAP.get(raw, raw)
+
+
 @login_required(login_url='login')
 def manage_master_comments(request):
     """
@@ -98,7 +149,11 @@ def manage_master_comments(request):
     grade      = request.GET.get('grade')
     stream     = request.GET.get('stream')
     assessment = request.GET.get('assessment', 'opener')
-    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
+    from .constants import section_for_class
+    _cmt_section, _cmt_sub = section_for_class(grade) if grade else (None, None)
+    db_assessment = resolve_exam_type_name(
+        school, year, term, assessment, section=_cmt_section,
+    )
 
     section = get_request_school_section(request) or 'JSS'
     is_lower_primary = section == 'LOWER_PRIMARY'
@@ -160,7 +215,6 @@ def teacher_load_comments(request):
     Pre-populated with the class teacher's grade/stream. Posts to manage_master_comments.
     """
     from ..models import ClassTeacherMasterComment
-    from .constants import ASSESSMENT_MAP
 
     school = get_request_school(request)
     if not school:
@@ -182,24 +236,28 @@ def teacher_load_comments(request):
     if exam_id:
         try:
             from ..models import Exam
-            from .constants import ASSESSMENT_SLUG_MAP
             exam_obj = Exam.all_objects.get(id=exam_id)
             year = str(exam_obj.year)
             term = exam_obj.term
-            # Convert display name to slug (e.g. "Mid Term Assessment" -> "mid")
-            exam_display = exam_obj.name.replace(' Assessment', '').strip()
-            assessment = ASSESSMENT_SLUG_MAP.get(exam_display, exam_display)
+            # Comments are keyed on the Exam's real name. Slugifying it here
+            # ('Opener Assessment' -> 'Opener') produced a key the report card
+            # never queries, so the saved comment never showed up.
+            assessment = exam_obj.name
         except Exam.DoesNotExist:
             return HttpResponse('<div style="padding:20px;color:#94a3b8;">Exam not found.</div>')
 
     if not (year and term and assessment):
         return HttpResponse('<div style="padding:20px;color:#94a3b8;">Please select an exam first to load the comment form.</div>')
 
-    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
-
     section = get_request_school_section(request) or 'JSS'
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
+
+    from .constants import section_for_class
+    _cmt_section, _cmt_sub = section_for_class(ct_grade) if ct_grade else (None, None)
+    db_assessment = resolve_exam_type_name(
+        school, year, term, assessment, section=_cmt_section,
+    )
 
     comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
         school=school, year=year, term=term, grade=ct_grade, stream=ct_stream, exam_type=db_assessment,
@@ -223,9 +281,8 @@ def teacher_load_comments(request):
 @login_required(login_url='login')
 @never_cache
 def teacher_class_comments(request):
-    """Class Comments page — class teachers only. Auto-loads the latest exam and pre-fills saved comments."""
+    """Class Comments page - class teachers only. Auto-loads the latest exam and pre-fills saved comments."""
     from ..models import Exam, ClassTeacherMasterComment
-    from .constants import ASSESSMENT_MAP, ASSESSMENT_SLUG_MAP
 
     school = get_request_school(request)
     if not school:
@@ -243,8 +300,14 @@ def teacher_class_comments(request):
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
 
-    # Auto-find the latest exam for this school
-    latest_exam = Exam.all_objects.filter(school=school, is_deleted=False).order_by('-year', 'term', 'name').first()
+    # Auto-find the latest exam for this school. Newest year, then newest
+    # term, then newest row — the old `'-year', 'term'` ordering kept
+    # ascending on term, so it opened the *earliest* exam of the year.
+    latest_exam = (
+        Exam.all_objects.filter(school=school, is_deleted=False)
+        .order_by('-year', '-term', '-id')
+        .first()
+    )
 
     comment_obj = None
     exam_id = ''
@@ -257,29 +320,47 @@ def teacher_class_comments(request):
         exam_id = str(latest_exam.id)
         year = str(latest_exam.year)
         term = latest_exam.term
-        exam_display = latest_exam.name.replace(' Assessment', '').strip()
-        assessment = ASSESSMENT_SLUG_MAP.get(exam_display, exam_display)
-        assessment_display = ASSESSMENT_MAP.get(assessment, assessment)
+        # Comments are keyed on the Exam's real name — the same string
+        # Mark.exam_type / ExamSummary.exam_name and every report-card reader
+        # use. Slugifying it produced 'Opener' / 'End of Term' rows that were
+        # never matched again.
+        assessment = latest_exam.name
+        assessment_display = latest_exam.name
 
-    # Find the most recently saved comment for this teacher's class
-    existing_comment = ClassTeacherMasterComment.objects.filter(
-        school=school, grade=ct_grade, stream=ct_stream
-    ).order_by('-last_modified').first()
+    # Prefer the comment for the exam we just resolved, then the most recently
+    # edited one so older records stay reachable.
+    existing_comment = None
+    if assessment_display:
+        existing_comment = ClassTeacherMasterComment.objects.filter(
+            school=school, grade=ct_grade, stream=ct_stream,
+            year=year, term=term, exam_type=assessment_display,
+        ).order_by('-last_modified').first()
+    if not existing_comment:
+        existing_comment = ClassTeacherMasterComment.objects.filter(
+            school=school, grade=ct_grade, stream=ct_stream
+        ).order_by('-last_modified').first()
 
-    if existing_comment:
+    matches_current_exam = bool(
+        existing_comment
+        and existing_comment.year == year
+        and existing_comment.term == term
+        and existing_comment.exam_type == assessment_display
+    )
+
+    if matches_current_exam:
         comment_obj = existing_comment
-        # Use the saved comment's year/term/exam so form submits to the right record
-        year = existing_comment.year
-        term = existing_comment.term
-        assessment_display = existing_comment.exam_type
-        reverse_map = {v: k for k, v in ASSESSMENT_MAP.items()}
-        assessment = reverse_map.get(assessment_display, assessment)
     elif latest_exam:
-        # No saved comment, create blank
+        # No saved comment for the current exam — open a blank one.
         comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
             school=school, year=year, term=term, grade=ct_grade, stream=ct_stream, exam_type=assessment_display,
             defaults={'school_section': 'PRIMARY' if is_primary else 'JSS'},
         )
+    elif existing_comment:
+        comment_obj = existing_comment
+        year = existing_comment.year
+        term = existing_comment.term
+        assessment_display = existing_comment.exam_type
+        assessment = existing_comment.exam_type
 
     return render(request, 'students/teacher_class_comments.html', {
         'selected_grade': ct_grade,
@@ -312,11 +393,14 @@ def manage_headteacher_comments(request):
     year       = request.GET.get('year')
     term       = request.GET.get('term')
     assessment = request.GET.get('assessment', 'opener')
-    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
-
     section = get_request_school_section(request) or 'JSS'
     is_lower_primary = section == 'LOWER_PRIMARY'
     is_primary = section == 'PRIMARY' or is_lower_primary
+
+    db_assessment = resolve_exam_type_name(
+        school, year, term, assessment,
+        section='PRIMARY' if is_primary else 'JSS',
+    )
 
     comment_obj, _ = SchoolHeadteacherComment.objects.get_or_create(
         school=school, year=year, term=term, exam_type=db_assessment,

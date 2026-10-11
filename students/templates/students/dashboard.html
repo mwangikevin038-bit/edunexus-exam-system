@@ -89,24 +89,30 @@
     .empty-events-text{font-size:13px;color:#94a3b8;margin:0;font-style:italic}
 
     .section-header-title{padding-top:24px;font-size:16px;font-weight:700;color:#1e293b}
-    .performance-analysis-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:16px 0;width:100%}
-    .analysis-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:transform .2s,box-shadow .2s;border-top:3px solid}
+    .performance-analysis-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;padding:16px 0;width:100%}
+    .analysis-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;display:flex;flex-direction:column;gap:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);transition:transform .2s,box-shadow .2s}
     .analysis-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
-    .analysis-card-header{padding:20px;border-bottom:1px solid #f1f5f9;display:flex;flex-direction:column;gap:4px}
-    .class-level-title{font-size:18px;font-weight:800;color:#1e293b;margin:0;letter-spacing:-.02em}
-    .exam-period-label{font-size:10px;font-weight:700;color:#64748b;letter-spacing:.05em;text-transform:uppercase}
-    .metrics-matrix-subgrid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #f1f5f9}
-    .metric-cell{padding:16px 20px;display:flex;flex-direction:column;gap:6px}
-    .cell-label{font-size:12px;font-weight:500;color:#94a3b8}
-    .cell-value-group{display:flex;align-items:center;gap:8px}
-    .cell-number{font-size:16px;font-weight:700;color:#1e293b}
-    .cell-number.grade-txt{color:#334155}
-    .btn-view-analysis{width:100%;padding:16px;border:none;background-color:#4CAF50;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;border-radius:0 0 12px 12px}
+    .analysis-card-header{display:flex;flex-direction:column;gap:4px}
+    .class-level-title{font-size:19px;font-weight:700;color:#1e293b;margin:0;letter-spacing:-.02em}
+    .exam-period-label{font-size:14px;font-weight:500;color:#64748b;letter-spacing:0;text-transform:uppercase}
+    .metrics-matrix-subgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+    .metric-cell{background:#f1f5f9;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px}
+    .cell-label-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px}
+    .cell-label{font-size:14px;font-weight:500;color:#1f2937;min-width:0}
+    .cell-label-row .cell-label{flex:0 1 33%}
+    .dev-badge{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;background:#e5e7eb;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:600;color:#334155;line-height:1.2;white-space:nowrap}
+    .dev-badge .dev-arrow.up{color:#16A34A}
+    .dev-badge .dev-arrow.down{color:#DC2626}
+    .cell-number{font-size:24px;font-weight:700;color:#4CAF50;line-height:1.1}
+    .btn-view-analysis{width:100%;padding:13px;border:none;background-color:#4CAF50;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;border-radius:8px}
     .btn-view-analysis:hover{opacity:.9}
 
     .global-workspace-footer{width:100%;padding:24px 16px;margin-top:16px;border-top:1px solid #f1f5f9}
     .footer-copyright-note{font-size:13px;color:#94a3b8;font-weight:500;margin:0}
 
+    @media (max-width:1199px){
+        .performance-analysis-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
     @media (max-width:1023px){
         .dashboard-master-grid-60-40{grid-template-columns:1fr}
         .performance-analysis-grid{grid-template-columns:repeat(2,1fr)}
@@ -324,65 +330,53 @@
 
     <div class="performance-analysis-grid">
         {% for card in grade_performance_cards %}
-        <div class="analysis-card" style="border-top:3px solid {{ card.accent }}">
-            <div class="analysis-card-header" style="background:{{ card.bg }};border-bottom-color:{{ card.border }}">
-                <h4 class="class-level-title" style="color:{{ card.text }}">{{ card.label }}</h4>
-                <span class="exam-period-label">{{ exam_label|default:"No Exam Data" }}</span>
+        <div class="analysis-card">
+            <div class="analysis-card-header">
+                <h4 class="class-level-title">{{ card.label }}</h4>
+                <span class="exam-period-label">{{ card.exam_label|default:"No Exam Data" }}</span>
             </div>
             <div class="metrics-matrix-subgrid">
                 <div class="metric-cell">
-                    <span class="cell-label">Mean Points</span>
-                    <div class="cell-value-group">
-                        <span class="cell-number">{{ card.mean_points|floatformat:4 }}</span>
+                    <div class="cell-label-row">
+                        <span class="cell-label">Mean Points</span>
                         {% if card.points_dev is not None %}
                             {% if card.points_dev > 0 %}
-                            <span style="display:inline-flex;align-items:center;gap:3px;color:#16A34A;font-weight:700;font-size:12px;">
-                                +{{ card.points_dev|floatformat:3 }}
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;"><path d="M 3 21 L 14 21 L 14 8" stroke="#16A34A" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/><polygon points="7,9 14,2 21,9" fill="#16A34A"/></svg>
-                            </span>
+                            <span class="dev-badge">{{ card.points_dev|floatformat:3 }} <span class="dev-arrow up">↑</span></span>
                             {% elif card.points_dev < 0 %}
-                            <span style="display:inline-flex;align-items:center;gap:3px;color:#DC2626;font-weight:700;font-size:12px;">
-                                {{ card.points_dev|floatformat:3 }}
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;"><path d="M 3 3 L 14 3 L 14 16" stroke="#DC2626" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/><polygon points="7,15 14,22 21,15" fill="#DC2626"/></svg>
-                            </span>
+                            <span class="dev-badge">{{ card.points_dev|floatformat:3 }} <span class="dev-arrow down">↓</span></span>
                             {% else %}
-                            <span style="color:#9CA3AF;font-weight:500;font-size:12px;">0.0</span>
+                            <span style="color:#9CA3AF;font-weight:600;font-size:13px;">0.0</span>
                             {% endif %}
                         {% endif %}
                     </div>
+                    <span class="cell-number">{% if card.student_count %}{{ card.mean_points|floatformat:4 }}{% else %}&mdash;{% endif %}</span>
                 </div>
                 <div class="metric-cell">
-                    <span class="cell-label">Mean Marks</span>
-                    <div class="cell-value-group">
-                        <span class="cell-number">{{ card.mean_score|floatformat:2 }}%</span>
+                    <div class="cell-label-row">
+                        <span class="cell-label">Mean Marks</span>
                         {% if card.score_dev is not None %}
                             {% if card.score_dev > 0 %}
-                            <span style="display:inline-flex;align-items:center;gap:3px;color:#16A34A;font-weight:700;font-size:12px;">
-                                +{{ card.score_dev|floatformat:2 }}
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;"><path d="M 3 21 L 14 21 L 14 8" stroke="#16A34A" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/><polygon points="7,9 14,2 21,9" fill="#16A34A"/></svg>
-                            </span>
+                            <span class="dev-badge">{{ card.score_dev|floatformat:3 }} <span class="dev-arrow up">↑</span></span>
                             {% elif card.score_dev < 0 %}
-                            <span style="display:inline-flex;align-items:center;gap:3px;color:#DC2626;font-weight:700;font-size:12px;">
-                                {{ card.score_dev|floatformat:2 }}
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;"><path d="M 3 3 L 14 3 L 14 16" stroke="#DC2626" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/><polygon points="7,15 14,22 21,15" fill="#DC2626"/></svg>
-                            </span>
+                            <span class="dev-badge">{{ card.score_dev|floatformat:3 }} <span class="dev-arrow down">↓</span></span>
                             {% else %}
-                            <span style="color:#9CA3AF;font-weight:500;font-size:12px;">0.0</span>
+                            <span style="color:#9CA3AF;font-weight:600;font-size:13px;">0.0</span>
                             {% endif %}
                         {% endif %}
                     </div>
+                    <span class="cell-number">{% if card.student_count %}{{ card.mean_score|floatformat:2 }}%{% else %}&mdash;{% endif %}</span>
                 </div>
                 <div class="metric-cell">
                     <span class="cell-label">Mean Grade</span>
-                    <span class="cell-number grade-txt">{{ card.mean_grade }}</span>
+                    <span class="cell-number">{{ card.mean_grade }}</span>
                 </div>
                 <div class="metric-cell">
                     <span class="cell-label">Students</span>
-                    <span class="cell-number" style="color:{{ card.accent }}">{{ card.student_count }}</span>
+                    <span class="cell-number">{{ card.student_count }}</span>
                 </div>
             </div>
             {% if card.exam_id %}
-            <button class="btn-view-analysis" style="background-color:{{ card.accent }};color:#fff;border-top-color:{{ card.border }}" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
+            <button class="btn-view-analysis" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
                 View Analysis
             </button>
             {% endif %}
@@ -559,12 +553,12 @@
                 <div class="dash-perf-card" style="border-top: 3px solid {{ card.accent }}">
                     <div class="dash-perf-header" style="background:{{ card.bg }}">
                         <span class="dash-perf-grade" style="color:{{ card.text }}">{{ card.label }}</span>
-                        <span class="dash-perf-exam">{{ exam_label|default:"No Data" }}</span>
+                        <span class="dash-perf-exam">{{ card.exam_label|default:"No Data" }}</span>
                     </div>
                     <div class="dash-perf-grid">
                         <div class="dash-perf-cell">
                             <span class="dash-perf-cell-label">Mean Points</span>
-                            <span class="dash-perf-cell-value">{{ card.mean_points|floatformat:4 }}</span>
+                            <span class="dash-perf-cell-value">{% if card.student_count %}{{ card.mean_points|floatformat:4 }}{% else %}&mdash;{% endif %}</span>
                             {% if card.points_dev is not None %}
                                 {% if card.points_dev > 0 %}
                                 <span class="dash-perf-dev up">+{{ card.points_dev|floatformat:3 }}</span>
@@ -575,7 +569,7 @@
                         </div>
                         <div class="dash-perf-cell">
                             <span class="dash-perf-cell-label">Mean Marks</span>
-                            <span class="dash-perf-cell-value">{{ card.mean_score|floatformat:2 }}%</span>
+                            <span class="dash-perf-cell-value">{% if card.student_count %}{{ card.mean_score|floatformat:2 }}%{% else %}&mdash;{% endif %}</span>
                             {% if card.score_dev is not None %}
                                 {% if card.score_dev > 0 %}
                                 <span class="dash-perf-dev up">+{{ card.score_dev|floatformat:2 }}</span>

@@ -1,15 +1,15 @@
-/* ═══════════════════════════════════════════════════════════════
-   EDUNEXUS — Shared Print / PDF CSS (Single Source of Truth)
+﻿/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   EDUNEXUS â€” Shared Print / PDF CSS (Single Source of Truth)
    Used by Playwright headless Chrome for pixel-perfect PDFs.
-   ═══════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Font Face (Google Fonts CDN for Playwright) ──────────── */
+/* â”€â”€ Font Face (Google Fonts CDN for Playwright) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-/* ── @page Rules ──────────────────────────────────────────── */
+/* â”€â”€ @page Rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @page {
     size: A4 portrait;
-    margin: 5mm 5mm 8mm 5mm;
+    margin: 7mm 5mm 18mm 5mm;
 }
 @page {
     @bottom-center {
@@ -63,7 +63,7 @@
     }
 }
 
-/* ── Global Reset ─────────────────────────────────────────── */
+/* â”€â”€ Global Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -81,7 +81,7 @@ html, body {
     width: 100% !important;
 }
 
-/* ── Hide Screen-Only Chrome ──────────────────────────────── */
+/* â”€â”€ Hide Screen-Only Chrome â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sidebar, .sidebar-overlay, nav, header, .mobile-topbar,
 .hamburger-btn, .global-loader-overlay, .published-switcher,
 .exam-groups-wrapper, .empty-official-state, .btn-print-action,
@@ -107,7 +107,7 @@ html, body {
     overflow: hidden !important;
 }
 
-/* ── Layout Reset ─────────────────────────────────────────── */
+/* â”€â”€ Layout Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .app-content, .main-content, .container-fluid,
 .analysis-container {
     margin: 0 !important;
@@ -120,9 +120,9 @@ html, body {
     overflow: visible !important;
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    REPORT CARD
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 #reportCardsContainer {
     display: block !important;
@@ -156,7 +156,7 @@ html, body {
     flex-direction: column !important;
     box-sizing: border-box !important;
     flex-shrink: 0 !important;
-    min-height: 283mm !important;
+    min-height: 272mm !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     background: white !important;
@@ -190,16 +190,16 @@ html, body {
     display: flex !important;
     flex-direction: column !important;
     flex: 1 !important;
-    gap: 6px !important;
+    gap: 4px !important;
     justify-content: space-between !important;
 }
 
-/* ── Report Card Header ───────────────────────────────────── */
+/* â”€â”€ Report Card Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rc-header {
     display: flex !important;
     align-items: center !important;
     gap: 10px !important;
-    padding-bottom: 4px !important;
+    padding-bottom: 2px !important;
     margin-bottom: 0 !important;
     position: relative !important;
     border-bottom: none !important;
@@ -208,13 +208,19 @@ html, body {
 .rc-header::after { display: none !important; }
 
 .report-logo, .rc-logo-placeholder {
-    width: 80px !important;
-    height: 80px !important;
+    width: 95px !important;
+    height: 95px !important;
     border-radius: 8px !important;
     object-fit: contain !important;
     flex-shrink: 0 !important;
 }
-.rc-logo-spacer { width: 80px !important; flex-shrink: 0 !important; }
+.rc-logo-spacer { width: 95px !important; flex-shrink: 0 !important; }
+/* report-card.css supplies this gradient on screen; the popup/PDF document
+   only loads print-shared.css, so the placeholder must be repainted here. */
+.rc-logo-placeholder {
+    background: linear-gradient(135deg, var(--rc-green-dark, #0F5A35), var(--rc-green, #16A34A)) !important;
+    color: #fff !important;
+}
 
 .rc-schoolinfo {
     flex: 1 !important;
@@ -223,7 +229,8 @@ html, body {
 .rc-schoolinfo h1 {
     font-family: 'Times New Roman', Times, serif !important;
     font-size: 16pt !important;
-    font-weight: 900 !important;
+    font-weight: 800 !important;
+    color: var(--section-accent, #305CDE) !important;
     margin: 0 0 4px !important;
     text-transform: uppercase !important;
     letter-spacing: 0.04em !important;
@@ -242,7 +249,7 @@ html, body {
     margin: 0 !important;
 }
 
-/* ── Banner ────────────────────────────────────────────────── */
+/* â”€â”€ Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rc-banner {
     background: var(--section-accent) !important;
     color: #fff !important;
@@ -259,7 +266,7 @@ html, body {
     -webkit-box-decoration-break: clone !important;
 }
 
-/* ── Top Grid: Student + Chart ─────────────────────────────── */
+/* â”€â”€ Top Grid: Student + Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rc-top-grid {
     display: flex !important;
     flex-direction: row !important;
@@ -315,7 +322,7 @@ html, body {
 }
 .rc-label { font-weight: 800 !important; text-transform: uppercase !important; }
 
-/* ── Chart ─────────────────────────────────────────────────── */
+/* â”€â”€ Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rc-chart-title {
     font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif !important;
     color: #64748B !important;
@@ -339,7 +346,7 @@ html, body {
 }
 .rc-chart-canvas-wrap {
     /* Fixed width so the chart is laid out at the same size in every
-       standalone context (print popup window, server-side PDF render) —
+       standalone context (print popup window, server-side PDF render) â€”
        otherwise Chart.js initialises at the container's screen width and
        the download differs from the print preview. */
     width: 531px !important;
@@ -380,7 +387,7 @@ html, body {
     object-fit: contain !important;
 }
 
-/* ── Stats Grid ────────────────────────────────────────────── */
+/* â”€â”€ Stats Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rc-stats {
     display: grid !important;
     grid-template-columns: repeat(5, 1fr) !important;
@@ -419,7 +426,7 @@ html, body {
     color: #94A3B8 !important;
 }
 
-/* ── Subjects Table ────────────────────────────────────────── */
+/* â”€â”€ Subjects Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .table-scroll {
     width: 100% !important;
     overflow: visible !important;
@@ -469,7 +476,7 @@ html, body {
 }
 .rc-table-cell-dev { padding: 3px 6px !important; border-bottom: none !important; }
 
-/* ── Comments Section ──────────────────────────────────────── */
+/* â”€â”€ Comments Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rc-comments-header {
     background: var(--section-accent) !important;
     color: #fff !important;
@@ -541,7 +548,7 @@ html, body {
     margin-top: 2px !important;
 }
 
-/* ── Grade Descriptors ─────────────────────────────────────── */
+/* â”€â”€ Grade Descriptors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rc-descriptors {
     margin-top: 0 !important;
     width: 100% !important;
@@ -584,7 +591,7 @@ html, body {
     color: #1E293B !important;
 }
 
-/* ── Footer Dates ──────────────────────────────────────────── */
+/* â”€â”€ Footer Dates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .footer-dates {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
@@ -612,9 +619,9 @@ html, body {
     font-size: 9pt !important;
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    BROADSHEET / RESULTS LIST
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .broadsheet-document {
     width: 100% !important;
@@ -627,7 +634,7 @@ html, body {
     overflow: visible !important;
 }
 
-/* ── Section-aware print accents (JSS / PRIMARY / LOWER) ── */
+/* â”€â”€ Section-aware print accents (JSS / PRIMARY / LOWER) â”€â”€ */
 .broadsheet-document.bs-section-jss,
 .bs-section-jss {
     --section-accent: #305CDE !important;
@@ -690,7 +697,7 @@ html, body {
     padding: 0 !important;
 }
 
-/* ── Branding Header (matches browser broadsheet.css) ────── */
+/* â”€â”€ Branding Header (matches browser broadsheet.css) â”€â”€â”€â”€â”€â”€ */
 .bs-header-block {
     display: block !important;
     padding: 14px 20px !important;
@@ -791,7 +798,7 @@ html, body {
     box-sizing: border-box !important;
 }
 
-/* ── Broadsheet Table ──────────────────────────────────────── */
+/* â”€â”€ Broadsheet Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .table-analysis {
     display: table !important;
     width: 100% !important;
@@ -857,7 +864,7 @@ html, body {
 .table-analysis tbody tr td.plv-col { background: #F4C400 !important; }
 .table-analysis tbody tr td.lv-col { background: #EDF4FC !important; }
 
-/* ── Summary Tables ────────────────────────────────────────── */
+/* â”€â”€ Summary Tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .analysis-page-container {
     break-before: page !important;
     page-break-before: always !important;
@@ -929,13 +936,13 @@ html, body {
 .badge-ae { background-color: #ffedd5 !important; color: #9a3412 !important; font-weight: 700 !important; }
 .badge-be { background-color: #fee2e2 !important; color: #991b1b !important; font-weight: 700 !important; }
 
-/* ═══════════════════════════════════════════════════════════
-   CLASS LIST — must match browser print CSS exactly
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   CLASS LIST â€” must match browser print CSS exactly
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .pdf-sheet { padding: 0 !important; width: 100% !important; }
 
-/* ── Heading — mirrors merit list .bs-header-block ─────────────── */
+/* â”€â”€ Heading â€” mirrors merit list .bs-header-block â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .pdf-heading {
     display: flex !important;
     align-items: center !important;
@@ -1009,7 +1016,7 @@ html, body {
     margin-right: 4px !important;
 }
 
-/* ── Table — matches print register-table exactly ────────────── */
+/* â”€â”€ Table â€” matches print register-table exactly â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .register-table,
 .register-table *,
 .register-table *::before,
@@ -1073,14 +1080,14 @@ html, body {
     font-size: 12pt !important;
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    ANALYSIS REPORT
-   ═══════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .ar-page { page-break-before: always !important; }
 .ar-page:first-child { page-break-before: auto !important; }
 
-/* ── Transitions Off ───────────────────────────────────────── */
+/* â”€â”€ Transitions Off â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 * {
     transition: none !important;
     animation: none !important;

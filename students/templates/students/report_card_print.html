@@ -1,13 +1,13 @@
-{% load static %}<!DOCTYPE html>
+﻿{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="{% static 'js/viewport_fit.js' %}?v=1"></script>
 <script src="{% static 'js/chart.min.js' %}"></script>
-<title>{% if student_marks_list.0 %}{{ student_marks_list.0.student.name }} — {{ selected_assessment|default:'' }} {{ selected_year|default:'' }}{% else %}Report Card{% endif %}</title>
+<title>{% if student_marks_list.0 %}{{ student_marks_list.0.student.name }} â€” {{ selected_assessment|default:'' }} {{ selected_year|default:'' }}{% else %}Report Card{% endif %}</title>
 <style>
-@page { size: A4 portrait; margin: 5mm 5mm 8mm 5mm; }
+@page { size: A4 portrait; margin: 7mm 5mm 18mm 5mm; }
 @page { @bottom-center { content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026"; font-family: "Times New Roman", Times, serif; font-size: 7pt; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4pt; border-top: 0.5pt solid #cbd5e1; width: 70%; padding-top: 3pt; } @bottom-right { content: "Page " counter(page) " of " counter(pages); font-family: "Times New Roman", Times, serif; font-size: 7pt; font-weight: 700; color: #94a3b8; width: 28%; white-space: nowrap; } }
 
 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; box-sizing: border-box; }
@@ -34,7 +34,10 @@ html, body {
     color: #1C1C1E !important;
     display: flex !important;
     flex-direction: column !important;
-    min-height: 283mm !important;
+    /* 264mm + .18in/.20in vertical padding = 271.4mm, just under the 272mm
+       page content box (297 - 7 - 18). At 272mm the card equalled the box
+       exactly and Chromium/WeasyPrint split it onto a second page. */
+    min-height: 264mm !important;
     page-break-inside: avoid !important;
     background: white;
 }
@@ -61,22 +64,25 @@ html, body {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
-    gap: 6px;
+    gap: 2px;
     justify-content: space-between;
 }
 
 /* Header */
 .rc-header {
     width: 100%;
-    padding-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 2px;
     margin-bottom: 0;
     border-bottom: none;
-    overflow: hidden;
 }
-.report-logo, .rc-logo-placeholder { width: 80px; height: 80px; float: left; margin-right: 14px; border-radius: 8px; object-fit: contain; }
-.rc-logo-spacer { width: 80px; float: left; margin-right: 14px; }
-.rc-schoolinfo { text-align: center; margin: 0 100px; }
-.rc-schoolinfo h1 { font-family: 'Times New Roman', Times, serif; font-size: 16pt; font-weight: 900; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.1; }
+.report-logo, .rc-logo-placeholder { width: 95px; height: 95px; flex-shrink: 0; border-radius: 8px; object-fit: contain; }
+.rc-logo-placeholder { background: linear-gradient(135deg, var(--rc-green-dark, #0F5A35), var(--rc-green, #16A34A)); color: #fff; }
+.rc-logo-spacer { width: 95px; flex-shrink: 0; }
+.rc-schoolinfo { flex: 1; text-align: center; }
+.rc-schoolinfo h1 { font-family: 'Times New Roman', Times, serif; font-size: 16pt; font-weight: 800; color: {{ section_accent|default:'#305CDE' }}; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.1; }
 .rc-schoolinfo .rc-address { font-size: 10pt; font-weight: 600; margin-bottom: 2px; }
 .rc-schoolinfo .rc-contact-line { font-size: 10pt; font-weight: 500; margin: 0; }
 
@@ -118,13 +124,13 @@ html, body {
 
     .rc-chart-title { font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; color: #64748B; font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
     .rc-chart-title::before { content: ''; display: inline-block; width: 14px; height: 3px; background: #00C853; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
-    .rc-chart-canvas-wrap { height: 56mm; max-height: 56mm; overflow: hidden; position: relative; z-index: 2; }
-    .rc-chart-canvas-wrap canvas { display: block; width: 100%; height: 100%; max-height: 56mm; }
-    .rc-chart-svg { width: 100%; margin: 3px 0; }
-.rc-chart-svg svg { width: 100%; height: auto; max-height: 56mm; display: block; }
-.rc-chart-img { width: 100%; max-height: 56mm; object-fit: contain; }
+.rc-chart-canvas-wrap { height: 48mm; max-height: 48mm; overflow: hidden; position: relative; z-index: 2; }
+.rc-chart-canvas-wrap canvas { display: block; width: 100%; height: 100%; max-height: 48mm; }
+.rc-chart-svg { width: 100%; margin: 3px 0; }
+.rc-chart-svg svg { width: 100%; height: auto; max-height: 48mm; display: block; }
+.rc-chart-img { width: 100%; max-height: 48mm; object-fit: contain; }
 
-/* Stats (flex row — content uses .rc-stat divs) */
+/* Stats (flex row â€” content uses .rc-stat divs) */
 .rc-stats {
     width: 100%;
     display: flex;
@@ -174,7 +180,7 @@ html, body {
 }
 .rc-table thead th:first-child { text-align: left; }
 .rc-table tbody tr { page-break-inside: avoid; }
-.rc-table tbody td { padding: 3px 7px; border: 1px solid #000; font-size: 11pt; color: #1C1C1E; vertical-align: middle; }
+.rc-table tbody td { padding: 2px 6px; border: 1px solid #000; font-size: 11pt; color: #1C1C1E; vertical-align: middle; }
 .rc-subj { font-weight: 700; text-align: left; white-space: nowrap; }
 .rc-center { text-align: center; }
 .rc-grade { font-weight: 800; color: #2563EB; }
@@ -209,21 +215,22 @@ html, body {
     background: #fff;
     display: flex;
     flex-direction: column;
-    min-height: 30mm;
+    min-height: 26mm;
 }
 .rc-remark-title { font-size: 11pt; font-weight: 800; color: #1E293B; margin-bottom: 6px; }
 .rc-remark-text { font-size: 11pt; font-weight: 400; color: #334155; line-height: 1.4; margin-bottom: 6px; flex-grow: 1; }
 .rc-signature { font-size: 9pt; font-weight: 600; color: #64748B; border-top: 1px dashed #CBD5E1; padding-top: 4px; margin-top: auto; }
+.rc-signature-img { display: block; height: 36px; max-width: 160px; object-fit: contain; margin-top: 2px; }
 
 /* Descriptors */
 .rc-descriptors { margin-top: 0; width: 100%; }
 .rc-descriptors-title { font-size: 9pt; font-weight: 800; color: #1E293B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 2px solid {{ section_accent|default:'#305CDE' }}; }
 .rc-descriptors-table { width: 100%; border-collapse: collapse; }
-.rc-descriptors-table th, .rc-descriptors-table td { border: 1px solid #000; padding: 5px 8px; font-size: 9pt; text-align: center; }
+.rc-descriptors-table th, .rc-descriptors-table td { border: 1px solid #000; padding: 3px 6px; font-size: 9pt; text-align: center; }
 .rc-descriptors-table th { background: #E9ECF0; color: #1E293B; font-weight: 800; text-transform: uppercase; }
 .rc-descriptors-table td:first-child, .rc-descriptors-table th:first-child { text-align: left; font-weight: 700; background: #F8FAFC; }
 
-/* Footer dates (flex row — content uses .date-box divs) */
+/* Footer dates (flex row â€” content uses .date-box divs) */
 .footer-dates { width: 100%; margin-top: 0; display: flex; gap: 8px; }
 .footer-dates .date-box { flex: 1; }
 .date-box { display: block; padding: 10px 12px; border: 1px solid #E2E8F0; font-size: 11pt; font-weight: 700; color: #1E293B; overflow: hidden; }

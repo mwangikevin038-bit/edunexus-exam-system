@@ -1,4 +1,4 @@
-{% extends 'students/base.html' %}
+﻿{% extends 'students/base.html' %}
 {% load static %}
 
 {% block extra_head %}{% endblock %}
@@ -47,14 +47,14 @@
 <link rel="stylesheet" href="{% static 'css/report-card.css' %}?v=4">
 <script src="{% static 'js/report_card_fit.js' %}?v=6"></script>
 <style>
-    /* Dynamic width — uses Django template tag, can't go in static CSS */
+    /* Dynamic width â€” uses Django template tag, can't go in static CSS */
     .report-card { width: {% if view_mode == 'individual' %}7.9in{% else %}7.4in{% endif %}; }
 
-    /* ═══════════════════════════════════════════════════════════
-       PRINT — Inline rules that fire when the user hits Ctrl+P
-       ═══════════════════════════════════════════════════════════ */
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       PRINT â€” Inline rules that fire when the user hits Ctrl+P
+       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     @media print {
-        @page { size: A4 portrait; margin: 5mm 5mm 8mm 5mm; }
+        @page { size: A4 portrait; margin: 7mm 5mm 18mm 5mm; }
         @page { @bottom-center { content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026"; font-family: "Times New Roman", Times, serif; font-size: 7pt; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4pt; border-top: 0.5pt solid #cbd5e1; width: 70%; padding-top: 3pt; } @bottom-right { content: none; } }
 
         * {
@@ -142,17 +142,17 @@
             display: flex !important;
             align-items: center !important;
             gap: 10px !important;
-            padding-bottom: 4px !important;
+            padding-bottom: 2px !important;
             margin-bottom: 2px !important;
             position: relative !important;
             border-bottom: none !important;
             width: 100% !important;
         }
         #reportCardsContainer .rc-header::after { display: none !important; }
-        #reportCardsContainer .report-logo, #reportCardsContainer .rc-logo-placeholder { width: 80px !important; height: 80px !important; border-radius: 8px !important; object-fit: contain !important; flex-shrink: 0 !important; }
-        #reportCardsContainer .rc-logo-spacer { width: 80px !important; flex-shrink: 0 !important; }
-        .rc-schoolinfo { text-align: center !important; margin: 0 100px !important; }
-        .rc-schoolinfo h1 { font-size: 16pt !important; font-weight: 900 !important; margin: 0 0 4px !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; line-height: 1.1 !important; }
+        #reportCardsContainer .report-logo, #reportCardsContainer .rc-logo-placeholder { width: 95px !important; height: 95px !important; border-radius: 8px !important; object-fit: contain !important; flex-shrink: 0 !important; }
+        #reportCardsContainer .rc-logo-spacer { width: 95px !important; flex-shrink: 0 !important; }
+        .rc-schoolinfo { flex: 1 !important; text-align: center !important; }
+        .rc-schoolinfo h1 { font-size: 16pt !important; font-weight: 800 !important; color: var(--section-accent, #305CDE) !important; margin: 0 0 4px !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; line-height: 1.1 !important; }
         .rc-schoolinfo .rc-address { font-size: 10pt !important; font-weight: 600 !important; margin-bottom: 2px !important; }
         .rc-schoolinfo .rc-contact-line { font-size: 10pt !important; font-weight: 500 !important; margin: 0 !important; }
 
@@ -416,9 +416,9 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
 
 <script>
 (function() {
-    /* ═══════════════════════════════════════════════════════════
-       PRINT HANDLER — Intercept Ctrl+P / Cmd+P → openPrintWindow
-       ═══════════════════════════════════════════════════════════ */
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       PRINT HANDLER â€” Intercept Ctrl+P / Cmd+P â†’ openPrintWindow
+       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
             e.preventDefault();
@@ -439,9 +439,9 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
 </script>
 
 <script>
-    /* ═══════════════════════════════════════════════════════════
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        AJAX POLLING (bulk view only)
-       ═══════════════════════════════════════════════════════════ */
+       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     {% if view_mode == 'bulk' and is_async %}
     var pollUrl = "{% url 'report_card_poll_status' %}";
     var pollParams = "?{{ request.GET.urlencode }}";
@@ -494,9 +494,9 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
     pollStatus();
     {% endif %}
 
-    /* ═══════════════════════════════════════════════════════════
-       REPORT FORMS SWITCHER — Grade → Stream → Exam cascading
-       ═══════════════════════════════════════════════════════════ */
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       REPORT FORMS SWITCHER â€” Grade â†’ Stream â†’ Exam cascading
+       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     (function() {
         var gradeSel = document.getElementById('rcGradeSelect');
         var streamSel = document.getElementById('rcStreamSelect');

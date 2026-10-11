@@ -224,8 +224,8 @@ async def _render_html_to_pdf_async(
         pdf_bytes = await page.pdf(**pdf_kwargs)
         return pdf_bytes
 
-    except Exception as e:
-        logger.error("[pdf_engine] PDF render failed: %s", str(e), exc_info=True)
+    except Exception:
+        logger.exception("[pdf_engine] PDF render failed")
         return None
     finally:
         await context.close()
@@ -315,8 +315,8 @@ async def _render_url_to_pdf_async(
 
         return await page.pdf(**pdf_kwargs)
 
-    except Exception as e:
-        logger.error("[pdf_engine] URL render failed: %s", str(e), exc_info=True)
+    except Exception:
+        logger.exception("[pdf_engine] URL render failed")
         return None
     finally:
         await context.close()

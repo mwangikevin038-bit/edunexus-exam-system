@@ -27,6 +27,7 @@ from .helpers import (
     get_teacher_for_user,
     resolve_class_teacher,
     resolve_class_teachers_for_grade,
+    safe_level,
     safe_pdf_filename,
 )
 from ..models import Exam, Guardian, RemovedStudent, Student
@@ -1497,7 +1498,7 @@ def admin_student_analytics(request, student_id):
                 f'      {dev_tgt_svg} {dev_target:+.0f}'
                 '    </span>'
                 '  </td>'
-                f'  <td style="padding:14px 20px;font-size:13px;color:#0f172a;font-weight:500;">{mk.performance_level or "—"}</td>'
+                f'  <td style="padding:14px 20px;font-size:13px;color:#0f172a;font-weight:500;">{safe_level(mk.performance_level, "—")}</td>'
                 f'  <td style="padding:14px 20px;font-size:13px;color:#475569;font-weight:500;">{stream_rank}</td>'
                 '</tr>'
             )
@@ -2750,7 +2751,7 @@ def teacher_student_analytics(request, student_id):
                 f'      {dev_tgt_svg} {dev_target:+.0f}'
                 '    </span>'
                 '  </td>'
-                f'  <td style="padding:14px 20px;font-size:13px;color:#0f172a;font-weight:500;">{mk.performance_level or "—"}</td>'
+                f'  <td style="padding:14px 20px;font-size:13px;color:#0f172a;font-weight:500;">{safe_level(mk.performance_level, "—")}</td>'
                 f'  <td style="padding:14px 20px;font-size:13px;color:#475569;font-weight:500;">{stream_rank}</td>'
                 '</tr>'
             )
@@ -3145,7 +3146,9 @@ def teacher_report_forms_display(request):
         messages.error(request, "You can only view report cards for your assigned class.")
         return redirect('teacher_report_forms')
 
-    cache_key = get_report_forms_cache_key(school.pk, grade_name, stream_name, exam_id)
+    cache_key = get_report_forms_cache_key(
+        school.pk, grade_name, stream_name, exam_id, is_admin=is_admin_view,
+    )
     cached_context = cache.get(cache_key)
     if cached_context:
         return render(request, 'students/report_card.html', cached_context)
@@ -3160,6 +3163,7 @@ def teacher_report_forms_display(request):
         ctx = build_report_card_context_from_snapshot(
             school, grade_name, stream_name, exam_id,
             is_admin=False,
+            include_chart_svg=False,
         )
     except Exam.DoesNotExist:
         messages.error(request, "Exam not found.")
@@ -3908,6 +3912,8 @@ def api_analysis_data(request):
         'BE1': 'Below Expectations', 'BE2': 'Below Expectations',
         'EE': 'Exceeding Expectations', 'ME': 'Meeting Expectations',
         'AE': 'Approaching Expectations', 'BE': 'Below Expectations',
+        # Legacy sentinel held by older rows — must never render as a grade.
+        'NO CONFIG': '-',
     }
 
     # ── Subject performance ──────────────────────────────────────────────
@@ -4739,7 +4745,9 @@ def report_forms_display(request):
         if view_mode == 'print'
         else 'students/report_card.html'
     )
-    cache_key = get_report_forms_cache_key(school.pk, grade_name, stream_name, exam_id)
+    cache_key = get_report_forms_cache_key(
+        school.pk, grade_name, stream_name, exam_id, is_admin=is_admin_view,
+    )
     if view_mode != 'print':
         cached_context = cache.get(cache_key)
         if cached_context:
@@ -4757,6 +4765,7 @@ def report_forms_display(request):
         ctx = build_report_card_context_from_snapshot(
             school, grade_name, stream_name, exam_id,
             is_admin=is_admin_view,
+            include_chart_svg=False,
         )
     except Exam.DoesNotExist:
         messages.error(request, "Exam not found.")

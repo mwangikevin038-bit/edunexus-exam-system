@@ -585,6 +585,35 @@ def report_card_select(request):
         students = get_students_ordered(grade, stream)
     school = get_request_school(request)
 
+    # Published contexts are MarkSubmission rows — they carry the exam NAME,
+    # not its PK. The bulk-PDF endpoint requires a real Exam id, so resolve
+    # it here (one Exam row per name/term/year/section).
+    selected_exam_id = ""
+    if school and exam_name and term and year and grade:
+        from ..models import Exam
+        from .constants import section_for_class
+
+        try:
+            exam_year = int(year)
+        except (TypeError, ValueError):
+            exam_year = None
+
+        if exam_year is not None:
+            exam_section, exam_sub_section = section_for_class(grade)
+            exam_qs = Exam.all_objects.filter(
+                school=school, name=exam_name, term=term, year=exam_year,
+                is_deleted=False,
+            )
+            if exam_section == 'JSS':
+                exam_qs = exam_qs.filter(school_section='JSS')
+            elif exam_section == 'PRIMARY':
+                exam_qs = exam_qs.filter(
+                    school_section='PRIMARY', sub_section=exam_sub_section,
+                )
+            exam_obj = exam_qs.order_by('id').first()
+            if exam_obj:
+                selected_exam_id = str(exam_obj.id)
+
     sa_filter = dict(school=school, class_name=grade, stream=stream)
     if is_lower_primary:
         sa_filter['school_section'] = 'PRIMARY'
@@ -609,6 +638,7 @@ def report_card_select(request):
         'selected_term':      term,
         'selected_assessment': assessment,
         'selected_exam':      exam_name,
+        'selected_exam_id':   selected_exam_id,
         'selected_context_key': selected_context["context_key"] if selected_context else "",
         'published_contexts': published_contexts,
         'published_subject_count': selected_context["subject_count"] if selected_context else 0,
@@ -723,7 +753,10 @@ def _build_individual_report_context(request, school, student, is_admin_view):
         sub_section=student.sub_section,
     ).first()
 
-    # Grade-wide rank: count summaries with higher total_marks
+    # Grade-wide rank: same scope the summary was built with — this student's
+    # grade (all streams), active learners only. Filtering by section alone
+    # made the denominator school-wide while `summary.grade_rank` stayed
+    # grade-wide, so "position 4/98" was printed for a class of 30.
     grade_summaries = ExamSummary.all_objects.filter(
         school=school,
         year=year,
@@ -731,6 +764,8 @@ def _build_individual_report_context(request, school, student, is_admin_view):
         exam_name=db_assessment,
         school_section=student.school_section,
         sub_section=student.sub_section,
+        student__class_name=student.class_name,
+        student__is_active=True,
     )
 
     # READ-ONLY FALLBACK: If ExamSummary not populated, compute from live marks
@@ -749,12 +784,15 @@ def _build_individual_report_context(request, school, student, is_admin_view):
         total_points = sum(valid_points)
         assessed_subjects = len(valid_scores) if len(valid_scores) > 0 else 1
 
-        # READ-ONLY RANKING ENGINE: Compare this student's totals against all grade peers
+        # READ-ONLY RANKING ENGINE: Compare this student's totals against the
+        # same population the ExamSummary path uses — their grade, active only.
         grade_scores_qs = (
             Mark.all_objects.filter(
                 school=school,
                 year=year, term=term,
                 exam_type=db_assessment, school_section=student.school_section,
+                student__class_name=student.class_name,
+                student__is_active=True,
             )
             .values('student_id')
             .annotate(student_total=Sum('score'))
@@ -799,7 +837,13 @@ def _build_individual_report_context(request, school, student, is_admin_view):
         mark.teacher_name = teacher_map.get(mark.subject.code, '—')
         if is_primary and not mark.is_absent:
             pct = mark.score or 0
-            mark.performance_level, mark.points = _get_primary_performance(pct)
+            # school/section/sub_section must be passed or the primary grade
+            # falls back to the built-in default scale instead of this
+            # school's configured one (admins saw the wrong band / a blank).
+            mark.performance_level, mark.points = _get_primary_performance(
+                pct, school=school, section=student.school_section,
+                sub_section=student.sub_section, subject_id=mark.subject_id,
+            )
 
     # ── Class average per subject (drives the Dev. column + chart) ─────────
     class_subject_avgs = (

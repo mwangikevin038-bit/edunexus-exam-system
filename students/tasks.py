@@ -72,7 +72,7 @@ def process_csv_upload(self, upload_id, school_id, rows_json, section='JSS'):
     try:
         _run_csv_upload(upload_id, school_id, rows_json, section, total)
     except Exception as e:
-        logger.exception("process_csv_upload CRASHED: %s", e)
+        logger.exception("process_csv_upload CRASHED")
         _send_complete(upload_id, {
             "status": "error",
             "processed": 0, "total": total,
@@ -492,10 +492,13 @@ def populate_exam_summaries(
             agg['total_points'] += points
             agg['subject_count'] += 1
 
-        # ── 2. Fetch ALL students in the grade ────────────────────────────
+        # ── 2. Fetch ALL ACTIVE students in the grade ──────────────────────
+        # Withdrawn / removed learners must not sit in the ranking or inflate
+        # the "position X of Y" denominator on report cards.
         student_filter = {
             'school': school,
             'class_name': grade,
+            'is_active': True,
         }
         if school_section == 'PRIMARY':
             if sub_section:
@@ -657,6 +660,90 @@ PDF_CHUNK_SIZE = 100
 PDF_MAX_RETRIES = 2
 PDF_RETRY_BACKOFF = 3  # seconds
 PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
+# Per-student compiled-PDF fragment cache (Tier 2 of the report-card speed-up).
+# 15 min is long enough to absorb a teacher re-printing the same class and
+# short enough that a mark edit followed by a version bump never serves stale
+# bytes. 845 KiB x 102 students = ~84 MiB per class; combined with a
+# maxmemory + allkeys-lru Redis this stays well inside a 512 MiB budget.
+PDF_FRAGMENT_TTL = 900  # seconds
+PDF_FRAGMENT_PREFIX = "rcpdf"
+
+
+def _pdf_worker_initializer():
+    """ProcessPoolExecutor initializer — MUST be module-level to be picklable.
+
+    Windows uses the 'spawn' start method: every child re-imports the world
+    from scratch and never runs django.setup(). Unpickling the submitted
+    partial(_compile_single_student_pdf, ...) triggers `import students.views`,
+    which imports students.models, which raises AppRegistryNotReady. Every
+    future then dies with BrokenProcessPool and _compile_chunk_with_retry
+    silently falls back to a GIL-bound ThreadPoolExecutor (~1x speedup, i.e.
+    the "parallel" bulk PDF was serial all along). Calling django.setup()
+    here makes the child a fully-initialised Django process before any task
+    is unpickled, which lets WeasyPrint actually run across all cores.
+    """
+    import django
+
+    django.setup()
+
+
+def _pdf_fragment_cache_key(ver, school_id, exam_id, grade_name, stream_name, student_id):
+    """Versioned cache key for one student's compiled 1-page report-card PDF.
+
+    The version token (from report_cache_version) is bumped by
+    invalidate_report_caches() on every mark write, so a stale fragment can
+    never be served after a data change.
+    """
+    from school.cache_keys import sanitize_cache_part
+
+    return (
+        f"{PDF_FRAGMENT_PREFIX}:v{ver}:{school_id}:{exam_id}:"
+        f"{sanitize_cache_part(grade_name)}:{sanitize_cache_part(stream_name)}:"
+        f"{student_id}"
+    )
+
+
+def _compile_with_fragment_cache(
+    sctx, *, ver, school_id, exam_id, grade_name, stream_name, compile_fn,
+):
+    """Compile one student's PDF, served from the Redis fragment cache when possible.
+
+    Runs inside a ProcessPoolExecutor worker (so cache reads/writes happen in
+    parallel across cores). Cache I/O is deliberately done here rather than in
+    the parent so the 102 GETs of an 845 KiB payload overlap with the other
+    workers' WeasyPrint renders instead of serialising ahead of them.
+    """
+    from django.core.cache import caches as _caches
+
+    backend = _caches["pdf_generation"]
+
+    student = None
+    try:
+        student = sctx["student_marks_list"][0]["student"]
+    except (KeyError, IndexError, TypeError):
+        pass
+    sid = getattr(student, "id", None) if student is not None else None
+
+    key = None
+    if sid is not None:
+        key = _pdf_fragment_cache_key(ver, school_id, exam_id, grade_name, stream_name, sid)
+
+    if key:
+        try:
+            hit = backend.get(key)
+            if hit:
+                return hit
+        except Exception:
+            pass  # cache down — fall through to a real compile
+
+    pdf = compile_fn(sctx)
+
+    if key and pdf:
+        try:
+            backend.set(key, pdf, timeout=PDF_FRAGMENT_TTL)
+        except Exception:
+            pass  # cache down — the compile still succeeded
+    return pdf
 
 
 def _pdf_send_progress(job_id, data):
@@ -686,6 +773,15 @@ def _pdf_send_complete(job_id, data):
             )
         except Exception:
             pass
+
+
+def _stu_attr(student, field, default=""):
+    """Read a field off a Student model instance (dicts tolerated)."""
+    if student is None:
+        return default
+    if isinstance(student, dict):
+        return student.get(field, default)
+    return getattr(student, field, None) or default
 
 
 @shared_task(bind=True, max_retries=1, default_retry_delay=30)
@@ -719,6 +815,11 @@ def generate_bulk_report_pdf(
     from pypdf import PdfWriter
 
     from .models import Exam, School
+    from .school_scope import (
+        reset_current_school, reset_current_school_section,
+        set_current_school, set_current_school_section,
+    )
+    from .views.constants import section_for_class
     from .views.helpers import build_report_card_context
     from .views.pdf_exports import _compile_single_student_pdf
 
@@ -764,57 +865,78 @@ def generate_bulk_report_pdf(
         return {"status": "error", "message": "Exam not found"}
 
     # ── Build full context (same as synchronous view) ──────────────────
+    # Celery workers have no request middleware, so the multi-tenant
+    # ContextVars are unset. Without them the SchoolScopedManagers return
+    # nothing for tenant-only rows — ClassTeacherMasterComment and
+    # HeadTeacherMasterComment in particular — and every printed card came
+    # out with blank Class Teacher / Principal remarks and blank
+    # closing/opening dates (verified by simulation: 8 rows bound -> 0
+    # unbound). Bind the tenant for the context build only.
+    section, _sub = section_for_class(grade_name)
+    _school_token = set_current_school(school)
+    _section_token = set_current_school_section(section or "BOTH")
     try:
-        ctx = build_report_card_context(
-            school, grade_name, stream_name, str(exam_id),
-            student_ids=student_ids,
-            include_chart_svg=True,
-            is_admin=False,
-        )
-    except Exception as e:
-        logger.exception("generate_bulk_report_pdf: context build failed: %s", e)
-        _pdf_send_complete(job_id, {
-            "status": "error",
-            "message": f"Failed to build report context: {e}",
-            "compiled": 0,
-            "total": total,
-            "failed": total,
-        })
-        return {"status": "error", "message": str(e)}
+        try:
+            ctx = build_report_card_context(
+                school, grade_name, stream_name, str(exam_id),
+                student_ids=student_ids,
+                include_chart_svg=True,
+                is_admin=False,
+            )
+        except Exception as e:
+            logger.exception("generate_bulk_report_pdf: context build failed")
+            _pdf_send_complete(job_id, {
+                "status": "error",
+                "message": f"Failed to build report context: {e}",
+                "compiled": 0,
+                "total": total,
+                "failed": total,
+            })
+            return {"status": "error", "message": str(e)}
 
-    section_accent = ctx['section_accent']
-    student_marks_list = ctx['student_marks_list']
+        section_accent = ctx['section_accent']
+        student_marks_list = ctx['student_marks_list']
 
-    # Pre-compute logo base64 ONCE
-    logo_base64_data = ""
-    try:
-        school_logo = getattr(school, "logo", None)
-        if school_logo:
-            logo_url = school_logo.url
-            logo_type = mimetypes.guess_type(logo_url)[0] or "image/png"
-            with school_logo.open("rb") as logo_file:
-                logo_data = base64.b64encode(logo_file.read()).decode("ascii")
-            logo_base64_data = f'data:{logo_type};base64,{logo_data}'
-    except Exception:
-        logger.warning("Failed to pre-compute school logo base64", exc_info=True)
+        # Pre-compute logo base64 ONCE
+        logo_base64_data = ""
+        try:
+            school_logo = getattr(school, "logo", None)
+            if school_logo:
+                logo_url = school_logo.url
+                logo_type = mimetypes.guess_type(logo_url)[0] or "image/png"
+                with school_logo.open("rb") as logo_file:
+                    logo_data = base64.b64encode(logo_file.read()).decode("ascii")
+                logo_base64_data = f'data:{logo_type};base64,{logo_data}'
+        except Exception:
+            logger.warning("Failed to pre-compute school logo base64", exc_info=True)
 
-    # ── Build per-student contexts ─────────────────────────────────────
-    student_contexts = []
-    for student_data in student_marks_list:
-        student_contexts.append({
-            'student_marks_list':   [student_data],
-            'selected_year':        ctx['selected_year'],
-            'selected_term':        ctx['selected_term'],
-            'selected_assessment':  ctx['selected_assessment_raw'],
-            'class_count':          ctx['class_count'],
-            'closing_date':         ctx['closing_date'],
-            'opening_date':         ctx['opening_date'],
-            'section_accent':       section_accent,
-            'view_mode':            'pdf',
-            'show_mobile_shell':    False,
-            'show_header':          False,
-            'show_control_panel':   False,
-        })
+        # ── Build per-student contexts ─────────────────────────────────
+        student_contexts = []
+        for student_data in student_marks_list:
+            student_contexts.append({
+                'student_marks_list':   [student_data],
+                'selected_year':        ctx['selected_year'],
+                'selected_term':        ctx['selected_term'],
+                'selected_assessment':  ctx['selected_assessment_raw'],
+                'class_count':          ctx['class_count'],
+                'closing_date':         ctx['closing_date'],
+                'opening_date':         ctx['opening_date'],
+                'section_accent':       section_accent,
+                # Celery has no request, so report_card_content.html's
+                # `request.school` resolves to nothing and the header printed a
+                # blank school name/address. `school` is its documented fallback.
+                'school':               school,
+                'view_mode':            'pdf',
+                'show_mobile_shell':    False,
+                'show_header':          False,
+                'show_control_panel':   False,
+            })
+    finally:
+        # Everything the templates need is now materialised on the context
+        # dicts, so the tenant scope can be released before the (slow)
+        # per-student WeasyPrint loop.
+        reset_current_school_section(_section_token)
+        reset_current_school(_school_token)
 
     # No request in Celery — the logo is base64 so it always renders.
     # Relative media URLs (teacher signatures) need an origin: when
@@ -822,6 +944,13 @@ def generate_bulk_report_pdf(
     # <base> tag points at the internal web service so WeasyPrint can fetch
     # them; empty string keeps the old base64-only behaviour.
     base_url = os.environ.get("EDUNEXUS_INTERNAL_URL", "")
+
+    # Read the school's report-cache version ONCE per job (Tier 2). It is
+    # stable for the duration of the job; re-reading it per student would
+    # only add 102 Redis round-trips. If a mark is edited mid-job the next
+    # job picks up the new version, so a torn read is impossible in practice.
+    from .views.helpers import report_cache_version as _rc_ver_fn
+    _rc_ver = _rc_ver_fn(school_id)
 
     # ── Process in chunks of 50 with retry ─────────────────────────────
     from django.db import connection
@@ -843,11 +972,22 @@ def generate_bulk_report_pdf(
         chunk = student_contexts[chunk_start: chunk_start + PDF_CHUNK_SIZE]
         chunk_index = chunk_start // PDF_CHUNK_SIZE
 
+        # Tier 2: route every compile through the fragment cache so a
+        # repeat generation of the same class skips WeasyPrint entirely
+        # and returns the cached 1-page PDF in ~1ms instead of ~3-6s.
         compile_fn = partial(
-            _compile_single_student_pdf,
-            logo_base64=logo_base64_data,
-            section_accent=section_accent,
-            base_url=base_url,
+            _compile_with_fragment_cache,
+            ver=_rc_ver,
+            school_id=school_id,
+            exam_id=exam_id,
+            grade_name=grade_name,
+            stream_name=stream_name,
+            compile_fn=partial(
+                _compile_single_student_pdf,
+                logo_base64=logo_base64_data,
+                section_accent=section_accent,
+                base_url=base_url,
+            ),
         )
 
         # Try compiling with retry for failures
@@ -859,18 +999,20 @@ def generate_bulk_report_pdf(
         for i, result in enumerate(chunk_results):
             student_idx = chunk_start + i
             student_name = ""
+            stu = None
             if student_idx < len(student_marks_list):
-                student_name = student_marks_list[student_idx].get('student', {}).get('name', f'Student {student_idx + 1}')
+                # 'student' is a Student model instance (not a dict).
+                stu = student_marks_list[student_idx].get('student')
+                student_name = _stu_attr(stu, 'name') or f'Student {student_idx + 1}'
             if result is not None:
                 chunk_pdfs.append((result, student_name))
                 compiled += 1
             else:
                 failed += 1
-                if student_idx < len(student_marks_list):
-                    sm = student_marks_list[student_idx]
+                if stu is not None:
                     failed_students.append({
-                        'name': sm.get('student', {}).get('name', f'Student #{student_idx + 1}'),
-                        'admission_no': sm.get('student', {}).get('admission_no', ''),
+                        'name': _stu_attr(stu, 'name') or f'Student #{student_idx + 1}',
+                        'admission_no': _stu_attr(stu, 'admission_no'),
                     })
 
         if chunk_pdfs:
@@ -986,7 +1128,12 @@ def _compile_chunk_with_retry(compile_fn, chunk, chunk_start, max_retries, backo
 
         futures = {}
         try:
-            with ExecutorClass(max_workers=max_workers) as executor:
+            # Tier 1: pass the Django-bootstrap initializer so each
+            # Windows-spawned child can unpickle the submitted callable.
+            # Without it every future dies with AppRegistryNotReady and we
+            # silently degrade to a GIL-bound thread pool (no real speedup).
+            _init = _pdf_worker_initializer if ExecutorClass is ProcessPoolExecutor else None
+            with ExecutorClass(max_workers=max_workers, initializer=_init) as executor:
                 for i in list(pending):
                     futures[executor.submit(compile_fn, chunk[i])] = i
 

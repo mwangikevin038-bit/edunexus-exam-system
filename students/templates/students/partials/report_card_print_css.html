@@ -1,7 +1,7 @@
-<script type="text/plain" id="pagePrintCSS">
-@page { size: A4 portrait; margin: 5mm 5mm 8mm 5mm; }
+﻿<script type="text/plain" id="pagePrintCSS">
+@page { size: A4 portrait; margin: 7mm 5mm 18mm 5mm; }
 @page { @bottom-center { content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026"; font-family: "Times New Roman", Times, serif; font-size: 7pt; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4pt; border-top: 0.5pt solid #cbd5e1; width: 70%; padding-top: 3pt; } @bottom-right { content: none; } }
-@page landscape { size: A4 portrait; margin: 5mm 5mm 8mm 5mm; }
+@page landscape { size: A4 portrait; margin: 7mm 5mm 18mm 5mm; }
 
 * {
     -webkit-print-color-adjust: exact !important;
@@ -81,14 +81,14 @@ body, html, .app-content, .main-content {
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 6px !important;
+    gap: 4px !important;
 }
 
 #reportCardsContainer .rc-header, .rc-header {
     display: flex !important;
     align-items: center !important;
     gap: 10px !important;
-    padding-bottom: 4px !important;
+    padding-bottom: 2px !important;
     margin-bottom: 4px !important;
     position: relative !important;
     border-bottom: none !important;
@@ -97,15 +97,19 @@ body, html, .app-content, .main-content {
 .rc-header::after { display: none !important; }
 #reportCardsContainer .report-logo, #reportCardsContainer .rc-logo-placeholder,
 .report-logo, .rc-logo-placeholder {
-    width: 72px !important;
-    height: 72px !important;
+    width: 95px !important;
+    height: 95px !important;
     border-radius: 8px !important;
     object-fit: contain !important;
     flex-shrink: 0 !important;
 }
-.rc-logo-spacer { width: 72px !important; flex-shrink: 0 !important; }
-.rc-schoolinfo { text-align: center !important; margin: 0 80px !important; }
-.rc-schoolinfo h1 { font-size: 15pt !important; font-weight: 900 !important; margin: 0 0 3px !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; line-height: 1.1 !important; }
+.rc-logo-spacer { width: 95px !important; flex-shrink: 0 !important; }
+#reportCardsContainer .rc-logo-placeholder, .rc-logo-placeholder {
+    background: linear-gradient(135deg, var(--rc-green-dark, #0F5A35), var(--rc-green, #16A34A)) !important;
+    color: #fff !important;
+}
+.rc-schoolinfo { flex: 1 !important; text-align: center !important; }
+.rc-schoolinfo h1 { font-size: 16pt !important; font-weight: 800 !important; color: var(--section-accent, #305CDE) !important; margin: 0 0 4px !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; line-height: 1.1 !important; }
 .rc-schoolinfo .rc-address { font-size: 10pt !important; font-weight: 600 !important; margin-bottom: 2px !important; }
 .rc-schoolinfo .rc-contact-line { font-size: 10pt !important; font-weight: 500 !important; margin: 0 !important; }
 

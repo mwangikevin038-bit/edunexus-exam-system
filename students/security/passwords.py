@@ -135,6 +135,7 @@ def password_has_been_used(user, raw_password):
                 return True
         except Exception:
             # A corrupt entry should never block the change; skip it.
+            logger.warning("Skipping corrupt password-history entry %s for user %s.", entry.pk, user.pk)
             continue
     return False
 

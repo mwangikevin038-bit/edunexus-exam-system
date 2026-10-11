@@ -194,6 +194,7 @@
                                         <span class="en-pct js-pct"></span>
                                     </div>
                                 </div>
+                                <div class="en-row-error" id="markerr_{{ student.id }}" aria-live="polite"></div>
                             </div>
                         {% empty %}
                             <div class="en-empty">
@@ -405,7 +406,10 @@
         postJSON('{% url "batch_save_marks" %}', payload).then(function(data) {
             batchInflight = false;
             if (data.ok) {
+                var rejectedIds = {};
+                (data.rejected || []).forEach(function(rj) { rejectedIds[rj.student_id] = true; });
                 marks.forEach(function(m) {
+                    if (rejectedIds[m.student_id]) return;
                     var row = document.querySelector('.en-student[data-student-id="' + m.student_id + '"]');
                     if (row) {
                         row.classList.add('saved-flash');
@@ -415,6 +419,17 @@
                     var draftKey = 'offline_mark_' + m.student_id + '_' + (examIdEl ? examIdEl.value : '');
                     try { localStorage.removeItem(draftKey); } catch(ignored) {}
                 });
+                if (data.rejected && data.rejected.length) {
+                    data.rejected.forEach(function(rj) {
+                        var row = document.querySelector('.en-student[data-student-id="' + rj.student_id + '"]');
+                        if (row) {
+                            var inp = row.querySelector('.js-score');
+                            if (inp) markInputError(inp, rj.error || markErrFmt());
+                        }
+                    });
+                    updateProgress();
+                    showToast(data.rejected.length + ' score(s) rejected — ' + (data.rejected[0].error || markErrFmt()), 'error');
+                }
                 // Flush again if new changes arrived during the request
                 if (Object.keys(pendingChanges).length) flushBatch();
                 else stopBatchTimer();
@@ -522,7 +537,7 @@
         for (var i = 0; i < inputs.length; i++) {
             var v = (inputs[i].value || '').trim().toUpperCase();
             if (v === 'AB') { scored++; continue; }
-            if (v !== '' && !isNaN(parseFloat(v))) scored++;
+            if (/^\d{1,4}$/.test(v)) scored++;
             if (inputs[i].classList.contains('is-invalid')) invalid++;
         }
         var el = document.getElementById('scoredCount');
@@ -571,9 +586,60 @@
         c.classList.add('has-score');
     }
 
+    // ── Strict mark grammar: whole digits (1-4) or AB only ──────────────
+    var MARK_ERR_FORMAT = 'Enter a whole number (0-{max}) or AB for absent. Decimals, letters and symbols are not allowed.';
+    function markErrFmt() {
+        var maxEl = document.getElementById('maximumMarks');
+        var max = maxEl ? (parseInt(maxEl.value, 10) || 100) : 100;
+        return MARK_ERR_FORMAT.replace('{max}', max);
+    }
+
+    function markInputError(input, msg, badgeText) {
+        input.classList.add('is-invalid');
+        input.setAttribute('aria-invalid', 'true');
+        input.title = msg;
+        var row = input.closest('.en-student');
+        if (row) {
+            row.classList.add('is-error');
+            var errEl = row.querySelector('.en-row-error');
+            if (errEl) {
+                errEl.textContent = msg;
+                input.setAttribute('aria-describedby', errEl.id);
+            }
+            var badge = row.querySelector('.js-level');
+            if (badge) {
+                badge.textContent = badgeText || '!';
+                badge.style.color = '#991b1b';
+                badge.style.background = '#fee2e2';
+                badge.classList.add('has-score');
+            }
+            row.classList.remove('en-shake');
+            void row.offsetWidth;
+            row.classList.add('en-shake');
+        }
+        var now = Date.now();
+        if (!input._markErrAt || now - input._markErrAt > 1500) {
+            input._markErrAt = now;
+            if (typeof showToast === 'function') showToast(msg, 'error');
+        }
+    }
+
+    function clearMarkError(input) {
+        input.classList.remove('is-invalid');
+        input.removeAttribute('aria-invalid');
+        input.removeAttribute('aria-describedby');
+        input.title = '';
+        var row = input.closest('.en-student');
+        if (row) {
+            row.classList.remove('is-error', 'en-shake');
+            var errEl = row.querySelector('.en-row-error');
+            if (errEl) errEl.textContent = '';
+        }
+    }
+
     function calcScore(input, skipSave) {
         var maxEl = document.getElementById('maximumMarks');
-        var max = maxEl ? (parseFloat(maxEl.value) || 100) : 100;
+        var max = maxEl ? (parseInt(maxEl.value, 10) || 100) : 100;
         var val = (input.value || '').trim().toUpperCase();
         var row = input.closest('.en-student');
         var badge = row.querySelector('.js-level');
@@ -583,14 +649,14 @@
             badge.classList.add('has-score');
             row.querySelector('.js-pts').textContent = '';
             row.querySelector('.js-pct').textContent = '';
-            input.classList.remove('is-invalid');
+            clearMarkError(input);
             updateProgress();
             if (!skipSave) queueSave(input);
             return;
         }
         if (val === '') {
             clearBadges(row);
-            input.classList.remove('is-invalid');
+            clearMarkError(input);
             updateProgress();
             if (!skipSave && input.dataset.hadValue === '1') {
                 input.dataset.hadValue = '0';
@@ -598,23 +664,19 @@
             }
             return;
         }
-        var score = parseFloat(val);
-        if (isNaN(score)) {
-            badge.textContent = '?'; badge.style.color = '#991b1b'; badge.style.background = '#fee2e2';
-            badge.classList.add('has-score');
-            input.classList.add('is-invalid');
+        if (!/^\d{1,4}$/.test(val)) {
+            markInputError(input, markErrFmt());
             updateProgress();
             return;
         }
-        if (score < 0 || score > max) {
-            badge.textContent = 'Over'; badge.style.color = '#991b1b'; badge.style.background = '#fee2e2';
-            badge.classList.add('has-score');
-            input.classList.add('is-invalid');
+        var score = parseInt(val, 10);
+        if (score > max) {
+            markInputError(input, 'Score ' + score + ' exceeds the assessment total of ' + max + '.', 'Over');
             updateProgress();
             return;
         }
+        clearMarkError(input);
         if (!skipSave) input.dataset.hadValue = '1';
-        input.classList.remove('is-invalid');
         var lv = getLevel((score / max) * 100);
         if (lv) paintLevel(row, lv, (score / max) * 100);
         else clearBadges(row);
@@ -631,12 +693,12 @@
 
             // Offline draft: persist raw value before debounce/fetch
             var raw = (t.value || '').trim();
-            if (raw !== '' && raw.toUpperCase() !== 'AB' && isNaN(parseFloat(raw))) return;
+            var rawOk = raw === '' || /^ab$/i.test(raw) || /^\d{1,4}$/.test(raw);
             var row = t.closest('.en-student');
             var studentId = row ? row.getAttribute('data-student-id') : '';
             var examIdEl = document.querySelector('input[name="exam_id"]');
             var examId = examIdEl ? examIdEl.value : '';
-            if (studentId && examId) {
+            if (studentId && examId && rawOk) {
                 var draftKey = 'offline_mark_' + studentId + '_' + examId;
                 try {
                     localStorage.setItem(draftKey, JSON.stringify({
@@ -684,6 +746,45 @@
                 btn.click();
             }
         }, true);
+
+        // ── Block decimals, non-A/B letters and symbols at the keystroke ──
+        document.body.addEventListener('beforeinput', function(e) {
+            var t = e.target;
+            if (!(t.classList && t.classList.contains('js-score'))) return;
+            if (e.inputType === 'insertFromPaste') return;
+            if (e.inputType && e.inputType.indexOf('insert') === 0 && e.data) {
+                if (!/^[0-9abAB]+$/.test(e.data)) {
+                    e.preventDefault();
+                    markInputError(t, markErrFmt());
+                }
+            }
+        });
+        document.body.addEventListener('keydown', function(e) {
+            var t = e.target;
+            if (!(t.classList && t.classList.contains('js-score'))) return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            var k = e.key;
+            if (!k || k.length !== 1) return;
+            if (/^[0-9]$/.test(k)) return;
+            if (/^[abAB]$/.test(k)) return;
+            e.preventDefault();
+            markInputError(t, markErrFmt());
+        });
+        document.body.addEventListener('paste', function(e) {
+            var t = e.target;
+            if (!(t.classList && t.classList.contains('js-score'))) return;
+            e.preventDefault();
+            var text = ((e.clipboardData || window.clipboardData).getData('text') || '').trim();
+            if (/^\d{1,4}$/.test(text) || /^ab$/i.test(text)) {
+                var start = t.selectionStart != null ? t.selectionStart : (t.value || '').length;
+                var end = t.selectionEnd != null ? t.selectionEnd : start;
+                t.value = (t.value || '').slice(0, start) + text + (t.value || '').slice(end);
+                calcScore(t);
+            } else {
+                markInputError(t, 'Paste rejected — ' + markErrFmt());
+            }
+        });
+
         window._markEntryHandlersAttached = true;
     }
 
@@ -860,6 +961,11 @@
                                 row.classList.add('saved-flash');
                                 setTimeout(function(){ row.classList.remove('saved-flash'); }, 800);
                             }
+                        } else if (data.error) {
+                            // Invalid draft (decimals/letters) — drop it so it
+                            // doesn't retry forever, and surface the reason.
+                            localStorage.removeItem(k);
+                            showToast('Offline draft rejected: ' + data.error, 'error');
                         }
                         flushOne();
                     }).catch(function() {

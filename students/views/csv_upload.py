@@ -156,7 +156,7 @@ def csv_upload_api(request):
             queue='csv_upload',
         )
     except Exception as e:
-        logger.exception("Celery dispatch failed: %s", e)
+        logger.exception("Celery dispatch failed")
         csv_cache.set(f"csv_result_{upload_id}", {
             "status": "error",
             "processed": 0, "total": len(rows),

@@ -22,6 +22,7 @@ from .constants import (
 from ..models import Mark, MarkSubmission, Student, SubjectAssignment, Teacher, TermDate
 from ..school_scope import get_current_school, get_current_school_section
 from ..security import user_has_main_school_admin_override
+from ..security.integrity import compute_mark_checksum
 
 
 def safe_pdf_filename(*parts):
@@ -150,8 +151,56 @@ def _safe_cache_get(key, default=None):
         return default
 
 
+# ── Report-card cache version token ─────────────────────────────────────────
+# A monotonically increasing integer per school. Every report-card cache key
+# (compiled PDF fragments, chart SVGs) embeds it, so bumping the version
+# invalidates ALL of that school's cached report artefacts in O(1) — no SCAN,
+# no per-key delete loop. invalidate_report_caches() bumps it on every mark
+# write, which is already wired into every mark-edit/publish path.
+
+_REPORT_CACHE_VER_PREFIX = 'rcver:'
+
+
+def report_cache_version(school_id):
+    """Current invalidation token for a school's report-card caches."""
+    try:
+        ver = cache.get(f'{_REPORT_CACHE_VER_PREFIX}{school_id}')
+    except Exception:
+        ver = None
+    if ver is None:
+        return 0
+    try:
+        return int(ver)
+    except (TypeError, ValueError):
+        return 0
+
+
+def bump_report_cache_version(school_id):
+    """Invalidate every cached report-card artefact for a school (O(1))."""
+    key = f'{_REPORT_CACHE_VER_PREFIX}{school_id}'
+    try:
+        # add() returns False when the key already exists, so this is a
+        # race-free "create at 1, else increment" without a pipeline.
+        if not cache.add(key, 1, timeout=None):
+            cache.incr(key)
+    except Exception:
+        # Backend down, or incr() on a key that vanished between add and
+        # incr — fall back to a plain read-modify-write.
+        try:
+            cache.set(key, report_cache_version(school_id) + 1, timeout=None)
+        except Exception:
+            pass
+
+
 def invalidate_report_caches(school_id, class_name, stream, year, term, assessment):
     """Call this whenever marks are uploaded/changed for a class/stream/exam."""
+    # Bump the school's report-cache version FIRST. This O(1) token is
+    # embedded in every compiled-PDF fragment and chart-SVG cache key, so a
+    # stale artefact can never be served after this point. Doing it before
+    # the (slower) SCAN deletes below means the invalidation is visible to
+    # readers even if the pattern delete later fails.
+    bump_report_cache_version(school_id)
+
     try:
         cache.delete(_leaderboard_cache_key(school_id, class_name, stream, year, term, assessment))
         cache.delete(_class_avg_cache_key(school_id, class_name, stream, year, term, assessment))
@@ -183,6 +232,178 @@ def invalidate_report_caches(school_id, class_name, stream, year, term, assessme
         ).delete()
     except School.DoesNotExist:
         pass
+
+
+def drop_stale_exam_summaries(school, student_ids, year, term, exam_name):
+    """Drop ExamSummary rows for learners whose marks just changed.
+
+    The class-wide rebuild only runs when results are published, so between an
+    edit and the next publish the snapshot still carries the pre-edit totals,
+    subject count and PLV — and the report card reads it unconditionally.
+    Deleting just those rows makes the readers fall back to the live-mark path
+    they already implement, which is always correct, without paying for a full
+    class rebuild on every keystroke.
+    """
+    from ..models import ExamSummary
+
+    ids = [s if isinstance(s, int) else s.pk for s in (student_ids or [])]
+    if not ids:
+        return
+    try:
+        ExamSummary.all_objects.filter(
+            school=school,
+            student_id__in=ids,
+            year=year,
+            term=term,
+            exam_name=exam_name,
+        ).delete()
+    except Exception:
+        import logging
+        logging.getLogger("students.helpers").warning(
+            "drop_stale_exam_summaries failed for school_id=%s exam=%s",
+            getattr(school, 'pk', school), exam_name, exc_info=True,
+        )
+
+
+def invalidate_school_grade_caches(school_id):
+    """Evict every cached artifact that prints a grade for a whole school.
+
+    Scale edits happen without class/stream/exam context, so the targeted
+    invalidators in `invalidate_report_caches()` can't be used — these are the
+    school-wide patterns that actually carry graded output.
+    """
+    if not school_id:
+        return
+    _delete_cache_key_pattern(f'merit_list:{school_id}:*')
+    invalidate_report_forms_cache(school_id)
+
+
+def regrade_marks_for_school(school, section=None):
+    """Recompute stored Mark performance levels after a GradingScale edit.
+
+    `Mark.performance_level` / `Mark.points` are written once at capture time
+    and never revisited, so editing a scale left every already-captured grade
+    — and the report-card grade cell that prints it — frozen on the old
+    brackets. Only rows whose level actually changes are written, and the
+    integrity checksum is recomputed alongside them so a later `Mark.save()`
+    still verifies.
+
+    `section` is an Exam/workspace section ('JSS', 'PRIMARY', 'LOWER_PRIMARY');
+    it is narrowed to the Mark's own `school_section` values.
+    """
+    import logging
+
+    if not school:
+        return 0
+
+    qs = Mark.all_objects.filter(school=school).exclude(is_absent=True)
+    if section:
+        qs = qs.filter(school_section='JSS' if section == 'JSS' else 'PRIMARY')
+
+    log = logging.getLogger("students.helpers")
+    pending, changed, unresolved = [], 0, 0
+
+    def _flush():
+        nonlocal pending, changed
+        if not pending:
+            return
+        changed += Mark.all_objects.bulk_update(
+            pending, ["performance_level", "points", "integrity_checksum"],
+            batch_size=500,
+        )
+        pending = []
+
+    for mark in qs.select_related("subject").iterator(chunk_size=500):
+        level, points = get_performance_level(
+            mark.score,
+            sub_section=mark.sub_section,
+            subject_id=mark.subject_id,
+            section=mark.school_section,
+            school=school,
+        )
+        if level == '-' and (mark.performance_level or '-') != '-':
+            # A missing scale must never wipe grades that are already correct.
+            # Leave the row alone and shout about it instead.
+            unresolved += 1
+            continue
+        if (mark.performance_level, mark.points) == (level, points):
+            continue
+        mark.performance_level = level
+        mark.points = points
+        mark.integrity_checksum = compute_mark_checksum(mark)
+        pending.append(mark)
+        if len(pending) >= 500:
+            _flush()
+    _flush()
+
+    if unresolved:
+        log.warning(
+            "regrade skipped %d mark(s) for school_id=%s: no scale resolved.",
+            unresolved, school.pk,
+        )
+    return changed
+
+
+def regrade_exam_summaries_for_school(school):
+    """Recompute stored ExamSummary.overall_plv after a total-scale edit.
+
+    `overall_plv` decides which comment box the report card prints
+    (`comment_{overall_plv}`), so a stale level shows the wrong teacher
+    remark. Totals and ranks are untouched — only the level derived from them
+    is refreshed, so no snapshot row has to be deleted.
+    """
+    import logging
+
+    if not school:
+        return 0
+
+    from ..models import ExamSummary
+
+    log = logging.getLogger("students.helpers")
+    pending, changed, unresolved = [], 0, 0
+
+    for summary in ExamSummary.all_objects.filter(school=school).iterator(chunk_size=500):
+        if summary.school_section == 'PRIMARY':
+            plv = calculate_primary_plv(
+                summary.total_marks,
+                summary.subject_count,
+                sub_section=summary.sub_section,
+                school=school,
+                section='PRIMARY',
+            )
+        else:
+            plv = calculate_report_plv(
+                summary.total_points,
+                summary.total_marks,
+                school=school,
+                section='JSS',
+            )
+
+        current = (summary.overall_plv or '-').strip() or '-'
+        if not plv or plv == current:
+            continue
+        if plv == '-' and current != '-':
+            unresolved += 1
+            continue
+        summary.overall_plv = plv
+        pending.append(summary)
+        if len(pending) >= 500:
+            changed += ExamSummary.all_objects.bulk_update(
+                pending, ["overall_plv"], batch_size=500,
+            )
+            pending = []
+
+    if pending:
+        changed += ExamSummary.all_objects.bulk_update(
+            pending, ["overall_plv"], batch_size=500,
+        )
+
+    if unresolved:
+        log.warning(
+            "regrade skipped %d ExamSummary row(s) for school_id=%s: no total_scale.",
+            unresolved, school.pk,
+        )
+    return changed
 
 
 def get_cached_class_averages(school, class_name, stream, year, term, assessment, published_subjects_qs):
@@ -1106,6 +1327,24 @@ def to_primary_descriptor(perf_level, school_section=None):
     return ''
 
 
+# Internal diagnostic the grading resolvers used to hand back when no
+# GradingScale resolves. It is NOT a grade: it must never be persisted onto a
+# Mark or printed on a report card. The resolvers now return '-' instead and
+# log loudly; this constant only exists so display code can keep hiding any
+# legacy rows that still hold the old sentinel.
+NO_CONFIG_LEVEL = 'NO CONFIG'
+
+
+def safe_level(value, fallback='-'):
+    """Map the internal 'NO CONFIG' sentinel (and blanks) to a printable level."""
+    if value is None:
+        return fallback
+    text = str(value).strip()
+    if not text or text.upper() == NO_CONFIG_LEVEL:
+        return fallback
+    return text
+
+
 def get_performance_level(score, sub_section=None, subject_id=None, is_total_calculation=False, section=None, school=None):
     """
     Return (performance_level, points) using our optimized bisect lookups.
@@ -1176,7 +1415,10 @@ def get_performance_level(score, sub_section=None, subject_id=None, is_total_cal
         "GradingScale missing for school_id=%s section=%s sub_section=%s subject=%s total=%s.",
         getattr(school, 'id', None), section, sub_section, subject_id, is_total_calculation,
     )
-    return 'NO CONFIG', 0
+    # '-' is the printable placeholder used everywhere else for "no level".
+    # Returning 'NO CONFIG' here used to leak into report-card grade cells
+    # and into stored Mark rows.
+    return '-', 0
 
 
 def calculate_report_plv(total_points, total_marks, sub_section=None, school=None, section=None):
@@ -1493,8 +1735,6 @@ def dedup_marks_latest_by_code(marks):
     recently recorded mark wins. Comparison is date-based so the result does
     not depend on queryset ordering.
     """
-    from datetime import datetime as _dt
-
     latest = {}
     for m in marks:
         code = m.subject.code if getattr(m, 'subject', None) else None
@@ -1504,8 +1744,8 @@ def dedup_marks_latest_by_code(marks):
         if cur is None:
             latest[code] = m
             continue
-        m_key = (m.date_recorded or _dt.min, m.pk or 0)
-        c_key = (cur.date_recorded or _dt.min, cur.pk or 0)
+        m_key = (m.date_recorded, m.pk or 0)
+        c_key = (cur.date_recorded, cur.pk or 0)
         if m_key > c_key:
             latest[code] = m
     return list(latest.values())
@@ -2326,6 +2566,7 @@ def build_report_card_context(
         school=school,
         student__class_name=grade, year=year, term=term, exam_name=db_assessment,
         school_section=sample.school_section, sub_section=sample.sub_section,
+        student__is_active=True,
     ).select_related('student')
     grade_sorted    = sorted(summaries_qs, key=lambda s: (-s.total_marks, -s.total_points))
     grade_rank_map  = {s.student_id: rank for rank, s in enumerate(grade_sorted, start=1)}
@@ -2443,11 +2684,18 @@ def build_report_card_context(
         # Server-side vector chart (used by the PDF path).
         # matplotlib with a long-lived Figure/Axes pair - see pdf_exports.py
         # for the rationale. Cached per (student, exam) in Redis.
+        #
+        # The key embeds the school's report-cache version token (Tier 3).
+        # The old v6 key had NO invalidation: a 24h TTL meant that after a
+        # mark edit the printed chart still showed the previous score for up
+        # to a full day. Bumping the version in invalidate_report_caches()
+        # makes every chart for that school regenerate on the next render.
         chart_svg = ''
         if include_chart_svg and chart_labels:
             from school.cache_keys import sanitize_cache_part
+            _rc_ver = report_cache_version(school.pk)
             chart_cache_key = (
-                f"student_chart_v6_{student.id}_{year}_"
+                f"student_chart_v7_{_rc_ver}_{student.id}_{year}_"
                 f"{sanitize_cache_part(term)}_{sanitize_cache_part(db_assessment)}"
             )
             from django.core.cache import cache as _cache
@@ -2594,22 +2842,30 @@ def upsert_mark(
     term, year, exam_type,
 ):
     """
-    Atomic single-row upsert using SELECT ... FOR UPDATE within a
-    serialized transaction.  Guarantees zero dead tuples, zero index
-    bloat, and zero race conditions under high concurrency.
+    Atomic single-row upsert, race-free under high concurrency.
 
     Flow:
-      1. Begin transaction (serializable isolation via atomic)
-      2. SELECT ... FOR UPDATE — locks the existing row (if any)
-      3. If exists → UPDATE in place (single UPDATE, no DELETE + INSERT)
-      4. If not   → INSERT (single INSERT)
-      5. Compute and set integrity_checksum
-      6. Commit — lock released
+      0. Transaction-scoped Postgres advisory lock keyed on the natural
+         (school, student, subject, term, year, exam_type, section,
+         sub_section) tuple. SELECT FOR UPDATE cannot lock a row that
+         does not exist yet, so two first-time saves of the same cell
+         used to both INSERT; on JSS (sub_section NULL) the unique
+         constraint treats NULLs as distinct and BOTH rows survived.
+      1. SELECT ... FOR UPDATE — lock the existing row (if any).
+      2. Exists → UPDATE in place (version bumped, updated_at stamped).
+      3. Missing → INSERT; a unique-constraint IntegrityError is caught
+         and retried as an UPDATE so a lost race never surfaces as a 500.
 
     Returns the mark ID.
     """
-    from django.db import transaction
-    from ..security.integrity import compute_mark_checksum
+    import hashlib
+    import logging
+
+    from django.db import IntegrityError, connection, transaction
+    from django.db.models import F
+    from django.utils import timezone
+
+    log = logging.getLogger("students.helpers")
 
     class _MarkProxy:
         """Lightweight stand-in for a Mark instance so compute_mark_checksum works."""
@@ -2645,67 +2901,118 @@ def upsert_mark(
     else:
         _filter['sub_section__isnull'] = True
 
+    checksum = _compute_checksum(
+        school_id=school_id, student_id=student_id, subject=subject_id,
+        score=score, raw_score=raw_score, maximum_marks=maximum_marks,
+        is_absent=is_absent, term=term, year=year, exam_type=exam_type,
+        performance_level=performance_level, points=points,
+    )
+
+    def _do_update(existing_pk):
+        Mark.all_objects.filter(pk=existing_pk).update(
+            score=score,
+            raw_score=raw_score,
+            maximum_marks=maximum_marks,
+            is_absent=is_absent,
+            primary_raw_score=primary_raw_score,
+            primary_performance_point=primary_performance_point,
+            primary_descriptor=primary_descriptor,
+            performance_level=performance_level,
+            points=points,
+            integrity_checksum=checksum,
+            version=F('version') + 1,
+            updated_at=timezone.now(),
+        )
+        return existing_pk
+
     with transaction.atomic():
+        # ── Advisory lock: serialise first-time INSERTs of the same cell ──
+        _lock_material = "|".join(
+            "" if v is None else str(v)
+            for v in (school_id, student_id, subject_id, term, year,
+                      exam_type, school_section, sub_section)
+        )
+        _lock_id = int.from_bytes(
+            hashlib.sha256(_lock_material.encode("utf-8")).digest()[:8],
+            "big", signed=True,
+        )
+        try:
+            if connection.vendor == "postgresql":
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT pg_advisory_xact_lock(%s)", [_lock_id])
+        except Exception:
+            # Never fail a save over the lock; IntegrityError retry below
+            # still covers the constraint-backed sections.
+            log.warning("upsert_mark: advisory lock unavailable", exc_info=True)
+
         existing = (
             Mark.all_objects
             .select_for_update(nowait=False)
             .filter(**_filter)
+            .order_by("id")
             .first()
         )
 
-        checksum = _compute_checksum(
-            school_id=school_id, student_id=student_id, subject=subject_id,
-            score=score, raw_score=raw_score, maximum_marks=maximum_marks,
-            is_absent=is_absent, term=term, year=year, exam_type=exam_type,
-            performance_level=performance_level, points=points,
-        )
-
         if existing:
-            Mark.all_objects.filter(pk=existing.pk).update(
-                score=score,
-                raw_score=raw_score,
-                maximum_marks=maximum_marks,
-                is_absent=is_absent,
-                primary_raw_score=primary_raw_score,
-                primary_performance_point=primary_performance_point,
-                primary_descriptor=primary_descriptor,
-                performance_level=performance_level,
-                points=points,
-                integrity_checksum=checksum,
-            )
-            return existing.pk
-        else:
-            mark = Mark.all_objects.create(
-                school_id=school_id,
-                student_id=student_id,
-                subject_id=subject_id,
-                school_section=school_section,
-                sub_section=sub_section,
-                score=score,
-                raw_score=raw_score,
-                maximum_marks=maximum_marks,
-                is_absent=is_absent,
-                primary_raw_score=primary_raw_score,
-                primary_performance_point=primary_performance_point,
-                primary_descriptor=primary_descriptor,
-                performance_level=performance_level,
-                points=points,
-                term=term,
-                year=year,
-                exam_type=exam_type,
-                integrity_checksum=checksum,
-            )
+            return _do_update(existing.pk)
+
+        try:
+            # Nested atomic = savepoint, so a IntegrityError does not
+            # abort the outer transaction before the retry can run.
+            with transaction.atomic():
+                mark = Mark.all_objects.create(
+                    school_id=school_id,
+                    student_id=student_id,
+                    subject_id=subject_id,
+                    school_section=school_section,
+                    sub_section=sub_section,
+                    score=score,
+                    raw_score=raw_score,
+                    maximum_marks=maximum_marks,
+                    is_absent=is_absent,
+                    primary_raw_score=primary_raw_score,
+                    primary_performance_point=primary_performance_point,
+                    primary_descriptor=primary_descriptor,
+                    performance_level=performance_level,
+                    points=points,
+                    term=term,
+                    year=year,
+                    exam_type=exam_type,
+                    integrity_checksum=checksum,
+                )
             return mark.pk
+        except IntegrityError:
+            # A concurrent writer won the INSERT race (or pre-existing
+            # duplicates tripped the constraint). Re-read under lock and
+            # update the surviving row instead of surfacing a 500.
+            existing = (
+                Mark.all_objects
+                .select_for_update(nowait=False)
+                .filter(**_filter)
+                .order_by("id")
+                .first()
+            )
+            if existing:
+                return _do_update(existing.pk)
+            raise
 
 
 # ── Report Forms Cache Helpers ──────────────────────────────────────────────
 
-def get_report_forms_cache_key(school_id, grade, stream, exam_id):
-    """Generate a cache key for report forms display."""
+def get_report_forms_cache_key(school_id, grade, stream, exam_id, is_admin=False):
+    """Generate a cache key for report forms display.
+
+    ``is_admin`` segments the entry by role. The admin and class-teacher
+    renderers build visibly different contexts (all_objects vs objects
+    comment managers, school-wide vs class-scoped published subjects) from
+    the same grade/stream/exam, so without the segment a teacher and an
+    admin would read each other's cached payload.
+    """
     from school.cache_keys import sanitize_cache_part
     return (
         f"report_forms:{school_id}:"
-        f"{sanitize_cache_part(grade)}:{sanitize_cache_part(stream)}:{exam_id}"
+        f"{sanitize_cache_part(grade)}:{sanitize_cache_part(stream)}:{exam_id}:"
+        f"{'adm' if is_admin else 'tch'}"
     )
 
 
@@ -2716,11 +3023,15 @@ def invalidate_report_forms_cache(school_id, grade=None, stream=None, exam_id=No
     Otherwise, evict all report_forms cache entries for the school.
     """
     if grade and stream and exam_id:
-        key = get_report_forms_cache_key(school_id, grade, stream, exam_id)
-        try:
-            cache.delete(key)
-        except Exception:
-            pass
+        # Both role variants must go — callers never know who warmed the key.
+        for is_admin in (True, False):
+            key = get_report_forms_cache_key(
+                school_id, grade, stream, exam_id, is_admin=is_admin,
+            )
+            try:
+                cache.delete(key)
+            except Exception:
+                pass
     else:
         # Evict all report_forms cache entries for this school
         _delete_cache_key_pattern(f"report_forms:{school_id}:*")

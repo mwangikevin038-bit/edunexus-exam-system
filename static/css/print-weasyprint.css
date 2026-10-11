@@ -6,7 +6,7 @@
 
 @page {
     size: A4 portrait;
-    margin: 5mm 5mm 8mm 5mm;
+    margin: 7mm 5mm 18mm 5mm;
     @bottom-center {
         content: "GENERATED FROM EDUNEXUS EXAM SYSTEM \00a9 2026";
         font-family: "Times New Roman", Times, serif;
@@ -125,9 +125,16 @@ html, body {
     font-family: "Times New Roman", Times, serif !important;
     font-size: 11pt !important;
     color: #1C1C1E !important;
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 283mm !important;
+    /* display:block (not flex): WeasyPrint's flex layout costs ~9s per student.
+       min-height on the content box below restores the stretch that flex gave
+       us, so short cards (e.g. Grade 1, 4 subject rows) keep the footer pinned
+       to the bottom of the card. Verified output-equivalent on G1/G4 and a
+       2.6x compile speed-up across G1/G4/G8. */
+    display: block !important;
+    /* 264mm + .18in/.20in vertical padding = 271.4mm, just under the 272mm
+       page content box (297 - 7 - 18). At 272mm the card overflowed the box,
+       so WeasyPrint pushed the whole card to page 2 and left page 1 blank. */
+    min-height: 264mm !important;
     page-break-inside: avoid !important;
     background: white;
 }
@@ -155,22 +162,29 @@ html, body {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
-    gap: 6px;
+    gap: 2px;
     justify-content: space-between;
+    /* The card is display:block, so nothing stretches this box. 254mm =
+       264mm (card min-height) - (.18in + .20in card padding). This keeps
+       space-between distributing the remaining space and the footer pinned
+       to the card bottom exactly as before. */
+    min-height: 254mm !important;
 }
 
 /* Header */
 .rc-header {
     width: 100%;
-    padding-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 2px;
     margin-bottom: 0;
     border-bottom: none;
-    overflow: hidden;
 }
-.report-logo, .rc-logo-placeholder { width: 80px; height: 80px; float: left; margin-right: 14px; border-radius: 8px; object-fit: contain; }
-.rc-logo-spacer { width: 80px; float: left; margin-right: 14px; }
-.rc-schoolinfo { text-align: center; margin: 0 100px; }
-.rc-schoolinfo h1 { font-family: "Times New Roman", Times, serif; font-size: 16pt; font-weight: 900; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.1; }
+.report-logo, .rc-logo-placeholder { width: 95px; height: 95px; flex-shrink: 0; border-radius: 8px; object-fit: contain; }
+.rc-logo-spacer { width: 95px; flex-shrink: 0; }
+.rc-schoolinfo { flex: 1; text-align: center; }
+.rc-schoolinfo h1 { font-family: "Times New Roman", Times, serif; font-size: 16pt; font-weight: 800; color: var(--section-accent, #305CDE); margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.1; }
 .rc-schoolinfo .rc-address { font-size: 10pt; font-weight: 600; margin-bottom: 2px; }
 .rc-schoolinfo .rc-contact-line { font-size: 10pt; font-weight: 500; margin: 0; }
 
@@ -213,8 +227,8 @@ html, body {
 .rc-chart-title { font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; color: #64748B; font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
 .rc-chart-title::before { content: ''; display: inline-block; width: 14px; height: 3px; background: #00C853; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
 .rc-chart-svg { width: 100%; margin: 3px 0; }
-.rc-chart-svg svg { width: 100%; height: auto; max-height: 56mm; display: block; }
-.rc-chart-img { width: 100%; max-height: 56mm; object-fit: contain; }
+.rc-chart-svg svg { width: 100%; height: auto; max-height: 48mm; display: block; }
+.rc-chart-img { width: 100%; max-height: 48mm; object-fit: contain; }
 
 /* Stats (flex row â€” content uses .rc-stat divs, not table cells) */
 .rc-stats {
@@ -266,12 +280,18 @@ html, body {
 }
 .rc-table thead th:first-child { text-align: left; }
 .rc-table tbody tr { page-break-inside: avoid; }
-.rc-table tbody td { padding: 3px 7px; border: 1px solid #000; font-size: 11pt; color: #1C1C1E; vertical-align: middle; }
+.rc-table tbody td {
+    /* Vertical padding must be 1px (not 2px): with 2px a JSS card (9 subject
+       rows) still exceeded the 272mm content box and spilled to a second
+       page. 1px fits Grade 1/4/8 on one page each. Horizontal stays 6px so
+       column positions are unchanged. */
+    padding: 1px 6px; border: 1px solid #000; font-size: 11pt; color: #1C1C1E; vertical-align: middle;
+}
 .rc-subj { font-weight: 700; text-align: left; white-space: nowrap; }
 .rc-center { text-align: center; }
 .rc-grade { font-weight: 800; color: #2563EB; }
 .rc-teacher { font-style: italic; font-weight: 600; padding-left: 10px; text-align: left; font-size: 11pt; }
-.rc-table-cell-dev { padding: 3px 6px !important; }
+.rc-table-cell-dev { padding: 1px 6px !important; }
 
 /* Comments */
 .rc-comments-header {
@@ -301,7 +321,7 @@ html, body {
     background: #fff;
     display: flex;
     flex-direction: column;
-    min-height: 30mm;
+    min-height: 26mm;
 }
 .rc-remark-title { font-size: 11pt; font-weight: 800; color: #1E293B; margin-bottom: 6px; }
 .rc-remark-text { font-size: 11pt; font-weight: 400; color: #334155; line-height: 1.4; margin-bottom: 6px; flex-grow: 1; }
@@ -312,7 +332,7 @@ html, body {
 .rc-descriptors { margin-top: 0; width: 100%; }
 .rc-descriptors-title { font-size: 9pt; font-weight: 800; color: #1E293B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 2px solid #305CDE; }
 .rc-descriptors-table { width: 100%; border-collapse: collapse; }
-.rc-descriptors-table th, .rc-descriptors-table td { border: 1px solid #000; padding: 5px 8px; font-size: 9pt; text-align: center; }
+.rc-descriptors-table th, .rc-descriptors-table td { border: 1px solid #000; padding: 3px 6px; font-size: 9pt; text-align: center; }
 .rc-descriptors-table th { background: #E9ECF0; color: #1E293B; font-weight: 800; text-transform: uppercase; }
 .rc-descriptors-table td:first-child, .rc-descriptors-table th:first-child { text-align: left; font-weight: 700; background: #F8FAFC; }
 

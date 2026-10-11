@@ -25,7 +25,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .helpers import invalidate_report_caches
+from .helpers import invalidate_report_caches, drop_stale_exam_summaries
 
 from .constants import (
     JSS_GRADE_CHOICES,
@@ -179,7 +179,7 @@ def select_exam(request):
             status='active',
         )
 
-        is_locked = AssessmentLock.objects.filter(
+        is_locked = AssessmentLock.all_objects.filter(
             school=school,
             year=selected_exam.year,
             term=selected_exam.term,
@@ -311,16 +311,9 @@ def select_exam(request):
                         religion_student_ids.append(student.id)
                     continue
 
-                try:
-                    raw_score = int(value)
-                except ValueError:
-                    messages.error(request, f"Invalid score for {student.name}. Use a number or AB.")
-                    return _htmx_redirect(request,
-                        f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
-                    )
-
-                if raw_score < 0 or raw_score > maximum_marks:
-                    messages.error(request, f"{student.name}'s score exceeds the total marks.")
+                parse_status, raw_score, parse_error = _parse_mark_score(value, maximum_marks)
+                if parse_status != 'score':
+                    messages.error(request, f"{student.name}: {parse_error or 'Use a whole number or AB.'}")
                     return _htmx_redirect(request,
                         f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                     )
@@ -883,7 +876,7 @@ def manage_exams(request):
                 messages.error(request, "Please add at least one grading level.")
                 return redirect(reverse('manage_exams') + '?tab=grading')
 
-            from ..models import GradingScale, GradingAssignment
+            from ..models import GradingConfig, GradingScale, GradingAssignment
             subject_id = request.POST.get("subject")
             raw_section = request.POST.get("school_section", "JSS")
 
@@ -898,6 +891,14 @@ def manage_exams(request):
                 school_section = raw_section
                 sub_section = request.POST.get("sub_section") or None
 
+            # Section key used by GradingConfig.get_default_total_scale()
+            if raw_section == 'PRIMARY_LOWER':
+                total_section = 'LOWER_PRIMARY'
+            elif raw_section in ('PRIMARY_UPPER', 'PRIMARY'):
+                total_section = 'PRIMARY'
+            else:
+                total_section = 'JSS'
+
             subject_obj = None
             if subject_id:
                 subject_obj = Subject.all_objects.filter(school=school, id=subject_id).first()
@@ -905,6 +906,11 @@ def manage_exams(request):
             existing_scale = GradingScale.objects.filter(school=school, name=grading_name).first()
             if existing_scale:
                 existing_scale.subject_scale = _scale
+                if not existing_scale.total_scale:
+                    # This form only submits a subject scale. Without a
+                    # total_scale every overall level (and the comment box the
+                    # report card picks from it) resolves to NO CONFIG '-'.
+                    existing_scale.total_scale = GradingConfig.get_default_total_scale(total_section)
                 existing_scale.save()
                 messages.success(request, "Grading system updated successfully.")
             else:
@@ -912,6 +918,7 @@ def manage_exams(request):
                     school=school,
                     name=grading_name,
                     subject_scale=_scale,
+                    total_scale=GradingConfig.get_default_total_scale(total_section),
                 )
                 messages.success(request, "Grading system created successfully.")
 
@@ -922,20 +929,45 @@ def manage_exams(request):
                 subject=subject_obj,
                 defaults={'grading_scale': existing_scale},
             )
-            from .grading_engine import clear_grading_cache
-            clear_grading_cache()
+            from .grading_engine import refresh_school_grading
+            refresh_school_grading(school)
+            from .helpers import (
+                invalidate_school_grade_caches,
+                regrade_exam_summaries_for_school,
+                regrade_marks_for_school,
+            )
+            invalidate_school_grade_caches(school.pk)
+            regrade_marks_for_school(school, section=school_section)
+            regrade_exam_summaries_for_school(school)
             return redirect(reverse('manage_exams') + '?tab=grading')
 
         if action_type == "delete_grading_config":
             config_id = request.POST.get("config_id")
             if config_id:
                 from ..models import GradingAssignment, GradingScale
+                from .grading_engine import (
+                    refresh_school_grading,
+                    track_assignment_keys,
+                )
+                from .helpers import (
+                    invalidate_school_grade_caches,
+                    regrade_exam_summaries_for_school,
+                    regrade_marks_for_school,
+                )
                 assignment = GradingAssignment.objects.filter(school=school, id=config_id).first()
                 if assignment:
                     scale = assignment.grading_scale
+                    del_section = assignment.school_section
+                    # Register the key first: once the row is gone nothing can
+                    # reconstruct it, so it would stay in Redis for 24h.
+                    track_assignment_keys([assignment])
                     assignment.delete()
                     if not scale.assignments.exists():
                         scale.delete()
+                    refresh_school_grading(school)
+                    invalidate_school_grade_caches(school.pk)
+                    regrade_marks_for_school(school, section=del_section)
+                    regrade_exam_summaries_for_school(school)
                     messages.success(request, "Grading system deleted.")
                 else:
                     messages.error(request, "Grading system not found.")
@@ -1848,6 +1880,8 @@ def analyse_exam(request):
         'BE1': 'Below Expectations', 'BE2': 'Below Expectations',
         'EE': 'Exceeding Expectations', 'ME': 'Meeting Expectations',
         'AE': 'Approaching Expectations', 'BE': 'Below Expectations',
+        # Legacy sentinel held by older rows — must never render as a grade.
+        'NO CONFIG': '-',
     }
     if grading_scale_obj:
         if grading_scale_obj.total_scale:
@@ -2546,7 +2580,7 @@ def review_stream_submission(request):
             target_submission.save()
 
             # Unlock the assessment so the teacher can edit the returned sheet
-            AssessmentLock.objects.filter(
+            AssessmentLock.all_objects.filter(
                 school=school,
                 year=exam.year,
                 term=exam.term,
@@ -2567,7 +2601,7 @@ def review_stream_submission(request):
                 submission.save()
 
             # Unlock the assessment so teachers can edit returned sheets
-            AssessmentLock.objects.filter(
+            AssessmentLock.all_objects.filter(
                 school=school,
                 year=exam.year,
                 term=exam.term,
@@ -2818,20 +2852,12 @@ def review_submission(request):
                             religion_opposite_deletes.append((student.id, opposite))
                     continue
 
-                try:
-                    raw_score = int(value)
-                except ValueError:
+                parse_status, raw_score, parse_error = _parse_mark_score(value, maximum_marks)
+                if parse_status != 'score':
+                    _err = f"{student.name}: {parse_error or 'Use a whole number or AB.'}"
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                        return JsonResponse({"success": False, "error": f"Invalid score for {student.name}. Use a number or AB."})
-                    messages.error(request, f"Invalid score for {student.name}. Use a number or AB.")
-                    return redirect(
-                        f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
-                    )
-
-                if raw_score < 0 or raw_score > maximum_marks:
-                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                        return JsonResponse({"success": False, "error": f"{student.name}'s score exceeds the total marks."})
-                    messages.error(request, f"{student.name}'s score exceeds the total marks.")
+                        return JsonResponse({"success": False, "error": _err})
+                    messages.error(request, _err)
                     return redirect(
                         f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
                     )
@@ -2983,7 +3009,7 @@ def review_submission(request):
                 submission.save()
 
                 # Unlock the assessment so the teacher can edit the returned sheet
-                AssessmentLock.objects.filter(
+                AssessmentLock.all_objects.filter(
                     school=school,
                     year=exam.year,
                     term=exam.term,
@@ -3309,7 +3335,7 @@ def manage_assessment_locks(request):
     
     lock_map = {
         (lock.grade, lock.exam_type): lock.is_locked
-        for lock in AssessmentLock.objects.filter(school=school, year=selected_year, term=current_term)
+        for lock in AssessmentLock.all_objects.filter(school=school, year=selected_year, term=current_term)
     }
     assessments_list = ['Opener Assessment', 'Mid Term Assessment', 'End Term Assessment']
     portal_data = [
@@ -3373,7 +3399,9 @@ def _get_primary_performance(percentage, school=None, section=None, sub_section=
         "Configure it at /school-admin/grading-config/.",
         getattr(school, 'id', None), section, sub_section,
     )
-    return 'NO CONFIG', 0
+    # '-' rather than a 'NO CONFIG' sentinel, which used to be printed as the
+    # pupil's descriptor on report cards.
+    return '-', 0
 
 
 @login_required(login_url='login')
@@ -3507,7 +3535,7 @@ def select_exam_primary(request):
                 messages.error(request, "That exam belongs to a different sub-section.")
                 return _htmx_redirect(request, reverse('select_exam_primary'))
 
-        is_locked = AssessmentLock.objects.filter(
+        is_locked = AssessmentLock.all_objects.filter(
             school=school,
             year=selected_exam.year,
             term=selected_exam.term,
@@ -3687,16 +3715,9 @@ def select_exam_primary(request):
                     continue
 
                 # ── Numeric score path ──
-                try:
-                    raw_score = int(value)
-                except ValueError:
-                    messages.error(request, f"Invalid score for {student.name}. Use a number or AB.")
-                    return _htmx_redirect(request,
-                        f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
-                    )
-
-                if raw_score < 0 or raw_score > maximum_marks:
-                    messages.error(request, f"{student.name}'s score exceeds the total marks.")
+                parse_status, raw_score, parse_error = _parse_mark_score(value, maximum_marks)
+                if parse_status != 'score':
+                    messages.error(request, f"{student.name}: {parse_error or 'Use a whole number or AB.'}")
                     return _htmx_redirect(request,
                         f"{request.path}?assignment_id={selected_assignment.id}&exam_id={selected_exam.id}"
                     )
@@ -4017,6 +4038,13 @@ def clear_mark(request):
     except Student.DoesNotExist:
         return JsonResponse({'error': 'Student not found'}, status=404)
 
+    # The mark's natural key has no class/stream, so a forged student_id
+    # from another class used to attach this subject's mark to the wrong
+    # learner and surface on THEIR report card. The entry grid only ever
+    # posts students from the assignment's own class list.
+    if student.class_name != assignment.class_name or student.stream != assignment.stream:
+        return JsonResponse({'error': 'Student is not on this class list.'}, status=400)
+
     submission_teacher = teacher or assignment.teacher_profile
     submission = MarkSubmission.all_objects.filter(
         school=school,
@@ -4034,7 +4062,7 @@ def clear_mark(request):
     if submission and submission.status in ('approved', 'published'):
         return JsonResponse({'error': 'This sheet has been approved/published and cannot be modified. Ask the admin to return it first.'}, status=403)
 
-    if AssessmentLock.objects.filter(
+    if AssessmentLock.all_objects.filter(
         school=school,
         year=exam.year,
         term=exam.term,
@@ -4087,8 +4115,43 @@ def clear_mark(request):
             school.pk, assignment.class_name, assignment.stream,
             exam.year, exam.term, exam.name,
         )
+        drop_stale_exam_summaries(school, [student.pk], exam.year, exam.term, exam.name)
 
     return JsonResponse({'ok': True, 'deleted': deleted_count})
+
+
+# Strict mark-capture grammar: whole digits only (1-4 digits) or AB.
+# int() alone was too permissive (accepts "+12", "1_0", "007", whitespace)
+# and too opaque on failure ("Invalid score"). Decimals, letters, exponents
+# and symbols must be rejected with a message a teacher can act on.
+_MARK_SCORE_RE = re.compile(r'^\d{1,4}$')
+
+
+def _parse_mark_score(score_value, maximum_marks):
+    """Validate a mark-capture entry.
+
+    Returns (status, value, error):
+      'empty'  -> cleared cell
+      'absent' -> the AB (absent) marker
+      'score'  -> whole integer 0..maximum_marks
+      'error'  -> rejected input; error is a teacher-facing message
+    """
+    raw = str(score_value).strip()
+    if not raw:
+        return 'empty', None, None
+    if raw.upper() == 'AB':
+        return 'absent', None, None
+    if not _MARK_SCORE_RE.match(raw):
+        return 'error', None, (
+            f'Enter a whole number (0-{maximum_marks}) or AB for absent. '
+            'Decimals, letters and symbols are not allowed.'
+        )
+    n = int(raw)
+    if n > maximum_marks:
+        return 'error', None, (
+            f'Score {n} exceeds the assessment total of {maximum_marks}.'
+        )
+    return 'score', n, None
 
 
 @login_required(login_url='login')
@@ -4155,6 +4218,13 @@ def save_mark(request):
     except Student.DoesNotExist:
         return JsonResponse({'error': 'Student not found'}, status=404)
 
+    # The mark's natural key has no class/stream, so a forged student_id
+    # from another class used to attach this subject's mark to the wrong
+    # learner and surface on THEIR report card. The entry grid only ever
+    # posts students from the assignment's own class list.
+    if student.class_name != assignment.class_name or student.stream != assignment.stream:
+        return JsonResponse({'error': 'Student is not on this class list.'}, status=400)
+
     submission_teacher = teacher or assignment.teacher_profile
     submission = MarkSubmission.all_objects.filter(
         school=school, teacher=submission_teacher, subject=assignment.subject,
@@ -4168,7 +4238,7 @@ def save_mark(request):
         return JsonResponse({'error': 'This sheet has been submitted and cannot be modified. Ask the admin to return it first.'}, status=403)
 
     # Check assessment lock
-    if AssessmentLock.objects.filter(
+    if AssessmentLock.all_objects.filter(
         school=school,
         year=exam.year,
         term=exam.term,
@@ -4178,22 +4248,14 @@ def save_mark(request):
     ).exists():
         return JsonResponse({'error': 'Assessment is locked by admin'}, status=403)
 
-    try:
-        existing_mark = Mark.all_objects.filter(
-            school=school, student=student, subject=assignment.subject,
-            term=exam.term, exam_type=exam.name, year=exam.year,
-            school_section=assignment.school_section,
-            sub_section=assignment.sub_section,
-        ).first()
-    except Exception:
-        existing_mark = None
-
+    # The client always posts maximum_marks; the stored value is only a
+    # fallback if the payload is unparsable. Cap to 1..500 like
+    # update_maximum_marks does.
     try:
         maximum_marks = int(request.POST.get('maximum_marks', '100'))
     except (ValueError, TypeError):
-        maximum_marks = existing_mark.maximum_marks if existing_mark else 100
-
-    if maximum_marks <= 0:
+        maximum_marks = 100
+    if maximum_marks < 1 or maximum_marks > 500:
         maximum_marks = 100
 
     # ── CLEAR: empty score → delete mark (atomic with lock) ────────────
@@ -4212,6 +4274,7 @@ def save_mark(request):
                 school.pk, assignment.class_name, assignment.stream,
                 exam.year, exam.term, exam.name,
             )
+            drop_stale_exam_summaries(school, [student.pk], exam.year, exam.term, exam.name)
         return JsonResponse({'ok': True, 'cleared': True, 'deleted': deleted[0] if deleted else 0})
 
     try:
@@ -4275,16 +4338,15 @@ def _save_mark_score(request, school, teacher, assignment, exam, student, score_
             school.pk, assignment.class_name, assignment.stream,
             exam.year, exam.term, exam.name,
         )
+        drop_stale_exam_summaries(school, [student.pk], exam.year, exam.term, exam.name)
         return JsonResponse({'ok': True, 'absent': True, 'mark_id': mark_id})
 
     # ── NUMERIC SCORE → upsert with computed grading ──────────────────────
-    try:
-        raw_score = int(score_value)
-    except ValueError:
+    parse_status, raw_score, parse_error = _parse_mark_score(score_value, maximum_marks)
+    if parse_status == 'error':
+        return JsonResponse({'error': parse_error}, status=400)
+    if parse_status != 'score':
         return JsonResponse({'error': 'Invalid score'}, status=400)
-
-    if raw_score < 0 or raw_score > maximum_marks:
-        return JsonResponse({'error': 'Score exceeds total marks'}, status=400)
 
     if maximum_marks <= 0:
         return JsonResponse({'error': 'Maximum marks must be greater than zero'}, status=400)
@@ -4336,6 +4398,7 @@ def _save_mark_score(request, school, teacher, assignment, exam, student, score_
         school.pk, assignment.class_name, assignment.stream,
         exam.year, exam.term, exam.name,
     )
+    drop_stale_exam_summaries(school, [student.pk], exam.year, exam.term, exam.name)
 
     return JsonResponse({'ok': True, 'saved': True, 'mark_id': mark_id})
 
@@ -4366,6 +4429,12 @@ def batch_save_marks(request):
     assignment_id = data.get('assignment_id')
     exam_id = data.get('exam_id')
     maximum_marks_default = data.get('maximum_marks', 100)
+    try:
+        maximum_marks_default = int(maximum_marks_default)
+    except (ValueError, TypeError):
+        maximum_marks_default = 100
+    if maximum_marks_default < 1 or maximum_marks_default > 500:
+        maximum_marks_default = 100
 
     if not marks_data or not assignment_id or not exam_id:
         return JsonResponse({'error': 'Missing parameters'}, status=400)
@@ -4402,7 +4471,7 @@ def batch_save_marks(request):
         return JsonResponse({'error': 'Sheet is locked'}, status=403)
 
     # Check assessment lock
-    if AssessmentLock.objects.filter(
+    if AssessmentLock.all_objects.filter(
         school=school,
         year=exam.year,
         term=exam.term,
@@ -4438,10 +4507,16 @@ def batch_save_marks(request):
             )
         }
 
-        # Prefetch student objects for new marks (avoids N+1 in the loop)
+        # Prefetch student objects for new marks (avoids N+1 in the loop).
+        # Restrict to the assignment's own class/stream — a forged id from
+        # another class must not receive this subject's mark.
         student_ids = [item.get('student_id') for item in marks_data if item.get('student_id')]
         students_map = {
-            s.id: s for s in Student.objects.filter(id__in=student_ids, school=school)
+            s.id: s for s in Student.objects.filter(
+                id__in=student_ids, school=school,
+                class_name=assignment.class_name,
+                stream=assignment.stream,
+            )
         }
 
         marks_to_create = []
@@ -4449,6 +4524,7 @@ def batch_save_marks(request):
         marks_to_delete = []
         skipped_unchanged = 0
         skipped_invalid = []
+        rejected = []
 
         for item in marks_data:
             student_id = item.get('student_id')
@@ -4462,6 +4538,20 @@ def batch_save_marks(request):
                 maximum_marks = int(maximum_marks)
             except (ValueError, TypeError):
                 maximum_marks = 100
+            if maximum_marks < 1 or maximum_marks > 500:
+                maximum_marks = 100
+
+            # Class/stream gate for BOTH create and update paths. A legacy
+            # cross-grade mark row must not make this student updatable from
+            # another class's grid.
+            student = students_map.get(int(student_id) if str(student_id).isdigit() else student_id)
+            if student is None:
+                skipped_invalid.append(str(student_id))
+                rejected.append({
+                    'student_id': str(student_id),
+                    'error': 'Student is not on this class list.',
+                })
+                continue
 
             existing = existing_marks.get(int(student_id) if str(student_id).isdigit() else student_id)
 
@@ -4481,6 +4571,8 @@ def batch_save_marks(request):
                             and existing.maximum_marks == maximum_marks):
                         skipped_unchanged += 1
                         continue
+                    existing._old_raw_score = existing.raw_score
+                    existing._old_score = existing.score
                     existing.raw_score = None
                     existing.maximum_marks = maximum_marks
                     existing.score = 0
@@ -4494,9 +4586,6 @@ def batch_save_marks(request):
                     existing.integrity_checksum = compute_mark_checksum(existing)
                     marks_to_update.append(existing)
                 else:
-                    student = students_map.get(int(student_id) if str(student_id).isdigit() else student_id)
-                    if not student:
-                        continue
                     new_mark = Mark(
                         school=school, student=student,
                         subject=assignment.subject,
@@ -4515,23 +4604,37 @@ def batch_save_marks(request):
                 saved_count += 1
                 continue
 
-            # Numeric score
-            try:
-                raw_score = int(score_value)
-            except ValueError:
+            # Numeric score — strict whole-number grammar (no decimals,
+            # letters, signs or exponents; AB already handled above).
+            parse_status, raw_score, parse_error = _parse_mark_score(score_value, maximum_marks)
+            if parse_status != 'score':
                 skipped_invalid.append(str(student_id))
-                continue
-
-            if raw_score < 0 or raw_score > maximum_marks:
-                skipped_invalid.append(str(student_id))
+                rejected.append({
+                    'student_id': str(student_id),
+                    'error': parse_error or 'Enter a whole number or AB for absent.',
+                })
                 continue
 
             score = round((raw_score / maximum_marks) * 100)
 
-            if grading_scale:
-                perf_level, perf_points = get_subject_level_fast(score, grading_scale)
+            if assignment.school_section == 'PRIMARY':
+                pp_level, pp_points = _get_primary_performance(
+                    score, school=school,
+                    section=assignment.school_section,
+                    sub_section=assignment.sub_section,
+                    subject_id=subject_id,
+                )
+                perf_level = pp_level
+                perf_points = pp_points if pp_points is not None else 0
+                p_raw = str(raw_score)
+                p_pt = str(pp_points) if pp_points is not None else ''
+                p_desc = to_primary_descriptor(pp_level, assignment.school_section)
             else:
-                perf_level, perf_points = '-', 0
+                if grading_scale:
+                    perf_level, perf_points = get_subject_level_fast(score, grading_scale)
+                else:
+                    perf_level, perf_points = '-', 0
+                p_raw = p_pt = p_desc = ''
 
             if existing:
                 # Skip if nothing changed (optimistic locking: no DB write needed)
@@ -4551,16 +4654,13 @@ def batch_save_marks(request):
                 existing.is_absent = False
                 existing.performance_level = perf_level
                 existing.points = perf_points
-                existing.primary_raw_score = ''
-                existing.primary_performance_point = ''
-                existing.primary_descriptor = ''
+                existing.primary_raw_score = p_raw
+                existing.primary_performance_point = p_pt
+                existing.primary_descriptor = p_desc
                 existing.version = F('version') + 1
                 existing.integrity_checksum = compute_mark_checksum(existing)
                 marks_to_update.append(existing)
             else:
-                student = students_map.get(int(student_id) if str(student_id).isdigit() else student_id)
-                if not student:
-                    continue
                 new_mark = Mark(
                     school=school, student=student,
                     subject=assignment.subject,
@@ -4570,9 +4670,9 @@ def batch_save_marks(request):
                     raw_score=raw_score, maximum_marks=maximum_marks,
                     score=score, is_absent=False,
                     performance_level=perf_level, points=perf_points,
-                    primary_raw_score='',
-                    primary_performance_point='',
-                    primary_descriptor='',
+                    primary_raw_score=p_raw,
+                    primary_performance_point=p_pt,
+                    primary_descriptor=p_desc,
                 )
                 new_mark.integrity_checksum = compute_mark_checksum(new_mark)
                 marks_to_create.append(new_mark)
@@ -4634,13 +4734,42 @@ def batch_save_marks(request):
             if audit_entries:
                 MarkAuditLog.objects.bulk_create(audit_entries, batch_size=250)
 
+        # Religion parity with the single-save path: tag the students whose
+        # marks we just wrote and drop the opposite-religion subject's mark
+        # so a student can never carry both CRE and IRE for the same exam.
+        if assignment.subject and assignment.subject.code in RELIGION_SUBJECTS:
+            _rel_sids = [m.student_id for m in marks_to_create]
+            _rel_sids += [m.student_id for m in marks_to_update]
+            if _rel_sids:
+                religion_tag = RELIGION_TAG.get(assignment.subject.code, '')
+                Student.all_objects.filter(id__in=_rel_sids).update(religion=religion_tag)
+                opposite = _resolve_opposite_religion_subject(school, assignment)
+                if opposite:
+                    Mark.all_objects.filter(
+                        school=school, student_id__in=_rel_sids, subject=opposite,
+                        term=exam.term, exam_type=exam.name, year=exam.year,
+                        school_section=assignment.school_section,
+                        sub_section=assignment.sub_section,
+                    ).delete()
+
         if saved_count > 0:
             invalidate_report_caches(
                 school.pk, assignment.class_name, assignment.stream,
                 exam.year, exam.term, exam.name,
             )
+            _touched = {m.student_id for m in marks_to_create}
+            _touched |= {m.student_id for m in marks_to_update}
+            drop_stale_exam_summaries(
+                school, list(_touched), exam.year, exam.term, exam.name,
+            )
 
-    return JsonResponse({'ok': True, 'saved': saved_count, 'skipped': skipped_unchanged, 'skipped_invalid': skipped_invalid})
+    return JsonResponse({
+        'ok': True,
+        'saved': saved_count,
+        'skipped': skipped_unchanged,
+        'skipped_invalid': skipped_invalid,
+        'rejected': rejected,
+    })
 
 
 @login_required(login_url='login')
@@ -4704,7 +4833,7 @@ def update_maximum_marks(request):
     if submission and submission.status in ('submitted', 'approved', 'published'):
         return JsonResponse({'error': 'Sheet is submitted — cannot change total marks now.'}, status=403)
 
-    if AssessmentLock.objects.filter(
+    if AssessmentLock.all_objects.filter(
         school=school,
         year=exam.year,
         term=exam.term,
@@ -4777,6 +4906,10 @@ def update_maximum_marks(request):
             )
             invalidate_report_caches(
                 school.pk, assignment.class_name, assignment.stream,
+                exam.year, exam.term, exam.name,
+            )
+            drop_stale_exam_summaries(
+                school, [m.student_id for m in marks_to_update],
                 exam.year, exam.term, exam.name,
             )
 
@@ -5055,7 +5188,7 @@ def upload_results(request):
         messages.error(request, "Exam not found.")
         return redirect("manage_exams")
 
-    is_locked = AssessmentLock.objects.filter(
+    is_locked = AssessmentLock.all_objects.filter(
         school=school,
         year=exam.year,
         term=exam.term,
@@ -5220,16 +5353,12 @@ def upload_results(request):
                 corrected_count += 1
                 continue
 
-            try:
-                raw_score = int(value)
-            except (ValueError, TypeError):
-                messages.error(request, f"Invalid score for {student.name}. Use a number or AB.")
-                return _htmx_redirect(request,
-                    f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+            parse_status, raw_score, parse_error = _parse_mark_score(value, maximum_marks)
+            if parse_status != 'score':
+                messages.error(
+                    request,
+                    f"{student.name}: {parse_error or 'Use a whole number or AB.'}",
                 )
-
-            if raw_score < 0 or raw_score > maximum_marks:
-                messages.error(request, f"{student.name}'s score exceeds the total marks.")
                 return _htmx_redirect(request,
                     f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
                 )

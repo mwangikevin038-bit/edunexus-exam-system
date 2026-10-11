@@ -20,10 +20,10 @@ Module layout:
 """
 
 # ── Constants ────────────────────────────────────────────────────────────────
-from .constants import *  # noqa: F401,F403
+from .constants import *  # noqa: F403
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-from .helpers import *  # noqa: F401,F403
+from .helpers import *  # noqa: F403
 
 # ── Auth views ───────────────────────────────────────────────────────────────
 from .auth import (  # noqa: F401
@@ -37,7 +37,7 @@ from .auth import (  # noqa: F401
 )
 
 # ── Health check (no auth required) ──────────────────────────────────────────
-from .health import healthz  # noqa: F401,E402
+from .health import healthz  # noqa: F401
 
 # ── Dashboard views ──────────────────────────────────────────────────────────
 from .dashboard import (  # noqa: F401

@@ -1,16 +1,18 @@
+{% load students_extras %}
+{% school_from "request.school" "school" as school_obj %}
 <div class="report-card" style="--section-accent: {{ section_accent }};">
     <div class="report-content">
         <div class="rc-header">
-            {% if request.school.logo %}
-            <img src="{{ request.school.logo.url }}" alt="Logo" class="report-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-            <div class="rc-logo-placeholder" style="display:none;">{{ request.school.name|truncatechars:1 }}</div>
+            {% if school_obj.logo %}
+            <img src="{{ school_obj.logo.url }}" alt="Logo" class="report-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <div class="rc-logo-placeholder" style="display:none;">{{ school_obj.name|truncatechars:1 }}</div>
             {% else %}
-            <div class="rc-logo-placeholder">{{ request.school.name|truncatechars:1 }}</div>
+            <div class="rc-logo-placeholder">{{ school_obj.name|truncatechars:1 }}</div>
             {% endif %}
             <div class="rc-schoolinfo">
-                <h1>{{ request.school.name|upper }}</h1>
-                <p class="rc-address">Address: {{ request.school.address }}</p>
-                <p class="rc-contact-line">Tel {{ request.school.phone_number }} &nbsp;|&nbsp; Email {{ request.school.email }}</p>
+                <h1>{{ school_obj.name|upper }}</h1>
+                <p class="rc-address">Address: {{ school_obj.address }}</p>
+                <p class="rc-contact-line">Tel {{ school_obj.phone_number }} &nbsp;|&nbsp; Email {{ school_obj.email }}</p>
             </div>
             <div class="rc-logo-spacer"></div>
         </div>
@@ -220,7 +222,7 @@
                                 {% endif %}
                             </div>
                         </td>
-                        <td class="rc-center rc-grade">{{ mark.performance_level|default:"-" }}</td>
+                        <td class="rc-center rc-grade">{{ mark.performance_level|level_or_dash }}</td>
                         <td class="rc-teacher">{{ mark.teacher_name }}</td>
                     </tr>
                     {% endif %}
@@ -234,7 +236,7 @@
             <div class="rc-remarks-grid">
                 <div class="rc-remark-box">
                     <div class="rc-remark-title">Class Teacher Remarks{% if student_data.class_teacher_name %}: {{ student_data.class_teacher_name }}{% endif %}</div>
-                    <div class="rc-remark-text">{{ student_data.class_teacher_remark }}</div>
+                    <div class="rc-remark-text">{% if student_data.class_teacher_remark %}{{ student_data.class_teacher_remark }}{% else %}<span style="font-style: italic; color: #94A3B8;">No remarks entered for this assessment.</span>{% endif %}</div>
                     <div class="rc-signature">
                         {% if student_data.class_teacher_signature %}
                             <img src="{{ student_data.class_teacher_signature }}" alt="Class teacher signature" class="rc-signature-img">
@@ -245,7 +247,7 @@
                 </div>
                 <div class="rc-remark-box">
                     <div class="rc-remark-title">Principal Remarks</div>
-                    <div class="rc-remark-text">{{ student_data.headteacher_comment }}</div>
+                    <div class="rc-remark-text">{% if student_data.headteacher_comment %}{{ student_data.headteacher_comment }}{% else %}<span style="font-style: italic; color: #94A3B8;">No remarks entered for this assessment.</span>{% endif %}</div>
                     <div class="rc-signature">Signature: ____________________</div>
                 </div>
             </div>

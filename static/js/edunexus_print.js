@@ -317,10 +317,10 @@
                 // Force portrait last so any earlier @page size cannot win.
                 combinedCSS += [
                     '',
-                    '@page { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }',
-                    '@page landscape { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }',
+                    '@page { size: A4 portrait !important; margin: 7mm 5mm 18mm 5mm; }',
+                    '@page landscape { size: A4 portrait !important; margin: 7mm 5mm 18mm 5mm; }',
                     '@media print {',
-                    '  @page { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }',
+                    '  @page { size: A4 portrait !important; margin: 7mm 5mm 18mm 5mm; }',
                     '  .report-card { page-break-inside: avoid !important; break-inside: avoid !important; }',
                     '  .report-card + .report-card { page-break-before: always !important; break-before: page !important; }',
                     '  .rc-descriptors, .rc-descriptors-table, .footer-dates, .rc-remarks-grid {',

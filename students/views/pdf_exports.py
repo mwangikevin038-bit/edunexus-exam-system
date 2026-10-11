@@ -421,11 +421,26 @@ def _compile_single_student_pdf(student_context, logo_base64, section_accent, ba
     )
 
     # Embed the school logo as a data URI so WeasyPrint doesn't need network.
+    # Swap ONLY the logo's own src. This used to replace every
+    # 'src="/static/...', which painted the crest over every icon while the
+    # real logo (a /media/ URL) stayed an external request WeasyPrint never
+    # resolved — so the header came out blank.
     if logo_base64:
-        single_html = single_html.replace('src="/static/', f'src="{logo_base64}')
+        school_logo = getattr(student_context.get('school'), 'logo', None)
+        logo_url = getattr(school_logo, 'url', '')
+        if logo_url and f'src="{logo_url}"' in single_html:
+            single_html = single_html.replace(f'src="{logo_url}"', f'src="{logo_base64}"')
 
     # Load the WeasyPrint-compatible CSS from disk (cached after first read)
     print_css = _load_weasyprint_css()
+
+    # WeasyPrint 69 does not resolve CSS custom properties, so every
+    # `var(--section-accent, #305CDE)` in print-weasyprint.css falls back to
+    # the JSS blue and PRIMARY/UPPER cards printed the wrong section colour.
+    # Resolve the fallback to the real accent at render time.
+    accent = (section_accent or "").strip()
+    if accent and accent.upper() != "#305CDE":
+        print_css = print_css.replace("#305CDE", accent).replace("#305cde", accent)
 
     # Inject <base> + the WeasyPrint CSS
     single_html = single_html.replace(
@@ -1190,6 +1205,7 @@ def download_classlist_pdf(request):
 # ==============================================================================
 # download_score_sheet_pdf
 # ==============================================================================
+@login_required(login_url='login')
 @rate_limit("report_download", max_requests=10, window_seconds=60, methods=["GET", "POST"])
 def download_score_sheet_pdf(request):
     """
@@ -1418,11 +1434,14 @@ def _build_report_popup_html(request, context, *, title, disable_chart_animation
     page_css = m.group(1) if m else ''
 
     # Portrait block appended by writePopup for report-card selectors.
+    # Margins must match @page in print-shared.css / the partial
+    # (7mm 5mm 18mm 5mm). Reverting to 5mm/8mm here re-clipped the footer
+    # into the watermark (measured clearance 2.0mm instead of 7.0mm).
     portrait_overrides = (
-        '\n@page { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }\n'
-        '@page landscape { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }\n'
+        '\n@page { size: A4 portrait !important; margin: 7mm 5mm 18mm 5mm; }\n'
+        '@page landscape { size: A4 portrait !important; margin: 7mm 5mm 18mm 5mm; }\n'
         '@media print {\n'
-        '  @page { size: A4 portrait !important; margin: 5mm 5mm 8mm 5mm; }\n'
+        '  @page { size: A4 portrait !important; margin: 7mm 5mm 18mm 5mm; }\n'
         '  .report-card { page-break-inside: avoid !important; break-inside: avoid !important; }\n'
         '  .report-card + .report-card { page-break-before: always !important; break-before: page !important; }\n'
         '  .rc-descriptors, .rc-descriptors-table, .footer-dates, .rc-remarks-grid {\n'
@@ -1607,6 +1626,29 @@ def _get_pdf_cache():
     return caches["pdf_generation"]
 
 
+def _pdf_job_owner_key(job_id):
+    return f"pdf_owner_{job_id}"
+
+
+def _authorise_pdf_job(request, job_id):
+    """Only the user who started a background PDF job may poll/download/cancel it.
+
+    Job ids are short random hex — without an owner check any authenticated
+    user could read another school's report cards by guessing (or being handed)
+    a job id. Jobs started before the owner key existed report no owner; they
+    are allowed so an in-flight job is not orphaned by a deploy.
+    """
+    try:
+        owner = _get_pdf_cache().get(_pdf_job_owner_key(job_id))
+    except Exception:
+        logger.warning("pdf job owner lookup failed for %s", job_id, exc_info=True)
+        owner = None
+    if owner is None:
+        return True
+    return owner == request.user.id
+
+
+
 @login_required
 def start_bulk_report_pdf(request):
     """
@@ -1655,6 +1697,26 @@ def start_bulk_report_pdf(request):
     if not student_ids:
         return JsonResponse({'error': 'No students found for that grade/stream/exam.'}, status=404)
 
+    # Optional subset selection: the picker lets the user tick only some
+    # learners. Restrict to the intersection so `ids` can never pull in a
+    # student from another class/stream (and an all-or-nothing selection
+    # still generates the whole class when `ids` is absent).
+    raw_ids = request.GET.get('ids', '').strip() or request.POST.get('ids', '').strip()
+    if raw_ids:
+        wanted = set()
+        for tok in raw_ids.split(','):
+            tok = tok.strip()
+            if tok.isdigit():
+                wanted.add(int(tok))
+        if wanted:
+            subset = [sid for sid in student_ids if sid in wanted]
+            if not subset:
+                return JsonResponse(
+                    {'error': 'None of the selected learners belong to this class stream.'},
+                    status=400,
+                )
+            student_ids = subset
+
     # Access check
     sample = Student.all_objects.filter(id__in=student_ids, school=school).first()
     if not sample:
@@ -1667,6 +1729,11 @@ def start_bulk_report_pdf(request):
 
     # Generate unique job ID and dispatch to Celery
     job_id = _uuid.uuid4().hex[:16]
+    # Bind the job to this user so only they can poll/download/cancel it.
+    try:
+        _get_pdf_cache().set(_pdf_job_owner_key(job_id), request.user.id, timeout=60 * 60 * 24)
+    except Exception:
+        logger.warning("could not record pdf job owner for %s", job_id, exc_info=True)
 
     from ..tasks import generate_bulk_report_pdf
     try:
@@ -1705,6 +1772,9 @@ def pdf_progress(request, job_id):
     Poll endpoint for the frontend to check PDF generation progress.
     Returns compiled/total counts and status.
     """
+    if not _authorise_pdf_job(request, job_id):
+        return JsonResponse({'error': 'Not authorised for this job.'}, status=403)
+
     pdf_cache = _get_pdf_cache()
 
     # Check for completion first
@@ -1726,8 +1796,13 @@ def download_generated_pdf(request, job_id):
     GET /api/pdf-download/<job_id>/
     
     Download the completed PDF. Only available after generation is complete.
-    Cleans up cache entries after download.
+    The bytes stay in the cache until their TTL so the link can be refreshed
+    or re-clicked (they used to be deleted here, which turned a second click
+    into a 404).
     """
+    if not _authorise_pdf_job(request, job_id):
+        return JsonResponse({'error': 'Not authorised for this job.'}, status=403)
+
     pdf_cache = _get_pdf_cache()
 
     result = pdf_cache.get(f"pdf_result_{job_id}")
@@ -1742,10 +1817,6 @@ def download_generated_pdf(request, job_id):
         return JsonResponse({'error': 'PDF data expired. Please regenerate.'}, status=404)
 
     filename = result.get('filename') or safe_pdf_filename('Report_Cards')
-
-    # Clean up cache
-    pdf_cache.delete(f"pdf_data_{job_id}")
-    pdf_cache.delete(f"pdf_result_{job_id}")
 
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -1763,6 +1834,9 @@ def cancel_bulk_pdf(request, job_id):
     the bulk-PDF job on the next iteration, sending a ``cancelled`` status
     back through the cache + websocket.
     """
+    if not _authorise_pdf_job(request, job_id):
+        return JsonResponse({'error': 'Not authorised for this job.'}, status=403)
+
     pdf_cache = _get_pdf_cache()
 
     # 24h TTL matches the longest realistic bulk job. The worker deletes the key

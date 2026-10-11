@@ -233,78 +233,56 @@
 <!-- Dynamic Performance Cards Grid (Grade 1 to Grade 9) -->
 <div class="performance-analysis-grid">
     {% for card in grade_performance_cards %}
-    <div class="analysis-card" style="border-top:3px solid {{ card.accent }}">
-        <div class="analysis-card-header" style="background:{{ card.bg }};border-bottom-color:{{ card.border }}">
-            <h4 class="class-level-title" style="color:{{ card.text }}">{{ card.label }}</h4>
-            <span class="exam-period-label">{{ exam_label|default:"No Exam Data" }}</span>
+    <div class="analysis-card">
+        <div class="analysis-card-header">
+            <h4 class="class-level-title">{{ card.label }}</h4>
+            <span class="exam-period-label">{{ card.exam_label|default:"No Exam Data" }}</span>
         </div>
         <div class="metrics-matrix-subgrid">
             <div class="metric-cell">
-                <span class="cell-label">Mean Points</span>
-                <div class="cell-value-group">
-                    <span class="cell-number">{{ card.mean_points|floatformat:4 }}</span>
+                <div class="cell-label-row">
+                    <span class="cell-label">Mean Points</span>
                     {% if card.points_dev is not None %}
                         {% if card.points_dev > 0 %}
-                        <span style="display:inline-flex;align-items:center;gap:3px;color:#16A34A;font-weight:700;font-size:12px;">
-                            +{{ card.points_dev|floatformat:3 }}
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
-                                <path d="M 3 21 L 14 21 L 14 8" stroke="#16A34A" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/>
-                                <polygon points="7,9 14,2 21,9" fill="#16A34A"/>
-                            </svg>
-                        </span>
+                        <span class="dev-badge">{{ card.points_dev|floatformat:3 }} <span class="dev-arrow up">↑</span></span>
                         {% elif card.points_dev < 0 %}
-                        <span style="display:inline-flex;align-items:center;gap:3px;color:#DC2626;font-weight:700;font-size:12px;">
-                            {{ card.points_dev|floatformat:3 }}
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
-                                <path d="M 3 3 L 14 3 L 14 16" stroke="#DC2626" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/>
-                                <polygon points="7,15 14,22 21,15" fill="#DC2626"/>
-                            </svg>
-                        </span>
+                        <span class="dev-badge">{{ card.points_dev|floatformat:3 }} <span class="dev-arrow down">↓</span></span>
                         {% else %}
-                        <span style="color:#9CA3AF;font-weight:500;font-size:12px;">0.0</span>
+                        <span style="color:#9CA3AF;font-weight:600;font-size:13px;">0.0</span>
                         {% endif %}
                     {% endif %}
                 </div>
+                <span class="cell-number">{% if card.student_count %}{{ card.mean_points|floatformat:4 }}{% else %}&mdash;{% endif %}</span>
             </div>
             <div class="metric-cell">
-                <span class="cell-label">Mean Marks</span>
-                <div class="cell-value-group">
-                    <span class="cell-number">{{ card.mean_score|floatformat:2 }}%</span>
+                <div class="cell-label-row">
+                    <span class="cell-label">Mean Marks</span>
                     {% if card.score_dev is not None %}
                         {% if card.score_dev > 0 %}
-                        <span style="display:inline-flex;align-items:center;gap:3px;color:#16A34A;font-weight:700;font-size:12px;">
-                            +{{ card.score_dev|floatformat:2 }}
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
-                                <path d="M 3 21 L 14 21 L 14 8" stroke="#16A34A" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/>
-                                <polygon points="7,9 14,2 21,9" fill="#16A34A"/>
-                            </svg>
-                        </span>
+                        <span class="dev-badge">{{ card.score_dev|floatformat:3 }} <span class="dev-arrow up">↑</span></span>
                         {% elif card.score_dev < 0 %}
-                        <span style="display:inline-flex;align-items:center;gap:3px;color:#DC2626;font-weight:700;font-size:12px;">
-                            {{ card.score_dev|floatformat:2 }}
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
-                                <path d="M 3 3 L 14 3 L 14 16" stroke="#DC2626" stroke-width="4.5" stroke-linecap="square" stroke-linejoin="miter"/>
-                                <polygon points="7,15 14,22 21,15" fill="#DC2626"/>
-                            </svg>
-                        </span>
+                        <span class="dev-badge">{{ card.score_dev|floatformat:3 }} <span class="dev-arrow down">↓</span></span>
                         {% else %}
-                        <span style="color:#9CA3AF;font-weight:500;font-size:12px;">0.0</span>
+                        <span style="color:#9CA3AF;font-weight:600;font-size:13px;">0.0</span>
                         {% endif %}
                     {% endif %}
                 </div>
+                <span class="cell-number">{% if card.student_count %}{{ card.mean_score|floatformat:2 }}%{% else %}&mdash;{% endif %}</span>
             </div>
             <div class="metric-cell">
                 <span class="cell-label">Mean Grade</span>
-                <span class="cell-number grade-txt">{{ card.mean_grade }}</span>
+                <span class="cell-number">{{ card.mean_grade }}</span>
             </div>
             <div class="metric-cell">
                 <span class="cell-label">Students</span>
-                <span class="cell-number" style="color:{{ card.accent }}">{{ card.student_count }}</span>
+                <span class="cell-number">{{ card.student_count }}</span>
             </div>
         </div>
-        <button class="btn-view-analysis" style="background-color:{{ card.accent }};color:#fff;border-top-color:{{ card.border }}" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
+        {% if card.exam_id %}
+        <button class="btn-view-analysis" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
             View Analysis
         </button>
+        {% endif %}
     </div>
     {% empty %}
     <div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:#94a3b8;">
@@ -473,12 +451,12 @@
                 <div class="dash-perf-card" style="border-top: 3px solid {{ card.accent }}">
                     <div class="dash-perf-header" style="background:{{ card.bg }}">
                         <span class="dash-perf-grade" style="color:{{ card.text }}">{{ card.label }}</span>
-                        <span class="dash-perf-exam">{{ exam_label|default:"No Data" }}</span>
+                        <span class="dash-perf-exam">{{ card.exam_label|default:"No Data" }}</span>
                     </div>
                     <div class="dash-perf-grid">
                         <div class="dash-perf-cell">
                             <span class="dash-perf-cell-label">Mean Points</span>
-                            <span class="dash-perf-cell-value">{{ card.mean_points|floatformat:4 }}</span>
+                            <span class="dash-perf-cell-value">{% if card.student_count %}{{ card.mean_points|floatformat:4 }}{% else %}&mdash;{% endif %}</span>
                             {% if card.points_dev is not None %}
                                 {% if card.points_dev > 0 %}
                                 <span class="dash-perf-dev up">+{{ card.points_dev|floatformat:3 }}</span>
@@ -489,7 +467,7 @@
                         </div>
                         <div class="dash-perf-cell">
                             <span class="dash-perf-cell-label">Mean Marks</span>
-                            <span class="dash-perf-cell-value">{{ card.mean_score|floatformat:2 }}%</span>
+                            <span class="dash-perf-cell-value">{% if card.student_count %}{{ card.mean_score|floatformat:2 }}%{% else %}&mdash;{% endif %}</span>
                             {% if card.score_dev is not None %}
                                 {% if card.score_dev > 0 %}
                                 <span class="dash-perf-dev up">+{{ card.score_dev|floatformat:2 }}</span>

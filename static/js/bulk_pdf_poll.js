@@ -16,6 +16,7 @@
 var BulkPDF = (function () {
     var _pollTimer = null;
     var _cancelled = false;
+    var _finished = false;
     var _ws = null;
     var _jobId = null;
     var _startTime = 0;
@@ -293,6 +294,14 @@ var BulkPDF = (function () {
     /* ── Completion ──────────────────────────────────────────────────── */
 
     function _handleComplete(data, overlay, ui, downloadTpl, jobId) {
+        // WebSocket and the polling fallback can both observe the same
+        // 'completed' status (the ws close handler starts polling). Run once,
+        // otherwise the second call redirects to a download URL that has
+        // already been consumed and comes back as a 404.
+        if (_finished) return;
+        _finished = true;
+        if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null; }
+
         if (!ui) {
             overlay.classList.remove('visible');
             return;
@@ -361,6 +370,7 @@ var BulkPDF = (function () {
                     } else if (data.status === 'completed' || data.status === 'completed_with_errors') {
                         _handleComplete(data, overlay, ui, downloadTpl, jobId);
                     } else if (data.status === 'error') {
+                        _finished = true;
                         overlay.classList.remove('visible');
                         alert('PDF generation failed: ' + (data.message || 'Unknown error'));
                         _cleanupWs();
@@ -368,11 +378,11 @@ var BulkPDF = (function () {
                 } catch (e) {}
             };
             _ws.onclose = function () {
-                if (!_cancelled) _poll(jobId, total, overlay, ui, downloadTpl);
+                if (!_cancelled && !_finished) _poll(jobId, total, overlay, ui, downloadTpl);
             };
             _ws.onerror = function () {
                 _cleanupWs();
-                if (!_cancelled) _poll(jobId, total, overlay, ui, downloadTpl);
+                if (!_cancelled && !_finished) _poll(jobId, total, overlay, ui, downloadTpl);
             };
             return true;
         } catch (e) {
@@ -391,7 +401,7 @@ var BulkPDF = (function () {
         var maxChecks = 1200;
 
         function tick() {
-            if (_cancelled) return;
+            if (_cancelled || _finished) return;
             checkCount++;
             if (checkCount > maxChecks) {
                 overlay.classList.remove('visible');
@@ -401,21 +411,28 @@ var BulkPDF = (function () {
             fetch(pollUrl, { method: 'GET', credentials: 'same-origin' })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    if (_cancelled) return;
+                    if (_cancelled || _finished) return;
                     if (data.status === 'processing') {
                         _updateProgress(data, total, ui);
                         _pollTimer = setTimeout(tick, 1000);
                     } else if (data.status === 'completed' || data.status === 'completed_with_errors') {
                         _handleComplete(data, overlay, ui, downloadTpl, jobId);
                     } else if (data.status === 'error') {
+                        _finished = true;
                         overlay.classList.remove('visible');
                         alert('PDF generation failed: ' + (data.message || 'Unknown error'));
+                    } else if (data.status === 'not_found') {
+                        // The job record is gone (expired or never existed) —
+                        // stop polling instead of spinning until the timeout.
+                        _finished = true;
+                        overlay.classList.remove('visible');
+                        alert('This PDF job has expired. Please start it again.');
                     } else {
                         _pollTimer = setTimeout(tick, 1500);
                     }
                 })
                 .catch(function () {
-                    if (!_cancelled) _pollTimer = setTimeout(tick, 2000);
+                    if (!_cancelled && !_finished) _pollTimer = setTimeout(tick, 2000);
                 });
         }
         tick();
@@ -435,6 +452,7 @@ var BulkPDF = (function () {
         if (!overlay) return;
 
         _cancelled = false;
+        _finished = false;
         _startTime = Date.now();
         _lastCompiled = 0;
         _lastTime = _startTime;

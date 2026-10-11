@@ -1156,3 +1156,36 @@
         z-index: 810;
     }
 }
+
+/* ── Inline per-row validation error ───────────────────────────────────
+   title tooltips never show on touch devices, so every rejection gets a
+   persistent, readable message inside the row until the teacher fixes it. */
+.en-student { flex-wrap: wrap; }
+.en-row-error {
+    display: none;
+    flex-basis: 100%;
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    font-size: .75rem;
+    font-weight: 650;
+    line-height: 1.4;
+    letter-spacing: .01em;
+}
+.en-student.is-error .en-row-error { display: block; }
+.en-student.is-error { background: #fffafa; box-shadow: inset 3px 0 0 #ef4444; }
+.en-student.is-error .en-score { border-color: #ef4444; background: #fef2f2; }
+.en-shake { animation: enShake .38s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes enShake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .en-shake { animation: none; }
+}

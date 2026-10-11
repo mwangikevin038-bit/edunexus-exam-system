@@ -590,8 +590,9 @@ class Mark(SchoolScopedModel):
         Delegates to get_performance_level() which handles subject-specific
         override lookup with general fallback via the unified grading engine.
 
-        There is NO hardcoded fallback. If no scale exists, we log a
-        loud error and return ('NO CONFIG', 0) so the admin notices.
+        There is NO hardcoded fallback. If no scale exists, we log a loud
+        error and return ('-', 0). A sentinel such as 'NO CONFIG' used to be
+        returned here and ended up printed as a student's grade.
         """
         score = max(0, min(100, round(score or 0)))
 
@@ -604,14 +605,14 @@ class Mark(SchoolScopedModel):
                 section=self.school_section,
             )
 
-        # No scale found — log it loudly and return a sentinel.
+        # No scale found — log it loudly and return a printable placeholder.
         logger.error(
             "GradingScale missing for school_id=%s school_section=%s sub_section=%s subject_id=%s. "
             "Mark performance_level cannot be resolved. "
             "Configure it at /school-admin/grading-config/.",
             self.school_id, self.school_section, self.sub_section, self.subject_id,
         )
-        return 'NO CONFIG', 0
+        return '-', 0
 
     def save(self, *args, **kwargs):
         if self.pk and self.integrity_checksum and not verify_mark_checksum(self):

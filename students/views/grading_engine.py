@@ -19,6 +19,15 @@ _GRADED_CACHE_KEYS = set()
 _RESOLVED_MEMO = {}
 _RESOLVED_MEMO_TTL = 60.0
 
+# Per-school monotonic timestamp of the last full prefetch. Batch mark entry
+# (and every grid render) calls prefetch_school_grading, which used to issue a
+# GradingAssignment SELECT + cache.set_many on every 3s flush even though the
+# data had just been warmed. 60s TTL matches the memo; scale edits go through
+# clear_grading_cache(), which also clears this marker, so an edit right after
+# a warm prefetch still re-warms immediately.
+_PREFETCHED_AT = {}
+_PREFETCH_TTL = 60.0
+
 
 def _memo_get(mkey):
     hit = _RESOLVED_MEMO.get(mkey)
@@ -58,6 +67,13 @@ def prefetch_school_grading(school):
         return
     
     school_id = school.pk
+    now = time.monotonic()
+    last = _PREFETCHED_AT.get(school_id)
+    if last is not None and now - last < _PREFETCH_TTL:
+        # Just warmed — skip the GradingAssignment SELECT + set_many.
+        # clear_grading_cache() (called by scale edits) drops this marker.
+        return
+
     assignments = GradingAssignment.objects.filter(
         school=school,
     ).select_related('grading_scale', 'subject')
@@ -71,12 +87,14 @@ def prefetch_school_grading(school):
     # Drop stale process memo first so the next resolve reads these values
     _memo_clear_school(school_id)
     if mapping:
+        # A cache outage must never abort the caller — resolve_scale_fast
+        # already falls back to the DB when a key is missing.
         try:
             cache.set_many(mapping, timeout=86400)
-        except Exception:
-            for k, v in mapping.items():
-                cache.set(k, v, timeout=86400)
-        
+        except Exception as exc:
+            logger.debug("prefetch_school_grading: cache write failed for school %s: %s", school_id, exc)
+
+    _PREFETCHED_AT[school_id] = time.monotonic()
     logger.debug("Prefetched %d grading assignments for school_id=%s into global cache", len(assignments), school.pk)
 
 
@@ -194,6 +212,10 @@ def resolve_scale_fast(school_id, section, sub_section, subject_id=None, is_tota
                 for assign in GradingAssignment.objects.filter(school_id=school_id, grading_scale=scale):
                     k = _make_safe_cache_key(assign.school_id, assign.school_section, assign.sub_section, assign.subject_id)
                     cache.set(k, scale, timeout=86400)
+                    # Track it. This fallback used to be the only writer that
+                    # skipped the set, so clear_grading_cache() never deleted
+                    # it and an edited scale kept grading old levels for 24h.
+                    _GRADED_CACHE_KEYS.add(k)
             except Exception:
                 pass
             _memo_put(memo_key, data)
@@ -219,10 +241,44 @@ def get_grading_scale(school_id, section, sub_section, subject_id=None):
 
 def clear_grading_cache():
     _RESOLVED_MEMO.clear()
+    _PREFETCHED_AT.clear()
     if _GRADED_CACHE_KEYS:
-        cache.delete_many(list(_GRADED_CACHE_KEYS))
+        try:
+            cache.delete_many(list(_GRADED_CACHE_KEYS))
+        except Exception as exc:
+            logger.debug("clear_grading_cache: delete_many failed: %s", exc)
         _GRADED_CACHE_KEYS.clear()
-    
+
     from .helpers import _subject_lookup_cache, _total_lookup_cache
     _subject_lookup_cache.clear()
     _total_lookup_cache.clear()
+
+
+def refresh_school_grading(school):
+    """Clear every cached scale for a school, then re-warm it from the DB.
+
+    `clear_grading_cache()` only drops keys this process happens to have
+    tracked, so an entry written by another worker survived a scale edit and
+    kept grading with the old brackets. Re-running the prefetch overwrites the
+    copies we cannot enumerate; the tracked-set delete above still removes any
+    key whose assignment has since been deleted.
+    """
+    clear_grading_cache()
+    if school:
+        prefetch_school_grading(school)
+
+
+def track_assignment_keys(assignments):
+    """Register assignment cache keys so the next clear drops them.
+
+    Needed just before an assignment is deleted: once the row is gone nothing
+    can reconstruct its key, so the entry would sit in Redis for the full 24h
+    and keep grading with the retired scale.
+    """
+    for assign in assignments:
+        _GRADED_CACHE_KEYS.add(
+            _make_safe_cache_key(
+                assign.school_id, assign.school_section,
+                assign.sub_section, assign.subject_id,
+            )
+        )
