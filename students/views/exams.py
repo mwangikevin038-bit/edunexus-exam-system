@@ -10,6 +10,7 @@ import json
 import logging
 import re
 import time
+from itertools import pairwise
 
 logger = logging.getLogger("students.exams")
 
@@ -78,6 +79,19 @@ def _htmx_redirect(request, url):
         resp['HX-Redirect'] = url
         return resp
     return redirect(url)
+
+
+def _safe_id(raw):
+    """Coerce a request-provided id to a positive int.
+
+    User-tampered or malformed ids (e.g. 'abc') otherwise raise ValueError
+    inside ORM filters and turn into HTTP 500s. Returns None when invalid.
+    """
+    try:
+        value = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
 
 
 def _get_grading_scale_json():
@@ -757,7 +771,7 @@ def manage_exams(request):
         action_type = request.POST.get("action_type")
 
         if action_type == "create_exam":
-            exam_name = request.POST.get("exam_name", "").strip()
+            exam_name = re.sub(r"\s+", " ", request.POST.get("exam_name", "")).strip()
             term = request.POST.get("term")
             try:
                 year = int(request.POST.get("year") or current_year)
@@ -767,68 +781,133 @@ def manage_exams(request):
             status = request.POST.get("status", "active")
             selected_classes = request.POST.getlist("selected_classes")
 
+            def _create_prefill():
+                return {
+                    'name': exam_name,
+                    'term': term if term in TERM_CHOICES else '',
+                    'year': year if 2000 <= year <= 2100 else current_year,
+                    'status': status if status in ('draft', 'active') else 'active',
+                    'classes': [str(c) for c in selected_classes],
+                }
+
+            def _create_error(err_msg):
+                """Reject bad input WITHOUT wiping what the user typed.
+
+                The stash is re-injected into the form on the next GET so a
+                rejected submit never loses the entered name/term/classes.
+                """
+                messages.error(request, err_msg)
+                request.session['create_prefill'] = _create_prefill()
+                url = reverse('manage_exams') + '?tab=create'
+                if 2000 <= year <= 2100:
+                    url += f'&year={year}'
+                return redirect(url)
+
             valid_terms = TERM_CHOICES
             if term not in valid_terms:
-                messages.error(request, f"Invalid term. Must be one of: {', '.join(valid_terms)}.")
-                return redirect(reverse('manage_exams') + '?tab=create')
+                return _create_error(f"Invalid term. Must be one of: {', '.join(valid_terms)}.")
 
             valid_statuses = ['draft', 'active']
             if status not in valid_statuses:
-                messages.error(request, "Invalid status. Must be 'draft' or 'active'.")
-                return redirect(reverse('manage_exams') + '?tab=create')
+                return _create_error("Invalid status. Must be 'draft' or 'active'.")
 
             if not exam_name or not term or not year:
-                messages.error(request, "Please provide assessment name, term, and year.")
-                return redirect(reverse('manage_exams') + '?tab=create')
+                return _create_error("Please provide assessment name, term, and year.")
+
+            # Exam.name is varchar(50): past the limit PostgreSQL raises
+            # DataError and the request dies with a 500.
+            if len(exam_name) > 50:
+                return _create_error(
+                    f"Assessment name is too long ({len(exam_name)} characters). Maximum is 50."
+                )
+
+            # Exam.year is an int4 — absurd values overflow the column.
+            if not (2000 <= year <= 2100):
+                return _create_error("Year must be between 2000 and 2100.")
 
             if not selected_classes:
-                messages.error(request, "Please select at least one class.")
-                return redirect(reverse('manage_exams') + '?tab=create')
+                return _create_error("Please select at least one class.")
 
             # Group selected classes by (school_section, sub_section) using Grade model fields
             grade_map = {
                 g.name: g for g in Grade.all_objects.filter(school=school, name__in=selected_classes)
             }
+            unknown = list(dict.fromkeys(c for c in selected_classes if c not in grade_map))
+            if unknown:
+                return _create_error(
+                    "Unknown class selection: " + ", ".join(unknown)
+                    + ". Refresh the page and try again."
+                )
             section_groups = {}
             for class_name in selected_classes:
-                grade_obj = grade_map.get(class_name)
-                if grade_obj:
-                    key = (grade_obj.school_section, grade_obj.sub_section)
-                else:
-                    key = ('JSS', None)
+                grade_obj = grade_map[class_name]
+                key = (grade_obj.school_section, grade_obj.sub_section)
                 section_groups.setdefault(key, []).append(class_name)
 
             created_count = 0
             skipped_count = 0
             created_sections = []
+            added_labels = []
+
+            def _grade_sort_key(name):
+                m = re.search(r'\d+', str(name))
+                return int(m.group()) if m else 99
+
+            def _merge_class_lists(old, new):
+                """Union of class lists sorted Grade 1 -> 9.
+
+                Creating an exam again for an additional class (e.g. Grade 9
+                after Grade 7+8) must NEVER drop classes already attached —
+                that made earlier classes vanish from the manage list.
+                """
+                return sorted(set(old or []) | set(new or []), key=_grade_sort_key)
+
+            # Match existing exams the same way the page DISPLAYS them:
+            # 'knec assessment', 'KNEC  Assessment' and 'KNEC Assessment' must
+            # all land on the same row — exact-name matching used to create a
+            # second row that the display de-dupe then hid from the user.
+            target_norm = re.sub(r"\s+", " ", normalize_exam_display_name(exam_name)).strip().casefold()
+
+            def _name_matches(existing_name):
+                cleaned = re.sub(r"\s+", " ", normalize_exam_display_name(existing_name)).strip()
+                return cleaned.casefold() == target_norm
 
             for (exam_db_section, exam_sub_section), classes in section_groups.items():
-                # First check for a non-deleted exam
-                exam_obj = Exam.all_objects.filter(
-                    school=school, name=exam_name, term=term, year=year,
+                section_label = exam_db_section + (f' ({exam_sub_section})' if exam_sub_section else '')
+                sect_qs = Exam.all_objects.filter(
+                    school=school, term=term, year=year,
                     school_section=exam_db_section, sub_section=exam_sub_section,
-                    is_deleted=False,
-                ).first()
+                )
+                # First check for a non-deleted exam
+                exam_obj = next(
+                    (e for e in sect_qs.filter(is_deleted=False) if _name_matches(e.name)),
+                    None,
+                )
 
                 if exam_obj:
-                    # Active exam already exists — update its class list to match selection
-                    exam_obj.classes = classes
-                    exam_obj.save(update_fields=['classes'])
+                    # MERGE with the existing class list — never replace it.
+                    old_classes = exam_obj.classes or []
+                    merged = _merge_class_lists(old_classes, classes)
+                    new_ones = [cl for cl in merged if cl not in set(old_classes)]
+                    if merged != old_classes:
+                        exam_obj.classes = merged
+                        exam_obj.save(update_fields=['classes'])
+                    if new_ones:
+                        added_labels.append(f"{', '.join(new_ones)} added to {section_label}")
                     created = False
                 else:
                     # Check for a soft-deleted exam with the same key and recover it
-                    deleted_exam = Exam.all_objects.filter(
-                        school=school, name=exam_name, term=term, year=year,
-                        school_section=exam_db_section, sub_section=exam_sub_section,
-                        is_deleted=True,
-                    ).first()
+                    deleted_exam = next(
+                        (e for e in sect_qs.filter(is_deleted=True) if _name_matches(e.name)),
+                        None,
+                    )
 
                     if deleted_exam:
                         deleted_exam.is_deleted = False
                         deleted_exam.deleted_at = None
                         deleted_exam.deleted_by = None
                         deleted_exam.status = status
-                        deleted_exam.classes = classes
+                        deleted_exam.classes = _merge_class_lists(deleted_exam.classes, classes)
                         deleted_exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by', 'status', 'classes'])
                         exam_obj = deleted_exam
                         created = True
@@ -837,30 +916,44 @@ def manage_exams(request):
                         exam_obj, created = Exam.all_objects.get_or_create(
                             school=school, name=exam_name, term=term, year=year,
                             school_section=exam_db_section, sub_section=exam_sub_section,
-                            defaults={"status": status, "classes": classes},
+                            defaults={"status": status, "classes": _merge_class_lists(None, classes)},
                         )
                         if created:
                             pass
-                        elif exam_obj.classes != classes:
-                            exam_obj.classes = classes
-                            exam_obj.save(update_fields=['classes'])
+                        else:
+                            # Race: exam appeared between filter and get_or_create.
+                            old_classes = exam_obj.classes or []
+                            merged = _merge_class_lists(old_classes, classes)
+                            new_ones = [cl for cl in merged if cl not in set(old_classes)]
+                            if merged != old_classes:
+                                exam_obj.classes = merged
+                                exam_obj.save(update_fields=['classes'])
+                            if new_ones:
+                                added_labels.append(f"{', '.join(new_ones)} added to {section_label}")
 
                 if created:
                     created_count += 1
-                    label = exam_db_section
-                    if exam_sub_section:
-                        label += f' ({exam_sub_section})'
-                    created_sections.append(label)
+                    created_sections.append(section_label)
                 else:
                     skipped_count += 1
 
             if created_count:
+                request.session.pop('create_prefill', None)
                 msg = f"Assessment created for: {', '.join(created_sections)}."
-                if skipped_count:
+                if added_labels:
+                    msg += " " + "; ".join(added_labels) + "."
+                elif skipped_count:
                     msg += f" {skipped_count} section(s) already existed."
                 messages.success(request, msg)
                 return redirect(reverse('manage_exams') + f'?tab=manage&year={year}')
+            elif added_labels:
+                request.session.pop('create_prefill', None)
+                messages.success(request, "; ".join(added_labels) + ".")
+                return redirect(reverse('manage_exams') + f'?tab=manage&year={year}')
             else:
+                # Nothing new — hand the typed values back so the user can
+                # adjust them instead of retyping from scratch.
+                request.session['create_prefill'] = _create_prefill()
                 messages.info(request, "All selected assessments already exist.")
                 return redirect(reverse('manage_exams') + f'?tab=create&year={year}')
 
@@ -871,16 +964,48 @@ def manage_exams(request):
             grades_list = request.POST.getlist("grade[]")
             points_list = request.POST.getlist("points[]")
 
-            if not grading_name:
-                messages.error(request, "Please provide a grading system name.")
+            def _grading_stash():
+                """Keep the submitted grid so a rejected save re-opens the
+                form with everything the user typed, instead of an empty one."""
+                rows = []
+                for i in range(len(grades_list)):
+                    rows.append([
+                        lows[i] if i < len(lows) else '',
+                        highs[i] if i < len(highs) else '',
+                        grades_list[i],
+                        points_list[i] if i < len(points_list) else '',
+                    ])
+                request.session['grading_prefill'] = {
+                    'name': grading_name,
+                    'section': request.POST.get("school_section", "JSS"),
+                    'subject': request.POST.get("subject", ""),
+                    'rows': rows,
+                }
+
+            def _grading_error(err_msg):
+                messages.error(request, err_msg)
+                _grading_stash()
                 return redirect(reverse('manage_exams') + '?tab=grading')
+
+            if not grading_name:
+                return _grading_error("Please provide a grading system name.")
+            if len(grading_name) > 100:
+                return _grading_error("Grading system name must be 100 characters or fewer.")
+
+            def _parse_grid_int(raw, default):
+                # int() on a value like '--5' raises; treat unparseable input
+                # as the default instead of crashing with a 500.
+                try:
+                    return int(str(raw).strip())
+                except (TypeError, ValueError):
+                    return default
 
             _scale = []
             for i in range(len(grades_list)):
                 grade = grades_list[i].strip() if i < len(grades_list) else ''
-                pts = int(points_list[i]) if i < len(points_list) and points_list[i].strip().lstrip('-').isdigit() else 0
-                low_val = int(lows[i]) if i < len(lows) and lows[i].strip().lstrip('-').isdigit() else 0
-                high_val = int(highs[i]) if i < len(highs) and highs[i].strip().lstrip('-').isdigit() else 100
+                pts = _parse_grid_int(points_list[i] if i < len(points_list) else None, 0)
+                low_val = _parse_grid_int(lows[i] if i < len(lows) else None, 0)
+                high_val = _parse_grid_int(highs[i] if i < len(highs) else None, 100)
                 if grade:
                     _scale.append({
                         "level": grade,
@@ -890,11 +1015,33 @@ def manage_exams(request):
                     })
 
             if not _scale:
-                messages.error(request, "Please add at least one grading level.")
-                return redirect(reverse('manage_exams') + '?tab=grading')
+                return _grading_error("Please add at least one grading level.")
+
+            # Every level needs a sane range: min <= max, and no score may
+            # fall into two levels (empty min/max fields silently become
+            # 0/100 on every row and used to save overlapping garbage).
+            for row in _scale:
+                if row["min_score"] > row["max_score"]:
+                    return _grading_error(
+                        f"Invalid range for '{row['level']}': "
+                        f"minimum ({row['min_score']}) is greater than maximum ({row['max_score']})."
+                    )
+                if row["min_score"] < 0 or row["max_score"] > 100:
+                    return _grading_error(
+                        f"Invalid range for '{row['level']}': scores must be between 0 and 100."
+                    )
+                if row["points"] < 0:
+                    return _grading_error(f"Points for '{row['level']}' cannot be negative.")
+            ordered_ranges = sorted((r["min_score"], r["max_score"]) for r in _scale)
+            for (lo1, hi1), (lo2, hi2) in pairwise(ordered_ranges):
+                if lo2 <= hi1:
+                    return _grading_error(
+                        f"Grading ranges overlap: {lo2}–{min(hi1, hi2)} belongs to "
+                        "more than one level. Adjust the min/max values."
+                    )
 
             from ..models import GradingConfig, GradingScale, GradingAssignment
-            subject_id = request.POST.get("subject")
+            raw_subject = request.POST.get("subject", "").strip()
             raw_section = request.POST.get("school_section", "JSS")
 
             # Map form values to DB values
@@ -917,11 +1064,52 @@ def manage_exams(request):
                 total_section = 'JSS'
 
             subject_obj = None
-            if subject_id:
-                subject_obj = Subject.all_objects.filter(school=school, id=subject_id).first()
+            if raw_subject:
+                subject_pk = _safe_id(raw_subject)
+                if subject_pk is None:
+                    return _grading_error("Invalid subject selection.")
+                subject_obj = Subject.all_objects.filter(school=school, id=subject_pk).first()
+                if not subject_obj:
+                    return _grading_error("Invalid subject selection.")
+                if (
+                    subject_obj.school_section != school_section
+                    or (sub_section and (subject_obj.sub_section or None) != sub_section)
+                ):
+                    return _grading_error("The selected subject does not belong to the chosen section.")
 
             existing_scale = GradingScale.objects.filter(school=school, name=grading_name).first()
+            # The slot (section, sub-section, subject) holds exactly one
+            # assignment. update_or_create on an occupied slot used to silently
+            # REBIND it to a brand-new scale, orphaning the previous one with
+            # no warning. Only the scale that already owns the slot may update
+            # it; any other name must delete the occupant first.
+            slot_assignment = GradingAssignment.objects.filter(
+                school=school, school_section=school_section,
+                sub_section=sub_section, subject=subject_obj,
+            ).select_related('grading_scale').first()
+            if slot_assignment and slot_assignment.grading_scale_id != (existing_scale.id if existing_scale else None):
+                return _grading_error(
+                    f"This section already uses the grading system "
+                    f"'{slot_assignment.grading_scale.name}'. Delete that one "
+                    "first, or re-save using its exact name to update it in place."
+                )
             if existing_scale:
+                # Re-using a name is an UPDATE of that scale — but only when
+                # the target slot already owns it. Saving the same name for a
+                # different section/subject used to silently mutate the scale
+                # that other assignments still point at.
+                conflicting = GradingAssignment.objects.filter(
+                    school=school, grading_scale=existing_scale,
+                ).exclude(
+                    school_section=school_section,
+                    sub_section=sub_section,
+                    subject=subject_obj,
+                ).exists()
+                if conflicting:
+                    return _grading_error(
+                        f"A grading system named '{grading_name}' is already used "
+                        "for a different section or subject. Choose a different name."
+                    )
                 existing_scale.subject_scale = _scale
                 if not existing_scale.total_scale:
                     # This form only submits a subject scale. Without a
@@ -956,10 +1144,14 @@ def manage_exams(request):
             invalidate_school_grade_caches(school.pk)
             regrade_marks_for_school(school, section=school_section)
             regrade_exam_summaries_for_school(school)
+            request.session.pop('grading_prefill', None)
             return redirect(reverse('manage_exams') + '?tab=grading')
 
         if action_type == "delete_grading_config":
-            config_id = request.POST.get("config_id")
+            config_id = _safe_id(request.POST.get("config_id"))
+            if not config_id:
+                messages.error(request, "Grading system not found.")
+                return redirect(reverse('manage_exams') + '?tab=grading')
             if config_id:
                 from ..models import GradingAssignment, GradingScale
                 from .grading_engine import (
@@ -991,12 +1183,20 @@ def manage_exams(request):
             return redirect(reverse('manage_exams') + '?tab=grading')
 
         if action_type == "toggle_status":
-            exam_id = request.POST.get("exam_id")
+            exam_id = _safe_id(request.POST.get("exam_id"))
             if not exam_id:
-                messages.error(request, "Missing exam ID.")
+                messages.error(request, "Missing or invalid exam ID.")
                 post_year = request.POST.get('year') or request.GET.get('year')
                 return redirect(reverse('manage_exams') + f'?tab=manage&year={post_year}' if post_year else reverse('manage_exams') + '?tab=manage')
-            exam = get_school_object_or_403(Exam, request, id=exam_id)
+            # Never operate on soft-deleted rows: the deleted tab has its own
+            # recover flow, so a forged toggle must not resurrect/flip one.
+            exam = Exam.all_objects.filter(
+                school=school, id=exam_id, is_deleted=False,
+            ).first()
+            if not exam:
+                messages.error(request, "Assessment not found.")
+                post_year = request.POST.get('year') or request.GET.get('year')
+                return redirect(reverse('manage_exams') + f'?tab=manage&year={post_year}' if post_year else reverse('manage_exams') + '?tab=manage')
 
             old_status = exam.status
             if exam.status == "active":
@@ -1015,8 +1215,10 @@ def manage_exams(request):
             exam.save(update_fields=['status', 'closed_at', 'closed_by'])
 
             # Close/reopen sibling exams in the same merged group
-            extra_ids = request.POST.getlist("extra_exam_ids")
-            for extra_id in extra_ids:
+            for extra_raw in request.POST.getlist("extra_exam_ids"):
+                extra_id = _safe_id(extra_raw)
+                if not extra_id:
+                    continue
                 try:
                     sibling = Exam.all_objects.get(school=school, id=extra_id, is_deleted=False)
                     sibling.status = new_status
@@ -1045,8 +1247,9 @@ def manage_exams(request):
             return redirect(redirect_url)
 
         if action_type == "delete_exam":
-            exam_id = request.POST.get("exam_id")
-            exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
+            exam_id = _safe_id(request.POST.get("exam_id"))
+            delete_class = request.POST.get("class_name", "").strip()
+            exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first() if exam_id else None
             if not exam:
                 messages.error(request, "Assessment not found.")
                 post_year = request.POST.get('year') or request.GET.get('year')
@@ -1055,85 +1258,204 @@ def manage_exams(request):
                     redir += f'&year={post_year}'
                 return redirect(redir)
 
+            if exam.status == 'closed':
+                messages.error(request, "This assessment is closed. Reopen it before deleting.")
+                post_year = request.POST.get('year') or request.GET.get('year')
+                redir = reverse('manage_exams') + '?tab=manage'
+                if post_year:
+                    redir += f'&year={post_year}'
+                return redirect(redir)
+
             from ..security.protection import backup_marks_before_delete
-            extra_ids = request.POST.getlist("extra_exam_ids")
-            all_exam_ids = [exam_id] + list(extra_ids)
-            all_exams_to_delete = list(Exam.all_objects.filter(school=school, id__in=all_exam_ids, is_deleted=False))
 
             with transaction.atomic():
                 affected_classes = set()
-                for ex in all_exams_to_delete:
-                    exam_marks_qs = Mark.all_objects.filter(
-                        school=school, exam_type=ex.name,
-                        term=ex.term, year=ex.year,
-                        school_section=ex.school_section,
-                        sub_section=ex.sub_section,
+
+                if delete_class:
+                    # ── PER-CLASS DELETE ──────────────────────────────────
+                    # Remove only this class from the exam.  The exam row
+                    # stays alive unless this was the last remaining class.
+                    base_mark_q = {
+                        'school': school, 'exam_type': exam.name,
+                        'term': exam.term, 'year': exam.year,
+                        'school_section': exam.school_section,
+                        'sub_section': exam.sub_section,
+                        'student__class_name': delete_class,
+                    }
+                    base_sub_q = {
+                        'school': school, 'exam_name': exam.name,
+                        'term': exam.term, 'year': exam.year,
+                        'school_section': exam.school_section,
+                        'sub_section': exam.sub_section,
+                        'class_name': delete_class,
+                    }
+
+                    exam_marks = list(
+                        Mark.all_objects.filter(**base_mark_q).select_for_update()
                     )
-                    exam_marks = list(exam_marks_qs.select_for_update())
                     backup_marks_before_delete(
                         exam_marks,
-                        reason=f"delete_exam: exam '{ex.name}' deleted",
+                        reason=f"delete_exam: exam '{exam.name}' class '{delete_class}' deleted",
                         request=request,
                     )
 
                     from students.models import MarkAuditLog
-                    _del_marks = [{
-                        'student_id': m.student_id, 'subject_id': m.subject_id,
-                        'score': m.score, 'raw_score': m.raw_score, 'is_absent': m.is_absent,
-                        'term': m.term, 'year': m.year, 'exam_type': m.exam_type,
-                    } for m in exam_marks]
-                    if _del_marks:
-                        _audit_del = [
+                    if exam_marks:
+                        MarkAuditLog.objects.bulk_create([
                             MarkAuditLog(
                                 actor=request.user, school=school, action='delete',
-                                student_id=m['student_id'], subject_id=m['subject_id'],
-                                term=m['term'], year=m['year'], exam_type=m['exam_type'] or '',
-                                old_raw_score=m['raw_score'], old_score=m['score'], old_is_absent=m['is_absent'],
-                            ) for m in _del_marks
-                        ]
-                        MarkAuditLog.objects.bulk_create(_audit_del, batch_size=250)
+                                student_id=m.student_id, subject_id=m.subject_id,
+                                term=m.term, year=m.year, exam_type=m.exam_type or '',
+                                old_raw_score=m.raw_score, old_score=m.score,
+                                old_is_absent=m.is_absent,
+                            ) for m in exam_marks
+                        ], batch_size=250)
 
-                    ex.is_deleted = True
-                    ex.deleted_at = timezone.now()
-                    ex.deleted_by = request.user
-                    ex.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
+                    affected_classes.add(delete_class)
 
-                    affected_classes.update(
+                    Mark.all_objects.filter(**base_mark_q).delete()
+                    MarkSubmission.all_objects.filter(**base_sub_q).delete()
+                    ExamSummary.all_objects.filter(
+                        school=school, exam_name=exam.name,
+                        term=exam.term, year=exam.year,
+                        school_section=exam.school_section,
+                        sub_section=exam.sub_section,
+                        student__class_name=delete_class,
+                    ).delete()
+                    ExamResultSnapshot.all_objects.filter(
+                        school=school, exam_name=exam.name,
+                        term=exam.term, year=exam.year,
+                        school_section=exam.school_section,
+                        sub_section=exam.sub_section,
+                        class_name=delete_class,
+                    ).delete()
+
+                    # Update the exam's class list
+                    old_classes = list(exam.classes) if exam.classes else []
+                    if not old_classes:
+                        # Legacy exam with empty classes — derive from Grade model
+                        from ..models import Grade as _Grade
+                        old_classes = list(
+                            _Grade.all_objects.filter(
+                                school=school,
+                                school_section=exam.school_section,
+                            ).values_list('name', flat=True)
+                        )
+                        if exam.sub_section:
+                            old_classes = list(
+                                _Grade.all_objects.filter(
+                                    school=school,
+                                    school_section=exam.school_section,
+                                    sub_section=exam.sub_section,
+                                ).values_list('name', flat=True)
+                            )
+                    remaining = [c for c in old_classes if c != delete_class]
+
+                    if remaining:
+                        exam.classes = remaining
+                        exam.save(update_fields=['classes'])
+                        messages.success(
+                            request,
+                            f"{delete_class} has been removed from {exam.name}. "
+                            f"The assessment continues for {', '.join(remaining)}.",
+                        )
+                    else:
+                        # Last class removed — soft-delete the whole exam
+                        exam.classes = []
+                        exam.save(update_fields=['classes'])
+                        exam.is_deleted = True
+                        exam.deleted_at = timezone.now()
+                        exam.deleted_by = request.user
+                        exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
+                        messages.success(
+                            request,
+                            f"{delete_class} was the last class. {exam.name} has been deleted.",
+                        )
+                else:
+                    # ── FULL EXAM DELETE (no class specified) ─────────────
+                    extra_ids = [
+                        pk for pk in (_safe_id(x) for x in request.POST.getlist("extra_exam_ids")) if pk
+                    ]
+                    all_exam_ids = ([exam_id] if exam_id else []) + extra_ids
+                    all_exams_to_delete = list(
+                        Exam.all_objects.filter(school=school, id__in=all_exam_ids, is_deleted=False)
+                    )
+
+                    for ex in all_exams_to_delete:
+                        exam_marks_qs = Mark.all_objects.filter(
+                            school=school, exam_type=ex.name,
+                            term=ex.term, year=ex.year,
+                            school_section=ex.school_section,
+                            sub_section=ex.sub_section,
+                        )
+                        exam_marks = list(exam_marks_qs.select_for_update())
+                        backup_marks_before_delete(
+                            exam_marks,
+                            reason=f"delete_exam: exam '{ex.name}' deleted",
+                            request=request,
+                        )
+
+                        from students.models import MarkAuditLog
+                        _del_marks = [{
+                            'student_id': m.student_id, 'subject_id': m.subject_id,
+                            'score': m.score, 'raw_score': m.raw_score, 'is_absent': m.is_absent,
+                            'term': m.term, 'year': m.year, 'exam_type': m.exam_type,
+                        } for m in exam_marks]
+                        if _del_marks:
+                            _audit_del = [
+                                MarkAuditLog(
+                                    actor=request.user, school=school, action='delete',
+                                    student_id=m['student_id'], subject_id=m['subject_id'],
+                                    term=m['term'], year=m['year'], exam_type=m['exam_type'] or '',
+                                    old_raw_score=m['raw_score'], old_score=m['score'], old_is_absent=m['is_absent'],
+                                ) for m in _del_marks
+                            ]
+                            MarkAuditLog.objects.bulk_create(_audit_del, batch_size=250)
+
+                        ex.is_deleted = True
+                        ex.deleted_at = timezone.now()
+                        ex.deleted_by = request.user
+                        ex.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
+
+                        affected_classes.update(
+                            MarkSubmission.all_objects.filter(
+                                school=school, exam_name=ex.name,
+                                term=ex.term, year=ex.year,
+                                school_section=ex.school_section,
+                                sub_section=ex.sub_section,
+                            ).values_list('class_name', flat=True)
+                        )
+
+                        Mark.all_objects.filter(
+                            school=school, exam_type=ex.name,
+                            term=ex.term, year=ex.year,
+                            school_section=ex.school_section,
+                            sub_section=ex.sub_section,
+                        ).delete()
+
                         MarkSubmission.all_objects.filter(
                             school=school, exam_name=ex.name,
                             term=ex.term, year=ex.year,
                             school_section=ex.school_section,
                             sub_section=ex.sub_section,
-                        ).values_list('class_name', flat=True)
-                    )
+                        ).delete()
 
-                    Mark.all_objects.filter(
-                        school=school, exam_type=ex.name,
-                        term=ex.term, year=ex.year,
-                        school_section=ex.school_section,
-                        sub_section=ex.sub_section,
-                    ).delete()
+                        ExamSummary.all_objects.filter(
+                            school=school, exam_name=ex.name,
+                            term=ex.term, year=ex.year,
+                            school_section=ex.school_section,
+                            sub_section=ex.sub_section,
+                        ).delete()
 
-                    MarkSubmission.all_objects.filter(
-                        school=school, exam_name=ex.name,
-                        term=ex.term, year=ex.year,
-                        school_section=ex.school_section,
-                        sub_section=ex.sub_section,
-                    ).delete()
+                        ExamResultSnapshot.all_objects.filter(
+                            school=school, exam_name=ex.name,
+                            term=ex.term, year=ex.year,
+                            school_section=ex.school_section,
+                            sub_section=ex.sub_section,
+                        ).delete()
 
-                    ExamSummary.all_objects.filter(
-                        school=school, exam_name=ex.name,
-                        term=ex.term, year=ex.year,
-                        school_section=ex.school_section,
-                        sub_section=ex.sub_section,
-                    ).delete()
-
-                    ExamResultSnapshot.all_objects.filter(
-                        school=school, exam_name=ex.name,
-                        term=ex.term, year=ex.year,
-                        school_section=ex.school_section,
-                        sub_section=ex.sub_section,
-                    ).delete()
+                    count = len(all_exams_to_delete)
+                    messages.success(request, f"{'Assessment' if count == 1 else 'Assessments'} {'has' if count == 1 else 'have'} been deleted.")
 
             for cls in affected_classes:
                 invalidate_report_caches(
@@ -1141,8 +1463,6 @@ def manage_exams(request):
                     exam.year, exam.term, exam.name,
                 )
 
-            count = len(all_exams_to_delete)
-            messages.success(request, f"{'Assessment' if count == 1 else 'Assessments'} {'has' if count == 1 else 'have'} been deleted.")
             post_sub = request.POST.get("sub", "").strip().upper()
             redirect_url = reverse('manage_exams')
             params = ['tab=manage']
@@ -1155,26 +1475,53 @@ def manage_exams(request):
             return redirect(redirect_url)
 
         if action_type == "recover_exam":
-            exam_id = request.POST.get("exam_id")
-            exam = get_school_object_or_403(Exam, request, using="all_objects", id=exam_id, is_deleted=True)
+            exam_id = _safe_id(request.POST.get("exam_id"))
+            exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=True).first() if exam_id else None
+            if not exam:
+                messages.error(request, "Deleted assessment not found.")
+                post_year = request.POST.get('year') or request.GET.get('year')
+                redir = reverse('manage_exams') + '?tab=deleted'
+                if post_year:
+                    redir += f'&year={post_year}'
+                return redirect(redir)
             exam.is_deleted = False
             exam.deleted_at = None
             exam.deleted_by = None
-            exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
 
-            # Restore marks from the most recent backup for this exam
+            # Restore marks from ALL backups for this exam (per-class deletes
+            # each created a separate backup; full deletes created one).
             from ..models import MarkBackup
-            latest_backup = (
+            backups = (
                 MarkBackup.objects
                 .filter(
                     school=school,
                     snapshot_reason__icontains=f"delete_exam: exam '{exam.name}'",
                 )
-                .order_by('-created_at')
-                .first()
+                .order_by('created_at')
             )
-            if latest_backup:
-                restored_count = latest_backup.restore()
+            restored_count = 0
+            restored_classes = set()
+            for backup in backups:
+                restored_count += backup.restore()
+                # Parse class name from per-class backup reasons:
+                # "delete_exam: exam 'X' class 'Y' deleted"
+                reason = backup.snapshot_reason or ''
+                if " class '" in reason:
+                    try:
+                        cls_part = reason.split(" class '", 1)[1]
+                        restored_classes.add(cls_part.rsplit("'", 1)[0])
+                    except (IndexError, ValueError):
+                        pass
+
+            # Rebuild classes if the exam was soft-deleted with empty classes
+            if not exam.classes and restored_classes:
+                exam.classes = sorted(
+                    restored_classes,
+                    key=lambda r: (int(m.group()) if (m := re.search(r'\d+', r)) else 99),
+                )
+            exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by', 'classes'])
+
+            if restored_count:
                 messages.success(
                     request,
                     f"Exam has been recovered. {restored_count} mark(s) restored from backup.",
@@ -1185,7 +1532,7 @@ def manage_exams(request):
             return redirect(reverse('manage_exams') + f'?tab=deleted&year={exam.year}')
 
         if action_type == "withdraw_results":
-            withdraw_exam_id = request.POST.get("withdraw_exam_id")
+            withdraw_exam_id = _safe_id(request.POST.get("withdraw_exam_id"))
             withdraw_class = request.POST.get("withdraw_class_name", "").strip()
             if not withdraw_exam_id:
                 post_year = request.POST.get('year') or request.GET.get('year')
@@ -1195,6 +1542,11 @@ def manage_exams(request):
             withdraw_exam = Exam.all_objects.filter(school=school, id=withdraw_exam_id, is_deleted=False).first()
             if not withdraw_exam:
                 messages.error(request, "Assessment not found.")
+                post_year = request.POST.get('year') or request.GET.get('year')
+                return redirect(reverse('manage_exams') + f'?tab=manage&year={post_year}' if post_year else reverse('manage_exams') + '?tab=manage')
+
+            if withdraw_exam.status == 'closed':
+                messages.error(request, "This assessment is closed. Reopen it before withdrawing results.")
                 post_year = request.POST.get('year') or request.GET.get('year')
                 return redirect(reverse('manage_exams') + f'?tab=manage&year={post_year}' if post_year else reverse('manage_exams') + '?tab=manage')
 
@@ -1294,7 +1646,7 @@ def manage_exams(request):
 
     exams = all_exams.filter(year=selected_year).order_by("-term", "name")
 
-    selected_exam_id = request.GET.get("exam_id")
+    selected_exam_id = _safe_id(request.GET.get("exam_id"))
     selected_exam = None
 
     if selected_exam_id:
@@ -1453,12 +1805,15 @@ def manage_exams(request):
             # Supplement with grades from the Grade model that have no
             # submissions yet so every class assigned to this exam section
             # is always visible — even when some classes already have work.
+            # Respect exam.classes: only show grades the exam actually covers.
             grade_qs = Grade.all_objects.filter(
                 school=school,
                 school_section=exam.school_section,
             )
             if exam.sub_section:
                 grade_qs = grade_qs.filter(sub_section=exam.sub_section)
+            if exam.classes:
+                grade_qs = grade_qs.filter(name__in=exam.classes)
             for g in grade_qs.order_by('order'):
                 if g.name not in classes_seen:
                     class_rows.append({
@@ -1555,11 +1910,42 @@ def manage_exams(request):
         "active_tab": active_tab,
         "year_range": range(current_year - 2, current_year + 3),
         "available_grades": Grade.all_objects.filter(school=school).order_by('order'),
+        "create_prefill": {},
+        "grading_prefill": None,
     }
+
+    # One-shot form recovery: a rejected submit stashes what the user typed;
+    # re-inject it here so nothing is ever lost.
+    if active_tab == 'create':
+        context['create_prefill'] = request.session.pop('create_prefill', None) or {}
+        pf = context['create_prefill']
+        year_list = list(context["year_range"])
+        # An explicit ?year= wins over the manage-list fallback: you may be
+        # creating the FIRST exam of a year that currently has none.
+        raw_year = request.GET.get('year')
+        try:
+            explicit_year = int(raw_year) if raw_year else None
+        except (TypeError, ValueError):
+            explicit_year = None
+        if pf.get('year') in year_list:
+            context['create_default_year'] = pf['year']
+        elif explicit_year in year_list:
+            context['create_default_year'] = explicit_year
+        elif selected_year in year_list:
+            context['create_default_year'] = selected_year
+        elif current_year in year_list:
+            context['create_default_year'] = current_year
+        else:
+            context['create_default_year'] = year_list[0]
+    else:
+        context['create_default_year'] = (
+            selected_year if selected_year in context["year_range"] else current_year
+        )
 
     # ── Grading configs for the Grading Systems tab ──
     if active_tab == 'grading':
         import json
+        context['grading_prefill'] = request.session.pop('grading_prefill', None)
         from ..models import GradingAssignment, GradingScale
         assignments = GradingAssignment.objects.filter(
             school=school,
@@ -1610,6 +1996,8 @@ def manage_exams(request):
                 'sub_section': subj.sub_section or '',
             })
         context['subjects_json'] = json.dumps(subjects_json)
+        # Python object for json_script embedding (safe against </script> breakout)
+        context['subjects_list'] = subjects_json
 
     # ── Deleted Exams tab context ──
     if active_tab == 'deleted':
@@ -1631,12 +2019,20 @@ def manage_exams(request):
                 'term': exam.term,
                 'school_section': exam.school_section,
                 'sub_section': exam.sub_section or '',
+                'classes': ', '.join(exam.classes or []),
                 'deleted_by': exam.deleted_by.get_full_name() if exam.deleted_by else 'System',
                 'deleted_at': exam.deleted_at.strftime('%d/%m/%Y') if exam.deleted_at else '-',
             })
 
         context['deleted_exam_rows'] = deleted_exam_rows
-        context['deleted_years'] = list(range(current_year - 5, current_year + 1))
+        # Offered years = recent window UNION every year that actually has a
+        # deleted exam, so an old deletion is always reachable via the dropdown.
+        deleted_year_values = Exam.all_objects.filter(
+            school=school, is_deleted=True,
+        ).values_list('year', flat=True)
+        context['deleted_years'] = sorted(
+            set(range(current_year - 5, current_year + 1)) | {int(y) for y in deleted_year_values}
+        )
         context['deleted_selected_year'] = deleted_year
 
     # Add sub-section counts — always for admins, only in PRIMARY workspace for teachers
@@ -1664,7 +2060,7 @@ def edit_exam(request):
         messages.error(request, "School context is required.")
         return redirect('welcome_page')
 
-    exam_id = request.GET.get('exam_id') or request.POST.get('exam_id')
+    exam_id = _safe_id(request.GET.get('exam_id') or request.POST.get('exam_id'))
     if not exam_id:
         messages.error(request, "No exam specified.")
         return redirect('manage_exams')
@@ -1698,19 +2094,36 @@ def edit_exam(request):
             messages.error(request, "Exam name cannot be empty.")
             return redirect(f'{reverse("edit_exam")}?exam_id={exam_id}')
 
-        # Check if new name would violate unique_together constraint
-        existing = Exam.all_objects.filter(
-            school=school,
-            name=new_name,
-            term=exam.term,
-            year=exam.year,
-            school_section=exam.school_section,
-            sub_section=exam.sub_section,
-            is_deleted=False,
-        ).exclude(id=exam.id).exists()
+        # Block renames that collide with ANY existing exam — including
+        # soft-deleted rows (unique_together spans them, so an exact hit there
+        # raises IntegrityError) and normalized-name equivalents (the manage
+        # list de-dupes by normalized name, so 'KNEC Assessment' vs
+        # 'knec assessment' would silently hide one of the two exams).
+        target_norm = re.sub(r"\s+", " ", normalize_exam_display_name(new_name)).strip().casefold()
+        existing = next(
+            (
+                e for e in Exam.all_objects.filter(
+                    school=school,
+                    term=exam.term,
+                    year=exam.year,
+                    school_section=exam.school_section,
+                    sub_section=exam.sub_section,
+                ).exclude(id=exam.id)
+                if re.sub(r"\s+", " ", normalize_exam_display_name(e.name)).strip().casefold() == target_norm
+            ),
+            None,
+        )
 
         if existing:
-            messages.error(request, "An exam with this name already exists for this term and year.")
+            if existing.is_deleted:
+                messages.error(
+                    request,
+                    "An assessment with this name already exists in the Deleted "
+                    "Assessments tab for this term and year. Recover or permanently "
+                    "delete it first.",
+                )
+            else:
+                messages.error(request, "An assessment with this name already exists for this term and year.")
             return redirect(f'{reverse("edit_exam")}?exam_id={exam_id}')
 
         old_name = exam.name
@@ -1781,7 +2194,7 @@ def analyse_exam(request):
         messages.error(request, "School context is required.")
         return redirect('welcome_page')
 
-    exam_id = request.GET.get('exam_id')
+    exam_id = _safe_id(request.GET.get('exam_id'))
     class_name_filter = request.GET.get('class_name', '').strip()
     if not exam_id:
         latest_exam = Exam.all_objects.filter(school=school, is_deleted=False).order_by('-year', 'term', 'name').first()
@@ -5017,7 +5430,7 @@ def publish_results_overview(request):
         messages.error(request, "School context is required.")
         return redirect("welcome_page")
 
-    exam_id = request.GET.get("exam_id")
+    exam_id = _safe_id(request.GET.get("exam_id"))
     class_name = request.GET.get("class_name", "").strip()
 
     if not exam_id:
@@ -5146,7 +5559,7 @@ def save_exam_min_subjects(request):
     if not school:
         return JsonResponse({"success": False, "error": "School context required."}, status=400)
 
-    exam_id = request.POST.get("exam_id")
+    exam_id = _safe_id(request.POST.get("exam_id"))
     min_subjects = request.POST.get("min_subjects")
 
     if not exam_id:

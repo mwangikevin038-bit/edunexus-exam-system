@@ -3790,7 +3790,9 @@ def api_analysis_data(request):
     if not school:
         return JsonResponse({'error': 'No school context'}, status=400)
 
-    exam_id = request.GET.get('exam_id')
+    from .exams import _safe_id
+
+    exam_id = _safe_id(request.GET.get('exam_id'))
     class_name_filter = request.GET.get('class_name', '').strip()
     stream_filter = request.GET.get('stream', '').strip()
 

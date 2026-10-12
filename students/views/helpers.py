@@ -24,6 +24,10 @@ from ..school_scope import get_current_school, get_current_school_section
 from ..security import user_has_main_school_admin_override
 from ..security.integrity import compute_mark_checksum
 
+# Keys (school_id, section, sub_section) for which the "total_scale missing"
+# error has already been logged once this process — prevents per-row log spam.
+_MISSING_SCALE_WARNED = set()
+
 
 def safe_pdf_filename(*parts):
     """Build a professional, header-safe PDF filename (Type-First, case-preserving).
@@ -1449,11 +1453,14 @@ def calculate_report_plv(total_points, total_marks, sub_section=None, school=Non
         if scale_data:
             return get_total_level_fast(mks, scale_data)[0] if mks else '-'
 
-    logging.getLogger("students.helpers").error(
-        "GradingScale.total_scale missing for school_id=%s section=%s sub_section=%s. "
-        "Configure it at /school-admin/grading-config/.",
-        getattr(school, 'id', None), section, sub_section,
-    )
+    warn_key = (getattr(school, 'id', None), section, sub_section)
+    if warn_key not in _MISSING_SCALE_WARNED:
+        _MISSING_SCALE_WARNED.add(warn_key)
+        logging.getLogger("students.helpers").error(
+            "GradingScale.total_scale missing for school_id=%s section=%s sub_section=%s. "
+            "Configure it at /school-admin/grading-config/.",
+            *warn_key,
+        )
     return '-'
 
 

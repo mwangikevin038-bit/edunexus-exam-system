@@ -69,6 +69,45 @@
         margin: 0 auto;
     }
 
+    .flash-banner-list {
+        margin-bottom: 18px;
+    }
+
+    .flash-banner {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 13px 18px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        animation: flashSlideIn .28s cubic-bezier(.22,1,.36,1);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, .07);
+    }
+
+    .flash-banner::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .flash-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .flash-success::before { background: #22c55e; }
+    .flash-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .flash-error::before { background: #ef4444; }
+    .flash-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .flash-warning::before { background: #f59e0b; }
+    .flash-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .flash-info::before { background: #3b82f6; }
+
+    @keyframes flashSlideIn {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     .page-header {
         margin-bottom: 24px;
     }
@@ -1273,6 +1312,23 @@
     }
 </style>
 
+{% if messages %}
+<div class="flash-banner-list">
+    {% for message in messages %}
+    <div class="flash-banner flash-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+    {% endfor %}
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof showToast !== 'function') return;
+    document.querySelectorAll('.flash-banner').forEach(function(el) {
+        var m = el.className.match(/flash-(success|error|warning|info)/);
+        showToast(el.textContent.trim(), m ? m[1] : 'info');
+    });
+});
+</script>
+{% endif %}
+
 {% if active_tab == 'create' %}
 
 <style>
@@ -1461,61 +1517,86 @@
         text-align: center;
         font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
     }
+    .ce-error {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 5px;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    }
+    .ce-error i { font-size: 13px; flex-shrink: 0; }
+    .ce-field.has-error input,
+    .ce-field.has-error select {
+        border-color: #dc2626 !important;
+        box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.10);
+    }
+    .ce-classes-list.has-error {
+        box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.35);
+        border-radius: 6px;
+    }
 </style>
 
 <div class="create-exam-page">
     <div class="create-exam-shell">
         <div class="create-exam-card">
 
-            <form method="POST" id="createForm">
+            <form method="POST" id="createForm" novalidate>
                 {% csrf_token %}
                 <input type="hidden" name="action_type" value="create_exam">
 
                 <div class="ce-field-row">
-                    <div class="ce-field" style="flex: 2;">
+                    <div class="ce-field" style="flex: 2;" id="ceFieldExamName">
                         <label>Exam Name</label>
-                        <input type="text" name="exam_name" placeholder="Name" required>
+                        <input type="text" name="exam_name" placeholder="Name" required
+                               maxlength="50" autocomplete="off" value="{{ create_prefill.name }}">
+                        <div class="ce-error" id="ceErrExamName" hidden></div>
                     </div>
                 </div>
 
                 <div class="ce-field-row">
-                    <div class="ce-field">
+                    <div class="ce-field" id="ceFieldTerm">
                         <label>Term</label>
                         <select name="term" required>
                             <option value="">Select Term</option>
                             {% for term in terms %}
-                            <option value="{{ term }}">{{ term }}</option>
+                            <option value="{{ term }}" {% if create_prefill.term == term %}selected{% endif %}>{{ term }}</option>
                             {% endfor %}
                         </select>
+                        <div class="ce-error" id="ceErrTerm" hidden></div>
                     </div>
                     <div class="ce-field">
                         <label>Year</label>
                         <select name="year" required>
                             {% for y in year_range %}
-                            <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                            <option value="{{ y }}" {% if y == create_default_year %}selected{% endif %}>{{ y }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="ce-field">
                         <label>Status</label>
                         <select name="status" required>
-                            <option value="active" selected>Active</option>
-                            <option value="draft">Draft</option>
+                            <option value="active" {% if not create_prefill or create_prefill.status == 'active' %}selected{% endif %}>Active</option>
+                            <option value="draft" {% if create_prefill.status == 'draft' %}selected{% endif %}>Draft</option>
                         </select>
                     </div>
                 </div>
 
                 <p class="ce-divider">Form that sat for the exam</p>
+                <div class="ce-error" id="ceErrClasses" hidden></div>
 
                 <div class="ce-select-all">
                     <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
                     <label for="selectAll">Select All</label>
                 </div>
 
-                <div class="ce-classes-list">
+                <div class="ce-classes-list" id="ceClassesList">
                     {% for grade in available_grades %}
                     <div class="ce-class-row">
-                        <input type="checkbox" name="selected_classes" value="{{ grade.name }}" id="class_{{ grade.pk }}">
+                        <input type="checkbox" name="selected_classes" value="{{ grade.name }}" id="class_{{ grade.pk }}"
+                               {% if grade.name in create_prefill.classes %}checked{% endif %}>
                         <span class="ce-class-name">{{ grade.name }}</span>
                         <span class="ce-badge ce-badge-{% if grade.school_section == 'JSS' %}jss{% elif grade.sub_section == 'LOWER' %}lower-primary{% else %}upper-primary{% endif %}">{% if grade.school_section == 'JSS' %}JSS{% elif grade.sub_section == 'LOWER' %}Lower Primary{% elif grade.sub_section == 'UPPER' %}Upper Primary{% else %}Primary{% endif %}</span>
                     </div>
@@ -1751,11 +1832,15 @@
     </div>
 </div>
 
+{{ grading_configs|json_script:"gs-config-data" }}
+{{ subjects_list|json_script:"gs-subjects-data" }}
+{{ grading_prefill|json_script:"gs-prefill" }}
+
 <script>
 var GS_SAMPLES = {};
 var GS_SAMPLE_KEYS = [];
-var GS_CONFIG_DATA = {{ grading_configs_json|safe }};
-var GS_SUBJECTS = {{ subjects_json|safe }};
+var GS_CONFIG_DATA = JSON.parse(document.getElementById('gs-config-data').textContent);
+var GS_SUBJECTS = JSON.parse(document.getElementById('gs-subjects-data').textContent);
 var gsCurrentTab = '';
 
 function gsFilterSubjects() {
@@ -1852,7 +1937,12 @@ function gsViewScale(configId) {
     for (var i = 0; i < scale.length; i++) {
         var r = scale[i];
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td>'+r.min_score+'</td><td>'+r.max_score+'</td><td>'+r.level+'</td><td>'+r.points+'</td>';
+        // textContent, not innerHTML: level names are admin-entered strings
+        [r.min_score, r.max_score, r.level, r.points].forEach(function(v) {
+            var td = document.createElement('td');
+            td.textContent = v;
+            tr.appendChild(td);
+        });
         tbody.appendChild(tr);
     }
 }
@@ -1873,35 +1963,57 @@ function gsInitGrid() {
     tbody.innerHTML = '';
     for (var i = 0; i < grades.length; i++) gsAddRow(tbody, '', '', grades[i], i + 1);
 }
+function gsBuildRow(low, high, grade, pts) {
+    // Built via DOM APIs (never innerHTML): grade labels come from stored
+    // configs and must not be able to inject markup into the grid.
+    var tr = document.createElement('tr');
+    var c0 = document.createElement('td');
+    c0.textContent = '0';
+    tr.appendChild(c0);
+    [
+        {type: 'number', name: 'low[]',     value: low,    ph: '0',   cls: 'gs-grid-input'},
+        {type: 'number', name: 'high[]',    value: high,   ph: '100', cls: 'gs-grid-input'},
+        {type: 'text',   name: 'grade[]',   value: grade,  ph: '',    cls: 'gs-grid-input grade-input'},
+        {type: 'number', name: 'points[]',  value: pts,    ph: '',    cls: 'gs-grid-input pts-input'}
+    ].forEach(function(spec) {
+        var td = document.createElement('td');
+        var input = document.createElement('input');
+        input.type = spec.type;
+        input.className = spec.cls;
+        input.name = spec.name;
+        if (spec.value !== '' && spec.value !== null && spec.value !== undefined) input.value = spec.value;
+        if (spec.ph) input.placeholder = spec.ph;
+        td.appendChild(input);
+        tr.appendChild(td);
+    });
+    var tdA = document.createElement('td');
+    var wrap = document.createElement('div');
+    wrap.className = 'gs-actions-cell';
+    var addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'gs-btn-add';
+    addBtn.textContent = '+ Add';
+    addBtn.onclick = function() { gsInsertRow(addBtn); };
+    var rmBtn = document.createElement('button');
+    rmBtn.type = 'button';
+    rmBtn.className = 'gs-btn-remove';
+    rmBtn.textContent = 'Remove';
+    rmBtn.onclick = function() { gsRemoveRow(rmBtn); };
+    wrap.appendChild(addBtn);
+    wrap.appendChild(rmBtn);
+    tdA.appendChild(wrap);
+    tr.appendChild(tdA);
+    return tr;
+}
 function gsAddRow(tbody, low, high, grade, pts) {
     if (!tbody) tbody = document.getElementById('gsGridBody');
-    var idx = tbody.rows.length + 1;
-    var tr = document.createElement('tr');
-    tr.innerHTML = '<td>'+idx+'</td>' +
-        '<td><input type="number" class="gs-grid-input" name="low[]" value="'+(low||'')+'" placeholder="0"></td>' +
-        '<td><input type="number" class="gs-grid-input" name="high[]" value="'+(high||'')+'" placeholder="100"></td>' +
-        '<td><input type="text" class="gs-grid-input grade-input" name="grade[]" value="'+(grade||'')+'"></td>' +
-        '<td><input type="number" class="gs-grid-input pts-input" name="points[]" value="'+(pts||'')+'"></td>' +
-        '<td><div class="gs-actions-cell">' +
-        '<button type="button" class="gs-btn-add" onclick="gsInsertRow(this)">+ Add</button>' +
-        '<button type="button" class="gs-btn-remove" onclick="gsRemoveRow(this)">Remove</button>' +
-        '</div></td>';
-    tbody.appendChild(tr);
+    tbody.appendChild(gsBuildRow(low, high, grade, pts));
+    gsRenumber();
 }
 function gsInsertRow(btn) {
     var tr = btn.closest('tr');
     var tbody = tr.parentNode;
-    var newTr = document.createElement('tr');
-    newTr.innerHTML = '<td>0</td>' +
-        '<td><input type="number" class="gs-grid-input" name="low[]" placeholder="0"></td>' +
-        '<td><input type="number" class="gs-grid-input" name="high[]" placeholder="100"></td>' +
-        '<td><input type="text" class="gs-grid-input grade-input" name="grade[]"></td>' +
-        '<td><input type="number" class="gs-grid-input pts-input" name="points[]"></td>' +
-        '<td><div class="gs-actions-cell">' +
-        '<button type="button" class="gs-btn-add" onclick="gsInsertRow(this)">+ Add</button>' +
-        '<button type="button" class="gs-btn-remove" onclick="gsRemoveRow(this)">Remove</button>' +
-        '</div></td>';
-    tbody.insertBefore(newTr, tr.nextSibling);
+    tbody.insertBefore(gsBuildRow('', '', '', ''), tr.nextSibling);
     gsRenumber();
 }
 function gsRemoveRow(btn) {
@@ -1940,16 +2052,42 @@ function gsRenderSample(tab) {
     for (var i = data.length - 1; i >= 0; i--) {
         var r = data[i];
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td>'+r.min+'</td><td>'+r.max+'</td><td>'+r.level+'</td><td>'+r.points+'</td>';
+        [r.min, r.max, r.level, r.points].forEach(function(v) {
+            var td = document.createElement('td');
+            td.textContent = v;
+            tr.appendChild(td);
+        });
         tbody.appendChild(tr);
     }
 }
 function gsAutofill() {
     var data = GS_SAMPLES[gsCurrentTab] || [];
+    if (!data.length) return;   // never wipe the grid when no sample is loaded
     var tbody = document.getElementById('gsGridBody');
     tbody.innerHTML = '';
     for (var i = 0; i < data.length; i++) { var r = data[i]; gsAddRow(tbody, r.min, r.max, r.level, r.points); }
     gsRenumber();
+}
+
+// Recovery after a rejected save: re-open the form and refill everything
+// the user typed (name, section, subject, grid rows).
+var GS_PREFILL = JSON.parse(document.getElementById('gs-prefill').textContent);
+if (GS_PREFILL && typeof GS_PREFILL === 'object' && !Array.isArray(GS_PREFILL)) {
+    gsShowForm();
+    if (GS_PREFILL.name) document.getElementById('gsNameInput').value = GS_PREFILL.name;
+    if (GS_PREFILL.section) {
+        document.getElementById('gsSectionSelect').value = GS_PREFILL.section;
+        gsFilterSubjects();
+    }
+    if (GS_PREFILL.subject) document.getElementById('gsSubjectSelect').value = GS_PREFILL.subject;
+    if (Array.isArray(GS_PREFILL.rows) && GS_PREFILL.rows.length) {
+        var pfBody = document.getElementById('gsGridBody');
+        pfBody.innerHTML = '';
+        GS_PREFILL.rows.forEach(function (r) {
+            gsAddRow(pfBody, r[0], r[1], r[2], r[3]);
+        });
+        gsRenumber();
+    }
 }
 </script>
 
@@ -2033,7 +2171,7 @@ function gsAutofill() {
                 <th></th>
                 <th></th>
                 <th></th>
-                <th>Class</th>
+                <th>Section</th>
                 <th>Deleted by</th>
                 <th>Deletion Date</th>
                 <th>Action</th>
@@ -2050,11 +2188,12 @@ function gsAutofill() {
                     {% elif row.sub_section == 'LOWER' %}Lower Primary
                     {% elif row.sub_section == 'UPPER' %}Upper Primary
                     {% else %}Primary{% endif %}
+                    {% if row.classes %}<span style="color:#64748b;font-weight:500;"> &middot; {{ row.classes }}</span>{% endif %}
                 </td>
                 <td>{{ row.deleted_by }}</td>
                 <td>{{ row.deleted_at }}</td>
                 <td class="center">
-                    <form method="POST" style="display:inline;">
+                    <form method="POST" style="display:inline;" onsubmit="return confirm('Recover {{ row.name|escapejs }} ({{ row.term }} {{ row.year }})? It will reappear in the exam list and any backed-up marks will be restored.');">
                         {% csrf_token %}
                         <input type="hidden" name="action_type" value="recover_exam">
                         <input type="hidden" name="exam_id" value="{{ row.id }}">
@@ -2214,11 +2353,12 @@ function gsAutofill() {
                                         </button>
                                     </form>
                                     {% else %}
-                                    <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Delete this assessment? It will be moved to Deleted Exams where it can be recovered.');">
+                                    <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" style="display:inline;" onsubmit="return confirm('Delete {{ class_row.class_name|escapejs }} from this assessment? Only {{ class_row.class_name|escapejs }} marks will be removed.');">
                                         {% csrf_token %}
                                         <input type="hidden" name="action_type" value="delete_exam">
                                         <input type="hidden" name="exam_id" value="{{ class_row.exam_id }}">
-                                        {% for eid in exam.exam_ids %}{% if eid != class_row.exam_id %}<input type="hidden" name="extra_exam_ids" value="{{ eid }}">{% endif %}{% endfor %}
+                                        <input type="hidden" name="class_name" value="{{ class_row.class_name }}">
+                                        <input type="hidden" name="year" value="{{ selected_year }}">
                                         <button type="submit" class="btn-action btn-delete-exam">
                                             <i class="ph ph-trash"></i> Delete
                                         </button>
@@ -2290,7 +2430,7 @@ function gsAutofill() {
                                 <i class="ph ph-chart-bar"></i> Publish Results
                             </a>
                             {% endif %}
-                            <button type="button" class="btn-action btn-delete-exam" onclick="openDeleteModal({{ class_row.exam_id }}, '{{ exam.name|escapejs }}', [{% for eid in exam.exam_ids %}{% if eid != class_row.exam_id %}{{ eid }}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}])">
+                            <button type="button" class="btn-action btn-delete-exam" onclick="openDeleteModal({{ class_row.exam_id }}, '{{ exam.name|escapejs }}', '{{ class_row.class_name|escapejs }}')">
                                 <i class="ph ph-trash"></i> Delete
                             </button>
                             {% endif %}
@@ -2417,7 +2557,7 @@ function gsAutofill() {
             <h3 class="delete-modal-title">Delete Assessment</h3>
         </div>
         <div class="delete-modal-body">
-            <p>Are you sure you want to delete <span class="exam-name-highlight" id="deleteModalExamName"></span>?<br><br>It will be moved to Deleted Exams where it can be recovered.</p>
+            <p>Are you sure you want to delete <span class="exam-name-highlight" id="deleteModalClassName"></span> from <span class="exam-name-highlight" id="deleteModalExamName"></span>?<br><br>Only this class's marks will be removed. The assessment continues for the remaining classes.</p>
         </div>
         <div class="delete-modal-footer">
             <button class="delete-modal-btn delete-modal-btn-cancel" onclick="closeDeleteModal()">Cancel</button>
@@ -2431,22 +2571,117 @@ function toggleSelectAll(checkbox) {
     document.querySelectorAll('.ce-classes-list input[type="checkbox"]').forEach(cb => {
         cb.checked = checkbox.checked;
     });
+    checkbox.indeterminate = false;
 }
 
-function openDeleteModal(examId, examName, extraIds) {
-    document.getElementById('deleteModalExamName').textContent = examName;
-    document.getElementById('deleteModalExamId').value = examId;
-    var container = document.getElementById('deleteModalExtraIds');
-    container.innerHTML = '';
-    if (extraIds && extraIds.length) {
-        extraIds.forEach(function(eid) {
-            var inp = document.createElement('input');
-            inp.type = 'hidden';
-            inp.name = 'extra_exam_ids';
-            inp.value = eid;
-            container.appendChild(inp);
-        });
+// Two-way sync: ticking individual classes updates the Select All state.
+document.addEventListener('change', function (e) {
+    if (!e.target || !e.target.matches || !e.target.matches('.ce-classes-list input[type="checkbox"]')) return;
+    var boxes = Array.prototype.slice.call(
+        document.querySelectorAll('.ce-classes-list input[type="checkbox"]')
+    );
+    var sa = document.getElementById('selectAll');
+    if (!sa || !boxes.length) return;
+    var checked = boxes.filter(function (b) { return b.checked; }).length;
+    sa.checked = checked === boxes.length;
+    sa.indeterminate = checked > 0 && checked < boxes.length;
+});
+
+// Create form: premium inline validation (no native bubbles, no alert()).
+(function () {
+    var createForm = document.getElementById('createForm');
+    if (!createForm) return;
+
+    function setErr(fieldId, errId, msg) {
+        var field = document.getElementById(fieldId);
+        var err = document.getElementById(errId);
+        if (field) field.classList.toggle('has-error', !!msg);
+        if (err) {
+            if (msg) {
+                err.innerHTML = '<i class="ph ph-warning-circle"></i>';
+                err.appendChild(document.createTextNode(msg));
+                err.hidden = false;
+            } else {
+                err.textContent = '';
+                err.hidden = true;
+            }
+        }
     }
+
+    function clearOnInput(input, fieldId, errId) {
+        if (!input) return;
+        input.addEventListener('input', function () { setErr(fieldId, errId, ''); });
+        input.addEventListener('change', function () { setErr(fieldId, errId, ''); });
+    }
+    clearOnInput(createForm.querySelector('[name="exam_name"]'), 'ceFieldExamName', 'ceErrExamName');
+    clearOnInput(createForm.querySelector('[name="term"]'), 'ceFieldTerm', 'ceErrTerm');
+    createForm.addEventListener('change', function (e) {
+        if (e.target && e.target.name === 'selected_classes') setErr(null, 'ceErrClasses', '');
+        if (e.target) {
+            var list = document.getElementById('ceClassesList');
+            if (list) list.classList.remove('has-error');
+        }
+    });
+
+    createForm.addEventListener('submit', function (e) {
+        var firstBad = null;
+        var nameInput = createForm.querySelector('[name="exam_name"]');
+        var termInput = createForm.querySelector('[name="term"]');
+        var boxes = document.querySelectorAll('.ce-classes-list input[name="selected_classes"]');
+
+        var nameVal = (nameInput && nameInput.value || '').replace(/\s+/g, ' ').trim();
+        if (!nameVal) {
+            setErr('ceFieldExamName', 'ceErrExamName', 'Please enter an assessment name.');
+            firstBad = firstBad || nameInput;
+        } else if (nameVal.length > 50) {
+            setErr('ceFieldExamName', 'ceErrExamName', 'Maximum 50 characters (' + nameVal.length + ' entered).');
+            firstBad = firstBad || nameInput;
+        } else {
+            setErr('ceFieldExamName', 'ceErrExamName', '');
+        }
+
+        if (!termInput || !termInput.value) {
+            setErr('ceFieldTerm', 'ceErrTerm', 'Please select a term.');
+            firstBad = firstBad || termInput;
+        } else {
+            setErr('ceFieldTerm', 'ceErrTerm', '');
+        }
+
+        var any = Array.prototype.some.call(boxes, function (b) { return b.checked; });
+        var list = document.getElementById('ceClassesList');
+        if (!any) {
+            setErr(null, 'ceErrClasses', 'Select at least one class for the assessment.');
+            if (list) list.classList.add('has-error');
+            firstBad = firstBad || boxes[0];
+        } else {
+            setErr(null, 'ceErrClasses', '');
+            if (list) list.classList.remove('has-error');
+        }
+
+        if (firstBad) {
+            e.preventDefault();
+            firstBad.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            try { firstBad.focus({ preventScroll: true }); } catch (err) { firstBad.focus(); }
+        }
+    });
+
+    // Reflect prefilled checkboxes in the Select All state on load.
+    var sa = document.getElementById('selectAll');
+    var allBoxes = Array.prototype.slice.call(
+        document.querySelectorAll('.ce-classes-list input[type="checkbox"]')
+    );
+    if (sa && allBoxes.length) {
+        var checked = allBoxes.filter(function (b) { return b.checked; }).length;
+        sa.checked = checked === allBoxes.length;
+        sa.indeterminate = checked > 0 && checked < allBoxes.length;
+    }
+})();
+
+function openDeleteModal(examId, examName, className) {
+    document.getElementById('deleteModalExamName').textContent = examName;
+    document.getElementById('deleteModalClassName').textContent = className;
+    document.getElementById('deleteModalExamId').value = examId;
+    document.getElementById('deleteModalClassNameInput').value = className;
     document.getElementById('deleteModalOverlay').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -2457,13 +2692,66 @@ function closeDeleteModal(e) {
         document.body.style.overflow = '';
     }
 }
+
+// ESC closes the delete modal (matches overlay-click and Cancel).
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var overlay = document.getElementById('deleteModalOverlay');
+    if (overlay && overlay.classList.contains('active')) closeDeleteModal();
+});
+
+// Grading grid: mirror the server-side rules so bad ranges never post.
+(function () {
+    var gsForm = document.getElementById('gsForm');
+    if (!gsForm) return;
+    gsForm.addEventListener('submit', function (e) {
+        var rows = document.getElementById('gsGridBody').rows;
+        var ranges = [];
+        for (var i = 0; i < rows.length; i++) {
+            var low = rows[i].querySelector('input[name="low[]"]');
+            var high = rows[i].querySelector('input[name="high[]"]');
+            var grade = rows[i].querySelector('input[name="grade[]"]');
+            if (!low || !high || !grade) continue;
+            var lv = low.value.trim(), hv = high.value.trim(), gv = grade.value.trim();
+            if (!lv && !hv && !gv) continue;
+            if (!lv || !hv) {
+                e.preventDefault();
+                alert('Grading row ' + (i + 1) + ': enter both the min and max score.');
+                (lv ? high : low).focus();
+                return;
+            }
+            if (+lv > +hv) {
+                e.preventDefault();
+                alert('Grading row ' + (i + 1) + ': min score (' + lv + ') cannot be greater than max score (' + hv + ').');
+                low.focus();
+                return;
+            }
+            if (!gv) {
+                e.preventDefault();
+                alert('Grading row ' + (i + 1) + ': enter a level name, or remove the row.');
+                grade.focus();
+                return;
+            }
+            ranges.push([+lv, +hv]);
+        }
+        var sorted = ranges.slice().sort(function (a, b) { return a[0] - b[0]; });
+        for (var j = 1; j < sorted.length; j++) {
+            if (sorted[j][0] <= sorted[j - 1][1]) {
+                e.preventDefault();
+                alert('Grading ranges overlap: score ' + sorted[j][0] +
+                      ' belongs to more than one level. Adjust the min/max values.');
+                return;
+            }
+        }
+    });
+})();
 </script>
 
 <form method="post" action="{% url 'manage_exams' %}?tab=manage&year={{ selected_year }}" id="deleteExamForm" style="display:none;">
     {% csrf_token %}
     <input type="hidden" name="action_type" value="delete_exam">
     <input type="hidden" name="exam_id" id="deleteModalExamId" value="">
-    <span id="deleteModalExtraIds"></span>
+    <input type="hidden" name="class_name" id="deleteModalClassNameInput" value="">
     <input type="hidden" name="year" value="{{ selected_year }}">
 </form>
 
