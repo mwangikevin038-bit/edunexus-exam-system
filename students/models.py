@@ -743,9 +743,14 @@ class Teacher(SchoolScopedModel):
     sub_section = models.CharField(
         max_length=10,
         choices=[('LOWER', 'Lower Primary'), ('UPPER', 'Upper Primary')],
-        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS/Both.',
+        help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS.',
         null=True,
         blank=True,
+    )
+    classes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Specific grade names that sat for this exam, e.g. ['Grade 7','Grade 8']. Empty list = all grades in the section."
     )
 
     # ============ PERSONAL INFORMATION ============
@@ -1211,6 +1216,11 @@ class Exam(SchoolScopedModel):
         help_text='Lower Primary (1-3) or Upper Primary (4-6). NULL for JSS.',
         null=True,
         blank=True,
+    )
+    classes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Specific grade names that sat for this exam, e.g. ['Grade 7','Grade 8']. Empty list = all grades in the section."
     )
     exam_report_mode = models.CharField(
         max_length=20,

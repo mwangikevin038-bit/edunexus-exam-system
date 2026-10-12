@@ -1515,7 +1515,7 @@
                 <div class="ce-classes-list">
                     {% for grade in available_grades %}
                     <div class="ce-class-row">
-                        <input type="checkbox" name="selected_classes" value="{{ grade.name }}" id="class_{{ grade.name }}">
+                        <input type="checkbox" name="selected_classes" value="{{ grade.name }}" id="class_{{ grade.pk }}">
                         <span class="ce-class-name">{{ grade.name }}</span>
                         <span class="ce-badge ce-badge-{% if grade.school_section == 'JSS' %}jss{% elif grade.sub_section == 'LOWER' %}lower-primary{% else %}upper-primary{% endif %}">{% if grade.school_section == 'JSS' %}JSS{% elif grade.sub_section == 'LOWER' %}Lower Primary{% elif grade.sub_section == 'UPPER' %}Upper Primary{% else %}Primary{% endif %}</span>
                     </div>

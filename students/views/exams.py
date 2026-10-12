@@ -154,7 +154,16 @@ def select_exam(request):
         .order_by('class_name', 'stream', 'subject__code')
     )
 
-    active_exams = Exam.objects.filter(school=school, status='active', school_section='JSS', is_deleted=False).order_by('-created_at')[:1]
+    active_exams = Exam.objects.filter(school=school, status='active', school_section='JSS', is_deleted=False).order_by('-created_at')
+    # Only surface exams that cover at least one of the teacher's classes
+    _teacher_classes = set(assignments.values_list('class_name', flat=True))
+    if _teacher_classes:
+        from django.db.models import Q
+        _class_q = Q(classes=[])
+        for _cn in _teacher_classes:
+            _class_q |= Q(classes__contains=[_cn])
+        active_exams = active_exams.filter(_class_q)
+    active_exams = active_exams[:1]
 
     selected_assignment = None
     selected_exam = None
@@ -802,7 +811,9 @@ def manage_exams(request):
                 ).first()
 
                 if exam_obj:
-                    # Active exam already exists — skip
+                    # Active exam already exists — update its class list to match selection
+                    exam_obj.classes = classes
+                    exam_obj.save(update_fields=['classes'])
                     created = False
                 else:
                     # Check for a soft-deleted exam with the same key and recover it
@@ -817,7 +828,8 @@ def manage_exams(request):
                         deleted_exam.deleted_at = None
                         deleted_exam.deleted_by = None
                         deleted_exam.status = status
-                        deleted_exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by', 'status'])
+                        deleted_exam.classes = classes
+                        deleted_exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by', 'status', 'classes'])
                         exam_obj = deleted_exam
                         created = True
                     else:
@@ -825,8 +837,13 @@ def manage_exams(request):
                         exam_obj, created = Exam.all_objects.get_or_create(
                             school=school, name=exam_name, term=term, year=year,
                             school_section=exam_db_section, sub_section=exam_sub_section,
-                            defaults={"status": status},
+                            defaults={"status": status, "classes": classes},
                         )
+                        if created:
+                            pass
+                        elif exam_obj.classes != classes:
+                            exam_obj.classes = classes
+                            exam_obj.save(update_fields=['classes'])
 
                 if created:
                     created_count += 1
@@ -3473,6 +3490,12 @@ def select_exam_primary(request):
         active_exams = active_exams.filter(
             Q(sub_section=exam_sub_section) | Q(sub_section__isnull=True)
         )
+    _teacher_classes = set(assignments.values_list('class_name', flat=True))
+    if _teacher_classes:
+        _class_q = Q(classes=[])
+        for _cn in _teacher_classes:
+            _class_q |= Q(classes__contains=[_cn])
+        active_exams = active_exams.filter(_class_q)
     active_exams = active_exams[:1]
 
     selected_assignment = None

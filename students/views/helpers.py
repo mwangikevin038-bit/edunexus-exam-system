@@ -1530,6 +1530,21 @@ def get_next_admission_no(school_section=None):
     return f'001{suffix}'
 
 
+def filter_exams_by_classes(exam_qs, class_name):
+    """
+    Narrow an Exam queryset to those whose `classes` JSONField covers
+    the given class_name.  Exams with an empty `classes` list are
+    considered section-wide and always included (backward compatibility
+    with exams created before the field existed).
+    """
+    from django.db.models import Q
+    if not class_name:
+        return exam_qs
+    return exam_qs.filter(
+        Q(classes=[]) | Q(classes__contains=[class_name])
+    )
+
+
 def get_students_ordered(grade, stream, school=None):
     """
     Return students filtered by grade and stream, ordered by admission number.
