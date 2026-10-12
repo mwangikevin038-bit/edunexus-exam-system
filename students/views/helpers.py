@@ -1534,6 +1534,10 @@ def get_students_ordered(grade, stream, school=None):
     """
     Return students filtered by grade and stream, ordered by admission number.
     Handles P/J suffixed admission numbers. Non-numeric parts sorted to the end.
+    Falls back to unfiltered ordering when the P/J regex matches nothing —
+    a class whose learners all have non-standard admissions (transfers,
+    imported rows) must still appear on mark entry rather than silently
+    rendering an empty grid.
     """
     from django.db.models.functions import Substr, Length
     students = Student.all_objects.filter(
@@ -1543,12 +1547,16 @@ def get_students_ordered(grade, stream, school=None):
         school = get_current_school()
     if school:
         students = students.filter(school=school)
-    students = students.filter(
+    matched = list(students.filter(
         admission_no__regex=r'^[0-9]+[PJ]$'
     ).annotate(
         adm_int=Cast(Substr('admission_no', 1, Length('admission_no') - 1), IntegerField())
-    ).order_by('adm_int')
-    return list(students)
+    ).order_by('adm_int'))
+    if matched:
+        return matched
+    # Fallback: no P/J-style admissions in this class — return everyone
+    # ordered by admission_no so the grid is never silently empty.
+    return list(students.order_by('admission_no'))
 
 
 def get_subject_students(grade, stream, subject, school=None):

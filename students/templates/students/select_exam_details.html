@@ -246,6 +246,12 @@
                             <span class="htmx-indicator"><i class="ph ph-spinner-gap spinning"></i> Processing...</span>
                         </button>
                     </div>
+
+                    {# Unsaved / offline drafts pill — shown by JS when drafts are pending #}
+                    <div class="en-unsaved-pill" id="enUnsavedPill" aria-live="polite">
+                        <i class="ph ph-cloud-slash"></i>
+                        <span id="enUnsavedCount">0</span> unsaved
+                    </div>
                 </form>
             </main>
         </div>
@@ -358,21 +364,64 @@
     var DEBOUNCE_MS = 1500;
     var saveTimers = {};
     var inflightByStudent = {};
+    var undoBuffer = {};
 
-    function showToast(msg, type) {
-        var existing = document.querySelector('.en-toast');
-        if (existing) existing.remove();
+    function countOfflineDrafts() {
+        var n = 0;
+        try {
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (k && k.indexOf('offline_mark_') === 0) n++;
+            }
+        } catch(ignored) {}
+        return n;
+    }
+
+    function updateUnsavedPill() {
+        var pill = document.getElementById('enUnsavedPill');
+        if (!pill) return;
+        var pending = Object.keys(saveTimers).length;
+        var drafts = countOfflineDrafts();
+        var total = pending + drafts;
+        if (total > 0) {
+            pill.classList.add('is-visible');
+            pill.classList.toggle('is-offline', !navigator.onLine);
+            var c = document.getElementById('enUnsavedCount');
+            if (c) c.textContent = total;
+            var icon = pill.querySelector('i');
+            if (icon) icon.className = navigator.onLine ? 'ph ph-cloud-arrow-up' : 'ph ph-cloud-slash';
+        } else {
+            pill.classList.remove('is-visible', 'is-offline');
+        }
+    }
+
+    function showToast(msg, type, action) {
+        var existing = document.querySelectorAll('.en-toast');
+        for (var i = 0; i < existing.length; i++) existing[i].remove();
         var t = document.createElement('div');
         t.className = 'en-toast';
-        t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:10px;font-size:.8125rem;font-weight:700;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity 300ms;opacity:1;pointer-events:none;';
+        t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:10px;font-size:.8125rem;font-weight:700;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity 300ms;opacity:1;pointer-events:auto;display:flex;align-items:center;gap:4px;max-width:92vw;';
         var bg = type === 'error' ? '#fef2f2' : type === 'success' ? '#f0fdf4' : '#eff6ff';
         var fg = type === 'error' ? '#991b1b' : type === 'success' ? '#15803d' : '#1d4ed8';
         var bd = type === 'error' ? '#fecaca' : type === 'success' ? '#bbf7d0' : '#bfdbfe';
         t.style.background = bg; t.style.color = fg; t.style.border = '1px solid ' + bd;
-        t.textContent = msg;
+        var span = document.createElement('span');
+        span.textContent = msg;
+        t.appendChild(span);
+        var ttl = (action && action.duration) || 2800;
+        if (action && action.label && action.onClick) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'en-toast-action';
+            btn.textContent = action.label;
+            btn.style.cssText = 'margin-left:10px;padding:4px 12px;border-radius:8px;border:1.5px solid currentColor;background:transparent;color:inherit;font:inherit;font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;flex-shrink:0;';
+            btn.addEventListener('click', function() { t.remove(); action.onClick(); });
+            t.appendChild(btn);
+            ttl = action.duration || 5000;
+        }
         document.body.appendChild(t);
-        setTimeout(function(){ t.style.opacity='0'; }, 2200);
-        setTimeout(function(){ if (t.parentNode) t.remove(); }, 2500);
+        setTimeout(function(){ t.style.opacity = '0'; }, ttl);
+        setTimeout(function(){ if (t.parentNode) t.remove(); }, ttl + 300);
     }
 
     function flushPendingSaves() {
@@ -431,6 +480,17 @@
                 setTimeout(function(){ row.classList.remove('saved-flash'); }, 800);
                 var draftKey = 'offline_mark_' + studentId + '_' + examId.value;
                 try { localStorage.removeItem(draftKey); } catch(ignored) {}
+                var prev = undoBuffer[studentId];
+                delete undoBuffer[studentId];
+                if (prev !== undefined) {
+                    showToast('Score saved', 'success', {label: 'Undo', duration: 5000, onClick: function() {
+                        input.value = prev;
+                        calcScore(input, true);
+                        if (prev === '') sendDelete(input);
+                        else queueSave(input);
+                    }});
+                }
+                updateUnsavedPill();
             } else if (data.error) {
                 showToast('Save failed: ' + data.error, 'error');
             }
@@ -458,6 +518,7 @@
                 updateProgress();
                 var draftKey = 'offline_mark_' + studentId + '_' + examId.value;
                 try { localStorage.removeItem(draftKey); } catch(ignored) {}
+                updateUnsavedPill();
             } else if (data.error) {
                 showToast('Clear failed: ' + data.error, 'error');
                 input.dataset.hadValue = '1';
@@ -556,6 +617,7 @@
             input._markErrAt = now;
             if (typeof showToast === 'function') showToast(msg, 'error');
         }
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch(ignored) {} }
     }
 
     function clearMarkError(input) {
@@ -622,11 +684,19 @@
         var row = input.closest('.en-student');
         if (!row) return;
         var studentId = row.getAttribute('data-student-id');
+        if (!(studentId in undoBuffer)) {
+            undoBuffer[studentId] = input.getAttribute('data-had-value') === '1'
+                ? (input.dataset.prevScore !== undefined ? input.dataset.prevScore : input.defaultValue)
+                : '';
+        }
+        var v = input.value.trim().toUpperCase();
+        if (v === 'AB' || /^\d{1,4}$/.test(v)) input.dataset.prevScore = v;
         if (saveTimers[studentId]) clearTimeout(saveTimers[studentId]);
         saveTimers[studentId] = setTimeout(function() {
             delete saveTimers[studentId];
             sendSave(input);
         }, DEBOUNCE_MS);
+        updateUnsavedPill();
     }
 
     if (!window._markEntryHandlersAttached) {
@@ -890,7 +960,9 @@
         }
 
         reflushOfflineDrafts();
-        window.addEventListener('online', reflushOfflineDrafts);
+        updateUnsavedPill();
+        window.addEventListener('online', function() { reflushOfflineDrafts(); updateUnsavedPill(); });
+        window.addEventListener('offline', updateUnsavedPill);
     }
 
     if (document.readyState === 'loading') {

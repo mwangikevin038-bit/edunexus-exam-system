@@ -215,6 +215,12 @@
                             <span class="htmx-indicator"><i class="ph ph-spinner-gap spinning"></i> Processing...</span>
                         </button>
                     </div>
+
+                    {# Unsaved / offline drafts pill — shown by JS when drafts are pending #}
+                    <div class="en-unsaved-pill" id="enUnsavedPill" aria-live="polite">
+                        <i class="ph ph-cloud-slash"></i>
+                        <span id="enUnsavedCount">0</span> unsaved
+                    </div>
                 </form>
 
             </main>
@@ -334,21 +340,87 @@
     var pendingChanges = {};
     var batchFlushTimer = null;
     var batchInflight = false;
+    // Undo support: maps student_id -> previous score string captured
+    // the first time they are queued in the current batch window.
+    var undoBuffer = {};
 
-    function showToast(msg, type) {
-        var existing = document.querySelector('.en-toast');
-        if (existing) existing.remove();
+    function countOfflineDrafts() {
+        var n = 0;
+        try {
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (k && k.indexOf('offline_mark_') === 0) n++;
+            }
+        } catch(ignored) {}
+        return n;
+    }
+
+    function updateUnsavedPill() {
+        var pill = document.getElementById('enUnsavedPill');
+        if (!pill) return;
+        var pending = Object.keys(pendingChanges).length;
+        var drafts = countOfflineDrafts();
+        var total = pending + drafts;
+        if (total > 0) {
+            pill.classList.add('is-visible');
+            pill.classList.toggle('is-offline', !navigator.onLine);
+            var c = document.getElementById('enUnsavedCount');
+            if (c) c.textContent = total;
+            var icon = pill.querySelector('i');
+            if (icon) icon.className = navigator.onLine ? 'ph ph-cloud-arrow-up' : 'ph ph-cloud-slash';
+        } else {
+            pill.classList.remove('is-visible', 'is-offline');
+        }
+    }
+
+    function focusNextEmpty(fromInput) {
+        var inputs = document.querySelectorAll('.js-score');
+        var seen = false;
+        for (var i = 0; i < inputs.length; i++) {
+            if (inputs[i] === fromInput) { seen = true; continue; }
+            if (!seen) continue;
+            if (inputs[i].readOnly) continue;
+            var v = (inputs[i].value || '').trim();
+            if (v === '') {
+                inputs[i].focus();
+                if (inputs[i].select) inputs[i].select();
+                return;
+            }
+        }
+    }
+
+    function showToast(msg, type, action) {
+        // action: optional {label: 'Undo', onClick: fn} — renders an inline button
+        var existing = document.querySelectorAll('.en-toast');
+        for (var i = 0; i < existing.length; i++) existing[i].remove();
         var t = document.createElement('div');
         t.className = 'en-toast';
-        t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:10px;font-size:.8125rem;font-weight:700;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity 300ms;opacity:1;pointer-events:none;';
+        t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:10px;font-size:.8125rem;font-weight:700;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity 300ms;opacity:1;pointer-events:auto;display:flex;align-items:center;gap:4px;max-width:92vw;';
         var bg = type === 'error' ? '#fef2f2' : type === 'success' ? '#f0fdf4' : '#eff6ff';
         var fg = type === 'error' ? '#991b1b' : type === 'success' ? '#15803d' : '#1d4ed8';
         var bd = type === 'error' ? '#fecaca' : type === 'success' ? '#bbf7d0' : '#bfdbfe';
         t.style.background = bg; t.style.color = fg; t.style.border = '1px solid ' + bd;
-        t.textContent = msg;
+        var span = document.createElement('span');
+        span.textContent = msg;
+        span.style.minWidth = '0';
+        t.appendChild(span);
+        var ttl = (action && action.duration) || 2800;
+        if (action && action.label && action.onClick) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'en-toast-action';
+            btn.textContent = action.label;
+            btn.style.cssText = 'margin-left:10px;padding:4px 12px;border-radius:8px;border:1.5px solid currentColor;background:transparent;color:inherit;font:inherit;font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;flex-shrink:0;';
+            btn.addEventListener('click', function() {
+                t.remove();
+                action.onClick();
+            });
+            t.appendChild(btn);
+            ttl = action.duration || 5000;
+        }
         document.body.appendChild(t);
-        setTimeout(function(){ t.style.opacity='0'; }, 2200);
-        setTimeout(function(){ if (t.parentNode) t.remove(); }, 2500);
+        setTimeout(function(){ t.style.opacity = '0'; }, ttl);
+        setTimeout(function(){ if (t.parentNode) t.remove(); }, ttl + 300);
     }
 
     function postJSON(url, payload) {
@@ -408,8 +480,10 @@
             if (data.ok) {
                 var rejectedIds = {};
                 (data.rejected || []).forEach(function(rj) { rejectedIds[rj.student_id] = true; });
+                var savedIds = [];
                 marks.forEach(function(m) {
                     if (rejectedIds[m.student_id]) return;
+                    savedIds.push(m.student_id);
                     var row = document.querySelector('.en-student[data-student-id="' + m.student_id + '"]');
                     if (row) {
                         row.classList.add('saved-flash');
@@ -429,6 +503,44 @@
                     });
                     updateProgress();
                     showToast(data.rejected.length + ' score(s) rejected — ' + (data.rejected[0].error || markErrFmt()), 'error');
+                } else if (savedIds.length) {
+                    // Success toast with Undo — restores previous scores for this batch
+                    var toUndo = [];
+                    savedIds.forEach(function(sid) {
+                        if (sid in undoBuffer) toUndo.push({id: sid, prev: undoBuffer[sid]});
+                    });
+                    undoBuffer = {};
+                    if (toUndo.length) {
+                        showToast(toUndo.length === 1 ? 'Score saved' : toUndo.length + ' scores saved',
+                                  'success',
+                                  {label: 'Undo', duration: 5000, onClick: function() {
+                                      toUndo.forEach(function(u) {
+                                          var row = document.querySelector('.en-student[data-student-id="' + u.id + '"]');
+                                          if (!row) return;
+                                          var inp = row.querySelector('.js-score');
+                                          if (!inp) return;
+                                          inp.value = u.prev;
+                                          calcScore(inp, true);
+                                          if (u.prev === '') sendDelete(inp);
+                                          else queueSave(inp);
+                                      });
+                                  }});
+                    }
+                }
+                updateUnsavedPill();
+                // Auto-advance: if the teacher isn't actively typing in a cell
+                // (they tapped away or finished a run), jump to the next empty one.
+                var ae = document.activeElement;
+                var typingInCell = ae && ae.classList && ae.classList.contains('js-score');
+                if (!typingInCell && savedIds.length) {
+                    var inputs = document.querySelectorAll('.js-score');
+                    for (var fi = 0; fi < inputs.length; fi++) {
+                        if (!inputs[fi].readOnly && !(inputs[fi].value || '').trim()) {
+                            inputs[fi].focus();
+                            if (inputs[fi].select) inputs[fi].select();
+                            break;
+                        }
+                    }
                 }
                 // Flush again if new changes arrived during the request
                 if (Object.keys(pendingChanges).length) flushBatch();
@@ -443,6 +555,7 @@
                 showToast('Auto-save failed: ' + data.error + '. Changes preserved.', 'error');
                 stopBatchTimer();
             }
+            updateUnsavedPill();
         }).catch(function() {
             batchInflight = false;
             // Re-queue failed marks so they are not lost
@@ -453,6 +566,7 @@
             });
             showToast('Network error — scores preserved, will retry.', 'error');
             stopBatchTimer();
+            updateUnsavedPill();
         });
     }
 
@@ -499,8 +613,19 @@
         var row = input.closest('.en-student');
         if (!row) return;
         var studentId = row.getAttribute('data-student-id');
+        // Capture undo point the first time this student is queued in the
+        // current batch window (previous server-rendered value).
+        if (!(studentId in undoBuffer) && !(studentId in pendingChanges)) {
+            undoBuffer[studentId] = input.getAttribute('data-had-value') === '1'
+                ? (input.dataset.prevScore !== undefined ? input.dataset.prevScore : input.defaultValue)
+                : '';
+        }
         pendingChanges[studentId] = input.value.trim();
+        // Remember the last known-good score so a later edit can undo to it.
+        var v = input.value.trim().toUpperCase();
+        if (v === 'AB' || /^\d{1,4}$/.test(v)) input.dataset.prevScore = v;
         startBatchTimer();
+        updateUnsavedPill();
     }
 
     function sendDelete(input) {
@@ -524,6 +649,7 @@
                 updateProgress();
                 var draftKey = 'offline_mark_' + studentId + '_' + examId.value;
                 try { localStorage.removeItem(draftKey); } catch(ignored) {}
+                updateUnsavedPill();
             } else if (data.error) {
                 showToast('Clear failed: ' + data.error, 'error');
                 input.dataset.hadValue = '1';
@@ -622,6 +748,8 @@
             input._markErrAt = now;
             if (typeof showToast === 'function') showToast(msg, 'error');
         }
+        // Haptic tick on supported mobile devices
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch(ignored) {} }
     }
 
     function clearMarkError(input) {
@@ -982,9 +1110,11 @@
 
         // Run once on page load in case drafts were left from a prior offline session
         reflushOfflineDrafts();
+        updateUnsavedPill();
 
         // Listen for connectivity restoration
-        window.addEventListener('online', reflushOfflineDrafts);
+        window.addEventListener('online', function() { reflushOfflineDrafts(); updateUnsavedPill(); });
+        window.addEventListener('offline', updateUnsavedPill);
     }
 
     // ─── Total Marks Gate ───────────────────────────────────────
