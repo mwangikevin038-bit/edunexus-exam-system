@@ -21,13 +21,25 @@ def backup_marks_before_delete(queryset, reason, request=None, actor=None):
     from students.models import MarkBackup
     from students.school_scope import get_current_school
 
-    marks = list(queryset.values(
-        'id', 'student_id', 'subject_id', 'score', 'raw_score',
-        'maximum_marks', 'is_absent', 'performance_level', 'points',
-        'term', 'year', 'exam_type', 'primary_raw_score',
-        'primary_performance_point', 'primary_descriptor',
-        'school_section', 'sub_section', 'school_id',
-    ))
+    if isinstance(queryset, list):
+        marks = [
+            {f: getattr(m, f, None) for f in (
+                'id', 'student_id', 'subject_id', 'score', 'raw_score',
+                'maximum_marks', 'is_absent', 'performance_level', 'points',
+                'term', 'year', 'exam_type', 'primary_raw_score',
+                'primary_performance_point', 'primary_descriptor',
+                'school_section', 'sub_section', 'school_id',
+            )}
+            for m in queryset
+        ]
+    else:
+        marks = list(queryset.values(
+            'id', 'student_id', 'subject_id', 'score', 'raw_score',
+            'maximum_marks', 'is_absent', 'performance_level', 'points',
+            'term', 'year', 'exam_type', 'primary_raw_score',
+            'primary_performance_point', 'primary_descriptor',
+            'school_section', 'sub_section', 'school_id',
+        ))
 
     if not marks:
         return None
