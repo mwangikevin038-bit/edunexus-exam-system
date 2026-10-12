@@ -1537,7 +1537,7 @@ def manage_exams(request):
         "active_sub": active_sub,
         "active_tab": active_tab,
         "year_range": range(current_year - 2, current_year + 3),
-        "available_grades": _get_available_grades(school, section, active_sub),
+        "available_grades": Grade.all_objects.filter(school=school).order_by('order'),
     }
 
     # ── Grading configs for the Grading Systems tab ──

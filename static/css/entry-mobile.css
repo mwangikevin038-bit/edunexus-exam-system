@@ -1190,24 +1190,71 @@
     .en-shake { animation: none; }
 }
 
-/* ── Toast action button (Undo) ──────────────────────────────────────── */
-.en-toast { pointer-events: auto; }
+/* ── Premium toast (snackbar) — overrides layout.css top-stretch bug ──── */
+.en-toast {
+    pointer-events: auto;
+    /* Kill the top+bottom stretch from layout.css */
+    top: auto;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) translateY(12px);
+    opacity: 0;
+    max-width: min(420px, calc(100vw - 32px));
+    width: max-content;
+    min-height: 0;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: .8125rem;
+    font-weight: 600;
+    line-height: 1.35;
+    box-shadow: 0 8px 30px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
+    transition: opacity .28s cubic-bezier(.4,0,.2,1), transform .28s cubic-bezier(.4,0,.2,1);
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 10000;
+    /* Prevent text from stretching the box */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.en-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+.en-toast span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .en-toast-action {
-    margin-left: 14px;
-    padding: 5px 14px;
+    margin-left: 4px;
+    padding: 4px 12px;
     border-radius: 8px;
     border: 1.5px solid currentColor;
     background: transparent;
     color: inherit;
     font: inherit;
-    font-size: .75rem;
+    font-size: .6875rem;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: .05em;
     cursor: pointer;
     flex-shrink: 0;
+    line-height: 1;
+    transition: transform .1s, background .15s;
 }
-.en-toast-action:active { transform: scale(.96); }
+.en-toast-action:active { transform: scale(.94); }
+.en-toast-action:hover { background: rgba(0,0,0,.06); }
+
+/* Premium soft pastel variants — light bg, dark text, subtle border */
+.en-toast-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.en-toast-error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.en-toast-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.en-toast-info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 
 /* ── Unsaved / offline drafts pill ───────────────────────────────────── */
 .en-unsaved-pill {

@@ -399,12 +399,7 @@
         var existing = document.querySelectorAll('.en-toast');
         for (var i = 0; i < existing.length; i++) existing[i].remove();
         var t = document.createElement('div');
-        t.className = 'en-toast';
-        t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:10px;font-size:.8125rem;font-weight:700;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity 300ms;opacity:1;pointer-events:auto;display:flex;align-items:center;gap:4px;max-width:92vw;';
-        var bg = type === 'error' ? '#fef2f2' : type === 'success' ? '#f0fdf4' : '#eff6ff';
-        var fg = type === 'error' ? '#991b1b' : type === 'success' ? '#15803d' : '#1d4ed8';
-        var bd = type === 'error' ? '#fecaca' : type === 'success' ? '#bbf7d0' : '#bfdbfe';
-        t.style.background = bg; t.style.color = fg; t.style.border = '1px solid ' + bd;
+        t.className = 'en-toast en-toast-' + (type || 'info');
         var span = document.createElement('span');
         span.textContent = msg;
         t.appendChild(span);
@@ -414,14 +409,16 @@
             btn.type = 'button';
             btn.className = 'en-toast-action';
             btn.textContent = action.label;
-            btn.style.cssText = 'margin-left:10px;padding:4px 12px;border-radius:8px;border:1.5px solid currentColor;background:transparent;color:inherit;font:inherit;font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;flex-shrink:0;';
             btn.addEventListener('click', function() { t.remove(); action.onClick(); });
             t.appendChild(btn);
             ttl = action.duration || 5000;
         }
         document.body.appendChild(t);
-        setTimeout(function(){ t.style.opacity = '0'; }, ttl);
-        setTimeout(function(){ if (t.parentNode) t.remove(); }, ttl + 300);
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() { t.classList.add('visible'); });
+        });
+        setTimeout(function() { t.classList.remove('visible'); }, ttl);
+        setTimeout(function() { if (t.parentNode) t.remove(); }, ttl + 350);
     }
 
     function flushPendingSaves() {
