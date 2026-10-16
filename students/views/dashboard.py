@@ -17,12 +17,17 @@ from django.views.decorators.cache import never_cache
 
 from .constants import LOWER_PRIMARY_GRADE_CHOICES, PRIMARY_GRADE_CHOICES, JSS_GRADE_CHOICES
 from .helpers import (
+    bump_report_cache_version,
     discard_media_file,
+    exam_covers_class,
+    form_field_edited,
     get_class_teacher_scope,
     get_performance_level,
     get_published_contexts_for_user,
     get_teacher_for_user,
+    polish_signature_preview,
     polish_signature_upload,
+    signature_raw_data_url,
     validate_signature_upload,
 )
 from ..security import get_request_school, get_request_school_section, school_admin_required, user_has_main_school_admin_override
@@ -207,56 +212,167 @@ def profile_view(request):
     Handles both Teacher and SchoolAdmin users.
     """
     user = request.user
-    try:
-        teacher = Teacher.objects.select_related('user').get(user=user)
-    except Teacher.DoesNotExist:
-        teacher = None
+    # Look the teacher up with the UNSCOPED manager. The default
+    # Teacher.objects is tenant- AND section-scoped: teachers whose
+    # school_section is 'BOTH' (the model default) or whose login section
+    # doesn't exactly match their row's section are invisible to it, which
+    # made profile/signature saves silently no-op for those accounts.
+    # user is a OneToOne to Teacher, so this lookup is unambiguous and the
+    # authenticated user is already the tenant boundary here.
+    teacher = Teacher.all_objects.select_related('user').filter(user=user).first()
 
     if request.method == 'POST':
-        user.first_name = request.POST.get('first_name', user.first_name).strip()
-        user.last_name = request.POST.get('surname', user.last_name).strip()
-        user.save()
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        sig_file = request.FILES.get('signature')
+        want_delete_sig = request.POST.get('delete_signature') == '1'
 
-        if teacher:
-            teacher.other_names = request.POST.get('other_names', teacher.other_names).strip()
-            teacher.phone_number = request.POST.get('phone_number', teacher.phone_number).strip()
-            teacher.email = request.POST.get('personal_email', teacher.email).strip()
-            teacher.gender = request.POST.get('gender', teacher.gender)
-            teacher.national_id = request.POST.get('national_id', teacher.national_id).strip()
-            teacher.bio = request.POST.get('bio', teacher.bio).strip()
-
-            if request.FILES.get('profile_picture'):
-                teacher.profile_picture = request.FILES['profile_picture']
-            elif request.POST.get('delete_profile_picture') == '1':
-                teacher.profile_picture = None
-
-            # ── Signature: class teachers only, validated server-side ────────
-            # The model validators do not run on a plain save(), so every
-            # upload is checked here (type + size) before being accepted.
-            is_class_teacher = bool(get_class_teacher_scope(teacher))
-            sig_file = request.FILES.get('signature')
-            want_delete_sig = request.POST.get('delete_signature') == '1'
-            signature_cleanup = None
-            if (sig_file or want_delete_sig) and not is_class_teacher:
-                messages.warning(request, 'Signatures are only available to class teachers.')
-            elif sig_file:
+        # ── Signature-only requests (the capture modal) ────────────────────
+        # Touch ONLY teacher.signature. A signature edit must never run the
+        # demographic save below — previously EVERY POST here executed
+        # user.save() + a full teacher.save(), silently rewriting every
+        # profile field (and crashing on None values) during a signature change.
+        if is_ajax and (sig_file or want_delete_sig):
+            if not teacher:
+                return JsonResponse({
+                    'ok': False,
+                    'message': 'No teacher profile found for this account.',
+                    'signature_url': '',
+                })
+            if sig_file:
                 sig_error = validate_signature_upload(sig_file)
                 if sig_error:
-                    messages.error(request, sig_error)
-                else:
-                    signature_cleanup = teacher.signature.name if teacher.signature else None
-                    teacher.signature = polish_signature_upload(sig_file, teacher.pk)
-            elif want_delete_sig:
+                    return JsonResponse({
+                        'ok': False,
+                        'message': sig_error,
+                        'signature_url': teacher.signature.url if teacher.signature else '',
+                    })
+                signature_cleanup = teacher.signature.name if teacher.signature else None
+                teacher.signature = polish_signature_upload(sig_file, teacher.pk)
+                sig_message = 'Signature saved!'
+            else:
                 signature_cleanup = teacher.signature.name if teacher.signature else None
                 teacher.signature = None
-
-            teacher.save()
+                sig_message = 'Signature removed.'
+            try:
+                teacher.save(update_fields=['signature'])
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    "Signature save failed for teacher_id=%s", teacher.pk)
+                teacher.refresh_from_db()
+                return JsonResponse({
+                    'ok': False,
+                    'message': 'Could not save the signature image. Please try again.',
+                    'signature_url': teacher.signature.url if teacher.signature else '',
+                })
             if signature_cleanup and (
                 not teacher.signature or teacher.signature.name != signature_cleanup
             ):
                 discard_media_file(signature_cleanup)
+            # Compiled PDF fragments embed the signature image, so a
+            # save/delete must bump the report-cache version or cards would
+            # keep printing the old signature until TTL expiry.
+            bump_report_cache_version(teacher.school_id)
+            return JsonResponse({
+                'ok': True,
+                'message': sig_message,
+                'signature_url': teacher.signature.url if teacher.signature else '',
+            })
 
-        messages.success(request, 'Profile updated successfully.')
+        # ── Full profile form: write ONLY fields the user actually edited ──
+        # __orig_* markers hold the values the form was rendered with;
+        # untouched inputs (and stale pages) can never overwrite newer data.
+        changed_user_fields = []
+        if form_field_edited(request, 'first_name', user.first_name):
+            user.first_name = (request.POST.get('first_name') or '').strip()
+            changed_user_fields.append('first_name')
+        if form_field_edited(request, 'surname', user.last_name):
+            user.last_name = (request.POST.get('surname') or '').strip()
+            changed_user_fields.append('last_name')
+        if changed_user_fields:
+            user.save(update_fields=changed_user_fields)
+
+        changed_teacher_fields = []
+        sig_feedback = False
+        sig_message = None
+        if teacher:
+            if form_field_edited(request, 'other_names', teacher.other_names):
+                teacher.other_names = (request.POST.get('other_names') or '').strip()
+                changed_teacher_fields.append('other_names')
+            # phone_number IS the login identity (phonenumber@schoolcode):
+            # the auth backend resolves the Teacher row by this exact field.
+            # Never accept it from the profile form — only admins change it
+            # via Manage Faculty, which also syncs User.username.
+            # personal_email: same empty-overwrite footgun — blank keeps old.
+            personal_email = (request.POST.get('personal_email') or '').strip()
+            if personal_email and form_field_edited(request, 'personal_email', teacher.email):
+                teacher.email = personal_email
+                changed_teacher_fields.append('email')
+            if form_field_edited(request, 'gender', teacher.gender):
+                teacher.gender = request.POST.get('gender') or ''
+                changed_teacher_fields.append('gender')
+            if form_field_edited(request, 'national_id', teacher.national_id):
+                teacher.national_id = (request.POST.get('national_id') or '').strip()
+                changed_teacher_fields.append('national_id')
+            if form_field_edited(request, 'bio', teacher.bio):
+                teacher.bio = (request.POST.get('bio') or '').strip()
+                changed_teacher_fields.append('bio')
+
+            if request.FILES.get('profile_picture'):
+                teacher.profile_picture = request.FILES['profile_picture']
+                changed_teacher_fields.append('profile_picture')
+            elif request.POST.get('delete_profile_picture') == '1':
+                teacher.profile_picture = None
+                changed_teacher_fields.append('profile_picture')
+
+            # ── Signature on the full-form path (the capture modal uses the
+            # AJAX branch above; kept here so no upload path can be lost). ──
+            signature_cleanup = None
+            sig_message = None
+            if sig_file:
+                sig_error = validate_signature_upload(sig_file)
+                if sig_error:
+                    sig_message = sig_error
+                    messages.error(request, sig_error)
+                    sig_feedback = True
+                else:
+                    signature_cleanup = teacher.signature.name if teacher.signature else None
+                    teacher.signature = polish_signature_upload(sig_file, teacher.pk)
+                    changed_teacher_fields.append('signature')
+                    sig_message = 'Signature saved!'
+            elif want_delete_sig:
+                signature_cleanup = teacher.signature.name if teacher.signature else None
+                teacher.signature = None
+                changed_teacher_fields.append('signature')
+                sig_message = 'Signature removed.'
+
+            if changed_teacher_fields:
+                teacher.save(update_fields=changed_teacher_fields)
+            if signature_cleanup and (
+                not teacher.signature or teacher.signature.name != signature_cleanup
+            ):
+                discard_media_file(signature_cleanup)
+            if sig_file or want_delete_sig:
+                # bump_report_cache_version never raises.
+                bump_report_cache_version(teacher.school_id)
+
+        profile_changed = bool(changed_user_fields or changed_teacher_fields)
+        # Skip the generic success when a signature error/warning was queued —
+        # showing both "invalid file" and "Profile updated" is contradictory.
+        if not sig_feedback:
+            if profile_changed:
+                messages.success(request, 'Profile updated successfully.')
+            else:
+                messages.success(request, 'No changes to save.')
+
+        # AJAX requests get JSON instead of a redirect (the capture modal
+        # updates the preview in place with the SERVER-cleaned URL).
+        if is_ajax:
+            return JsonResponse({
+                'ok': not sig_feedback,
+                'message': sig_message or ('Profile updated successfully.' if not sig_feedback else 'Could not save.'),
+                'signature_url': (teacher.signature.url if teacher and teacher.signature else ''),
+            })
         return redirect('home_alt')
 
     assignments = SubjectAssignment.objects.none()
@@ -301,6 +417,58 @@ def profile_view(request):
         'published_count': published_count,
         'class_teacher_scope': class_scope,
     })
+
+
+@login_required(login_url='login')
+def signature_preview(request):
+    """AJAX endpoint: run the premium clean on an uploaded signature and
+    return the result as a data URL, WITHOUT saving anything. Lets the
+    capture modal show the user exactly what will land on the report card
+    (transparent, cropped, denoised) before they commit to saving it.
+
+    Response also carries `raw` — a SERVER-decoded PNG of the original —
+    so the compare/fallback previews render even when the browser cannot
+    decode the uploaded bytes (HEIC phone photos renamed .jpg). Failure
+    ladder mirrors the save path: if the premium clean fails but the file
+    decodes, returns the raw render with `uncleaned: true` (the save path
+    re-encodes to PNG either way); only an undecodable file returns an
+    error — with exact text plus a pointer to the Draw option."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required.'}, status=405)
+    sig_file = request.FILES.get('signature')
+    error = validate_signature_upload(sig_file)
+    if error:
+        return JsonResponse({'ok': False, 'error': error}, status=400)
+    raw_url = ''
+    try:
+        raw_url = signature_raw_data_url(sig_file)
+    except Exception:
+        raw_url = ''
+    try:
+        data_url, width, height = polish_signature_preview(sig_file)
+        return JsonResponse({
+            'ok': True,
+            'image': data_url,
+            'raw': raw_url,
+            'width': width,
+            'height': height,
+        })
+    except Exception:
+        if raw_url:
+            # Clean failed but the image decoded — show it, never block.
+            return JsonResponse({
+                'ok': True,
+                'image': raw_url,
+                'raw': raw_url,
+                'width': 0,
+                'height': 0,
+                'uncleaned': True,
+            })
+        return JsonResponse({
+            'ok': False,
+            'error': "This image couldn't be read. Try a JPG or PNG photo "
+                     "of the signature — or draw it instead (always works).",
+        }, status=422)
 
 
 @login_required(login_url='login')
@@ -431,6 +599,16 @@ def dashboard(request):
         'class_name', 'stream', 'subject__code'
     ) if teacher and school else SubjectAssignment.objects.none()
     active_exams = Exam.objects.filter(school=school, status='active', is_deleted=False).order_by('-year', 'term', 'name') if school else Exam.objects.none()
+    # Exam.classes scoping: only exams covering one of the teacher's classes
+    # belong on this dashboard (empty classes list = section-wide exam).
+    _teacher_classes = set(
+        assignments_qs.values_list('class_name', flat=True)
+    ) if teacher and school else set()
+    if _teacher_classes:
+        _exam_class_q = Q(classes=[])
+        for _cn in _teacher_classes:
+            _exam_class_q |= Q(classes__contains=[_cn])
+        active_exams = active_exams.filter(_exam_class_q)
     submissions = MarkSubmission.objects.filter(school=school, teacher=teacher).select_related('subject') if teacher and school else MarkSubmission.objects.none()
     section = get_request_school_section(request)
     if section == 'LOWER_PRIMARY':
@@ -441,7 +619,16 @@ def dashboard(request):
         submissions = submissions.filter(school_section='JSS')
     class_scope = get_class_teacher_scope(teacher)
 
-    active_sheet_count = assignments_qs.count() * active_exams.count()
+    # Count only openable (assignment × exam) pairs — an exam scoped to
+    # Grade 7+8 must not count the teacher's Grade 9 assignments.
+    _classes_per_assignment = list(assignments_qs.values_list('class_name', flat=True))
+    _active_exams_list = list(active_exams)
+    active_sheet_count = sum(
+        1
+        for _ex in _active_exams_list
+        for _cn in _classes_per_assignment
+        if exam_covers_class(_ex, _cn)
+    )
     submitted_count = submissions.filter(status__in=['submitted', 'approved', 'published']).count()
     returned_count = submissions.filter(status='returned').count()
     published_count = submissions.filter(status='published').count()
@@ -451,7 +638,7 @@ def dashboard(request):
 
     assignments = list(assignments_qs[:6])
 
-    active_exam = active_exams.first()
+    active_exam = _active_exams_list[0] if _active_exams_list else None
     if active_exam and assignments:
         marks_filter = dict(
             school=school,
@@ -487,6 +674,13 @@ def dashboard(request):
         student_count_map = {(s['class_name'], s['stream']): s['cnt'] for s in student_counts}
 
         for assignment in assignments:
+            if not exam_covers_class(active_exam, assignment.class_name):
+                # This exam never covered the class — 0/0 progress, not a
+                # misleading "no marks yet" bar.
+                assignment.marks_entered = 0
+                assignment.total_students = 0
+                assignment.progress_pct = 0
+                continue
             mark_key = (assignment.subject_id, assignment.class_name, assignment.stream)
             marks_entered = mark_map.get(mark_key, 0)
             total_students = student_count_map.get((assignment.class_name, assignment.stream), 0)

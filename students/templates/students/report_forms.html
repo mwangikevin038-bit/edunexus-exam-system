@@ -231,7 +231,8 @@
     summary.classList.add('visible');
     loading.classList.add('visible');
 
-    window.location.href='{% url "report_forms_display" %}?grade='+encodeURIComponent(grade.value)+'&stream='+encodeURIComponent(stream.value)+'&exam_id='+encodeURIComponent(exam.value);
+    var _pl=new URLSearchParams(window.location.search).get('print_label');
+    window.location.href='{% url "report_forms_display" %}?grade='+encodeURIComponent(grade.value)+'&stream='+encodeURIComponent(stream.value)+'&exam_id='+encodeURIComponent(exam.value)+(_pl?'&print_label='+encodeURIComponent(_pl):'');
   });
 
   stream.addEventListener('change',function(){updateSummary()});

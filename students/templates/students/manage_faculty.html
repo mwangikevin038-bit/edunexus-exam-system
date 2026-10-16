@@ -762,7 +762,7 @@
   }
   .modal-signature-box {
     width: 100%;
-    height: 80px;
+    height: 110px;
     background: #f8fafc;
     border: 1px dashed #cbd5e1;
     border-radius: 8px;
@@ -772,7 +772,7 @@
     margin-bottom: 20px;
   }
   .modal-signature-box img {
-    max-height: 70px;
+    max-height: 100px;
     max-width: 100%;
   }
   .modal-signature-box span {
@@ -2084,6 +2084,22 @@
       <input type="hidden" id="modal_action_type" name="action_type" value="">
       <input type="hidden" id="modal_teacher_id" name="teacher_id" value="">
       <input type="hidden" name="school_section_posting" id="school_section_posting" value="">
+      <!-- Original values captured when the modal opens. The server writes a
+           field ONLY when the posted value differs from these markers — so an
+           untouched input (or stale page) can never overwrite newer data, and
+           a signature-only save writes no profile fields at all. -->
+      <input type="hidden" name="__orig_full_name" id="orig_full_name" value="">
+      <input type="hidden" name="__orig_surname" id="orig_surname" value="">
+      <input type="hidden" name="__orig_title" id="orig_title" value="">
+      <input type="hidden" name="__orig_phone_number" id="orig_phone_number" value="">
+      <input type="hidden" name="__orig_personal_email" id="orig_personal_email" value="">
+      <input type="hidden" name="__orig_gender" id="orig_gender" value="">
+      <input type="hidden" name="__orig_tsc_number" id="orig_tsc_number" value="">
+      <input type="hidden" name="__orig_national_id" id="orig_national_id" value="">
+      <input type="hidden" name="__orig_address" id="orig_address" value="">
+      <input type="hidden" name="__orig_employee_number" id="orig_employee_number" value="">
+      <input type="hidden" name="__orig_assigned_task" id="orig_assigned_task" value="">
+      <input type="hidden" name="__orig_bio" id="orig_bio" value="">
       <div class="modal-content">
         <div class="modal-left">
           <div class="modal-avatar">
@@ -2130,10 +2146,10 @@
             <div><label class="form-field-label">Assigned Role</label><select name="assigned_task" class="form-field-input"><option value="Teacher">Regular Teacher</option>{% for role in grade_streams %}<option value="{{ role }}">{{ role }}</option>{% endfor %}</select></div>
           </div>
           <div style="margin-top:16px;"><label class="form-field-label">Bio</label><textarea id="field_bio" name="bio" class="form-field-input" placeholder="Short biography or notes about the teacher" rows="3"></textarea></div>
-          <div class="sig-only" style="display:none;margin-top:16px;"><label class="form-field-label">Signature</label><input type="file" id="field_signature" name="signature" class="form-field-input" accept="image/png,image/jpeg,image/webp,image/gif" style="padding:8px;"></div>
+          <div class="sig-only" style="display:none;margin-top:16px;"><label class="form-field-label">Signature</label><input type="file" id="field_signature" name="signature" class="form-field-input" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif" style="padding:8px;"></div>
           <div class="modal-form-footer">
             <button type="button" onclick="closeFacultyModal()" class="btn-back"><i class="bi bi-arrow-left"></i> Back</button>
-            <button type="submit" class="btn-save"><i class="bi bi-save-fill"></i> Save</button>
+            <button type="submit" id="facultySaveBtn" class="btn-save"><i class="bi bi-save-fill"></i> Save</button>
           </div>
         </div>
       </div>
@@ -2336,6 +2352,13 @@
       document.body.style.overflow = '';
     }
 
+    // The Assigned Role select starts on "Regular Teacher" until the role
+    // options arrive; Save must stay disabled until they are applied, or a
+    // slow role load lets a signature-only save silently DEMOTE a class
+    // teacher (and displace whoever holds the role).
+    var facultyTaskReady = true;
+    var facultyPendingApplyTask = null;
+
     function handleEditClick(buttonElement) {
       var d = buttonElement.dataset;
       openEditModal(d.id, d.title, d.firstname, d.surname, d.tsc, d.phone, d.email, d.section, d.sectionToken, d.assignedTask, d.gender, d.nationalId, d.address, d.employeeNumber, d.bio, d.username, d.signature);
@@ -2367,6 +2390,21 @@
       document.getElementById("field_address").value = address || "";
       document.getElementById("field_employee_number").value = employeeNumber || "";
       document.getElementById("field_bio").value = bio || "";
+
+      // Original-value markers: must mirror the prefill expressions above
+      // exactly — the server writes a field only when posted != marker.
+      document.getElementById("orig_full_name").value = firstName || "";
+      document.getElementById("orig_surname").value = surname || "";
+      document.getElementById("orig_title").value = title || "Mr.";
+      document.getElementById("orig_phone_number").value = phoneNumber || "";
+      document.getElementById("orig_personal_email").value = email || "";
+      document.getElementById("orig_gender").value = gender || "";
+      document.getElementById("orig_tsc_number").value = tscNumber || "";
+      document.getElementById("orig_national_id").value = nationalId || "";
+      document.getElementById("orig_address").value = address || "";
+      document.getElementById("orig_employee_number").value = employeeNumber || "";
+      document.getElementById("orig_assigned_task").value = assignedTask || "Teacher";
+      document.getElementById("orig_bio").value = bio || "";
       var initials = ((firstName || "").charAt(0) + (surname || "").charAt(0)).toUpperCase();
       document.getElementById("field_initials").value = initials;
       document.getElementById("previewName").textContent = (title || "") + " " + (firstName || surname || username || "\u2014");
@@ -2389,7 +2427,15 @@
       // Set the role select once the options arrive (a promise instead of the
       // old fixed 300ms timeout, which raced the AJAX response and could leave
       // the select reset to "Regular Teacher").
+      // Save stays DISABLED until this runs — otherwise a save during the
+      // load posts the untouched "Regular Teacher" default and silently
+      // demotes a class teacher.
+      facultyTaskReady = false;
+      var saveBtn = document.getElementById("facultySaveBtn");
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.55'; }
       var applyTask = function () {
+        if (facultyTaskReady) return;
+        facultyTaskReady = true;
         var sel = document.querySelector('select[name="assigned_task"]');
         if (sel) {
           if (assignedTask) {
@@ -2407,11 +2453,24 @@
           sel.value = assignedTask || 'Teacher';
         }
         toggleSignatureFields();
+        var sb = document.getElementById("facultySaveBtn");
+        if (sb) { sb.disabled = false; sb.style.opacity = ''; }
       };
+      facultyPendingApplyTask = applyTask;
       fetchGradeStreams(sectionToken || 'JSS').then(applyTask).catch(applyTask);
+      // Failsafe: never leave Save stuck if the fetch hangs.
+      setTimeout(applyTask, 5000);
       modal.style.display = "block";
       document.body.style.overflow = "hidden";
     }
+
+    // Enter-key submits must also wait for the role select to be applied.
+    document.getElementById("facultyActionForm").addEventListener("submit", function (e) {
+      if (!facultyTaskReady) {
+        e.preventDefault();
+        if (facultyPendingApplyTask) facultyPendingApplyTask();
+      }
+    });
 
     function closeFacultyModal() {
       document.getElementById("facultyModal").style.display = "none";

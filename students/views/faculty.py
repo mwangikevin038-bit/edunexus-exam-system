@@ -17,7 +17,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.core.mail import EmailMessage
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.cache import never_cache
 
 from .constants import (
@@ -44,16 +44,21 @@ PRIMARY_SUBJECT_CHOICES = [
 from .exams import _get_primary_performance
 from ..forms import StudentEditForm
 from .helpers import (
+    bump_report_cache_version,
     calculate_primary_plv,
     calculate_report_plv,
     clear_teacher_cache,
     discard_media_file,
+    filter_exams_by_classes,
+    form_field_edited,
     generate_default_password,
     get_class_teacher_scope,
     get_performance_level,
     get_teacher_for_user,
+    invalidate_report_forms_cache,
     polish_signature_upload,
     safe_pdf_filename,
+    save_school_signature,
     user_can_edit_learner_profile,
     user_can_view_learner_profile,
     validate_signature_upload,
@@ -107,6 +112,13 @@ def resolve_exam_type_name(school, year, term, assessment, section=None):
     def _first(qs):
         return qs.order_by('-id').values_list('name', flat=True).first()
 
+    # Section-scoped exact match FIRST: a Grade 4 (PRIMARY) comment must
+    # never resolve to a same-named JSS exam. An unscoped exact match let
+    # 'KNEC ASSESSMENT' (a JSS exam) swallow a PRIMARY Grade 4 remark.
+    if section:
+        exact = _first(base.filter(name=raw, school_section=section))
+        if exact:
+            return exact
     exact = _first(base.filter(name=raw))
     if exact:
         return exact
@@ -130,6 +142,76 @@ def resolve_exam_type_name(school, year, term, assessment, section=None):
         )
     )
     return match or ASSESSMENT_MAP.get(raw, raw)
+
+
+# --- Headteacher comment helpers -------------------------------------------------
+# F4 (all-keys rule): the native admin forms always post EVERY box for the
+# active section. A partial POST (e.g. a stray XHR that only includes one
+# ht_comment_* key) must never blank the other boxes, so we only write the
+# comment fields when ALL active-section keys are present in request.POST.
+# Signature-only / probe POSTs that carry no ht_comment_* keys at all are
+# likewise left alone (the signature guard above already handles those).
+
+HT_PRIMARY_BOXES = ('ee', 'me', 'ae', 'be')
+HT_JSS_BOXES = ('ee1', 'ee2', 'me1', 'me2', 'ae1', 'ae2', 'be1', 'be2')
+
+
+def _ht_post_is_complete(request, is_primary):
+    """True only when every active-section ht_comment_* key is present in POST."""
+    levels = HT_PRIMARY_BOXES if is_primary else HT_JSS_BOXES
+    return all(f'ht_comment_{lvl}' in request.POST for lvl in levels)
+
+
+def _seed_ht_comment_from_sibling(school, year, term, section):
+    """Newest non-empty headteacher-comment row for the same school/year/term/section.
+
+    Used by ``_get_or_create_ht_comment`` so a brand-new exam scope (e.g. the
+    End-of-Term exam created mid-term) inherits the Principal's existing
+    remarks instead of binding an empty row that shadows the fallback on cards.
+    """
+    qs = SchoolHeadteacherComment.all_objects.filter(
+        school=school, year=str(year), term=term, school_section=section,
+    ).order_by('-last_modified', '-id')
+    for row in qs:
+        for lvl in (HT_PRIMARY_BOXES if section == 'PRIMARY' else HT_JSS_BOXES):
+            if (getattr(row, f'ht_comment_{lvl}', '') or '').strip():
+                return row
+    return None
+
+
+def _get_or_create_ht_comment(school, year, term, exam_type, section):
+    """get_or_create that seeds a NEW row from the newest non-empty sibling.
+
+    Existing rows are returned as-is (never re-seeded) so a headteacher who
+    deliberately cleared a box keeps it cleared across exam switches.
+    """
+    from django.db import IntegrityError
+    try:
+        comment_obj, created = SchoolHeadteacherComment.all_objects.get_or_create(
+            school=school, year=str(year), term=term, exam_type=exam_type,
+            school_section=section,
+        )
+    except IntegrityError:
+        comment_obj = SchoolHeadteacherComment.all_objects.filter(
+            school=school, year=str(year), term=term, exam_type=exam_type,
+            school_section=section,
+        ).first()
+        if comment_obj is None:
+            raise
+        return comment_obj, False
+    if created:
+        sibling = _seed_ht_comment_from_sibling(school, year, term, section)
+        if sibling is not None and sibling.pk != comment_obj.pk:
+            for lvl in (HT_PRIMARY_BOXES if section == 'PRIMARY' else HT_JSS_BOXES):
+                setattr(
+                    comment_obj, f'ht_comment_{lvl}',
+                    getattr(sibling, f'ht_comment_{lvl}', '') or '',
+                )
+            comment_obj.save(update_fields=[
+                f'ht_comment_{lvl}' for lvl in
+                (HT_PRIMARY_BOXES if section == 'PRIMARY' else HT_JSS_BOXES)
+            ] + ['last_modified'])
+    return comment_obj, created
 
 
 @login_required(login_url='login')
@@ -167,21 +249,52 @@ def manage_master_comments(request):
             redirect_target = 'teacher_report_forms' if teacher else 'report_card_select'
             return redirect(redirect_target)
 
-    comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
-        school=school, year=year, term=term, grade=grade, stream=stream, exam_type=db_assessment,
-        defaults={'school_section': 'PRIMARY' if is_primary else 'JSS'},
+    # all_objects + section from the CLASS (not the workspace) — scoped
+    # .objects hid JSS comments when an admin's workspace was PRIMARY, and
+    # school_section was written from workspace so JSS rows landed as PRIMARY.
+    from .constants import section_for_class as _sfc
+    _grade_sec, _ = _sfc(grade) if grade else (None, None)
+    _comment_section = _grade_sec or ('PRIMARY' if is_primary else 'JSS')
+    comment_obj, _ = ClassTeacherMasterComment.all_objects.get_or_create(
+        school=school, year=str(year), term=term, grade=grade, stream=stream, exam_type=db_assessment,
+        defaults={'school_section': _comment_section},
     )
 
     if request.method == "POST":
-        if is_primary:
-            for level in ['ee', 'me', 'ae', 'be']:
+        # F4 all-keys rule: only write the comment boxes when EVERY active-
+        # section comment_* key is present. Native forms always post all
+        # keys, so a legit save/clear still works; a partial POST becomes a
+        # no-op instead of blanking the other boxes.
+        _cmt_levels = ['ee', 'me', 'ae', 'be'] if is_primary else [
+            'ee1', 'ee2', 'me1', 'me2', 'ae1', 'ae2', 'be1', 'be2'
+        ]
+        if all(f'comment_{lvl}' in request.POST for lvl in _cmt_levels):
+            for level in _cmt_levels:
                 setattr(comment_obj, f'comment_{level}', request.POST.get(f'comment_{level}', ''))
-        else:
-            for level in ['ee1', 'ee2', 'me1', 'me2', 'ae1', 'ae2', 'be1', 'be2']:
-                setattr(comment_obj, f'comment_{level}', request.POST.get(f'comment_{level}', ''))
-        comment_obj.closing_date = request.POST.get('closing_date') or None
-        comment_obj.opening_date = request.POST.get('opening_date') or None
-        comment_obj.save()
+            # Only touch dates when they are actually present in the POST so
+            # a partial (comment-only) POST never blanks the exam window.
+            if 'closing_date' in request.POST:
+                comment_obj.closing_date = request.POST.get('closing_date') or None
+            if 'opening_date' in request.POST:
+                comment_obj.opening_date = request.POST.get('opening_date') or None
+            comment_obj.save()
+            # A saved comment must stick until the teacher changes it, and a
+            # BLANKED box must actually blank — so clear any frozen Mark snapshot
+            # for this scope so stale frozen text never resurfaces as a fallback.
+            Mark.all_objects.filter(
+                school=school, year=year, term=term,
+                student__class_name=grade, student__stream=stream,
+                exam_type=db_assessment,
+            ).update(
+                frozen_class_teacher_comment='',
+                frozen_closing_date=None,
+                frozen_opening_date=None,
+            )
+            # Compiled PDF fragments embed the comment text, and the report_forms
+            # cache holds the rendered context — bump the version and evict both
+            # so newly saved comments show up immediately, never at TTL expiry.
+            bump_report_cache_version(school.pk)
+            invalidate_report_forms_cache(school.pk)
         messages.success(request, "Report card configuration has been saved.")
         next_url = request.GET.get('next')
         if next_url:
@@ -259,9 +372,12 @@ def teacher_load_comments(request):
         school, year, term, assessment, section=_cmt_section,
     )
 
-    comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
-        school=school, year=year, term=term, grade=ct_grade, stream=ct_stream, exam_type=db_assessment,
-        defaults={'school_section': 'PRIMARY' if is_primary else 'JSS'},
+    # all_objects + section from the CLASS (not the workspace) — scoped
+    # .objects hid JSS comments when an admin's workspace was PRIMARY, and
+    # school_section was written from workspace so JSS rows landed as PRIMARY.
+    comment_obj, _ = ClassTeacherMasterComment.all_objects.get_or_create(
+        school=school, year=str(year), term=term, grade=ct_grade, stream=ct_stream, exam_type=db_assessment,
+        defaults={'school_section': _cmt_section or ('PRIMARY' if is_primary else 'JSS')},
     )
 
     context = {
@@ -303,8 +419,13 @@ def teacher_class_comments(request):
     # Auto-find the latest exam for this school. Newest year, then newest
     # term, then newest row — the old `'-year', 'term'` ordering kept
     # ascending on term, so it opened the *earliest* exam of the year.
+    # Scoped to the teacher's grade: an exam the admin assigned only to
+    # other grades must never become this class's comment context.
     latest_exam = (
-        Exam.all_objects.filter(school=school, is_deleted=False)
+        filter_exams_by_classes(
+            Exam.all_objects.filter(school=school, is_deleted=False),
+            ct_grade,
+        )
         .order_by('-year', '-term', '-id')
         .first()
     )
@@ -328,21 +449,22 @@ def teacher_class_comments(request):
         assessment_display = latest_exam.name
 
     # Prefer the comment for the exam we just resolved, then the most recently
-    # edited one so older records stay reachable.
+    # edited one so older records stay reachable. always all_objects — scoped
+    # .objects hides rows when the admin's workspace section differs.
     existing_comment = None
     if assessment_display:
-        existing_comment = ClassTeacherMasterComment.objects.filter(
+        existing_comment = ClassTeacherMasterComment.all_objects.filter(
             school=school, grade=ct_grade, stream=ct_stream,
-            year=year, term=term, exam_type=assessment_display,
+            year=str(year), term=term, exam_type=assessment_display,
         ).order_by('-last_modified').first()
     if not existing_comment:
-        existing_comment = ClassTeacherMasterComment.objects.filter(
+        existing_comment = ClassTeacherMasterComment.all_objects.filter(
             school=school, grade=ct_grade, stream=ct_stream
         ).order_by('-last_modified').first()
 
     matches_current_exam = bool(
         existing_comment
-        and existing_comment.year == year
+        and str(existing_comment.year) == str(year)
         and existing_comment.term == term
         and existing_comment.exam_type == assessment_display
     )
@@ -351,9 +473,11 @@ def teacher_class_comments(request):
         comment_obj = existing_comment
     elif latest_exam:
         # No saved comment for the current exam — open a blank one.
-        comment_obj, _ = ClassTeacherMasterComment.objects.get_or_create(
-            school=school, year=year, term=term, grade=ct_grade, stream=ct_stream, exam_type=assessment_display,
-            defaults={'school_section': 'PRIMARY' if is_primary else 'JSS'},
+        from .constants import section_for_class as _sfc
+        _grade_sec, _ = _sfc(ct_grade) if ct_grade else (None, None)
+        comment_obj, _ = ClassTeacherMasterComment.all_objects.get_or_create(
+            school=school, year=str(year), term=term, grade=ct_grade, stream=ct_stream, exam_type=assessment_display,
+            defaults={'school_section': _grade_sec or ('PRIMARY' if is_primary else 'JSS')},
         )
     elif existing_comment:
         comment_obj = existing_comment
@@ -390,32 +514,99 @@ def manage_headteacher_comments(request):
         messages.error(request, "School context is required.")
         return redirect('report_card_select')
 
-    year       = request.GET.get('year')
-    term       = request.GET.get('term')
+    year       = request.GET.get('year') or str(__import__('datetime').date.today().year)
+    term       = request.GET.get('term') or 'Term 3'
     assessment = request.GET.get('assessment', 'opener')
-    section = get_request_school_section(request) or 'JSS'
-    is_lower_primary = section == 'LOWER_PRIMARY'
-    is_primary = section == 'PRIMARY' or is_lower_primary
+    # Optional section override so the standalone Comments page can edit
+    # JSS and Primary without switching the admin workspace.
+    section = (
+        request.GET.get('section')
+        or request.POST.get('section')
+        or get_request_school_section(request)
+        or 'JSS'
+    ).upper()
+    if section == 'LOWER_PRIMARY':
+        section = 'PRIMARY'
+    is_primary = section == 'PRIMARY'
 
     db_assessment = resolve_exam_type_name(
         school, year, term, assessment,
         section='PRIMARY' if is_primary else 'JSS',
     )
 
-    comment_obj, _ = SchoolHeadteacherComment.objects.get_or_create(
-        school=school, year=year, term=term, exam_type=db_assessment,
-        school_section='PRIMARY' if is_primary else 'JSS',
+    # all_objects: section override must not be filtered by the session
+    # workspace section (JSS admin opening Primary remarks).
+    # F1 seed-on-create: a brand-new exam scope inherits the Principal's
+    # existing remarks from the newest non-empty sibling row for this
+    # school/year/term/section, so comments stick across exam switches.
+    comment_obj, _ = _get_or_create_ht_comment(
+        school, year, term, db_assessment,
+        'PRIMARY' if is_primary else 'JSS',
     )
 
     if request.method == "POST":
-        if is_primary:
-            for level in ['ee', 'me', 'ae', 'be']:
-                setattr(comment_obj, f'ht_comment_{level}', request.POST.get(f'ht_comment_{level}', ''))
-        else:
-            for level in ['ee1', 'ee2', 'me1', 'me2', 'ae1', 'ae2', 'be1', 'be2']:
-                setattr(comment_obj, f'ht_comment_{level}', request.POST.get(f'ht_comment_{level}', ''))
-        comment_obj.save()
+        sig_upload = request.FILES.get('headteacher_signature')
+        # Signature-only AJAX save from the capture modal: just the file +
+        # X-Requested-With, no comment fields. Must run BEFORE the full-form
+        # handler below, which would blank every remark box with '' defaults.
+        if (
+            sig_upload
+            and request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            and not any(k.startswith('ht_comment_') for k in request.POST)
+        ):
+            sig_error, sig_url = save_school_signature(school, sig_upload)
+            if sig_error:
+                return JsonResponse({'ok': False, 'message': sig_error}, status=400)
+            bump_report_cache_version(school.pk)
+            invalidate_report_forms_cache(school.pk)
+            return JsonResponse({
+                'ok': True,
+                'message': 'Signature saved!',
+                'signature_url': sig_url,
+            })
+
+        # F4 all-keys rule: only write the comment boxes when EVERY active-
+        # section ht_comment_* key is present. Native forms always post all
+        # keys, so a legit save/clear still works; a partial POST (stray XHR,
+        # probe script) becomes a no-op instead of blanking the other boxes.
+        if _ht_post_is_complete(request, is_primary):
+            if is_primary:
+                for level in HT_PRIMARY_BOXES:
+                    setattr(comment_obj, f'ht_comment_{level}', request.POST.get(f'ht_comment_{level}', ''))
+            else:
+                for level in HT_JSS_BOXES:
+                    setattr(comment_obj, f'ht_comment_{level}', request.POST.get(f'ht_comment_{level}', ''))
+            comment_obj.save()
+            # Blank a box → it must actually blank. Clear the frozen headteacher
+            # snapshot across the whole section/scope so stale frozen text never
+            # resurfaces after the headteacher deletes a remark.
+            Mark.all_objects.filter(
+                school=school, year=year, term=term, exam_type=db_assessment,
+                school_section='PRIMARY' if is_primary else 'JSS',
+            ).update(frozen_headteacher_comment='')
+
+        # Optional headteacher signature — shared save_school_signature
+        # validates, cleans, discards the old file and drops the School
+        # object cache so report cards pick it up on the next request.
+        sig_upload = request.FILES.get('headteacher_signature')
+        if sig_upload:
+            sig_error, _sig_url = save_school_signature(school, sig_upload)
+            if sig_error:
+                messages.error(request, sig_error)
+
+        # Same as master comments: compiled PDF fragments embed remark text.
+        bump_report_cache_version(school.pk)
+        invalidate_report_forms_cache(school.pk)
         messages.success(request, "Headteacher remarks have been saved for the whole school.")
+        # Standalone Comments page posts here — stay on that page.
+        if request.POST.get('next') == 'admin_comments' or request.GET.get('from') == 'comments':
+            from urllib.parse import urlencode
+            return redirect(
+                reverse('admin_comments') + '?' + urlencode({
+                    'section': 'PRIMARY' if is_primary else 'JSS',
+                    'year': year, 'term': term, 'assessment': assessment,
+                })
+            )
         redirect_url = f'{reverse("report_card_select")}?year={year}&term={term}&assessment={assessment}'
         return redirect(redirect_url)
 
@@ -424,13 +615,129 @@ def manage_headteacher_comments(request):
         'selected_year':      year,
         'selected_term':      term,
         'selected_assessment': assessment,
+        'selected_section':   'PRIMARY' if is_primary else 'JSS',
         'is_primary':         is_primary,
+        'school_signature':   school.headteacher_signature.url if getattr(school, 'headteacher_signature', None) else '',
     }
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('modal') == 'true':
         return render(request, 'students/headteacher_comments_modal.html', context)
 
     return redirect('report_card_select')
+
+
+@login_required(login_url='login')
+@school_admin_required
+def admin_comments(request):
+    """
+    Admin Comments workspace — whole-school Headteacher/Principal remarks.
+    Same PLV boxes as Class Comments (4 Primary / 8 JSS), saved school-wide
+    so every report card fetches them from SchoolHeadteacherComment.
+    """
+    from ..models import Exam
+
+    school = get_request_school(request)
+    if not school:
+        messages.error(request, "No school context found.")
+        return redirect('school_admin_dashboard')
+
+    section = (request.GET.get('section') or 'JSS').upper()
+    if section not in ('JSS', 'PRIMARY'):
+        section = 'JSS'
+    is_primary = section == 'PRIMARY'
+
+    # Optional year/term/assessment overrides; default to latest exam in section.
+    year = (request.GET.get('year') or '').strip()
+    term = (request.GET.get('term') or '').strip()
+    assessment = (request.GET.get('assessment') or '').strip()
+
+    exam_qs = Exam.all_objects.filter(school=school, is_deleted=False)
+    if is_primary:
+        exam_qs = exam_qs.filter(school_section='PRIMARY')
+    else:
+        exam_qs = exam_qs.filter(school_section='JSS')
+
+    latest_exam = exam_qs.order_by('-year', '-term', '-id').first()
+
+    if not year and latest_exam:
+        year = str(latest_exam.year)
+    if not term and latest_exam:
+        term = latest_exam.term
+    if not assessment and latest_exam:
+        assessment = latest_exam.name
+    if not year:
+        year = str(__import__('datetime').date.today().year)
+    if not term:
+        term = 'Term 3'
+    if not assessment:
+        assessment = 'opener'
+
+    db_assessment = resolve_exam_type_name(
+        school, year, term, assessment,
+        section='PRIMARY' if is_primary else 'JSS',
+    )
+
+    # Sticky: prefer the row for this exact context, else create it seeded
+    # from the newest non-empty sibling (F1) so a new exam scope inherits
+    # the Principal's existing remarks instead of shadowing the fallback
+    # with an empty exact row.
+    # all_objects bypasses the section-scoped manager so a JSS workspace
+    # session can still load/save the PRIMARY remark row (and vice versa).
+    comment_obj, _ = _get_or_create_ht_comment(
+        school, year, term, db_assessment,
+        'PRIMARY' if is_primary else 'JSS',
+    )
+
+    if request.method == 'POST':
+        # F4 all-keys rule: only write the comment boxes when EVERY active-
+        # section ht_comment_* key is present. Native forms always post all
+        # keys, so a legit save/clear still works; a partial POST (stray XHR,
+        # probe script) becomes a no-op instead of blanking the other boxes.
+        if _ht_post_is_complete(request, is_primary):
+            if is_primary:
+                for level in HT_PRIMARY_BOXES:
+                    setattr(comment_obj, f'ht_comment_{level}', request.POST.get(f'ht_comment_{level}', ''))
+            else:
+                for level in HT_JSS_BOXES:
+                    setattr(comment_obj, f'ht_comment_{level}', request.POST.get(f'ht_comment_{level}', ''))
+            comment_obj.save()
+
+            Mark.all_objects.filter(
+                school=school, year=year, term=term, exam_type=db_assessment,
+                school_section='PRIMARY' if is_primary else 'JSS',
+            ).update(frozen_headteacher_comment='')
+
+        sig_upload = request.FILES.get('headteacher_signature')
+        if sig_upload:
+            sig_error, _sig_url = save_school_signature(school, sig_upload)
+            if sig_error:
+                messages.error(request, sig_error)
+
+        bump_report_cache_version(school.pk)
+        invalidate_report_forms_cache(school.pk)
+        messages.success(
+            request,
+            f"{'Primary' if is_primary else 'JSS'} Headteacher remarks saved. They will appear on every report card until you change them.",
+        )
+        from urllib.parse import urlencode
+        return redirect(
+            reverse('admin_comments') + '?' + urlencode({
+                'section': section, 'year': year,
+                'term': term, 'assessment': assessment,
+            })
+        )
+
+    return render(request, 'students/admin_comments.html', {
+        'comment_obj':           comment_obj,
+        'selected_year':         year,
+        'selected_term':         term,
+        'selected_assessment':   assessment,
+        'selected_assessment_display': db_assessment,
+        'selected_section':      section,
+        'is_primary':            is_primary,
+        'latest_exam':           latest_exam,
+        'school_signature':      school.headteacher_signature.url if getattr(school, 'headteacher_signature', None) else '',
+    })
 
 
 def _get_grade_streams(school, section):
@@ -534,6 +841,17 @@ def manage_faculty_matrix(request):
                 db_section, db_sub = 'PRIMARY', 'UPPER'
             else:  # JSS
                 db_section, db_sub = 'JSS', None
+
+            # Phone IS the teacher's login (phonenumber@schoolcode) — a blank
+            # here used to build the username '@schoolcode' and create an
+            # account that can never log in.
+            if not (phone_number.isdigit() and len(phone_number) == 10 and phone_number.startswith('0')):
+                messages.error(
+                    request,
+                    "Phone number is required — 10 digits starting with 0 (e.g. 0712345678). "
+                    "It is the teacher's login (phonenumber@schoolcode).",
+                )
+                return redirect('manage_faculty_matrix')
 
             login_username = f"{phone_number}@{school.code}"
 
@@ -646,54 +964,100 @@ def manage_faculty_matrix(request):
             try:
                 with transaction.atomic():
                     teacher      = Teacher.all_objects.get(id=request.POST.get('teacher_id'), school=school)
-                    full_name    = request.POST.get('full_name', '').strip()
-                    surname      = request.POST.get('surname', '').strip()
-                    phone_number = request.POST.get('phone_number', '').strip()
-                    email        = request.POST.get('personal_email', '').strip() or request.POST.get('email', '').strip()
-                    new_tsc      = request.POST.get('tsc_number', '').strip()
+                    full_name    = (request.POST.get('full_name', '') or '').strip()
+                    surname      = (request.POST.get('surname', '') or '').strip()
+                    phone_number = (request.POST.get('phone_number', '') or '').strip()
+                    email        = (request.POST.get('personal_email', '').strip() or request.POST.get('email', '').strip())
+                    new_tsc      = (request.POST.get('tsc_number', '') or '').strip()
 
-                    # ── Input validation ───────────────────────────────────
-                    if len(full_name) < 2:
-                        messages.error(request, "Full name must be at least 2 characters.")
-                        return redirect('manage_faculty_matrix')
-                    if phone_number and not (phone_number.isdigit() and len(phone_number) == 10 and phone_number.startswith('0')):
-                        messages.error(request,
-                            "Phone number must be 10 digits starting with 0 (e.g. 0712345678).")
-                        return redirect('manage_faculty_matrix')
-                    if new_tsc and not new_tsc.isdigit():
-                        messages.error(request, "TSC number must be digits only.")
-                        return redirect('manage_faculty_matrix')
-                    # TSC must be unique within the school
-                    if Teacher.all_objects.filter(school=school, tsc_number=new_tsc).exclude(pk=teacher.pk).exists():
-                        messages.error(request,
-                            f"Another teacher already has TSC Number '{new_tsc}'.")
-                        return redirect('manage_faculty_matrix')
-                    # Phone number must be unique within the school (used as login)
-                    if phone_number:
+                    changed_user_fields = []
+                    changed_teacher_fields = []
+
+                    # ── Names: persist ONLY fields the user actually edited ──
+                    if form_field_edited(request, 'full_name', teacher.user.first_name):
+                        if len(full_name) < 2:
+                            messages.error(request, "Full name must be at least 2 characters.")
+                            return redirect('manage_faculty_matrix')
+                        teacher.user.first_name = full_name
+                        changed_user_fields.append('first_name')
+                    if form_field_edited(request, 'surname', teacher.user.last_name):
+                        teacher.user.last_name = surname
+                        changed_user_fields.append('last_name')
+
+                    # ── Phone IS the login identity — validate and sync the
+                    # username ONLY when the user changed it. An untouched
+                    # phone is never rewritten or re-uniqueness-checked. ──
+                    if form_field_edited(request, 'phone_number', teacher.phone_number):
+                        if not phone_number:
+                            messages.error(request,
+                                "Phone number is required — it is the teacher's login (phonenumber@schoolcode).")
+                            return redirect('manage_faculty_matrix')
+                        if not (phone_number.isdigit() and len(phone_number) == 10 and phone_number.startswith('0')):
+                            messages.error(request,
+                                "Phone number must be 10 digits starting with 0 (e.g. 0712345678).")
+                            return redirect('manage_faculty_matrix')
                         login_username = f"{phone_number}@{school.code}"
                         if User.objects.filter(username=login_username).exclude(pk=teacher.user_id).exists():
                             messages.error(request,
                                 f"Phone {phone_number} is already used as a login username by another account.")
                             return redirect('manage_faculty_matrix')
+                        teacher.phone_number = phone_number
+                        teacher.user.username = login_username
+                        changed_teacher_fields.append('phone_number')
+                        changed_user_fields.append('username')
 
-                    # ── Demographics (school_section / sub_section are intentionally NOT updatable) ──
-                    teacher.user.first_name = full_name
-                    teacher.user.last_name  = surname
-                    teacher.user.username   = f"{phone_number}@{school.code}" if phone_number else teacher.user.username
-                    teacher.user.email      = email
-                    teacher.user.save()
+                    # ── Email: blank keeps the old value on BOTH rows — an
+                    # untouched/empty field must never wipe an address. ──
+                    if email and form_field_edited(request, 'personal_email', teacher.email):
+                        teacher.email = email
+                        teacher.user.email = email
+                        changed_teacher_fields.append('email')
+                        changed_user_fields.append('email')
 
-                    teacher.title          = request.POST.get('title')
-                    teacher.tsc_number     = new_tsc
-                    teacher.phone_number   = phone_number
-                    teacher.email          = email
-                    teacher.gender         = request.POST.get('gender', teacher.gender)
-                    teacher.national_id    = request.POST.get('national_id', teacher.national_id).strip()
-                    teacher.address        = request.POST.get('address', teacher.address).strip()
-                    teacher.employee_number = request.POST.get('employee_number', teacher.employee_number).strip()
-                    teacher.bio            = request.POST.get('bio', teacher.bio).strip()
-                    if 'assigned_task' in request.POST:
-                        new_task = request.POST.get('assigned_task', teacher.assigned_task)
+                    # ── TSC: validate real edits only; blank keeps old ──
+                    if new_tsc and form_field_edited(request, 'tsc_number', teacher.tsc_number):
+                        if not new_tsc.isdigit():
+                            messages.error(request, "TSC number must be digits only.")
+                            return redirect('manage_faculty_matrix')
+                        if Teacher.all_objects.filter(school=school, tsc_number=new_tsc).exclude(pk=teacher.pk).exists():
+                            messages.error(request,
+                                f"Another teacher already has TSC Number '{new_tsc}'.")
+                            return redirect('manage_faculty_matrix')
+                        teacher.tsc_number = new_tsc
+                        changed_teacher_fields.append('tsc_number')
+
+                    # ── title is NOT NULL — never write blank/None. Only a
+                    # real edit (Mr. → Ms.) persists; the modal's "Mr."
+                    # prefill default can no longer CREATE a title nobody
+                    # entered. ──
+                    _title = (request.POST.get('title') or '').strip()
+                    if _title and form_field_edited(request, 'title', teacher.title):
+                        teacher.title = _title
+                        changed_teacher_fields.append('title')
+
+                    # ── Demographics: write only fields the user edited ──
+                    if form_field_edited(request, 'gender', teacher.gender):
+                        teacher.gender = request.POST.get('gender') or ''
+                        changed_teacher_fields.append('gender')
+                    if form_field_edited(request, 'national_id', teacher.national_id):
+                        teacher.national_id = (request.POST.get('national_id') or '').strip()
+                        changed_teacher_fields.append('national_id')
+                    if form_field_edited(request, 'address', teacher.address):
+                        teacher.address = (request.POST.get('address') or '').strip()
+                        changed_teacher_fields.append('address')
+                    if form_field_edited(request, 'employee_number', teacher.employee_number):
+                        teacher.employee_number = (request.POST.get('employee_number') or '').strip()
+                        changed_teacher_fields.append('employee_number')
+                    if form_field_edited(request, 'bio', teacher.bio):
+                        teacher.bio = (request.POST.get('bio') or '').strip()
+                        changed_teacher_fields.append('bio')
+
+                    # ── Assigned role: only when the user changed it. The
+                    # modal keeps Save disabled until the role select is
+                    # applied, so a slow role load can't silently demote a
+                    # class teacher (or displace another one). ──
+                    if form_field_edited(request, 'assigned_task', teacher.assigned_task):
+                        new_task = request.POST.get('assigned_task') or teacher.assigned_task
                         if new_task.startswith('Class Teacher'):
                             conflict_list = list(Teacher.all_objects.filter(
                                 school=school, is_active=True, assigned_task=new_task,
@@ -712,12 +1076,23 @@ def manage_faculty_matrix(request):
                                 messages.warning(request,
                                     f"{names} was/were replaced as {new_task}.")
                         teacher.assigned_task = new_task
+                        changed_teacher_fields.append('assigned_task')
+
+                    # Persist ONLY the edited fields — untouched demographics
+                    # are never written back (a stale form page can no longer
+                    # revert newer data, and a signature-only save writes no
+                    # profile fields at all).
+                    if changed_user_fields:
+                        teacher.user.save(update_fields=changed_user_fields)
+                    if changed_teacher_fields:
+                        teacher.save(update_fields=changed_teacher_fields)
 
                     # ── Signature: class teachers only, validated server-side ──
-                    # Model validators do not run on a plain save(), so the
-                    # type/size check happens here before the file is accepted.
-                    signature_cleanup = None
+                    # Saved on its OWN update_fields path so a demographics
+                    # failure can never wipe a valid signature upload (and
+                    # vice versa).
                     sig_upload = request.FILES.get('signature')
+                    sig_saved = False
                     if sig_upload:
                         if not (teacher.assigned_task or '').startswith('Class Teacher'):
                             messages.warning(request,
@@ -727,16 +1102,32 @@ def manage_faculty_matrix(request):
                             if sig_error:
                                 messages.error(request, sig_error)
                             else:
-                                signature_cleanup = teacher.signature.name if teacher.signature else None
+                                old_sig = teacher.signature.name if teacher.signature else None
                                 teacher.signature = polish_signature_upload(sig_upload, teacher.pk)
-                    teacher.save()
-                    if signature_cleanup and (
-                        not teacher.signature or teacher.signature.name != signature_cleanup
-                    ):
-                        discard_media_file(signature_cleanup)
+                                try:
+                                    teacher.save(update_fields=['signature'])
+                                except Exception:
+                                    import logging
+                                    logging.getLogger(__name__).exception(
+                                        "Signature save failed for teacher_id=%s", teacher.pk)
+                                    messages.error(request, "Could not save the signature image. Please try again.")
+                                    teacher.refresh_from_db()
+                                else:
+                                    sig_saved = True
+                                    if old_sig and teacher.signature and teacher.signature.name != old_sig:
+                                        discard_media_file(old_sig)
+                                    try:
+                                        bump_report_cache_version(teacher.school_id)
+                                    except Exception:
+                                        pass
 
                 clear_teacher_cache(teacher.user_id)
-                messages.success(request, f"Demographics updated for {teacher.get_full_title()}.")
+                if changed_teacher_fields or changed_user_fields:
+                    messages.success(request, f"Demographics updated for {teacher.get_full_title()}.")
+                elif sig_saved:
+                    messages.success(request, f"Signature updated for {teacher.get_full_title()}.")
+                else:
+                    messages.success(request, "No changes to save.")
             except Teacher.DoesNotExist:
                 messages.error(request, "Teacher record not found.")
             except Exception:
@@ -1479,7 +1870,6 @@ def download_teachers_list_pdf(request):
     import datetime
     import mimetypes
 
-    from django.http import HttpResponse
     from django.template.loader import render_to_string
     from weasyprint import HTML
 

@@ -57,6 +57,14 @@ img, svg {
     height: auto;
 }
 
+/* The hidden attribute must always win. Author rules like
+   `img { display: block }` above override the UA stylesheet's
+   `[hidden] { display: none }`, which used to leave every
+   hidden <img> visible as a broken-image icon. */
+[hidden] {
+    display: none !important;
+}
+
 /* ── Lists ──────────────────────────────────────────────────── */
 ul, ol { list-style: none; }
 

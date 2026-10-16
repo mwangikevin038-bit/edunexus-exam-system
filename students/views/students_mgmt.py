@@ -22,6 +22,8 @@ from .constants import GRADE_CHOICES, TERM_CHOICES, get_streams_for_school, norm
 from ..forms import StudentForm
 from .helpers import (
     dedup_marks_latest_by_code,
+    exam_covers_class,
+    filter_exams_by_classes,
     get_class_teacher_scope,
     get_next_admission_no,
     get_teacher_for_user,
@@ -1832,6 +1834,13 @@ def invalidate_score_sheet_caches(school_id, grade=None):
             _grades_cache_key(school_id),
             _streams_printout_cache_key(school_id, grade),
         ])
+    else:
+        # School-wide call (no grade): an exam create/edit/delete changes
+        # EVERY grade's exam dropdown, so pattern-delete them all — a stale
+        # cached list must never resurrect a withdrawn/renamed exam.
+        # _delete_cache_key_pattern never raises.
+        from .helpers import _delete_cache_key_pattern
+        _delete_cache_key_pattern(f'score_sheet:exams:{school_id}:*')
     try:
         _cache.delete_many(keys_to_delete)
     except Exception:
@@ -3409,6 +3418,12 @@ def api_exams_for_class(request):
     else:
         qs = qs.filter(school_section='JSS')
 
+    # Exam.classes scoping: never surface an exam in this grade's dropdown
+    # unless the admin assigned it to this grade (empty list = whole section).
+    # Without this, an exam scoped to Grade 7+8 still showed up for Grade 9
+    # in merit list / report forms / analysis dropdowns.
+    qs = filter_exams_by_classes(qs, grade_name)
+
     # Section enforcement for teachers
     if not is_admin:
         if section == 'LOWER_PRIMARY' and grade_name not in LOWER_PRIMARY_GRADE_CHOICES:
@@ -3432,7 +3447,9 @@ def api_exams_for_class(request):
 
     complete_exams = []
     for exam in all_exams:
-        # Check published submissions
+        # Only formally published submissions count. Raw marks (entered but
+        # not yet published) must never surface the exam in merit/report
+        # dropdowns — admin publication is the visibility gate.
         sub_filters = Q(
             school=school,
             class_name=grade_name,
@@ -3442,18 +3459,7 @@ def api_exams_for_class(request):
             status='published',
         )
         published_count = MarkSubmission.all_objects.filter(sub_filters).values('subject').distinct().count()
-        # Also count subjects that have actual marks (in case submissions weren't created)
-        from ..models import Mark as MarkModel
-        mark_count = MarkModel.all_objects.filter(
-            student__school=school,
-            student__class_name=grade_name,
-            exam_type=exam.name,
-            term=exam.term,
-            year=exam.year,
-        ).values('subject').distinct().count()
-        # Use whichever is higher — covers case where marks exist without submissions
-        effective_count = max(published_count, mark_count)
-        if effective_count >= total_subjects and total_subjects > 0:
+        if published_count >= total_subjects and total_subjects > 0:
             complete_exams.append({
                 'id': exam.id,
                 'name': exam.name,
@@ -3693,6 +3699,15 @@ def merit_list(request):
             messages.error(request, "You do not have access to results for this exam section.")
             return redirect('merit_list')
 
+    # Exam.classes scoping: a merit broadsheet for a class this exam never
+    # covered can only ever be empty — reject the impossible pairing.
+    if not exam_covers_class(exam_object, grade):
+        messages.error(
+            request,
+            f"{exam_object.name} was not created for {grade}.",
+        )
+        return redirect('merit_list')
+
     # Build the broadsheet context via the existing internal builder
     context = build_broadsheet_for_merit_list(request, school, grade, stream, exam_object)
     context['show_table'] = True
@@ -3703,6 +3718,9 @@ def merit_list(request):
     context['selected_stream'] = stream
     context['selected_exam_id'] = exam_id
     context['selected_exam'] = exam_object.name
+    _print_label = request.GET.get('print_label', '').strip()
+    if _print_label:
+        context['selected_exam'] = _print_label
     # Context key matches the format used by results_list (year|term|exam_name|class_name|stream)
     context['selected_context_key'] = (
         f"{exam_object.year}|{exam_object.term}|{exam_object.name}|{grade}|{stream}"
@@ -3811,6 +3829,14 @@ def api_analysis_data(request):
     exam = Exam.all_objects.filter(school=school, id=exam_id, is_deleted=False).first()
     if not exam:
         return JsonResponse({'error': 'Exam not found'}, status=404)
+
+    # Exam.classes scoping: analysis for a class this exam never covered
+    # can only ever be empty — reject the impossible pairing.
+    if class_name_filter and not exam_covers_class(exam, class_name_filter):
+        return JsonResponse(
+            {'error': f'{exam.name} was not created for {class_name_filter}.'},
+            status=400,
+        )
 
     section = exam.school_section
     PRIMARY_ORDERED_LEVELS = ['EE', 'ME', 'AE', 'BE']
@@ -4823,6 +4849,11 @@ def report_forms_display(request):
     # Cache the context for 5 minutes (smart invalidation via invalidate_report_forms_cache)
     if view_mode != 'print':
         cache.set(cache_key, view_context, timeout=300)
+    # TEMPORARY (revert after printing): print_label overrides only the
+    # displayed assessment banner; all data lookups use the raw DB exam name.
+    _print_label = request.GET.get('print_label', '').strip()
+    if _print_label:
+        view_context['selected_assessment'] = _print_label
     # For view_mode=print, render the stripped print template directly so the
     # popup tab has zero base-template chrome - clean A4 print output.
     return render(request, target_template, view_context)

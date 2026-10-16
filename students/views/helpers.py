@@ -11,6 +11,7 @@ import re
 import secrets
 import string
 
+import numpy as np
 from django.core.cache import cache
 from django.db.models import Avg, Count, Q, Sum, IntegerField, Value, F, Window
 from django.db.models.functions import Cast, DenseRank
@@ -19,7 +20,7 @@ from .constants import (
     RELIGION_SUBJECTS,
     RELIGION_TAG,
 )
-from ..models import Mark, MarkSubmission, Student, SubjectAssignment, Teacher, TermDate
+from ..models import ClassTeacherMasterComment, Mark, MarkSubmission, SchoolHeadteacherComment, Student, SubjectAssignment, Teacher, TermDate
 from ..school_scope import get_current_school, get_current_school_section
 from ..security import user_has_main_school_admin_override
 from ..security.integrity import compute_mark_checksum
@@ -56,14 +57,193 @@ def resolve_term_dates(school, year, term):
     """
     Query TermDate for the given school/year/term and return (end_date, start_date)
     suitable for use as closing_date / opening_date fallback on report cards.
-    Returns (None, None) if no TermDate record exists.
+    Returns (None, None) if no TermDate record exists. Never raises.
     """
-    td = TermDate.objects.filter(
-        school=school, academic_year=year, term=term
-    ).first()
-    if td:
-        return td.end_date, td.start_date
+    if not school:
+        return None, None
+    try:
+        year_int = int(year)
+    except (TypeError, ValueError):
+        return None, None
+    try:
+        td = TermDate.objects.filter(
+            school=school, academic_year=year_int, term=term
+        ).first()
+        if td:
+            return td.end_date, td.start_date
+    except Exception:
+        return None, None
     return None, None
+
+
+def fetch_school_ht_comment(school, year, term, exam_type, section=None):
+    """
+    Bulletproof SchoolHeadteacherComment lookup for report cards.
+
+    Order of attempts (never raises):
+      1. Exact (year, term, exam_type, section) via all_objects
+      2. Section normalize: LOWER_PRIMARY → PRIMARY; unknown → PRIMARY if
+         the school only has PRIMARY rows for this context
+      3. Fuzzy exam_type: case-insensitive exact, then startswith / contains
+      4. Most recent row for (school, year, term) in the section
+      5. Most recent row for (school, year) in the section
+    """
+    from ..models import SchoolHeadteacherComment as _SHC
+
+    if not school:
+        return None
+
+    yr = str(year or '').strip()
+    tm = (term or '').strip()
+    et = (exam_type or '').strip()
+    sec = (section or '').strip().upper()
+    if sec == 'LOWER_PRIMARY':
+        sec = 'PRIMARY'
+    if sec not in ('PRIMARY', 'JSS'):
+        sec = 'PRIMARY'
+
+    base = _SHC.all_objects.filter(school=school)
+    if yr:
+        base = base.filter(year=yr)
+
+    def _first(qs):
+        try:
+            return qs.order_by('-last_modified', '-id').first()
+        except Exception:
+            return None
+
+    # 1. Exact match
+    if tm and et:
+        hit = _first(base.filter(term=tm, exam_type=et, school_section=sec))
+        if hit:
+            return hit
+
+    # 2. Same context, alternate section (PRIMARY student saved as JSS typo)
+    if tm and et:
+        alt = 'JSS' if sec == 'PRIMARY' else 'PRIMARY'
+        hit = _first(base.filter(term=tm, exam_type=et, school_section=alt))
+        if hit:
+            return hit
+
+    # 3. Fuzzy exam_type within the term+section — prefer most recently
+    # saved row so an older same-named exam never shadows the admin's
+    # latest Comments-page save.
+    if tm and et:
+        term_sec = base.filter(term=tm, school_section=sec)
+        hit = _first(term_sec.filter(exam_type__iexact=et))
+        if hit:
+            return hit
+        hit = _first(term_sec.filter(exam_type__icontains=et))
+        if hit:
+            return hit
+        prefix = et[:12] if len(et) >= 12 else et
+        hit = _first(term_sec.filter(exam_type__istartswith=prefix))
+        if hit:
+            return hit
+        token = et.split()[0] if et.split() else et
+        if token:
+            hit = _first(term_sec.filter(exam_type__icontains=token))
+            if hit:
+                return hit
+
+    # 4. Any row for this term+section (exam_type drifted) — newest first
+    if tm:
+        hit = _first(base.filter(term=tm, school_section=sec))
+        if hit:
+            return hit
+
+    # 5. Any row for this year+section
+    hit = _first(base.filter(school_section=sec))
+    if hit:
+        return hit
+
+    # 6. Absolute last resort — any HT comment for this school/year
+    hit = _first(base)
+    return hit
+
+
+def extract_ht_remark(comment_obj, plv):
+    """Return the PLV-matched headteacher remark from a SchoolHeadteacherComment row."""
+    if not comment_obj or not plv or plv in ('', '-'):
+        return ''
+    field = f'ht_comment_{str(plv).lower()}'
+    return (getattr(comment_obj, field, '') or '').strip()
+
+
+def fetch_class_teacher_comment(school, year, term, exam_type, grade=None, stream=None):
+    """Bulletproof ClassTeacherMasterComment lookup for report cards.
+
+    Always uses all_objects (scoped .objects filters by workspace section and
+    silently hid JSS comments when an admin's workspace was PRIMARY).
+
+    Order of attempts (never raises):
+      1. Exact (grade, stream, year, term, exam_type)
+      2. Fuzzy exam_type (iexact / icontains / istartswith / token)
+      3. Most recent for (grade, stream, year, term)
+      4. Most recent for (grade, stream)
+    """
+    from ..models import ClassTeacherMasterComment as _CTMC
+
+    if not school:
+        return None
+
+    yr = str(year or '').strip()
+    tm = (term or '').strip()
+    et = (exam_type or '').strip()
+    gr = (grade or '').strip()
+    st = (stream or '').strip()
+
+    base = _CTMC.all_objects.filter(school=school)
+    if gr:
+        base = base.filter(grade=gr)
+    if st:
+        base = base.filter(stream=st)
+    if yr:
+        base = base.filter(year=yr)
+
+    def _first(qs):
+        try:
+            return qs.order_by('-last_modified', '-id').first()
+        except Exception:
+            return None
+
+    # 1. Exact exam_type
+    if tm and et:
+        hit = _first(base.filter(term=tm, exam_type=et))
+        if hit:
+            return hit
+
+    # 2. Fuzzy exam_type within term
+    if tm and et:
+        hit = _first(base.filter(term=tm, exam_type__iexact=et))
+        if hit:
+            return hit
+        hit = _first(base.filter(term=tm, exam_type__icontains=et))
+        if hit:
+            return hit
+        token = et.split()[0] if et.split() else et
+        if token:
+            hit = _first(base.filter(term=tm, exam_type__icontains=token))
+            if hit:
+                return hit
+
+    # 3. Any for this grade/stream + year + term
+    if tm and yr:
+        hit = _first(base.filter(term=tm))
+        if hit:
+            return hit
+
+    # 4. Any for this grade/stream (exam_type/year drifted)
+    hit = _first(base)
+    return hit
+
+
+def extract_ct_remark(comment_obj, plv):
+    """Return the PLV-matched class-teacher remark. Never raises."""
+    if not comment_obj or not plv or str(plv).strip() in ('', '-'):
+        return ''
+    field = f'comment_{str(plv).strip().lower()}'
+    return (getattr(comment_obj, field, '') or '').strip()
 
 
 # ── Cache TTL and key helpers ────────────────────────────────────────────────
@@ -461,17 +641,21 @@ def generate_default_password():
     return ''.join(secrets.choice(string.digits) for _ in range(8))
 
 
-def get_published_subject_codes(class_name, stream, year, term, exam_name, sub_section=None, is_admin=False):
+def get_published_subject_codes(class_name, stream, year, term, exam_name, sub_section=None, is_admin=False, require_published=False):
     """
     Return subject codes that should appear on report cards.
-    
+
     A subject appears if EITHER:
       1. Its MarkSubmission has been formally published, OR
       2. Marks exist for that subject (teacher saved them, even if not submitted)
-    
+
     This ensures marks are NEVER invisible — if a teacher entered them, they show.
     The publish workflow still controls official publication status, but does NOT
     gate mark visibility.
+
+    When require_published=True (merit lists, results broadsheets), only
+    formally published submissions count — entered-but-unpublished marks are
+    excluded so unpublished exams never leak into official rankings.
     """
     school = get_current_school()
     section = get_current_school_section()
@@ -505,6 +689,9 @@ def get_published_subject_codes(class_name, stream, year, term, exam_name, sub_s
     published_codes = set(
         MarkSubmission.all_objects.filter(**pub_filters).values_list("subject__code", flat=True)
     )
+
+    if require_published:
+        return published_codes
 
     # ── 2. Subjects that have marks entered (even if not published) ────
     mark_filters = dict(
@@ -738,7 +925,11 @@ def get_stream_submission_summary(class_name, stream, exam):
     totals["all_submitted"] = totals["subjects"] > 0 and all(row["submission"] for row in rows)
     totals["all_scores_complete"] = totals["missing_scores"] == 0
     totals["can_approve"] = totals["all_submitted"] and totals["all_scores_complete"]
-    totals["can_publish"] = totals["subjects"] > 0 and totals["approved"] == totals["subjects"]
+    # A partially published stream (some sheets already published) must stay
+    # publishable for the remaining sheets — count published toward the gate.
+    totals["can_publish"] = totals["subjects"] > 0 and (
+        totals["approved"] + totals.get("published", 0)
+    ) == totals["subjects"]
     totals["stream_status"] = (
         "Published" if totals["published"] == totals["subjects"] and totals["subjects"]
         else "Approved" if totals["approved"] == totals["subjects"] and totals["subjects"]
@@ -911,12 +1102,27 @@ def resolve_class_teacher(school, grade, stream):
         school=school,
         is_active=True,
         assigned_task__startswith='Class Teacher',
-    ).select_related('user')
+    ).select_related('user').order_by('pk')
     for teacher in candidates:
         remainder = (teacher.assigned_task or '')[len('Class Teacher'):].strip()
         if ' '.join(remainder.split()) == target:
             return teacher
     return None
+
+
+def exam_covers_class(exam, class_name):
+    """True when the exam is assigned to this grade.
+
+    ``Exam.classes == []`` (or None) means "all grades in the section" —
+    legacy exams predate class targeting. Every teacher-facing surface
+    (mark-entry sheets, exam dropdowns, dashboards, save endpoints) must
+    gate on this so an exam the admin scoped to Grade 7+8 never leaks to
+    a Grade 9 teacher or student view.
+    """
+    if not class_name:
+        return False
+    classes = exam.classes or []
+    return not classes or class_name in classes
 
 
 def resolve_class_teachers_for_grade(school, grade, stream=None):
@@ -944,8 +1150,52 @@ def resolve_class_teachers_for_grade(school, grade, stream=None):
     return out
 
 
-SIGNATURE_ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
-SIGNATURE_ALLOWED_CONTENT_TYPES = {'image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'}
+def form_field_edited(request, key, current):
+    """True only when the user ACTUALLY changed this field in the form.
+
+    Edit forms embed ``__orig_<key>`` hidden markers holding the value the
+    form was rendered with. Posted == marker means the user never touched
+    the input — so it must NOT be written back (a stale page can never
+    revert newer data edited elsewhere, and a signature-only save can never
+    rewrite untouched demographics). Falls back to comparing against the
+    current DB value when the marker is missing (old cached template)."""
+    if key not in request.POST:
+        return False
+    posted = request.POST.get(key) or ''
+    orig = request.POST.get('__orig_' + key)
+    if orig is None:
+        return posted.strip() != (current or '').strip()
+    return posted.strip() != (orig or '').strip()
+
+
+# ── Signature image decoding: HEIC/HEIF (what Android cameras actually
+# write, often renamed .jpg) is supported via pillow-heif. Registered once,
+# lazily; every decode path calls _ensure_heif() first. ────────────────────
+_HEIF_OK = None
+
+
+def _ensure_heif():
+    """Register pillow-heif's HEIC/HEIF decoders with Pillow (once)."""
+    global _HEIF_OK
+    if _HEIF_OK is None:
+        try:
+            from pillow_heif import register_heif_opener
+            register_heif_opener()
+            _HEIF_OK = True
+        except Exception:
+            _HEIF_OK = False
+    return _HEIF_OK
+
+
+SIGNATURE_ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.heic', '.heif'}
+# Mobile OS/browsers report odd JPEG aliases (image/pjpeg from Android,
+# image/x-citrix-jpeg from Windows/iPhone) for perfectly valid .jpg files.
+SIGNATURE_ALLOWED_CONTENT_TYPES = {
+    'image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif',
+    'image/pjpeg', 'image/x-citrix-jpeg', 'image/x-jpeg', 'image/jpe',
+    'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+    'image/avif',
+}
 SIGNATURE_MAX_BYTES = 5 * 1024 * 1024
 
 
@@ -953,7 +1203,13 @@ def validate_signature_upload(file):
     """Server-side guard for signature uploads. Model validators do NOT run on
     a plain save(), so every upload endpoint must call this. Web-safe formats
     only — browsers and WeasyPrint cannot render HEIC. Returns an error
-    message, or None when the file is acceptable."""
+    message, or None when the file is acceptable.
+
+    Three gates, in order: extension/content-type, magic-byte sniff, and a
+    real Pillow decode (HEIC-aware). The decode probe is what guarantees a
+    damaged or fake file can NEVER reach storage — a file that passed the
+    first two gates but cannot be opened would otherwise be stored raw and
+    show up broken on every report card forever."""
     if not file:
         return 'No signature file received.'
     if file.size > SIGNATURE_MAX_BYTES:
@@ -961,11 +1217,113 @@ def validate_signature_upload(file):
     name = (getattr(file, 'name', '') or '').lower()
     ext = '.' + name.rsplit('.', 1)[-1] if '.' in name else ''
     if ext not in SIGNATURE_ALLOWED_EXTENSIONS:
-        return 'Signature must be a JPG, PNG, WEBP or GIF image. HEIC and other formats are not supported.'
+        return 'Signature must be a JPG, PNG, WEBP, GIF or HEIC image.'
     ctype = (getattr(file, 'content_type', '') or '').lower()
-    if ctype and ctype not in SIGNATURE_ALLOWED_CONTENT_TYPES:
-        return 'Signature must be a JPG, PNG, WEBP or GIF image.'
-    return None
+    if ctype and ctype not in SIGNATURE_ALLOWED_CONTENT_TYPES and not ctype.startswith('image/'):
+        return 'Signature must be a JPG, PNG, WEBP, GIF or HEIC image.'
+    # Sniff magic bytes: mobile galleries often hand back HEIC (or other
+    # formats) named .jpg with a matching content type. Extension checks
+    # pass, but the image can never be decoded or printed on a report card,
+    # so reject it HERE with a clear message instead of saving a broken file.
+    try:
+        pos = file.tell()
+        header = file.read(16)
+        file.seek(pos)
+    except Exception:
+        return None  # non-seekable stream: trust extension/content-type checks
+    if header and not _is_web_safe_image(header):
+        return ('This file is not really a JPG, PNG, WEBP or GIF image '
+                '(it may be HEIC or another unsupported format). '
+                'Please choose a JPG or PNG photo of the signature.')
+    # Final authority: Pillow must actually decode it (HEIC included).
+    # NOTE: never Image.close() here — for PNG it closes OUR upload stream,
+    # breaking the raw/clean decodes that reuse this same file afterwards.
+    # We load fully, then detach the fp so nothing can close it.
+    damaged = ('This image file is damaged or not a real image. '
+               'Take a new photo, choose a JPG/PNG — or draw your '
+               'signature instead (always works).')
+    try:
+        from PIL import Image as _ProbeImage
+        _ensure_heif()
+        try:
+            file.seek(0)
+        except Exception:
+            pass
+        probe = _ProbeImage.open(file)
+        probe.load()
+        probe.fp = None  # detach: dropping the image must not close `file`
+    except Exception:
+        try:
+            file.seek(0)
+        except Exception:
+            pass
+        return damaged
+    try:
+        file.seek(0)
+        return None
+    except Exception:
+        return damaged  # stream unusable downstream — reject rather than break
+
+
+def _is_web_safe_image(header: bytes) -> bool:
+    """True when the file header matches a format browsers/printers render —
+    or one Pillow converts FOR us. HEIC/HEIF is the format Android cameras
+    actually write (frequently renamed .jpg); it is accepted only when the
+    pillow-heif decoder is available, because the clean pipeline converts it
+    to a PNG for report cards."""
+    if header[:8] == b'\x89PNG\r\n\x1a\n':
+        return True
+    if header[:3] == b'\xff\xd8\xff':  # JPEG / JPEG-EXT
+        return True
+    if header[:6] in (b'GIF87a', b'GIF89a'):
+        return True
+    if header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+        return True
+    if len(header) >= 12 and header[4:8] == b'ftyp':
+        brand = header[8:12]
+        if brand in (b'avif', b'avis'):
+            return True  # Pillow >= 11.3 decodes AVIF natively (we run 12.x)
+        if brand in (b'heic', b'heix', b'hevc', b'hevx', b'mif1', b'msf1',
+                     b'heif', b'heis', b'heim', b'heix'):
+            return _ensure_heif()
+    return False
+
+
+def signature_raw_data_url(file, max_w=760):
+    """Server-decoded preview of the ORIGINAL upload as a PNG data URL.
+
+    The browser never has to decode the file bytes itself — Pillow (with
+    HEIF support) does it here — so the 'original photo' compare view and
+    fallback previews render even when the phone's file is HEIC or another
+    format the browser cannot display. Fast: single downscale + PNG."""
+    import base64
+    from io import BytesIO
+    from PIL import Image, ImageOps
+
+    _ensure_heif()
+    try:
+        file.seek(0)
+    except Exception:
+        pass
+    img = Image.open(file)
+    img = ImageOps.exif_transpose(img)
+    if img.mode in ('RGBA', 'LA', 'PA') or (img.mode == 'P' and 'transparency' in img.info):
+        img = img.convert('RGBA')
+        bg = Image.new('RGBA', img.size, (255, 255, 255, 255))
+        bg.alpha_composite(img)
+        img = bg.convert('RGB')
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
+    if img.width > max_w:
+        s = max_w / img.width
+        img = img.resize(
+            (max_w, max(1, round(img.height * s))),
+            getattr(Image, 'Resampling', Image).LANCZOS,
+        )
+    buf = BytesIO()
+    img.save(buf, format='PNG', optimize=True)
+    b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+    return f'data:image/png;base64,{b64}'
 
 
 def discard_media_file(name):
@@ -981,125 +1339,454 @@ def discard_media_file(name):
         pass
 
 
+def _signature_connected_components(mask):
+    """Label 8-connected ink regions in a boolean mask.
+
+    Returns a list of ``(area, (miny, minx, maxy, maxx))`` tuples. Scanline
+    run-length + union-find: runs are extracted per row with numpy (vectorised)
+    and merged with a union-find over runs only — never per-pixel Python work,
+    so a noisy multi-megapixel phone photo stays in the milliseconds range."""
+    h, w = mask.shape
+    if not mask.any():
+        return []
+    parent = {}
+
+    def _find(a):
+        root = a
+        while parent[root] != root:
+            root = parent[root]
+        while parent[a] != root:
+            parent[a], a = root, parent[a]
+        return root
+
+    def _union(a, b):
+        ra, rb = _find(a), _find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    stats = {}  # root -> [area, miny, minx, maxy, maxx]
+    prev_runs = []  # [(x0, x1, label)] for the previous row
+    next_label = 0
+    mask_u8 = mask.astype(np.uint8)
+    for y in range(h):
+        row = mask_u8[y]
+        if not row.any():
+            prev_runs = []
+            continue
+        padded = np.zeros(w + 2, dtype=np.int8)
+        padded[1:-1] = row
+        edges = np.diff(padded)
+        starts = np.flatnonzero(edges == 1)
+        ends = np.flatnonzero(edges == -1) - 1
+        runs = []
+        pi = 0
+        n_prev = len(prev_runs)
+        for x0, x1 in zip(starts.tolist(), ends.tolist()):
+            next_label += 1
+            parent[next_label] = next_label
+            # Merge with overlapping runs from the previous row (8-connected:
+            # overlap by 1px counts, matching the old BFS neighbourhood).
+            while pi < n_prev and prev_runs[pi][1] < x0 - 1:
+                pi += 1
+            pj = pi
+            while pj < n_prev and prev_runs[pj][0] <= x1 + 1:
+                _union(next_label, prev_runs[pj][2])
+                pj += 1
+            runs.append((x0, x1, next_label))
+            area = x1 - x0 + 1
+            st = stats.get(next_label)
+            if st is None:
+                stats[next_label] = [area, y, x0, y, x1]
+            else:
+                st[0] += area
+                if y < st[1]:
+                    st[1] = y
+                if x0 < st[2]:
+                    st[2] = x0
+                if y > st[3]:
+                    st[3] = y
+                if x1 > st[4]:
+                    st[4] = x1
+        prev_runs = runs
+    merged = {}
+    for lab, st in stats.items():
+        r = _find(lab)
+        m = merged.get(r)
+        if m is None:
+            merged[r] = st
+        else:
+            m[0] += st[0]
+            if st[1] < m[1]:
+                m[1] = st[1]
+            if st[2] < m[2]:
+                m[2] = st[2]
+            if st[3] > m[3]:
+                m[3] = st[3]
+            if st[4] > m[4]:
+                m[4] = st[4]
+    return [(st[0], (st[1], st[2], st[3], st[4])) for st in merged.values()]
+
+
+def _filter_signature_ink(mask, border_margin=3):
+    """Keep signature strokes; drop specks, stray text, and paper-edge rings.
+
+    A phone photo of a sheet on a desk often leaves a hollow "frame" of ink
+    around the paper edge. That ring is not a signature, and if it were kept
+    it would become the 'core' that every threshold is measured against,
+    breaking the rest of the filter. A ring is identified as a low-fill
+    component whose bounding box encloses other solid ink. Stray printed text
+    (dates, page numbers) sits near the signature but is far shorter than its
+    strokes, so anything that is not itself a dominant stroke must show
+    signature-like height to survive."""
+    comps = _signature_connected_components(mask)
+    if not comps:
+        return mask
+    h, w = mask.shape
+
+    fills = []
+    for area, (miny, minx, maxy, maxx) in comps:
+        bh = maxy - miny + 1
+        bw = maxx - minx + 1
+        fills.append(area / float(bh * bw))
+
+    def _encloses(a, b):
+        return (a[0] <= b[0] and a[1] <= b[1]
+                and a[2] >= b[2] and a[3] >= b[3] and tuple(a) != tuple(b))
+
+    ring = set()
+    for i, (area, bi) in enumerate(comps):
+        if fills[i] >= 0.06:
+            continue
+        touches = (bi[0] <= border_margin or bi[1] <= border_margin
+                   or bi[2] >= h - 1 - border_margin or bi[3] >= w - 1 - border_margin)
+        for j, (area2, bj) in enumerate(comps):
+            if i == j or fills[j] < 0.05 or area2 < 30:
+                continue
+            if _encloses(bi, bj):
+                ring.add(i)
+                break
+        else:
+            # Hollow AND flush with the photo edge -> background rim.
+            if touches and fills[i] < 0.03:
+                ring.add(i)
+
+    interior = [c for idx, c in enumerate(comps) if idx not in ring]
+    if not interior:
+        interior = comps
+    interior.sort(key=lambda c: -c[0])
+    core_area, (cminy, cminx, cmaxy, cmaxx) = interior[0]
+    core_h = cmaxy - cminy + 1
+    core_w = cmaxx - cminx + 1
+    # Signature "zone": core bbox generously expanded. Stray text usually sits
+    # outside this; a detached flourish of the same signature stays inside.
+    mx = int(core_w * 0.30) + 4
+    my = int(core_h * 0.55) + 4
+    zone = (cminy - my, cminx - mx, cmaxy + my, cmaxx + mx)
+    keep = np.zeros_like(mask, dtype=bool)
+    for area, (miny, minx, maxy, maxx) in interior:
+        if area < max(24, 0.03 * core_area):
+            continue  # speck
+        comp_h = maxy - miny + 1
+        big_enough = area >= 0.12 * core_area
+        cy, cx = (miny + maxy) // 2, (minx + maxx) // 2
+        in_zone = (zone[0] <= cy <= zone[2]) and (zone[1] <= cx <= zone[3])
+        tall_enough = comp_h >= 0.34 * core_h
+        if big_enough or (in_zone and tall_enough):
+            keep[miny:maxy + 1, minx:maxx + 1] |= mask[miny:maxy + 1, minx:maxx + 1]
+    return keep
+
+
+def _premium_signature_image(file, target_w=760, target_h=280, max_upscale=8.0):
+    """Full premium clean: returns a tightly-cropped transparent RGBA image.
+
+    Pipeline: EXIF-correct rotation, flatten transparency onto white, cap the
+    working size so component analysis stays fast, flood-fill the desk/backdrop
+    to white from each frame corner (area guards protect signature ink), Otsu
+    paper-vs-ink level stretch, second flood pass, connected-component ink
+    filtering to drop specks/stray text/paper rings, an anti-aliased alpha
+    ramp so the ink sits on the card like real pen (no white sticker box),
+    a tight crop on the surviving ink, then fit into the render-safe box with
+    an unsharp pass so tiny signatures stay crisp at the card's display size.
+    Raises on failure so callers can fall back to the original file."""
+    from PIL import Image, ImageOps, ImageDraw, ImageChops, ImageFilter
+
+    _ensure_heif()
+    file.seek(0)
+    img = Image.open(file)
+    img = ImageOps.exif_transpose(img)
+    if img.mode in ("RGBA", "LA", "PA") or (img.mode == "P" and "transparency" in img.info):
+        img = img.convert("RGBA")
+        bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
+        bg.alpha_composite(img)
+        img = bg.convert("RGB")
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+
+    cap = 900
+    if max(img.size) > cap:
+        s = cap / max(img.size)
+        img = img.resize(
+            (max(1, round(img.width * s)), max(1, round(img.height * s))),
+            getattr(Image, "Resampling", Image).BILINEAR,
+        )
+
+    def _whiten_border(image, thresh, min_frac, dark_min_frac):
+        """Flood the background colour outward from the 4 corners to pure
+        white. The area guard protects signature ink: a dark flood is
+        accepted only when it covers a large share of the frame (a desk),
+        a light flood only past a small share (paper/shadow).
+
+        Floods run on a tiny thumbnail (PIL floodfill is pure Python and
+        would take minutes at full resolution on a phone photo); the
+        accepted region is mapped back and applied vectorised. Flood
+        semantics are preserved — each corner sees the image as updated
+        by the previous corners."""
+        tw = 240
+        th = max(1, round(image.height * tw / image.width))
+        resample = getattr(Image, "Resampling", Image)
+        for xy_full in ((0, 0), (image.width - 1, 0),
+                        (0, image.height - 1), (image.width - 1, image.height - 1)):
+            thumb = image.resize((tw, th), resample.NEAREST)
+            area = tw * th or 1
+            xy = (0 if xy_full[0] == 0 else tw - 1,
+                  0 if xy_full[1] == 0 else th - 1)
+            seed = thumb.getpixel(xy)
+            lum = (seed[0] * 299 + seed[1] * 587 + seed[2] * 114) // 1000
+            trial = thumb.copy()
+            ImageDraw.floodfill(trial, xy, (255, 255, 255), thresh=thresh)
+            diff = ImageChops.difference(thumb, trial).convert("L")
+            diff = diff.point(lambda p: 255 if p else 0)
+            frac = diff.histogram()[255] / area if diff.getbbox() else 0.0
+            if frac < (dark_min_frac if lum < 150 else min_frac):
+                continue
+            changed = np.asarray(diff, dtype=np.uint8) > 0
+            mask = np.asarray(
+                Image.fromarray(changed.astype(np.uint8) * 255).resize(
+                    image.size, resample.NEAREST),
+                dtype=np.uint8) > 0
+            arr = np.asarray(image, dtype=np.uint8).copy()
+            arr[mask] = 255
+            image = Image.fromarray(arr, "RGB")
+        return image
+
+    img = _whiten_border(img, 80, 0.03, 0.25)
+
+    # Otsu: split paper vs ink bimodally, then map each mode's mean so paper
+    # becomes pure white and ink deepens - far more reliable than fixed
+    # percentiles when the signature is small on the page.
+    lum = img.convert("L")
+    hist = lum.histogram()
+    hist[255] = 0  # exclude exact white (already-flooded background)
+    total = sum(hist)
+    weighted = sum(i * n for i, n in enumerate(hist)) if total >= 200 else 0
+    sum_b, w_b, best_t, best_var = 0, 0, 0, -1.0
+    if total >= 200:
+        for t in range(256):
+            w_b += hist[t]
+            if w_b == 0:
+                continue
+            w_f = total - w_b
+            if w_f == 0:
+                break
+            sum_b += t * hist[t]
+            m_b = sum_b / w_b
+            m_f = (weighted - sum_b) / w_f
+            var = w_f * w_b * (m_b - m_f) ** 2
+            if var > best_var:
+                best_var, best_t = var, t
+    below = sum(hist[:best_t]) or 0
+    above = total - below
+    black = (sum(i * hist[i] for i in range(best_t)) / below) if below else 0.0
+    white = (sum(i * hist[i] for i in range(best_t, 256)) / above) if above else 255.0
+    if total >= 200 and white - black >= 30:
+        scale = 255.0 / (white - black)
+
+        def _map(v):
+            mapped = max(0, min(255, int((v - black) * scale)))
+            return 255 if mapped >= 220 else mapped
+
+        lut = [_map(v) for v in range(256)]
+        img = Image.merge("RGB", [band.point(lut) for band in img.split()])
+
+    img = _whiten_border(img, 45, 0.01, 0.03)
+
+    lum_arr = np.asarray(img.convert("L"), dtype=np.uint8)
+    ink = lum_arr < 205
+    ink = _filter_signature_ink(ink)
+    if not ink.any():
+        ink = lum_arr < 205
+
+    # Anti-aliased alpha from luminance (dark ink -> opaque, white -> clear),
+    # hard-zeroed wherever component filtering rejected the pixel.
+    lum_f = lum_arr.astype(np.float32)
+    alpha = np.clip((245.0 - lum_f) * (255.0 / 165.0), 0, 255)
+    alpha[~ink] = 0.0
+    alpha[alpha < 26] = 0.0  # suppress faint haze that survives the ramp
+
+    out = Image.fromarray(
+        np.dstack([np.asarray(img, dtype=np.uint8), alpha.astype(np.uint8)]),
+        "RGBA",
+    )
+
+    # Tight crop on the surviving ink.
+    bbox = out.getchannel("A").point(lambda p: 255 if p > 8 else 0).getbbox()
+    if bbox:
+        pad = 6
+        out = out.crop((
+            max(0, bbox[0] - pad), max(0, bbox[1] - pad),
+            min(out.width, bbox[2] + pad), min(out.height, bbox[3] + pad),
+        ))
+
+    resample = getattr(Image, "Resampling", Image).LANCZOS
+    scale = min(target_w / out.width, target_h / out.height, max_upscale)
+    if abs(scale - 1.0) > 0.02:
+        out = out.resize(
+            (max(1, round(out.width * scale)), max(1, round(out.height * scale))),
+            resample,
+        )
+        if scale > 1.0:
+            out = out.filter(ImageFilter.UnsharpMask(radius=2, percent=110, threshold=3))
+    return out
+
+
 def polish_signature_upload(file, teacher_pk=None):
     """Clean an accepted signature for professional presentation on report
-    cards. Pipeline: EXIF-correct rotation, flatten transparency onto white,
-    flood-fill the desk/backdrop to pure white from each frame corner (area
-    guards make it impossible to eat signature ink), Otsu paper-vs-ink level
-    stretch using one luminance-derived curve shared by all channels (pen
-    colours survive) with near-white snapped to pure white, trim margins,
-    then fit the content into the 640x240 render-safe box - zooming tiny
-    signatures up to 8x with an unsharp pass so they stay crisp at the card's
-    160x36px display size - and re-encode as optimized PNG. Returns a
-    ContentFile; on any failure the original file is returned untouched so
-    an upload can never be lost to polishing."""
+    cards. Runs the premium pipeline (see ``_premium_signature_image``) and
+    returns an optimized transparent PNG ContentFile.
+
+    Failure ladder — an upload can never be lost AND a non-renderable file
+    can never be stored:
+      1. premium clean            → transparent, cropped, denoised PNG
+      2. clean failed but Pillow can decode it → straight re-encode as PNG
+         (HEIC/odd JPEGs become web-safe PNGs report cards can print)
+      3. Pillow can't decode at all (should be impossible: validation
+         sniffed the magic bytes) → original file returned untouched."""
     try:
-        from io import BytesIO
         import time as _time
-        from PIL import Image, ImageOps, ImageDraw, ImageChops, ImageFilter
+        import uuid as _uuid
+        from io import BytesIO
+        from PIL import Image
         from django.core.files.base import ContentFile
 
-        file.seek(0)
-        img = Image.open(file)
-        img = ImageOps.exif_transpose(img)
-        if img.mode in ("RGBA", "LA", "PA") or (img.mode == "P" and "transparency" in img.info):
-            img = img.convert("RGBA")
-            bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
-            bg.alpha_composite(img)
-            img = bg.convert("RGB")
-        elif img.mode != "RGB":
-            img = img.convert("RGB")
-
-        def whiten_border(image, thresh, min_frac, dark_min_frac):
-            """Flood the background colour outward from the 4 corners to pure
-            white. The area guard protects signature ink: a dark flood is
-            accepted only when it covers a large share of the frame (a desk),
-            a light flood only past a small share (paper/shadow)."""
-            w, h = image.size
-            area = w * h or 1
-            for xy in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
-                seed = image.getpixel(xy)
-                lum = (seed[0] * 299 + seed[1] * 587 + seed[2] * 114) // 1000
-                trial = image.copy()
-                ImageDraw.floodfill(trial, xy, (255, 255, 255), thresh=thresh)
-                diff = ImageChops.difference(image, trial).convert("L")
-                diff = diff.point(lambda p: 255 if p else 0)
-                frac = diff.histogram()[255] / area if diff.getbbox() else 0.0
-                if frac >= (dark_min_frac if lum < 150 else min_frac):
-                    image = trial
-            return image
-
-        img = whiten_border(img, 80, 0.03, 0.25)
-
-        lum = img.convert("L")
-        hist = lum.histogram()
-        hist[255] = 0  # exclude exact white (already-flooded background)
-        total = sum(hist)
-
-        # Otsu: split paper vs ink bimodally, then map each mode's mean so
-        # paper becomes pure white and ink deepens - far more reliable than
-        # fixed percentiles when the signature is small on the page.
-        weighted = sum(i * n for i, n in enumerate(hist)) if total >= 200 else 0
-        sum_b, w_b, best_t, best_var = 0, 0, 0, -1.0
-        if total >= 200:
-            for t in range(256):
-                w_b += hist[t]
-                if w_b == 0:
-                    continue
-                w_f = total - w_b
-                if w_f == 0:
-                    break
-                sum_b += t * hist[t]
-                m_b = sum_b / w_b
-                m_f = (weighted - sum_b) / w_f
-                var = w_f * w_b * (m_b - m_f) ** 2
-                if var > best_var:
-                    best_var, best_t = var, t
-        below = sum(hist[:best_t]) or 0
-        above = total - below
-        black = (sum(i * hist[i] for i in range(best_t)) / below) if below else 0.0
-        white = (sum(i * hist[i] for i in range(best_t, 256)) / above) if above else 255.0
-        if total >= 200 and white - black >= 30:
-            scale = 255.0 / (white - black)
-
-            def _map(v):
-                mapped = max(0, min(255, int((v - black) * scale)))
-                return 255 if mapped >= 220 else mapped
-
-            lut = [_map(v) for v in range(256)]
-            img = Image.merge("RGB", [band.point(lut) for band in img.split()])
-
-        img = whiten_border(img, 45, 0.01, 0.03)
-
-        mask = img.convert("L").point(lambda p: 255 if p < 220 else 0)
-        bbox = mask.getbbox()
-        if bbox:
-            pad = 6
-            img = img.crop((
-                max(0, bbox[0] - pad), max(0, bbox[1] - pad),
-                min(img.width, bbox[2] + pad), min(img.height, bbox[3] + pad),
-            ))
-
-        resample = getattr(Image, "Resampling", Image).LANCZOS
-        target_w, target_h = 640, 240
-        scale = min(target_w / img.width, target_h / img.height, 8.0)
-        if abs(scale - 1.0) > 0.02:
-            img = img.resize(
-                (max(1, round(img.width * scale)), max(1, round(img.height * scale))),
-                resample,
-            )
-            if scale > 1.0:
-                img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=110, threshold=3))
-
+        img = _premium_signature_image(file)
         buf = BytesIO()
         img.save(buf, format="PNG", optimize=True)
-        return ContentFile(buf.getvalue(), name=f"signature_{teacher_pk or 'x'}_{int(_time.time())}.png")
+        # uuid suffix: two uploads in the same second must never collide,
+        # or Django storage renames the second file and the old-file cleanup
+        # comparison gets confused, leaving orphans on disk.
+        name = f"signature_{teacher_pk or 'x'}_{int(_time.time())}_{_uuid.uuid4().hex[:8]}.png"
+        return ContentFile(buf.getvalue(), name=name)
     except Exception:
+        pass
+    # Ladder step 2: re-encode whatever Pillow CAN open as web-safe PNG.
+    try:
+        import time as _time
+        import uuid as _uuid
+        from io import BytesIO
+        from PIL import Image, ImageOps
+        from django.core.files.base import ContentFile
+
+        _ensure_heif()
+        file.seek(0)
+        raw = Image.open(file)
+        raw = ImageOps.exif_transpose(raw)
+        if raw.mode in ('RGBA', 'LA', 'PA') or (raw.mode == 'P' and 'transparency' in raw.info):
+            raw = raw.convert('RGBA')
+            bg = Image.new('RGBA', raw.size, (255, 255, 255, 255))
+            bg.alpha_composite(raw)
+            raw = bg.convert('RGB')
+        elif raw.mode != 'RGB':
+            raw = raw.convert('RGB')
+        buf = BytesIO()
+        raw.save(buf, format='PNG', optimize=True)
+        name = f"signature_{teacher_pk or 'x'}_{int(_time.time())}_{_uuid.uuid4().hex[:8]}.png"
+        return ContentFile(buf.getvalue(), name=name)
+    except Exception:
+        pass
+    # Ladder step 3: nothing decodable — return the original untouched.
+    try:
+        file.seek(0)
+    except Exception:
+        pass
+    return file
+
+
+def save_school_signature(school, upload):
+    """Validate, clean, store and persist a headteacher signature.
+
+    Always used for School.headteacher_signature writes. Guarantees:
+      * rejects oversized / wrong-format uploads with a clear message
+      * old file is removed from storage (no orphan pile-up)
+      * premium clean pipeline produces a tight transparent PNG
+      * School object cache is dropped so the next request sees the new file
+      * returns (error_message, signature_url) — never raises
+
+    Callers must not re-assign school.headteacher_signature themselves.
+    """
+    from ..school_scope import invalidate_school_cache
+
+    if not school:
+        return 'School context is required.', ''
+    if not upload:
+        return 'No signature file received.', ''
+
+    err = validate_signature_upload(upload)
+    if err:
+        return err, ''
+
+    old_name = (school.headteacher_signature.name if school.headteacher_signature else '') or ''
+
+    try:
+        polished = polish_signature_upload(upload, school.pk)
+        school.headteacher_signature = polished
+        school.save(update_fields=['headteacher_signature'])
+    except Exception:
+        # Restore any half-assigned state so a failed save never blanks
+        # a previously working signature.
         try:
-            file.seek(0)
+            school.refresh_from_db()
         except Exception:
             pass
-        return file
+        return 'Could not save the signature image. Please try again.', ''
+
+    # Drop the old file only after a successful save so a crash mid-save
+    # never loses the only copy of the previous signature.
+    if old_name:
+        discard_media_file(old_name)
+
+    # Belt-and-braces: the post_save signal already clears this, but the
+    # middleware cache may still hold the pre-save instance within this
+    # same process if the signal ran before we set the field on a
+    # different identity. Clear again and refresh in memory.
+    invalidate_school_cache(school.pk)
+    try:
+        school.refresh_from_db()
+    except Exception:
+        pass
+
+    url = ''
+    try:
+        if school.headteacher_signature:
+            url = school.headteacher_signature.url
+    except Exception:
+        url = ''
+    return None, url
+
+
+def polish_signature_preview(file):
+    """Run the premium clean and return ``(data_url, width, height)`` for a
+    live preview, without touching storage. Uses the exact same pipeline as
+    ``polish_signature_upload`` so what the user previews is what is saved.
+    Raises on failure; callers fall back to showing the raw upload."""
+    import base64
+    from io import BytesIO
+    from PIL import Image
+
+    img = _premium_signature_image(file)
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{b64}", img.width, img.height
 
 
 def user_can_access_class_stream(user, grade, stream, require_class_teacher=False):
@@ -1630,19 +2317,23 @@ def get_subject_marks(class_name, stream, subject, term, exam_type, year):
     return marks
 
 
-def get_religion_aware_student_count(class_name, stream, subject):
+def get_religion_aware_student_count(class_name, stream, subject, school=None):
     """Return the count of students eligible for the given subject."""
     subject_code = subject.code if hasattr(subject, 'code') else subject
     subject_section = getattr(subject, 'school_section', None)
+    # Always tenant-scope the count: approve/publish gates must never sum
+    # learners from another school. Subject carries its own school FK, so
+    # this holds even when the ContextVar fallback is unavailable (tasks).
+    school = school or getattr(subject, 'school', None) or get_current_school()
     students = Student.all_objects.filter(class_name=class_name, stream=stream, is_active=True)
+    if not school:
+        return 0
+    students = students.filter(school=school)
     if subject_section:
         students = students.filter(school_section=subject_section)
     if subject_code in RELIGION_SUBJECTS:
         religion_tag = RELIGION_TAG.get(subject_code, '')
-        school = get_current_school()
-        religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag, is_active=True)
-        if school:
-            religion_filter['school'] = school
+        religion_filter = dict(class_name=class_name, stream=stream, religion=religion_tag, is_active=True, school=school)
         if subject_section:
             religion_filter['school_section'] = subject_section
         if Student.all_objects.filter(**religion_filter).exists():
@@ -2633,14 +3324,12 @@ def build_report_card_context(
     class_teacher_signature = ct_q.signature.url if (ct_q and ct_q.signature) else ""
 
     # ── 11. Master comments (class teacher + headteacher) ─────────────────────
-    master_comment = ClassTeacherMasterComment.objects.filter(
-        school=school, year=year, term=term, grade=grade,
-        stream=stream, exam_type=db_assessment,
-    ).first()
-    school_ht_comment = SchoolHeadteacherComment.objects.filter(
-        school=school, year=year, term=term, exam_type=db_assessment,
-        school_section=sample.school_section,
-    ).first()
+    master_comment = fetch_class_teacher_comment(
+        school, year, term, db_assessment, grade=grade, stream=stream,
+    )
+    school_ht_comment = fetch_school_ht_comment(
+        school, year, term, db_assessment, section=sample.school_section,
+    )
 
     # ── 12. Build per-student context dicts ───────────────────────────────────
     # Lower-primary subjects (ELA/KLA/MA/ILA) need their own short codes —
@@ -2770,17 +3459,15 @@ def build_report_card_context(
         opening_date         = None
 
         if master_comment and overall_plv not in ('', '-'):
-            ct_field = f"comment_{overall_plv.lower()}"
-            live_ct  = getattr(master_comment, ct_field, '') or ''
-            if live_ct.strip():
+            live_ct = extract_ct_remark(master_comment, overall_plv)
+            if live_ct:
                 class_teacher_remark = live_ct
             elif marks and marks[0].frozen_class_teacher_comment:
                 class_teacher_remark = marks[0].frozen_class_teacher_comment
 
         if school_ht_comment and overall_plv not in ('', '-'):
-            ht_field = f"ht_comment_{overall_plv.lower()}"
-            live_ht  = getattr(school_ht_comment, ht_field, '') or ''
-            if live_ht.strip():
+            live_ht = extract_ht_remark(school_ht_comment, overall_plv)
+            if live_ht:
                 headteacher_comment = live_ht
             elif marks and marks[0].frozen_headteacher_comment:
                 headteacher_comment = marks[0].frozen_headteacher_comment
@@ -2815,6 +3502,7 @@ def build_report_card_context(
             'class_teacher_name':   class_teacher_name,
             'class_teacher_signature': class_teacher_signature,
             'headteacher_comment':  headteacher_comment,
+            'headteacher_signature': school.headteacher_signature.url if getattr(school, 'headteacher_signature', None) else '',
             'closing_date':         closing_date,
             'opening_date':         opening_date,
             'position':             position,
@@ -3065,55 +3753,3 @@ def invalidate_report_forms_cache(school_id, grade=None, stream=None, exam_id=No
     else:
         # Evict all report_forms cache entries for this school
         _delete_cache_key_pattern(f"report_forms:{school_id}:*")
-
-
-def freeze_comments_for_student_marks(marks, class_teacher_remark, headteacher_comment,
-                                       master_comment, school_ht_comment, freeze_threshold, now):
-    """
-    Freeze comments onto Mark records when the master comment has exceeded the
-    freeze threshold. This is a WRITE operation that must be called from
-    background tasks or explicit save actions — never from display views.
-
-    Returns dict with frozen values to use for display.
-    """
-    from ..models import Mark
-    import datetime
-
-    result = {
-        'class_teacher_remark': class_teacher_remark,
-        'headteacher_comment': headteacher_comment,
-        'closing_date': master_comment.closing_date if master_comment else None,
-        'opening_date': master_comment.opening_date if master_comment else None,
-    }
-
-    if master_comment and class_teacher_remark:
-        ct_field = f"comment_{class_teacher_remark.lower()}" if class_teacher_remark else None
-        if ct_field:
-            live_ct = getattr(master_comment, ct_field, "") or ""
-            if live_ct.strip():
-                age = now - (master_comment.last_modified.replace(tzinfo=datetime.timezone.utc)
-                             if master_comment.last_modified.tzinfo is None
-                             else master_comment.last_modified)
-                if age >= freeze_threshold and marks:
-                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
-                        frozen_class_teacher_comment=live_ct,
-                        frozen_closing_date=master_comment.closing_date,
-                        frozen_opening_date=master_comment.opening_date,
-                    )
-                    result['closing_date'] = master_comment.closing_date
-                    result['opening_date'] = master_comment.opening_date
-
-    if school_ht_comment and headteacher_comment:
-        ht_field = f"ht_comment_{headteacher_comment.lower()}" if headteacher_comment else None
-        if ht_field:
-            live_ht = getattr(school_ht_comment, ht_field, "") or ""
-            if live_ht.strip():
-                age = now - (school_ht_comment.last_modified.replace(tzinfo=datetime.timezone.utc)
-                             if school_ht_comment.last_modified.tzinfo is None
-                             else school_ht_comment.last_modified)
-                if age >= freeze_threshold and marks:
-                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
-                        frozen_headteacher_comment=live_ht,
-                    )
-
-    return result

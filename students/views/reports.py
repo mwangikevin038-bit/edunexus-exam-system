@@ -37,6 +37,10 @@ from .helpers import (
     calculate_primary_plv,
     calculate_report_plv,
     dedup_marks_latest_by_code,
+    extract_ct_remark,
+    extract_ht_remark,
+    fetch_class_teacher_comment,
+    fetch_school_ht_comment,
     get_cached_class_averages,
     get_class_teacher_scope,
     get_performance_level,
@@ -708,7 +712,18 @@ def _build_individual_report_context(request, school, student, is_admin_view):
         year = str(datetime.date.today().year)
     term       = request.GET.get('term', 'Term 1')
     assessment = request.GET.get('assessment', 'opener')
-    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
+    # Resolve the assessment to the Exam's REAL name the same way the comment
+    # SAVE path does (faculty.resolve_exam_type_name). The old
+    # ASSESSMENT_MAP.get only turned slugs into short labels ('opener'→'Opener',
+    # 'end'→'End Term') that never equal a real Exam.name ('Opener Assessment',
+    # 'End of Term Assessment') — so a hot-linked URL missing the param, or a
+    # print_label leaking into the next request, silently matched no marks and
+    # no comments. Section-scoped so a PRIMARY exam never resolves to a JSS one.
+    from .faculty import resolve_exam_type_name
+    db_assessment = resolve_exam_type_name(
+        school, int(year) if year else None, term, assessment,
+        section=student.school_section,
+    )
 
     # Term-date fallback for closing / opening dates
     _term_closing, _term_opening = resolve_term_dates(school, int(year), term)
@@ -896,64 +911,40 @@ def _build_individual_report_context(request, school, student, is_admin_view):
 
     # PLV — read from ExamSummary cache
     overall_plv = summary.overall_plv if summary else ('-' if assessed_subjects == 0 else calculate_primary_plv(total_marks, assessed_subjects, sub_section=student.sub_section, school=school, section=student.school_section) if is_primary else calculate_report_plv(total_points, total_marks, school=school, section=student.school_section))
-    ct_comment_mgr = ClassTeacherMasterComment.all_objects if is_admin_view else ClassTeacherMasterComment.objects
-    master_comment = ct_comment_mgr.filter(
-        school=school,
-        year=year, term=term, grade=student.class_name,
-        stream=student.stream, exam_type=db_assessment,
-    ).first()
-    ht_comment_mgr = SchoolHeadteacherComment.all_objects if is_admin_view else SchoolHeadteacherComment.objects
-    school_ht_comment = ht_comment_mgr.filter(
-        school=school,
-        year=year, term=term, exam_type=db_assessment,
-        school_section=student.school_section,
-    ).first()
+    # Always all_objects via bulletproof fetcher — scoped .objects hid JSS
+    # comments when the viewer's workspace was PRIMARY.
+    master_comment = fetch_class_teacher_comment(
+        school, year, term, db_assessment,
+        grade=student.class_name, stream=student.stream,
+    )
+    # Bulletproof HT lookup: exact → section normalize → fuzzy exam_type →
+    # any for term/year. all_objects so admin/section overrides never miss.
+    school_ht_comment = fetch_school_ht_comment(
+        school, year, term, db_assessment, section=student.school_section,
+    )
 
-    # Comment logic: blank by default, live while editable (< 30 days), frozen after
+    # Comment logic: the LIVE comment the teacher saved always wins, so an
+    # edit (or a delete-then-replace) is reflected immediately and sticks.
+    # Frozen Mark values are only a fallback for when the live box is blank,
+    # and they are cleared on every comment save — never written here (a GET
+    # render must never mutate the DB, and stale frozen text must not haunt
+    # a card after the teacher blanks a box).
     class_teacher_remark = ""
     headteacher_comment = ""
     closing_date = None
     opening_date = None
-    freeze_threshold = datetime.timedelta(days=30)
-    now = datetime.datetime.now(datetime.timezone.utc)
 
-    if master_comment and overall_plv != '-':
-        ct_comment_field = f"comment_{overall_plv.lower()}"
-        live_ct = getattr(master_comment, ct_comment_field, "") or ""
-        if live_ct.strip():
-            age = now - (master_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if master_comment.last_modified.tzinfo is None else master_comment.last_modified)
-            if age < freeze_threshold:
-                class_teacher_remark = live_ct
-            else:
-                class_teacher_remark = live_ct
-                for m in marks_list:
-                    if not m.frozen_class_teacher_comment:
-                        m.frozen_class_teacher_comment = live_ct
-                        m.frozen_closing_date = master_comment.closing_date
-                        m.frozen_opening_date = master_comment.opening_date
-                Mark.all_objects.filter(id__in=[m.id for m in marks_list]).update(
-                    frozen_class_teacher_comment=live_ct,
-                    frozen_closing_date=master_comment.closing_date,
-                    frozen_opening_date=master_comment.opening_date,
-                )
+    if master_comment and overall_plv not in ('', '-'):
+        live_ct = extract_ct_remark(master_comment, overall_plv)
+        if live_ct:
+            class_teacher_remark = live_ct
         elif marks_list and marks_list[0].frozen_class_teacher_comment:
             class_teacher_remark = marks_list[0].frozen_class_teacher_comment
 
-    if school_ht_comment and overall_plv != '-':
-        ht_comment_field = f"ht_comment_{overall_plv.lower()}"
-        live_ht = getattr(school_ht_comment, ht_comment_field, "") or ""
-        if live_ht.strip():
-            age = now - (school_ht_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if school_ht_comment.last_modified.tzinfo is None else school_ht_comment.last_modified)
-            if age < freeze_threshold:
-                headteacher_comment = live_ht
-            else:
-                headteacher_comment = live_ht
-                for m in marks_list:
-                    if not m.frozen_headteacher_comment:
-                        m.frozen_headteacher_comment = live_ht
-                Mark.all_objects.filter(id__in=[m.id for m in marks_list]).update(
-                    frozen_headteacher_comment=live_ht,
-                )
+    if school_ht_comment and overall_plv not in ('', '-'):
+        live_ht = extract_ht_remark(school_ht_comment, overall_plv)
+        if live_ht:
+            headteacher_comment = live_ht
         elif marks_list and marks_list[0].frozen_headteacher_comment:
             headteacher_comment = marks_list[0].frozen_headteacher_comment
 
@@ -1002,7 +993,15 @@ def _build_individual_report_context(request, school, student, is_admin_view):
         'opening_date':        opening_date,
         'selected_year':       year,
         'selected_term':       term,
-        'selected_assessment': ASSESSMENT_MAP.get(assessment, assessment),
+        # `selected_assessment` is ALWAYS the real Exam.name (db_assessment) so
+        # the Download-PDF / bulk links re-send a value that matches stored
+        # marks and comments. A custom print_label is display-only and must
+        # never ride back into the next request's `assessment` param (it used
+        # to overwrite this field, so a label like "End of Term" leaked into
+        # the link and matched no exam → empty PDF).
+        'selected_assessment': db_assessment,
+        'selected_assessment_raw': db_assessment,
+        'print_label':         request.GET.get('print_label', '').strip(),
         'selected_grade':      student.class_name,
         'selected_stream':     student.stream,
         'today':               datetime.date.today(),
@@ -1025,6 +1024,7 @@ def _build_individual_report_context(request, school, student, is_admin_view):
             'class_teacher_name':   class_teacher_name,
             'class_teacher_signature': class_teacher_signature,
             'headteacher_comment': headteacher_comment,
+            'headteacher_signature': school.headteacher_signature.url if getattr(school, 'headteacher_signature', None) else '',
             'closing_date': closing_date,
             'opening_date': opening_date,
             'position': position, 'position_display': position_display, 'class_count': class_count,
@@ -1337,7 +1337,6 @@ def bulk_report_cards(request):
     year          = request.GET.get('year', datetime.date.today().year)
     term          = request.GET.get('term', 'Term 1')
     assessment    = request.GET.get('assessment', 'opener')
-    db_assessment = ASSESSMENT_MAP.get(assessment, assessment)
 
     # Term-date fallback for closing / opening dates
     _term_closing, _term_opening = resolve_term_dates(school, int(year), term)
@@ -1347,6 +1346,13 @@ def bulk_report_cards(request):
     if not sample:
         messages.error(request, "No valid students selected.")
         return redirect('report_card_select')
+    # Resolve assessment to the Exam's REAL name (same as the save path) so a
+    # slug/label/missing param can never mismatch the stored marks/comments.
+    from .faculty import resolve_exam_type_name
+    db_assessment = resolve_exam_type_name(
+        school, int(year) if year else None, term, assessment,
+        section=sample.school_section,
+    )
     if not user_can_access_class_stream(request.user, sample.class_name, sample.stream, require_class_teacher=True):
         messages.error(request, "You are not allowed to print bulk report cards for this class stream.")
         return redirect('report_card_select')
@@ -1454,22 +1460,14 @@ def bulk_report_cards(request):
     class_teacher_name = ct_q.get_full_title() if ct_q else ""
     class_teacher_signature = ct_q.signature.url if (ct_q and ct_q.signature) else ""
 
-    ct_comment_mgr = ClassTeacherMasterComment.all_objects if is_admin_view else ClassTeacherMasterComment.objects
-    master_comment = ct_comment_mgr.filter(
-        school=school,
-        year=year, term=term, grade=sample.class_name,
-        stream=sample.stream, exam_type=db_assessment,
-    ).first()
+    master_comment = fetch_class_teacher_comment(
+        school, year, term, db_assessment,
+        grade=sample.class_name, stream=sample.stream,
+    )
 
-    ht_comment_mgr = SchoolHeadteacherComment.all_objects if is_admin_view else SchoolHeadteacherComment.objects
-    school_ht_comment = ht_comment_mgr.filter(
-        school=school,
-        year=year, term=term, exam_type=db_assessment,
-        school_section=sample.school_section,
-    ).first()
-
-    freeze_threshold = datetime.timedelta(days=30)
-    now = datetime.datetime.now(datetime.timezone.utc)
+    school_ht_comment = fetch_school_ht_comment(
+        school, year, term, db_assessment, section=sample.school_section,
+    )
 
     student_marks_list = []
     for student in selected_students:
@@ -1531,35 +1529,17 @@ def bulk_report_cards(request):
         closing_date = None
         opening_date = None
 
-        if master_comment and overall_plv != '-':
-            ct_comment_field = f"comment_{overall_plv.lower()}"
-            live_ct = getattr(master_comment, ct_comment_field, "") or ""
-            if live_ct.strip():
-                age = now - (master_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if master_comment.last_modified.tzinfo is None else master_comment.last_modified)
-                if age < freeze_threshold:
-                    class_teacher_remark = live_ct
-                else:
-                    class_teacher_remark = live_ct
-                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
-                        frozen_class_teacher_comment=live_ct,
-                        frozen_closing_date=master_comment.closing_date,
-                        frozen_opening_date=master_comment.opening_date,
-                    )
+        if master_comment and overall_plv not in ('', '-'):
+            live_ct = extract_ct_remark(master_comment, overall_plv)
+            if live_ct:
+                class_teacher_remark = live_ct
             elif marks and marks[0].frozen_class_teacher_comment:
                 class_teacher_remark = marks[0].frozen_class_teacher_comment
 
-        if school_ht_comment and overall_plv != '-':
-            ht_comment_field = f"ht_comment_{overall_plv.lower()}"
-            live_ht = getattr(school_ht_comment, ht_comment_field, "") or ""
-            if live_ht.strip():
-                age = now - (school_ht_comment.last_modified.replace(tzinfo=datetime.timezone.utc) if school_ht_comment.last_modified.tzinfo is None else school_ht_comment.last_modified)
-                if age < freeze_threshold:
-                    headteacher_comment = live_ht
-                else:
-                    headteacher_comment = live_ht
-                    Mark.all_objects.filter(id__in=[m.id for m in marks]).update(
-                        frozen_headteacher_comment=live_ht,
-                    )
+        if school_ht_comment and overall_plv not in ('', '-'):
+            live_ht = extract_ht_remark(school_ht_comment, overall_plv)
+            if live_ht:
+                headteacher_comment = live_ht
             elif marks and marks[0].frozen_headteacher_comment:
                 headteacher_comment = marks[0].frozen_headteacher_comment
 
@@ -1591,6 +1571,7 @@ def bulk_report_cards(request):
             'class_teacher_name':   class_teacher_name,
             'class_teacher_signature': class_teacher_signature,
             'headteacher_comment': headteacher_comment,
+            'headteacher_signature': school.headteacher_signature.url if getattr(school, 'headteacher_signature', None) else '',
             'closing_date':        closing_date,
             'opening_date':        opening_date,
             'position':            position,
@@ -1615,7 +1596,12 @@ def bulk_report_cards(request):
         'student_marks_list': student_marks_list,
         'selected_year':      year,
         'selected_term':      term,
+        # Real Exam.name only — a custom print_label is display-only and must
+        # never overwrite this (it used to leak into the Download-PDF / bulk
+        # links as the `assessment` param, matching no exam → empty PDF).
         'selected_assessment': db_assessment,
+        'selected_assessment_raw': db_assessment,
+        'print_label':        request.GET.get('print_label', '').strip(),
         'selected_grade':     sample.class_name if sample else '',
         'selected_stream':    sample.stream if sample else '',
         'class_count':        total_class_count,
@@ -2105,6 +2091,51 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
     is_primary = section == 'PRIMARY' or is_lower_primary
     is_combined = stream == 'Combined' or not stream
 
+    # ── Publish gate: no published submissions → no merit list ──────────
+    # The exam dropdown already hides unpublished exams, but a crafted URL
+    # or a stale Redis key must not resurrect them. Require at least one
+    # formally published MarkSubmission for this (grade, exam) before any
+    # cache/snapshot/live path runs.
+    from ..models import MarkSubmission as _MS
+    from django.db.models import Q as _Q
+    _pub_gate = _Q(
+        school=school,
+        year=exam.year,
+        term=exam.term,
+        exam_name=exam.name,
+        class_name=grade,
+        status='published',
+    )
+    if stream and stream != 'Combined':
+        _pub_gate &= _Q(stream=stream)
+    if not _MS.all_objects.filter(_pub_gate).exists():
+        return {
+            'broadsheet': [],
+            'published_subjects': [],
+            'ordered_levels': [],
+            'analysis_rows': [],
+            'student_count': 0,
+            'year': exam.year,
+            'term': exam.term,
+            'selected_assessment': exam.name,
+            'selected_assessment_raw': exam.name,
+            'selected_grade': grade,
+            'selected_stream': stream,
+            'exam_not_published': True,
+            'section_accent': '#305CDE',
+            'grade_descriptors': [],
+            'max_points_per_subj': 8,
+            'sample_school_section': 'JSS',
+            'sample_sub_section': None,
+            'boys_count': 0,
+            'girls_count': 0,
+            'stream_average': 0,
+            'gender_analysis': {},
+            'class_count': 0,
+            'closing_date': None,
+            'opening_date': None,
+        }
+
     # Resolve actual streams for Combined / no-stream mode
     actual_streams = []
     if is_combined:
@@ -2181,12 +2212,14 @@ def build_broadsheet_for_merit_list(request, school, grade, stream, exam, force_
                 grade, s_name, exam.year, exam.term, exam.name,
                 sub_section=active_sub if is_primary else None,
                 is_admin=is_admin_view,
+                require_published=True,
             )
     else:
         published_subject_codes = get_published_subject_codes(
             grade, stream, exam.year, exam.term, exam.name,
             sub_section=active_sub if is_primary else None,
             is_admin=is_admin_view,
+            require_published=True,
         )
     published_subjects_qs = Subject.all_objects.filter(school=school, code__in=published_subject_codes)
     subject_label_map = {

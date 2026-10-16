@@ -565,7 +565,8 @@ function printSelectedReports() {
         exam_id: '{{ selected_exam_id|default:"" }}',
         year: '{{ selected_year|default:"" }}',
         term: '{{ selected_term|default:""|urlencode }}',
-        assessment: '{{ selected_assessment|default:""|urlencode }}'
+        assessment: '{{ selected_assessment|default:""|urlencode }}',
+        print_label: (new URLSearchParams(window.location.search).get('print_label') || '')
     });
 }
 

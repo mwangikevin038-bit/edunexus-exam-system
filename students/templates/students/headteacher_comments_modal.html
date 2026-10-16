@@ -270,9 +270,96 @@
             .rc-card-body { padding: 16px 18px 20px; }
             .rc-card-foot { padding: 14px 18px; }
         }
+
+        /* ── Signature capture widget ──────────────────────────── */
+        .htsig-box {
+            display: flex; align-items: center; gap: 14px; margin-top: 8px;
+            padding: 12px; border: 1.5px dashed #E2E8F0; border-radius: 14px;
+            background: #F8FAFC; flex-wrap: wrap;
+        }
+        .htsig-preview {
+            min-width: 150px; min-height: 54px; display: flex; align-items: center;
+            justify-content: center; background: #FFFFFF; border: 1px solid #F1F5F9;
+            border-radius: 10px; padding: 6px 10px;
+        }
+        .htsig-preview img { max-height: 72px; max-width: 240px; object-fit: contain; display: block; }
+        .htsig-preview .htsig-empty { font-size: 0.75rem; color: #94A3B8; font-style: italic; }
+        .htsig-actions { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 150px; }
+        .htsig-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            border: none; border-radius: 10px; padding: 10px 14px; font-size: 0.78rem;
+            font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.15s, box-shadow 0.15s;
+        }
+        .htsig-btn-primary { background: linear-gradient(135deg, #199E41, #24E55E); color: #fff; box-shadow: 0 3px 10px rgba(36,229,94,0.28); }
+        .htsig-btn-primary:active { box-shadow: 0 1px 6px rgba(36,229,94,0.2); }
+        .htsig-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; pointer-events: none; }
+        .htsig-btn-ghost { background: #fff; color: #475569; border: 1.5px solid #E2E8F0; }
+        .htsig-btn-ghost:active { background: #F1F5F9; }
+        .htsig-row { display: flex; gap: 8px; }
+        .htsig-row .htsig-btn { flex: 1; }
+        .htsig-note { font-size: 0.68rem; color: #94A3B8; margin-top: 8px; width: 100%; }
+
+        /* ── Capture overlay (second-level modal) ──────────────── */
+        .htcap-overlay {
+            position: fixed; inset: 0; z-index: 10000; background: rgba(15,23,42,0.55);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center; padding: 16px;
+            opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .htcap-overlay.open { opacity: 1; visibility: visible; }
+        .htcap-panel {
+            width: 100%; max-width: 400px; background: #fff; border-radius: 18px;
+            box-shadow: 0 24px 64px rgba(15,23,42,0.28); overflow: hidden;
+            transform: translateY(12px) scale(0.98); transition: transform 0.2s cubic-bezier(0.16,1,0.3,1);
+            max-height: 92dvh; display: flex; flex-direction: column;
+        }
+        .htcap-overlay.open .htcap-panel { transform: translateY(0) scale(1); }
+        .htcap-head { display: flex; align-items: center; justify-content: space-between; padding: 15px 17px; border-bottom: 1px solid #F1F5F9; flex-shrink: 0; }
+        .htcap-title { font-size: 0.92rem; font-weight: 800; color: #0F172A; margin: 0; display: flex; align-items: center; gap: 8px; }
+        .htcap-title i { font-size: 17px; color: #199E41; }
+        .htcap-close { width: 32px; height: 32px; border: none; border-radius: 8px; background: #F1F5F9; color: #64748B; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+        .htcap-close:active { background: #E2E8F0; }
+        .htcap-body { padding: 16px; overflow-y: auto; flex: 1; }
+        .htcap-foot { display: flex; gap: 10px; padding: 13px 16px; border-top: 1px solid #F1F5F9; background: #FAFBFC; flex-shrink: 0; }
+        .htcap-foot[hidden] { display: none; }
+        .htcap-foot .htsig-btn { flex: 1; }
+        .htcap-step { display: none; }
+        .htcap-step.active { display: block; }
+        .htcap-stage-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #94A3B8; margin: 0 0 10px; }
+        .htcap-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .htcap-choice {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+            padding: 24px 10px; border: 1.5px solid #E2E8F0; border-radius: 14px; background: #F8FAFC;
+            cursor: pointer; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+            color: #0F172A; font-family: inherit;
+        }
+        .htcap-choice:active { border-color: #24E55E; background: #F0FAF3; box-shadow: 0 0 0 3px rgba(36,229,94,0.12); }
+        .htcap-choice-icon { width: 48px; height: 48px; border-radius: 50%; background: #E8F5E9; display: flex; align-items: center; justify-content: center; color: #199E41; }
+        .htcap-choice-icon i { font-size: 24px; }
+        .htcap-choice-label { font-size: 0.8rem; font-weight: 700; }
+        .htcap-choice-hint { font-size: 0.66rem; color: #94A3B8; font-weight: 500; text-align: center; line-height: 1.3; }
+        .htcap-stage { position: relative; background: #0F172A; border-radius: 14px; overflow: hidden; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; }
+        .htcap-stage video, .htcap-stage canvas, .htcap-stage img { width: 100%; height: 100%; object-fit: contain; display: block; background: #0F172A; }
+        .htcap-guide { position: absolute; inset: 12% 6%; border: 2px dashed rgba(255,255,255,0.35); border-radius: 8px; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+        .htcap-guide span { color: rgba(255,255,255,0.55); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+        .htcap-review-stage {
+            position: relative; border: 1.5px solid #E2E8F0; border-radius: 12px; min-height: 110px;
+            display: flex; align-items: center; justify-content: center; padding: 14px;
+            background-image: linear-gradient(45deg,#F8FAFC 25%,transparent 25%,transparent 75%,#F8FAFC 75%), linear-gradient(45deg,#F8FAFC 25%,transparent 25%,transparent 75%,#F8FAFC 75%);
+            background-size: 16px 16px; background-position: 0 0, 8px 8px;
+        }
+        .htcap-review-stage img { max-width: 100%; max-height: 110px; object-fit: contain; display: block; }
+        .htcap-review-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,0.9); border-radius: 12px; color: #199E41; font-size: 0.76rem; font-weight: 600; }
+        .htcap-review-loading i { font-size: 17px; animation: htcapSpin 1s linear infinite; }
+        @keyframes htcapSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+        .htcap-review-note { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 0.7rem; color: #047857; font-weight: 600; }
+        .htcap-review-note i { font-size: 13px; color: #10B981; }
+        .htcap-compare { margin-top: 10px; }
+        .htcap-compare summary { font-size: 0.7rem; color: #64748B; cursor: pointer; font-weight: 600; }
+        .htcap-compare img { margin-top: 8px; max-width: 100%; max-height: 84px; object-fit: contain; border: 1px solid #F1F5F9; border-radius: 8px; padding: 6px; background: #fff; }
     </style>
 
-    <form id="htCommentsForm" method="POST" action="{% url 'manage_headteacher_comments' %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}">
+    <form id="htCommentsForm" method="POST" action="{% url 'manage_headteacher_comments' %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}&section={{ selected_section }}" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="rc-card">
         <div class="rc-card-head">
@@ -348,6 +435,22 @@
                 </div>
                 {% endif %}
             </div>
+
+            <div class="rc-label" style="margin-top:14px;">Principal Signature <span style="font-weight:400;color:#94a3b8;">(optional — appears on every report card)</span></div>
+            <div class="htsig-box">
+                <div class="htsig-preview" id="htSigPreview">
+                    {% if school_signature %}
+                    <img src="{{ school_signature }}" alt="Headteacher signature" id="htSigImg">
+                    {% else %}
+                    <span class="htsig-empty" id="htSigEmpty">No signature yet</span>
+                    {% endif %}
+                </div>
+                <div class="htsig-actions">
+                    <button type="button" class="htsig-btn htsig-btn-primary" id="htSigOpenBtn"><i class="ph ph-signature"></i> {% if school_signature %}Change Signature{% else %}Add Signature{% endif %}</button>
+                </div>
+                <div class="htsig-note">Take a photo or upload one — we clean the background, crop and sharpen it automatically so it looks crisp on every report card.</div>
+                <input type="file" name="headteacher_signature" id="htSigFileInput" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif" style="display:none">
+            </div>
         </div>
 
         <div class="rc-card-foot">
@@ -357,3 +460,339 @@
     </div>
     </form>
 </div>
+
+<!-- Signature capture overlay (second-level modal) -->
+<div class="htcap-overlay" id="htCapOverlay">
+    <div class="htcap-panel">
+        <div class="htcap-head">
+            <h3 class="htcap-title"><i class="ph-fill ph-signature"></i> Principal Signature</h3>
+            <button type="button" class="htcap-close" id="htCapClose" aria-label="Close"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="htcap-body">
+            <div class="htcap-step active" id="htCapStepChoice">
+                <p class="htcap-stage-label">Choose how to add your signature</p>
+                <div class="htcap-choice-grid">
+                    <button type="button" class="htcap-choice" id="htCapChoiceCamera">
+                        <span class="htcap-choice-icon"><i class="ph-fill ph-camera"></i></span>
+                        <span class="htcap-choice-label">Take Photo</span>
+                        <span class="htcap-choice-hint">Open the camera and capture your signature</span>
+                    </button>
+                    <button type="button" class="htcap-choice" id="htCapChoiceUpload">
+                        <span class="htcap-choice-icon"><i class="ph-fill ph-upload-simple"></i></span>
+                        <span class="htcap-choice-label">Upload Picture</span>
+                        <span class="htcap-choice-hint">Choose an image already on this device</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="htcap-step" id="htCapStepCamera">
+                <p class="htcap-stage-label">Position signature in the frame</p>
+                <div class="htcap-stage">
+                    <video id="htCapVideo" playsinline autoplay muted></video>
+                    <canvas id="htCapCanvas" hidden></canvas>
+                    <img id="htCapShot" alt="Captured signature" hidden>
+                    <div class="htcap-guide" id="htCapGuide"><span>Align signature</span></div>
+                </div>
+                <div class="htsig-row" style="margin-top:14px;" id="htCapCamActions">
+                    <button type="button" class="htsig-btn htsig-btn-ghost" id="htCapCamBack"><i class="ph ph-arrow-left"></i> Back</button>
+                    <button type="button" class="htsig-btn htsig-btn-primary" id="htCapCaptureBtn"><i class="ph ph-camera"></i> Capture</button>
+                </div>
+                <div class="htsig-row" style="margin-top:14px;" id="htCapConfirmActions" hidden>
+                    <button type="button" class="htsig-btn htsig-btn-ghost" id="htCapRetakeBtn"><i class="ph ph-arrow-counter-clockwise"></i> Retake</button>
+                    <button type="button" class="htsig-btn htsig-btn-primary" id="htCapUsePhotoBtn"><i class="ph ph-check"></i> Use Photo</button>
+                </div>
+            </div>
+
+            <div class="htcap-step" id="htCapStepReview">
+                <p class="htcap-stage-label">This is how it will appear on report cards</p>
+                <div class="htcap-review-stage">
+                    <img id="htCapReviewImg" alt="Cleaned signature preview">
+                    <div class="htcap-review-loading" id="htCapReviewLoading"><i class="ph ph-sparkle"></i> Cleaning your signature&hellip;</div>
+                </div>
+                <div class="htcap-review-note"><i class="ph-fill ph-shield-check"></i> Background removed, cropped and sharpened automatically.</div>
+                <div class="htcap-compare">
+                    <details>
+                        <summary>See original photo</summary>
+                        <img id="htCapReviewOriginal" alt="Original signature photo">
+                    </details>
+                </div>
+            </div>
+        </div>
+        <div class="htcap-foot" id="htCapFootChoice">
+            <button type="button" class="htsig-btn htsig-btn-ghost" id="htCapCancelBtn">Cancel</button>
+        </div>
+        <div class="htcap-foot" id="htCapFootReview" hidden>
+            <button type="button" class="htsig-btn htsig-btn-ghost" id="htCapReviewRetake"><i class="ph ph-arrow-counter-clockwise"></i> Start Over</button>
+            <button type="button" class="htsig-btn htsig-btn-primary" id="htCapReviewApply" disabled><i class="ph ph-check"></i> Use This Signature</button>
+        </div>
+    </div>
+</div>
+<video id="htCapNativeVideo" hidden></video>
+<input type="file" id="htCapNativeCapture" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif" capture="environment" style="display:none">
+<input type="file" id="htCapNativeUpload" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif" style="display:none">
+
+<script>
+(function () {
+    var overlay = document.getElementById('htCapOverlay');
+    if (!overlay) return;
+    var video = document.getElementById('htCapVideo');
+    var canvas = document.getElementById('htCapCanvas');
+    var shot = document.getElementById('htCapShot');
+    var guide = document.getElementById('htCapGuide');
+    var camActions = document.getElementById('htCapCamActions');
+    var confirmActions = document.getElementById('htCapConfirmActions');
+    var footChoice = document.getElementById('htCapFootChoice');
+    var footReview = document.getElementById('htCapFootReview');
+    var reviewImg = document.getElementById('htCapReviewImg');
+    var reviewOriginal = document.getElementById('htCapReviewOriginal');
+    var reviewLoading = document.getElementById('htCapReviewLoading');
+    var reviewApply = document.getElementById('htCapReviewApply');
+    var fileInput = document.getElementById('htSigFileInput');
+    var nativeCapture = document.getElementById('htCapNativeCapture');
+    var nativeUpload = document.getElementById('htCapNativeUpload');
+    var stream = null;
+    var pendingBlob = null;
+    var pendingName = 'signature.jpg';
+    var pendingCommitFile = null;
+    var pendingCommitDataUrl = null;
+
+    function showStep(name) {
+        ['htCapStepChoice', 'htCapStepCamera', 'htCapStepReview'].forEach(function (id) {
+            document.getElementById(id).classList.toggle('active', id === 'htCapStep' + name.charAt(0).toUpperCase() + name.slice(1));
+        });
+        footChoice.hidden = (name === 'review');
+        footReview.hidden = (name !== 'review');
+    }
+
+    function getCookie(name) {
+        var m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]+)'));
+        return m ? m[1] : null;
+    }
+
+    function stopCamera() {
+        if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+        video.srcObject = null;
+    }
+
+    function resetCamera() {
+        shot.hidden = true; shot.removeAttribute('src');
+        video.hidden = false; canvas.hidden = true;
+        guide.style.display = '';
+        camActions.hidden = false; confirmActions.hidden = true;
+        pendingBlob = null;
+    }
+
+    function resetReview() {
+        pendingCommitFile = null; pendingCommitDataUrl = null;
+        reviewImg.removeAttribute('src'); reviewOriginal.removeAttribute('src');
+        reviewLoading.style.display = 'flex';
+        reviewApply.disabled = true;
+    }
+
+    function openModal() {
+        overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        resetCamera(); resetReview();
+        showStep('choice');
+    }
+
+    function closeModal() {
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+        stopCamera();
+    }
+
+    function showError(title, body) {
+        // Reuse the choice step to surface a short inline message.
+        var step = document.getElementById('htCapStepChoice');
+        var existing = document.getElementById('htCapErrMsg');
+        if (existing) existing.remove();
+        var div = document.createElement('div');
+        div.id = 'htCapErrMsg';
+        div.style.cssText = 'margin-top:12px;padding:11px 13px;border-radius:10px;background:#FFF7ED;border:1px solid #FED7AA;color:#9A3412;font-size:0.76rem;line-height:1.45;';
+        div.innerHTML = '<strong style="display:block;margin-bottom:2px;color:#7C2D12">' + title + '</strong>' + body;
+        step.appendChild(div);
+        camActions.hidden = false; confirmActions.hidden = true;
+        var cap = document.getElementById('htCapCaptureBtn');
+        if (cap) cap.hidden = true;
+        stopCamera();
+    }
+
+    async function startCamera() {
+        resetCamera();
+        showStep('camera');
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showError('Camera preview unavailable', 'Opening your phone camera instead. If nothing opens, use Upload Picture.');
+            nativeCapture.click();
+            return;
+        }
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
+                audio: false
+            });
+            video.srcObject = stream; video.hidden = false; shot.hidden = true;
+            await video.play();
+        } catch (err) {
+            showError('Could not open camera preview', 'Trying your device camera app. Grant camera permission if prompted, or use Upload Picture.');
+            nativeCapture.click();
+        }
+    }
+
+    function captureFrame() {
+        if (!video.videoWidth) return;
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        shot.src = canvas.toDataURL('image/jpeg', 0.92);
+        shot.hidden = false; video.hidden = true; guide.style.display = 'none';
+        canvas.toBlob(function (blob) {
+            if (!blob) return;
+            pendingBlob = blob; pendingName = 'signature_' + Date.now() + '.jpg';
+            camActions.hidden = true; confirmActions.hidden = false;
+        }, 'image/jpeg', 0.92);
+    }
+
+    // Fetch the server-side clean so the user sees the EXACT result that will
+    // land on the report card. The response also carries a SERVER-decoded
+    // `raw` PNG so the original compare renders even when this browser cannot
+    // decode the file (HEIC phone photos). On failure the exact server error
+    // is surfaced — never swallowed — and saving still proceeds.
+    function openReview(file, originalDataUrl) {
+        if (!file) return;
+        // Reset FIRST, then assign — the old order (assign → reset) wiped
+        // pendingCommitFile immediately, leaving the green "Use This Signature"
+        // button as a permanent no-op (guard: if (!pendingCommitFile) return).
+        resetReview();
+        pendingCommitFile = file; pendingCommitDataUrl = originalDataUrl || null;
+        reviewOriginal.src = originalDataUrl || URL.createObjectURL(file);
+        showStep('review');
+        var fd = new FormData();
+        fd.append('signature', file);
+        fetch('/signature/preview/', {
+            method: 'POST', body: fd,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (j) {
+                return { status: r.status, j: j };
+            });
+        }).then(function (res) {
+            var j = res.j || {};
+            if (res.status < 200 || res.status >= 300 || !j.ok || !j.image) {
+                var e = new Error(j.error || 'preview failed');
+                e.srvError = j.error || '';
+                throw e;
+            }
+            reviewImg.src = j.image;
+            if (j.raw) reviewOriginal.src = j.raw;
+            reviewLoading.style.display = 'none';
+            reviewApply.disabled = false;
+        }).catch(function (err) {
+            reviewImg.src = pendingCommitDataUrl || reviewOriginal.src;
+            reviewLoading.style.display = 'none';
+            reviewApply.disabled = false;
+            if (err && err.srvError) sigToast(err.srvError, 'error');
+        });
+    }
+
+    function sigToast(msg, type) {
+        if (typeof window.showToast === 'function') { window.showToast(msg, type || 'info'); return; }
+        try { window.alert(msg); } catch (e) {}
+    }
+
+    function onNativeSelected(e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        var okTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/avif'];
+        if (okTypes.indexOf((file.type || '').toLowerCase()) === -1 && !/\.(png|jpe?g|webp|gif|hei[cf]|avif)$/i.test(file.name || '')) {
+            e.target.value = '';
+            showError('Unsupported file', 'Please choose a JPG, PNG, WEBP, GIF or HEIC image.');
+            showStep('choice');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            e.target.value = '';
+            showError('Image too large', 'Maximum size is 5MB.');
+            showStep('choice');
+            return;
+        }
+        openReview(file, null);
+    }
+
+    document.getElementById('htSigOpenBtn').addEventListener('click', openModal);
+    document.getElementById('htCapClose').addEventListener('click', closeModal);
+    document.getElementById('htCapCancelBtn').addEventListener('click', closeModal);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+    });
+    document.getElementById('htCapChoiceCamera').addEventListener('click', startCamera);
+    document.getElementById('htCapChoiceUpload').addEventListener('click', function () { nativeUpload.value = ''; nativeUpload.click(); });
+    document.getElementById('htCapCaptureBtn').addEventListener('click', captureFrame);
+    document.getElementById('htCapRetakeBtn').addEventListener('click', startCamera);
+    document.getElementById('htCapCamBack').addEventListener('click', function () { stopCamera(); showStep('choice'); });
+    document.getElementById('htCapUsePhotoBtn').addEventListener('click', function () {
+        if (!pendingBlob) return;
+        var file = new File([pendingBlob], pendingName, { type: 'image/jpeg' });
+        stopCamera();
+        openReview(file, shot.src);
+    });
+    document.getElementById('htCapReviewRetake').addEventListener('click', function () { resetReview(); showStep('choice'); });
+    // AJAX save: POST only the signature file (no comment fields) to the
+    // same manage_headteacher_comments endpoint with X-Requested-With.
+    // The view detects the signature-only AJAX POST, saves just the
+    // signature, and returns JSON — no DataTransfer, no full-form submit
+    // (both flaky on mobile), and remark text is never touched.
+    reviewApply.addEventListener('click', function () {
+        if (!pendingCommitFile || reviewApply.disabled) {
+            // Non-silent guard: with the openReview order fixed this should
+            // never fire, but if it does the user gets feedback instead of a
+            // dead button.
+            sigToast('Signature preview not ready yet — please try again.', 'error');
+            return;
+        }
+        reviewApply.disabled = true;
+        var originalHtml = reviewApply.innerHTML;
+        reviewApply.innerHTML = '<i class="ph ph-circle-notch" style="animation:htcapSpin 1s linear infinite"></i> Saving…';
+        var form = document.getElementById('htCommentsForm');
+        var fd = new FormData();
+        fd.append('headteacher_signature', pendingCommitFile);
+        fetch(form ? form.action : '/manage-headteacher-comments/?section=' + encodeURIComponent('{{ selected_section|default:"JSS" }}'), {
+            method: 'POST',
+            body: fd,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken') || '',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(function (r) {
+            return r.json().catch(function () { return null; }).then(function (j) {
+                return { body: j };
+            });
+        }).then(function (res) {
+            var j = res.body;
+            if (!j || !j.ok) {
+                throw new Error((j && j.message) || 'Could not save signature.');
+            }
+            var box = document.getElementById('htSigPreview');
+            var empty = document.getElementById('htSigEmpty');
+            if (empty) empty.remove();
+            var old = document.getElementById('htSigImg');
+            if (old) old.remove();
+            var img = document.createElement('img');
+            img.id = 'htSigImg';
+            img.alt = 'Headteacher signature';
+            img.src = j.signature_url;
+            box.appendChild(img);
+            pendingCommitFile = null;
+            closeModal();
+            sigToast(j.message || 'Signature saved!', 'success');
+        }).catch(function (err) {
+            sigToast(err.message || 'Could not save signature. Please try again.', 'error');
+        }).finally(function () {
+            reviewApply.disabled = false;
+            reviewApply.innerHTML = originalHtml;
+        });
+    });
+    nativeCapture.addEventListener('change', onNativeSelected);
+    nativeUpload.addEventListener('change', onNativeSelected);
+})();
+</script>

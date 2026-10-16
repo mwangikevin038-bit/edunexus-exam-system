@@ -46,7 +46,7 @@ LOCAL_ALLOWED_HOSTS = [
     '192.168.48.107',
     '192.168.56.116',
     '192.168.52.230',
-    '192.168.242.230',
+    '192.168.213.230',
     '192.168.62.11',
     '192.168.29.91',
     '10.209.98.230',
@@ -65,10 +65,14 @@ LOCAL_ALLOWED_HOSTS = [
     '192.168.34.218',
     '192.168.115.230',
     '192.168.41.238',
+    '192.168.36.203',
     'edunexus.local',
 ]
 
-ALLOWED_HOSTS = env_csv('ALLOWED_HOSTS', ','.join(LOCAL_ALLOWED_HOSTS) if DEBUG else '')
+# DEBUG (school LAN / dev): accept ANY host so the app keeps working when a
+# phone/laptop gets a new DHCP IP or a different port — no more DisallowedHost
+# 400s. Production (DEBUG=False) must set ALLOWED_HOSTS explicitly via env.
+ALLOWED_HOSTS = env_csv('ALLOWED_HOSTS', '*' if DEBUG else '')
 if not DEBUG and not ALLOWED_HOSTS:
     raise ImproperlyConfigured('ALLOWED_HOSTS must be set when DJANGO_DEBUG=False.')
 
@@ -281,7 +285,7 @@ _DEFAULT_CSRF_ORIGINS = [
     'http://192.168.56.116:8000',
     'http://192.168.36.186:8000',
     'http://192.168.57.195:8000',
-    'http://192.168.242.230:8000',
+    'http://192.168.213.230:8000',
     'http://192.168.202.230:8000',
     'http://192.168.29.91:8000',
     'http://192.168.62.11:8000',
@@ -301,12 +305,17 @@ _DEFAULT_CSRF_ORIGINS = [
     'http://192.168.1.100:8000',
     'http://192.168.1.101:8000',
     'http://192.168.37.183:8000',
-    'http://192.168.40.20:8000',
+    'http://192.68.40.20:8000',
     'http://192.168.100.35:8000',
+    'http://192.168.36.203:8000',
 ]
 
 # Deploy override, e.g. CSRF_TRUSTED_ORIGINS=https://my-app.trycloudflare.com
-CSRF_TRUSTED_ORIGINS = env_csv('CSRF_TRUSTED_ORIGINS', ','.join(_DEFAULT_CSRF_ORIGINS))
+# DEBUG: also trust any origin so same-app fetch POSTs keep working across any
+# LAN IP/port (or a tunnel) without editing this file. The CSRF token check
+# still applies — this only relaxes the Origin/Referer precondition.
+_csrf_default = ','.join(_DEFAULT_CSRF_ORIGINS + (['http://*', 'https://*'] if DEBUG else []))
+CSRF_TRUSTED_ORIGINS = env_csv('CSRF_TRUSTED_ORIGINS', _csrf_default)
 
 
 # ==============================================================================

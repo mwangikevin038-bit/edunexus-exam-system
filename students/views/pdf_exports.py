@@ -12,6 +12,7 @@ import io
 import logging
 import mimetypes
 import os
+import re
 import traceback
 
 from django.contrib.auth.decorators import login_required
@@ -38,6 +39,7 @@ from .helpers import (
     calculate_broadsheet_plv,
     calculate_primary_plv,
     dedup_marks_latest_by_code,
+    exam_covers_class,
     get_performance_level,
     get_published_contexts_for_user,
     get_published_subject_codes,
@@ -69,6 +71,10 @@ def _build_playwright_html(template_html, request, *, landscape=False):
 
     # Embed school logo as data URI
     html = _embed_logo_base64(html, request)
+
+    # Inline /media/ images (class-teacher signatures) — Playwright loads
+    # from an about:blank origin, so relative /media/ URLs can 404 too.
+    html = _embed_media_images_base64(html)
 
     # Load shared print CSS
     print_css = get_print_css()
@@ -431,6 +437,10 @@ def _compile_single_student_pdf(student_context, logo_base64, section_accent, ba
         if logo_url and f'src="{logo_url}"' in single_html:
             single_html = single_html.replace(f'src="{logo_url}"', f'src="{logo_base64}"')
 
+    # Inline remaining /media/ images (class-teacher signatures) as data
+    # URIs — Celery workers have no HTTP origin for WeasyPrint to fetch.
+    single_html = _embed_media_images_base64(single_html)
+
     # Load the WeasyPrint-compatible CSS from disk (cached after first read)
     print_css = _load_weasyprint_css()
 
@@ -643,6 +653,42 @@ def _embed_logo_base64(template_html, request):
     except Exception:
         logger.warning("Failed to embed school logo as base64", exc_info=True)
     return template_html
+
+
+_MEDIA_IMG_SRC_RE = re.compile(r'src="(/media/[^"]+?)(?:\?[^"]*)?"')
+
+
+def _embed_media_images_base64(template_html):
+    """Inline every /media/ <img> (class-teacher signatures above all) as a
+    data URI so PDF renderers never need a live HTTP origin.
+
+    The logo already gets this treatment; the signature did not, so bulk
+    PDFs printed without it whenever EDUNEXUS_INTERNAL_URL was unset (the
+    Celery <base> tag pointed at an empty string and WeasyPrint silently
+    dropped the external request). Storage is read directly — no server
+    required. Files that no longer exist on disk are left as-is so the
+    card still renders its fallback layout instead of raising.
+    """
+    if '/media/' not in template_html:
+        return template_html
+
+    from django.core.files.storage import default_storage
+
+    def _swap(match):
+        url_path = match.group(1)
+        storage_name = url_path[len('/media/'):]
+        try:
+            if not default_storage.exists(storage_name):
+                return match.group(0)
+            with default_storage.open(storage_name, 'rb') as img_file:
+                img_data = img_file.read()
+        except OSError:
+            return match.group(0)
+        img_type = mimetypes.guess_type(storage_name)[0] or 'image/png'
+        b64 = base64.b64encode(img_data).decode('ascii')
+        return f'src="data:{img_type};base64,{b64}"'
+
+    return _MEDIA_IMG_SRC_RE.sub(_swap, template_html)
 
 
 _STANDALONE_CSS_CACHE = {}
@@ -1040,6 +1086,13 @@ def download_merit_list_pdf(request):
         elif section == 'JSS' and exam_section != 'JSS':
             return JsonResponse({'error': 'Access denied for this exam section.'}, status=403)
 
+    # Exam.classes scoping (mirrors merit_list): reject impossible pairings.
+    if not exam_covers_class(exam_object, grade):
+        return JsonResponse(
+            {'error': f'{exam_object.name} was not created for {grade}.'},
+            status=400,
+        )
+
     # ── Build the same context as the merit list page ─────────────────────────
     try:
         context = build_broadsheet_for_merit_list(request, school, grade, stream, exam_object)
@@ -1053,6 +1106,9 @@ def download_merit_list_pdf(request):
     context['selected_grade'] = grade
     context['selected_stream'] = stream
     context['selected_exam'] = exam_object.name
+    _print_label = request.GET.get('print_label', '').strip()
+    if _print_label:
+        context['selected_exam'] = _print_label
 
     # Grade-based accent/key (mirrors merit_list + both builder paths)
     section_colors = {
@@ -1427,6 +1483,7 @@ def _build_report_popup_html(request, context, *, title, disable_chart_animation
         '{% for student_data in student_marks_list %}{% include "students/report_card_content.html" %}{% endfor %}'
     ).render(RequestContext(request, context))
     card_html = _embed_logo_base64(card_html, request)
+    card_html = _embed_media_images_base64(card_html)
 
     # #pagePrintCSS payload — the stylesheet the popup reads off the page.
     raw = render_to_string('students/partials/report_card_print_css.html')
@@ -1600,6 +1657,7 @@ def download_bulk_report_pdf(request):
     year        = request.GET.get('year', str(datetime.date.today().year))
     term        = request.GET.get('term', '').strip()
     ids_param   = request.GET.get('ids', '').strip()
+    print_label = request.GET.get('print_label', '').strip()
 
     if not exam_id or not grade_name:
         return JsonResponse({'error': 'exam_id and grade are required.'}, status=400)
@@ -1610,6 +1668,8 @@ def download_bulk_report_pdf(request):
     params = f'?grade={grade_name}&stream={stream_name}&exam_id={exam_id}&year={year}&term={term}'
     if ids_param:
         params += f'&ids={ids_param}'
+    if print_label:
+        params += f'&print_label={print_label}'
 
     return HttpResponseRedirect(async_url + params)
 
@@ -1670,6 +1730,7 @@ def start_bulk_report_pdf(request):
     year        = request.GET.get('year', str(datetime.date.today().year)).strip()
     term        = request.GET.get('term', 'Term 1').strip()
     assessment  = request.GET.get('assessment', 'opener').strip()
+    print_label = request.GET.get('print_label', '').strip() or request.POST.get('print_label', '').strip()
 
     if not grade_name or not stream_name or not exam_id:
         return JsonResponse({'error': 'grade, stream, and exam_id are required.'}, status=400)
@@ -1748,6 +1809,7 @@ def start_bulk_report_pdf(request):
             assessment=assessment,
             student_ids=student_ids,
             user_id=request.user.id,
+            print_label=print_label,
         )
     except Exception as broker_exc:
         # Broker down — don't 500; tell the client to retry shortly.

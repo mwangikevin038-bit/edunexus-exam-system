@@ -256,10 +256,11 @@
             background: #F8FAFC !important;
             border-radius: 0 0 8px 8px !important;
         }
-        .rc-remark-box { padding: 14px 16px !important; border: 1px solid #E2E8F0 !important; border-radius: 10px !important; background: #fff !important; display: flex !important; flex-direction: column !important; min-height: 30mm !important; }
-        .rc-remark-title { font-size: 11pt !important; font-weight: 800 !important; color: #1E293B !important; margin-bottom: 6px !important; border-bottom: none !important; }
-        .rc-remark-text { font-size: 11pt !important; line-height: 1.4 !important; margin-bottom: 6px !important; flex-grow: 1 !important; }
-        .rc-signature { font-size: 9pt !important; font-weight: 600 !important; color: #64748B !important; border-top: 1px dashed #CBD5E1 !important; padding-top: 4px !important; margin-top: auto !important; }
+        .rc-remark-box { padding: 10px 14px !important; border: 1px solid #E2E8F0 !important; border-radius: 10px !important; background: #fff !important; display: flex !important; flex-direction: column !important; min-height: 27mm !important; }
+        .rc-remark-title { font-size: 11pt !important; font-weight: 800 !important; color: #1E293B !important; margin-bottom: 4px !important; border-bottom: none !important; }
+        .rc-remark-text { font-size: 11pt !important; line-height: 1.4 !important; margin-bottom: 4px !important; flex-grow: 1 !important; }
+        .rc-signature { font-size: 9pt !important; font-weight: 600 !important; color: #64748B !important; border-top: 1px dashed #CBD5E1 !important; padding-top: 3px !important; margin-top: auto !important; }
+        .rc-signature-img { display: block !important; height: 56px !important; max-width: 210px !important; object-fit: contain !important; margin-top: 1px !important; }
 
         #reportCardsContainer .rc-descriptors { margin-top: 6px !important; width: 100% !important; }
         #reportCardsContainer .rc-descriptors-title { font-size: 9pt !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; margin-bottom: 4px !important; padding-bottom: 4px !important; border-bottom: 2px solid var(--section-accent) !important; }
@@ -291,12 +292,12 @@
         <div class="rv-hero-sub">{{ request.school.address }}</div>
         <div class="rv-hero-pills">
             <span class="rv-pill"><i class="ph ph-calendar-blank"></i> {{ selected_term }} {{ selected_year }}</span>
-            <span class="rv-pill"><i class="ph ph-graduation-cap"></i> {{ selected_assessment|title }}</span>
+            <span class="rv-pill"><i class="ph ph-graduation-cap"></i> {% if print_label %}{{ print_label|title }}{% else %}{{ selected_assessment|title }}{% endif %}</span>
         </div>
     </div>
     <div class="rv-actions">
         <button type="button" class="rv-btn rv-btn-ghost" onclick="EDUNEXUSPrint.openPrintWindow('.rv-scroll', {title:'{{ student_marks_list.0.student.name }} Report Card'})"><i class="ph ph-printer"></i> Print</button>
-        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="rv-btn rv-btn-green" style="text-decoration:none;text-align:center;"><i class="ph ph-file-pdf"></i> Download PDF</a>
+        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}{% if request.GET.print_label %}&print_label={{ request.GET.print_label|urlencode }}{% endif %}" class="rv-btn rv-btn-green" style="text-decoration:none;text-align:center;"><i class="ph ph-file-pdf"></i> Download PDF</a>
     </div>
     <div class="rv-scroll">
         {% for student_data in student_marks_list %}
@@ -321,7 +322,7 @@
             <div class="rc-context-detail-row">
                 <div>
                     <div class="rc-context-detail-label">{{ selected_grade|default:"" }}: {{ selected_stream|default:"" }}</div>
-                    <div class="rc-context-detail-value">{{ selected_assessment }}</div>
+                    <div class="rc-context-detail-value">{% if print_label %}{{ print_label }}{% else %}{{ selected_assessment }}{% endif %}</div>
                 </div>
             </div>
         </div>
@@ -372,14 +373,14 @@
         <button type="button" class="rc-action-btn rc-action-btn-outline" onclick="EDUNEXUSPrint.openPrintWindow('#reportCardsContainer', {title:'{{ selected_grade }} {{ selected_stream }} Report Cards'})">
             <i class="ph ph-printer"></i> Print
         </button>
-        <a href="{% url 'download_bulk_report_pdf' %}?grade={{ selected_grade|default:'' }}&stream={{ selected_stream|default:'' }}&exam_id={{ selected_exam_id|default:'' }}" class="rc-action-btn rc-action-btn-green" style="text-decoration:none;text-align:center;">
+        <a href="{% url 'download_bulk_report_pdf' %}?grade={{ selected_grade|default:'' }}&stream={{ selected_stream|default:'' }}&exam_id={{ selected_exam_id|default:'' }}{% if request.GET.print_label %}&print_label={{ request.GET.print_label|urlencode }}{% endif %}" class="rc-action-btn rc-action-btn-green" style="text-decoration:none;text-align:center;">
             <i class="ph ph-file-pdf"></i> Download PDF
         </a>
         {% elif view_mode == 'individual' %}
         <button type="button" class="rc-action-btn rc-action-btn-outline" onclick="EDUNEXUSPrint.openPrintWindow('#reportCardsContainer', {title:'{{ student_marks_list.0.student.name }} Report Card'})">
             <i class="ph ph-printer"></i> Print
         </button>
-        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" class="rc-action-btn rc-action-btn-green" style="text-decoration:none;text-align:center;">
+        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}{% if request.GET.print_label %}&print_label={{ request.GET.print_label|urlencode }}{% endif %}" class="rc-action-btn rc-action-btn-green" style="text-decoration:none;text-align:center;">
             <i class="ph ph-file-pdf"></i> Download PDF
         </a>
         {% endif %}
@@ -560,7 +561,8 @@ document.querySelectorAll('.rc-initials-avatar').forEach(function(el) {
             if (!g) { alert('Please select a Form / Grade.'); return; }
             if (!s) { alert('Please select a Stream.'); return; }
             if (!ex) { alert('Please select an Exam.'); return; }
-            window.location.href = '{% url "report_forms_display" %}?grade=' + encodeURIComponent(g) + '&stream=' + encodeURIComponent(s) + '&exam_id=' + encodeURIComponent(ex);
+            var _pl=new URLSearchParams(window.location.search).get('print_label');
+            window.location.href = '{% url "report_forms_display" %}?grade=' + encodeURIComponent(g) + '&stream=' + encodeURIComponent(s) + '&exam_id=' + encodeURIComponent(ex) + (_pl?'&print_label='+encodeURIComponent(_pl):'');
         });
     })();
 

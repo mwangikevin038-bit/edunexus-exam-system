@@ -797,6 +797,7 @@ def generate_bulk_report_pdf(
     assessment,
     student_ids,
     user_id,
+    print_label='',
 ):
     """
     Background Celery task: generate bulk report card PDF in chunks of 50.
@@ -917,7 +918,7 @@ def generate_bulk_report_pdf(
                 'student_marks_list':   [student_data],
                 'selected_year':        ctx['selected_year'],
                 'selected_term':        ctx['selected_term'],
-                'selected_assessment':  ctx['selected_assessment_raw'],
+                'selected_assessment':  print_label or ctx['selected_assessment_raw'],
                 'class_count':          ctx['class_count'],
                 'closing_date':         ctx['closing_date'],
                 'opening_date':         ctx['opening_date'],

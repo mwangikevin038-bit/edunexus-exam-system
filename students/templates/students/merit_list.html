@@ -55,6 +55,7 @@
 {% endblock %}
 
 {% block content %}
+{% include 'students/partials/messages_toast.html' %}
 <style>
   .ml-page{max-width:1200px;margin:0 auto;padding:40px 40px 60px;background:#eaecf0;min-height:100vh}
   .main-content{background:#eaecf0!important}
@@ -224,7 +225,7 @@
             class="action-btn btn-pdf-premium"
             id="broadsheetPdfLink"
             onclick="clpDownloadPdf(this)"
-            data-url="{% if show_table %}{% url 'download_merit_list_pdf' %}?grade={{ selected_grade|urlencode }}&stream={{ selected_stream|urlencode }}&exam_id={{ selected_exam_id|urlencode }}{% endif %}"
+            data-url="{% if show_table %}{% url 'download_merit_list_pdf' %}?grade={{ selected_grade|urlencode }}&stream={{ selected_stream|urlencode }}&exam_id={{ selected_exam_id|urlencode }}{% if request.GET.print_label %}&print_label={{ request.GET.print_label|urlencode }}{% endif %}{% endif %}"
             style="display: inline-flex; align-items: center; gap: 7px; background: #4CAF50; border: 1.5px solid #4CAF50; color: #ffffff; padding: 9px 20px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
       <i class="ph ph-download-simple" style="font-size: 1.1rem;"></i> Download PDF
     </button>
@@ -356,6 +357,8 @@
     var url=base+'?grade='+encodeURIComponent(gradeVal)
            +'&stream='+encodeURIComponent(streamVal)
            +'&exam_id='+encodeURIComponent(exam.value);
+    var _pl=new URLSearchParams(window.location.search).get('print_label');
+    if(_pl)url+='&print_label='+encodeURIComponent(_pl);
     pdfLink.setAttribute('data-url', url);
     pdfLink.href=url;
   }

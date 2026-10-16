@@ -246,9 +246,9 @@
                     </div>
                 </div>
                 <div class="rc-remark-box">
-                    <div class="rc-remark-title">Principal Remarks</div>
-                    <div class="rc-remark-text">{% if student_data.headteacher_comment %}{{ student_data.headteacher_comment }}{% else %}<span style="font-style: italic; color: #94A3B8;">No remarks entered for this assessment.</span>{% endif %}</div>
-                    <div class="rc-signature">Signature: ____________________</div>
+<div class="rc-remark-title">Principal Remarks</div>
+<div class="rc-remark-text">{% if student_data.headteacher_comment %}{{ student_data.headteacher_comment }}{% else %}<span style="font-style: italic; color: #94A3B8;">No remarks entered for this assessment.</span>{% endif %}</div>
+<div class="rc-signature">{% if student_data.headteacher_signature %}<img src="{{ student_data.headteacher_signature }}" alt="Principal signature" class="rc-signature-img">{% else %}Signature: ____________________{% endif %}</div>
                 </div>
             </div>
         </div>

@@ -21,7 +21,7 @@
                 onclick="EDUNEXUSPrint.openPrintWindow('#rcLookupCardInner', {title:'{{ student_marks_list.0.student.name|escapejs }} Report Card'})">
             <i class="ph ph-printer"></i> Print
         </button>
-        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term|urlencode }}&assessment={{ selected_assessment|urlencode }}"
+        <a href="{% url 'download_individual_report_pdf' student_marks_list.0.student.pk %}?year={{ selected_year }}&term={{ selected_term|urlencode }}&assessment={{ selected_assessment|urlencode }}{% if request.GET.print_label %}&print_label={{ request.GET.print_label|urlencode }}{% endif %}"
            class="rv-btn rv-btn-green" style="text-decoration:none;">
             <i class="ph ph-file-pdf"></i> Download PDF
         </a>

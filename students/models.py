@@ -34,6 +34,7 @@ class School(models.Model):
         help_text="Used in logins, e.g. 0712345678@baringohigh",
     )
     logo = models.ImageField(upload_to='school_logos/', blank=True, null=True, verbose_name="Official School Logo", validators=[validate_image_size])
+    headteacher_signature = models.ImageField(upload_to='headteacher_signatures/', blank=True, null=True, verbose_name="Headteacher Signature", validators=[validate_image_size])
     
     # Contact Information
     address = models.CharField(max_length=255, blank=True, null=True, verbose_name="Postal Address", help_text="e.g., P.O. BOX 31-80402")

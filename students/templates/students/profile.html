@@ -56,7 +56,7 @@
   .prof-sidebar-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;align-self:flex-start;margin-bottom:8px}
 
   .prof-signature-box{width:100%;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;min-height:80px;display:flex;align-items:center;justify-content:center;background:#f8fafc;position:relative;margin-bottom:12px}
-  .prof-signature-box img{width:100%;max-height:80px;object-fit:contain;padding:10px}
+  .prof-signature-box img{width:100%;max-height:110px;object-fit:contain;padding:10px}
   .prof-signature-box .no-sig{font-size:.8rem;color:#94a3b8;font-style:italic}
   .prof-sig-delete{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:6px;background:#EF4444;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:background 0.15s;box-shadow:0 2px 6px rgba(239,68,68,0.3)}
   .prof-sig-delete:hover{background:#DC2626}
@@ -76,9 +76,16 @@
   .sig-modal-close:hover{background:#e2e8f0;color:#0f172a}
   .sig-modal-body{padding:18px;overflow-y:auto;flex:1}
   .sig-modal-footer{display:flex;gap:10px;padding:14px 18px;border-top:1px solid #f1f5f9;background:#fafbfc;flex-shrink:0}
+  .sig-modal-footer[hidden]{display:none}
   .sig-step{display:none}
   .sig-step.active{display:block}
   .sig-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .sig-draw-stage{position:relative;background:#fff;border:1.5px dashed #cbd5e1;border-radius:14px;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+  .sig-draw-stage canvas{display:block;touch-action:none;cursor:crosshair;background-image:radial-gradient(#e2e8f0 1px,transparent 1px);background-size:18px 18px}
+  .sig-draw-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:.82rem;font-style:italic;pointer-events:none;text-align:center;padding:0 12px}
+  .sig-type-input{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:1rem;font-family:inherit;margin-bottom:10px;outline:none}
+  .sig-type-input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.14)}
+  .sig-type-stage{background:#fff;border:1.5px dashed #cbd5e1;border-radius:14px;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden}
   .sig-choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:28px 12px;border:1.5px solid #e2e8f0;border-radius:14px;background:#f8fafc;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;color:#0f172a;font-family:inherit}
   .sig-choice:hover,.sig-choice:focus-visible{border-color:#4CAF50;background:#f0faf3;box-shadow:0 0 0 3px rgba(76,175,80,0.12);outline:none}
   .sig-choice-icon{width:52px;height:52px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;color:#2E7D32}
@@ -99,9 +106,21 @@
   .sig-upload-frame{border:1.5px dashed #cbd5e1;border-radius:12px;background:#f8fafc;min-height:90px;display:flex;align-items:center;justify-content:center;padding:12px;position:relative}
   .sig-upload-frame img{max-width:100%;max-height:100px;object-fit:contain}
   .sig-upload-meta{font-size:.72rem;color:#64748b;margin-top:8px;text-align:center;word-break:break-all}
+  .sig-review-stage{position:relative;border:1.5px solid #e2e8f0;border-radius:12px;background:#fff;background-image:linear-gradient(45deg,#f8fafc 25%,transparent 25%,transparent 75%,#f8fafc 75%),linear-gradient(45deg,#f8fafc 25%,transparent 25%,transparent 75%,#f8fafc 75%);background-size:16px 16px;background-position:0 0,8px 8px;min-height:120px;display:flex;align-items:center;justify-content:center;padding:16px}
+  .sig-review-stage img{max-width:100%;max-height:120px;object-fit:contain;display:block}
+  .sig-review-loading{display:none;position:absolute;inset:0;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,0.9);border-radius:12px;color:#4CAF50;font-size:.78rem;font-weight:600}
+  .sig-review-loading.show{display:flex}
+  .sig-review-loading i{font-size:18px;animation:sigSpin 1s linear infinite}
+  @keyframes sigSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  .sig-review-note{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:.72rem;color:#047857;font-weight:600}
+  .sig-review-note i{font-size:14px;color:#10b981}
+  .sig-review-compare{margin-top:10px}
+  .sig-review-compare summary{font-size:.72rem;color:#64748b;cursor:pointer;font-weight:600}
+  .sig-review-compare img{margin-top:8px;max-width:100%;max-height:90px;object-fit:contain;border:1px solid #f1f5f9;border-radius:8px;padding:6px;background:#fff}
   .sig-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:10px;padding:11px 16px;font-size:.82rem;font-weight:700;cursor:pointer;transition:background .15s,box-shadow .15s;font-family:inherit}
   .sig-btn-primary{background:#4CAF50;color:#fff}
   .sig-btn-primary:hover{background:#43A047;box-shadow:0 4px 14px rgba(76,175,80,0.35)}
+  .sig-btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;pointer-events:none}
   .sig-btn-dark{background:#1e293b;color:#fff}
   .sig-btn-dark:hover{background:#0f172a}
   .sig-btn-ghost{background:#fff;color:#475569;border:1.5px solid #e2e8f0}
@@ -195,8 +214,19 @@
 <input type="file" name="profile_picture" id="profilePictureUpload" accept="image/*" style="display:none">
 {% if class_teacher_scope %}
 <input type="hidden" name="delete_signature" id="deleteSignature" value="0">
-<input type="file" name="signature" id="sigFileUpload" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
+<input type="file" name="signature" id="sigFileUpload" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif" style="display:none">
 {% endif %}
+<!-- Original values captured at render time. The server writes a profile
+     field ONLY when the posted value differs from these markers, so an
+     untouched input (or a stale page) can never overwrite newer data.
+     Signature saves are AJAX signature-only and never read these. -->
+<input type="hidden" name="__orig_first_name" value="{{ user.first_name|default:'' }}">
+<input type="hidden" name="__orig_surname" value="{{ user.last_name|default:'' }}">
+<input type="hidden" name="__orig_other_names" value="{{ teacher.other_names|default:'' }}">
+<input type="hidden" name="__orig_personal_email" value="{{ teacher.email|default:'' }}">
+<input type="hidden" name="__orig_gender" value="{{ teacher.gender|default:'' }}">
+<input type="hidden" name="__orig_national_id" value="{{ teacher.national_id|default:'' }}">
+<input type="hidden" name="__orig_bio" value="{{ teacher.bio|default:'' }}">
 
 <div class="prof-page">
   <aside class="prof-sidebar">
@@ -229,9 +259,9 @@
         <span class="no-sig" id="noSig">No signature</span>
       {% endif %}
     </div>
-    <div class="sig-pending" id="sigPending" aria-live="polite"><i class="ph-fill ph-check-circle"></i> Signature ready — tap Save to apply</div>
+    <div class="sig-pending" id="sigPending" aria-live="polite"><i class="ph-fill ph-check-circle"></i> Saving signature&hellip;</div>
     <button type="button" class="prof-change-sig" id="openSigModalBtn"><i class="ph ph-signature"></i> Change Signature</button>
-<div class="no-sig" style="text-align:center;margin-top:6px">JPG, PNG, WEBP or GIF &middot; up to 5MB &middot; tap Save after choosing</div>
+<div class="no-sig" style="text-align:center;margin-top:6px">JPG, PNG, WEBP or GIF &middot; up to 5MB &middot; saves automatically after choosing</div>
     {% endif %}
   </aside>
 
@@ -270,7 +300,7 @@
             </svg>
             +254
           </span>
-          <input type="tel" name="phone_number" value="{{ teacher.phone_number|default:'' }}" placeholder="0700000000"{% if not teacher %} readonly{% endif %}>
+          <input type="tel" name="phone_number" value="{{ teacher.phone_number|default:'' }}" placeholder="0700000000" readonly title="Your login phone number (login: phonenumber@schoolcode). Contact the school admin to change it.">
         </div>
       </div>
       <div class="prof-field">
@@ -311,13 +341,23 @@
   <div class="sig-modal" id="sigModalPanel">
     <div class="sig-modal-header">
       <h3 class="sig-modal-title" id="sigModalTitle"><i class="ph-fill ph-signature"></i> Change Signature</h3>
-      <button type="button" class="sig-modal-close" id="sigModalClose" aria-label="Close"><i class="ph x"></i></button>
+      <button type="button" class="sig-modal-close" id="sigModalClose" aria-label="Close"><i class="ph ph-x"></i></button>
     </div>
     <div class="sig-modal-body">
 
       <div class="sig-step active" id="sigStepChoice">
         <p class="sig-stage-label">Choose how to add your signature</p>
         <div class="sig-choice-grid">
+          <button type="button" class="sig-choice" id="sigChoiceDraw">
+            <span class="sig-choice-icon"><i class="ph-fill ph-pencil-nib"></i></span>
+            <span class="sig-choice-label">Draw Signature</span>
+            <span class="sig-choice-hint">Sign with your finger — always works, no photo needed</span>
+          </button>
+          <button type="button" class="sig-choice" id="sigChoiceType">
+            <span class="sig-choice-icon"><i class="ph-fill ph-text-aa"></i></span>
+            <span class="sig-choice-label">Type Your Name</span>
+            <span class="sig-choice-hint">We render it in a handwritten style</span>
+          </button>
           <button type="button" class="sig-choice" id="sigChoiceCamera">
             <span class="sig-choice-icon"><i class="ph-fill ph-camera"></i></span>
             <span class="sig-choice-label">Take Photo</span>
@@ -326,8 +366,31 @@
           <button type="button" class="sig-choice" id="sigChoiceUpload">
             <span class="sig-choice-icon"><i class="ph-fill ph-upload-simple"></i></span>
             <span class="sig-choice-label">Upload Picture</span>
-            <span class="sig-choice-hint">Choose an image already on this device</span>
+            <span class="sig-choice-hint">JPG, PNG or HEIC from this device</span>
           </button>
+        </div>
+      </div>
+
+      <div class="sig-step" id="sigStepDraw">
+        <p class="sig-stage-label">Sign inside the box with your finger</p>
+        <div class="sig-draw-stage">
+          <canvas id="sigDrawPad"></canvas>
+          <div class="sig-draw-hint" id="sigDrawHint">Draw your signature here</div>
+        </div>
+        <div class="sig-camera-actions" style="margin-top:14px">
+          <button type="button" class="sig-btn sig-btn-ghost" id="sigDrawBack"><i class="ph ph-arrow-left"></i> Back</button>
+          <button type="button" class="sig-btn sig-btn-ghost" id="sigDrawClear"><i class="ph ph-eraser"></i> Clear</button>
+          <button type="button" class="sig-btn sig-btn-primary" id="sigDrawUse" disabled><i class="ph ph-check"></i> Use This Signature</button>
+        </div>
+      </div>
+
+      <div class="sig-step" id="sigStepType">
+        <p class="sig-stage-label">Type your name</p>
+        <input type="text" id="sigTypeInput" class="sig-type-input" placeholder="e.g. Jane Wanjiku" maxlength="60" autocomplete="name">
+        <div class="sig-type-stage"><canvas id="sigTypeCanvas"></canvas></div>
+        <div class="sig-camera-actions" style="margin-top:14px">
+          <button type="button" class="sig-btn sig-btn-ghost" id="sigTypeBack"><i class="ph ph-arrow-left"></i> Back</button>
+          <button type="button" class="sig-btn sig-btn-primary" id="sigTypeUse" disabled><i class="ph ph-check"></i> Use This Signature</button>
         </div>
       </div>
 
@@ -361,16 +424,36 @@
         </div>
       </div>
 
+      <div class="sig-step" id="sigStepReview">
+        <p class="sig-stage-label">This is how it will appear on report cards</p>
+        <div class="sig-review-stage">
+          <img id="sigReviewImg" alt="Cleaned signature preview">
+          <div class="sig-review-loading" id="sigReviewLoading"><i class="ph ph-sparkle"></i> Cleaning your signature&hellip;</div>
+        </div>
+        <p class="sig-review-note sig-review-fallback" id="sigReviewFallback" style="display:none;color:#b45309;"><i class="ph-fill ph-warning"></i> Preview unavailable — showing your original photo. It will still be cleaned automatically when you save.</p>
+        <p class="sig-review-note"><i class="ph-fill ph-shield-check"></i> Background removed, cropped and sharpened automatically.</p>
+        <div class="sig-review-compare">
+          <details>
+            <summary>See original photo</summary>
+            <img id="sigReviewOriginal" alt="Original signature photo">
+          </details>
+        </div>
+      </div>
+
     </div>
     <div class="sig-modal-footer" id="sigUploadFooter" hidden>
       <button type="button" class="sig-btn sig-btn-ghost" id="sigUploadCancel"><i class="ph ph-x"></i> Cancel</button>
       <button type="button" class="sig-btn sig-btn-primary" id="sigUploadApply" disabled><i class="ph ph-check"></i> Use This Image</button>
     </div>
+    <div class="sig-modal-footer" id="sigReviewFooter" hidden>
+      <button type="button" class="sig-btn sig-btn-ghost" id="sigReviewRetake"><i class="ph ph-arrow-counter-clockwise"></i> Start Over</button>
+      <button type="button" class="sig-btn sig-btn-primary" id="sigReviewApply" disabled><i class="ph ph-check"></i> Use This Signature</button>
+    </div>
   </div>
 </div>
 
-<input type="file" id="sigNativeCapture" accept="image/png,image/jpeg,image/webp,image/gif" capture="environment" style="display:none">
-<input type="file" id="sigNativeUpload" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
+<input type="file" id="sigNativeCapture" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif" capture="environment" style="display:none">
+<input type="file" id="sigNativeUpload" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif" style="display:none">
 {% endif %}
 
 <script>
@@ -387,6 +470,11 @@
   var camActions = document.getElementById('sigCameraActions');
   var confirmActions = document.getElementById('sigConfirmActions');
   var uploadFooter = document.getElementById('sigUploadFooter');
+  var reviewFooter = document.getElementById('sigReviewFooter');
+  var reviewImg = document.getElementById('sigReviewImg');
+  var reviewOriginal = document.getElementById('sigReviewOriginal');
+  var reviewLoading = document.getElementById('sigReviewLoading');
+  var reviewApply = document.getElementById('sigReviewApply');
   var uploadImg = document.getElementById('sigUploadImg');
   var uploadEmpty = document.getElementById('sigUploadEmpty');
   var uploadMeta = document.getElementById('sigUploadMeta');
@@ -396,48 +484,24 @@
   var stream = null;
   var pendingBlob = null;
   var pendingName = 'signature.jpg';
+  var pendingCommitFile = null;
+  var pendingCommitDataUrl = null;
   var lastStep = 'choice';
   // The signature UI only renders for class teachers — skip wiring when absent.
   var hasSigUI = !!fileInput && !!modal && !!document.getElementById('openSigModalBtn');
 
   function showStep(name) {
     lastStep = name;
-    ['sigStepChoice', 'sigStepCamera', 'sigStepUpload'].forEach(function (id) {
+    ['sigStepChoice', 'sigStepCamera', 'sigStepUpload', 'sigStepReview', 'sigStepDraw', 'sigStepType'].forEach(function (id) {
       document.getElementById(id).classList.toggle('active', id === 'sigStep' + name.charAt(0).toUpperCase() + name.slice(1));
     });
     uploadFooter.hidden = (name !== 'upload');
+    reviewFooter.hidden = (name !== 'review');
   }
 
   function showSigToast(msg, type) {
     if (typeof window.showToast === 'function') { window.showToast(msg, type || 'info'); return; }
     try { window.alert(msg); } catch (e) {}
-  }
-
-  function setSignatureFile(file, dataUrl) {
-    if (!file) return;
-    try {
-      var dt = new DataTransfer();
-      dt.items.add(file);
-      fileInput.files = dt.files;
-    } catch (e) {
-      showSigToast('Could not attach image. Try a smaller file or another browser.', 'error');
-      return;
-    }
-    deleteFlag.value = '0';
-    var box = document.getElementById('sigBox');
-    var existing = document.getElementById('sigPreview');
-    if (existing) existing.remove();
-    var delBtn = document.getElementById('sigDeleteBtn');
-    if (delBtn) delBtn.style.display = 'none';
-    var noSig = document.getElementById('noSig');
-    if (noSig) noSig.style.display = 'none';
-    var img = document.createElement('img');
-    img.src = dataUrl || URL.createObjectURL(file);
-    img.alt = 'Signature';
-    img.id = 'sigPreview';
-    box.prepend(img);
-    if (sigPending) sigPending.classList.add('show');
-    showSigToast('Signature ready — tap Save to apply.', 'success');
   }
 
   function stopCamera() {
@@ -448,6 +512,85 @@
     video.srcObject = null;
   }
 
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]+)'));
+    return match ? match[1] : null;
+  }
+
+  function resetReviewStep() {
+    pendingCommitFile = null;
+    pendingCommitDataUrl = null;
+    reviewImg.removeAttribute('src');
+    reviewOriginal.removeAttribute('src');
+    reviewLoading.classList.add('show');
+    reviewApply.disabled = true;
+    var fb = document.getElementById('sigReviewFallback');
+    if (fb) fb.style.display = 'none';
+  }
+
+  // Fetch the server-side clean so the user sees the EXACT result that will
+  // land on the report card before committing. The response also carries a
+  // SERVER-decoded `raw` PNG for the original compare — so previews render
+  // even when this browser cannot decode the file itself (HEIC phone
+  // photos). A failed preview still never blocks saving, and the server's
+  // exact error text is surfaced instead of being swallowed.
+  function openReviewStep(file, originalDataUrl) {
+    if (!file) return;
+    // Reset FIRST, then assign — the old order (assign → reset) wiped
+    // pendingCommitFile immediately, leaving the green "Use This Signature"
+    // button as a permanent no-op (guard: if (!pendingCommitFile) return).
+    resetReviewStep();
+    pendingCommitFile = file;
+    pendingCommitDataUrl = originalDataUrl || null;
+    if (originalDataUrl) {
+      reviewOriginal.src = originalDataUrl;
+    } else {
+      try { reviewOriginal.src = URL.createObjectURL(file); } catch (e) {}
+    }
+    showStep('review');
+    var fb = document.getElementById('sigReviewFallback');
+    var fd = new FormData();
+    fd.append('signature', file);
+    fetch('/signature/preview/', {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        return { status: r.status, j: j };
+      });
+    }).then(function (res) {
+      var j = res.j || {};
+      if (res.status < 200 || res.status >= 300 || !j.ok || !j.image) {
+        var e = new Error(j.error || 'preview failed');
+        e.srvError = j.error || '';
+        throw e;
+      }
+      reviewImg.src = j.image;
+      if (j.raw) reviewOriginal.src = j.raw;
+      reviewLoading.classList.remove('show');
+      reviewApply.disabled = false;
+      if (fb) fb.style.display = 'none';
+    }).catch(function (err) {
+      // Fall back: show whatever we can and let the server clean on save.
+      if (pendingCommitDataUrl) reviewImg.src = pendingCommitDataUrl;
+      else if (reviewOriginal.src) reviewImg.src = reviewOriginal.src;
+      reviewLoading.classList.remove('show');
+      reviewApply.disabled = false;
+      if (fb) {
+        fb.style.display = '';
+        fb.textContent = '';
+        var ic = document.createElement('i');
+        ic.className = 'ph-fill ph-warning';
+        fb.appendChild(ic);
+        var msg = (err && err.srvError)
+          ? err.srvError
+          : "Preview unavailable — it will still be cleaned automatically when you save.";
+        fb.appendChild(document.createTextNode(' ' + msg));
+      }
+    });
+  }
+
   function openModal() {
     modal.hidden = false;
     requestAnimationFrame(function () { modal.classList.add('open'); });
@@ -455,6 +598,10 @@
     showStep('choice');
     resetUploadStep();
     resetCameraStep();
+    resetReviewStep();
+    // Reset the Draw/Type steps so every open starts fresh.
+    if (typeof sizeDrawPad === 'function') requestAnimationFrame(sizeDrawPad);
+    if (typeof renderTypePreview === 'function') renderTypePreview();
   }
 
   function closeModal() {
@@ -480,6 +627,11 @@
   }
 
   function resetUploadStep() {
+    if (uploadImg.src && uploadImg.src.indexOf('blob:') === 0) {
+      try { URL.revokeObjectURL(uploadImg.src); } catch (e) {}
+    }
+    uploadImg.onload = null;
+    uploadImg.onerror = null;
     uploadImg.hidden = true;
     uploadImg.removeAttribute('src');
     uploadEmpty.hidden = false;
@@ -554,18 +706,17 @@
   async function usePhoto() {
     if (!pendingBlob) return;
     var file = new File([pendingBlob], pendingName, { type: 'image/jpeg' });
-    setSignatureFile(file, shot.src);
     stopCamera();
-    closeModal();
+    openReviewStep(file, shot.src);
   }
 
   function onNativeSelected(e) {
     var file = e.target.files && e.target.files[0];
     if (!file) return;
-    var okTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+    var okTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/avif'];
     if (okTypes.indexOf((file.type || '').toLowerCase()) === -1 &&
-        !/\.(png|jpe?g|webp|gif)$/i.test(file.name || '')) {
-      showSigToast('Please choose a JPG, PNG, WEBP or GIF image.', 'error');
+        !/\.(png|jpe?g|webp|gif|hei[cf]|avif)$/i.test(file.name || '')) {
+      showSigToast('Please choose a JPG, PNG, WEBP, GIF or HEIC image.', 'error');
       e.target.value = '';
       return;
     }
@@ -575,22 +726,47 @@
       return;
     }
     if (e.target === nativeCapture) {
-      setSignatureFile(file);
-      closeModal();
+      openReviewStep(file, null);
       return;
     }
-    // Upload step: show preview, wait for Use This Image
+    // Upload step: preview via object URL. On desktop this usually works,
+    // but mobile browsers often fail <img> decode for perfectly valid files
+    // (HEIC saved as .jpg, 12MP photos, Google Photos cloud placeholders).
+    // A decode failure must NEVER block the flow — the file is still passed
+    // to the review step, and the SERVER (PIL pipeline) is the authority on
+    // whether it can be opened, cleaned and saved.
     pendingBlob = file;
     pendingName = file.name;
-    var reader = new FileReader();
-    reader.onload = function (ev) {
-      uploadImg.src = ev.target.result;
-      uploadImg.hidden = false;
+    var previewUrl = URL.createObjectURL(file);
+    function allowWithoutPreview(reason) {
+      uploadImg.removeAttribute('src');
+      uploadImg.hidden = true;
+      uploadEmpty.hidden = false;
+      uploadMeta.textContent = file.name + ' · ' + Math.max(1, Math.round(file.size / 1024)) + ' KB' + (reason ? ' · ' + reason : '');
+      uploadApply.disabled = false;
+      pendingBlob = file;
+      pendingName = file.name;
+    }
+    uploadImg.onload = function () {
       uploadEmpty.hidden = true;
+      uploadImg.hidden = false;
       uploadMeta.textContent = file.name + ' · ' + Math.max(1, Math.round(file.size / 1024)) + ' KB';
       uploadApply.disabled = false;
     };
-    reader.readAsDataURL(file);
+    uploadImg.onerror = function () {
+      URL.revokeObjectURL(previewUrl);
+      allowWithoutPreview('preview unavailable — we\u2019ll clean it on save');
+    };
+    uploadImg.src = previewUrl;
+    // Belt-and-braces: some Android WebViews fail <img> but succeed here.
+    // Either signal is enough to proceed; failure just skips the preview.
+    if (window.createImageBitmap) {
+      try {
+        createImageBitmap(file).then(function (bmp) {
+          if (bmp && bmp.close) bmp.close();
+        }).catch(function () { /* ignore — onerror or allow path handles it */ });
+      } catch (e) { /* ignore */ }
+    }
     showStep('upload');
     modal.hidden = false;
     modal.classList.add('open');
@@ -612,6 +788,157 @@
       resetUploadStep();
       nativeUpload.click();
     });
+
+    // ── Draw step: finger/pen drawing on a canvas. Premium default because
+    // it needs no file, no camera and no browser decode — it cannot fail. ──
+    var drawPad = document.getElementById('sigDrawPad');
+    var drawHint = document.getElementById('sigDrawHint');
+    var drawUse = document.getElementById('sigDrawUse');
+    var drawCtx = null, drawHasInk = false, drawDrawing = false, drawLast = null;
+
+    function sizeDrawPad() {
+      if (!drawPad || !drawPad.parentElement) return;
+      var rect = drawPad.parentElement.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      var w = Math.max(200, Math.round(rect.width));
+      var h = Math.max(140, Math.round(w * 0.42));
+      drawPad.width = Math.round(w * dpr);
+      drawPad.height = Math.round(h * dpr);
+      drawPad.style.width = w + 'px';
+      drawPad.style.height = h + 'px';
+      drawCtx = drawPad.getContext('2d');
+      drawCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawCtx.lineWidth = 2.6;
+      drawCtx.lineCap = 'round';
+      drawCtx.lineJoin = 'round';
+      drawCtx.strokeStyle = '#111827';
+      drawHasInk = false;
+      drawDrawing = false;
+      drawLast = null;
+      if (drawHint) drawHint.style.display = '';
+      if (drawUse) drawUse.disabled = true;
+    }
+
+    function drawPos(e) {
+      var r = drawPad.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+
+    function drawMarkInk() {
+      if (drawHasInk) return;
+      drawHasInk = true;
+      if (drawHint) drawHint.style.display = 'none';
+      if (drawUse) drawUse.disabled = false;
+    }
+
+    if (drawPad) {
+      drawPad.addEventListener('pointerdown', function (e) {
+        if (!drawCtx) sizeDrawPad();
+        e.preventDefault();
+        try { drawPad.setPointerCapture(e.pointerId); } catch (err) {}
+        drawDrawing = true;
+        drawLast = drawPos(e);
+        drawCtx.beginPath();
+        drawCtx.moveTo(drawLast.x, drawLast.y);
+        drawCtx.lineTo(drawLast.x + 0.01, drawLast.y + 0.01);
+        drawCtx.stroke();
+        drawMarkInk();
+      });
+      drawPad.addEventListener('pointermove', function (e) {
+        if (!drawDrawing || !drawCtx) return;
+        e.preventDefault();
+        var p = drawPos(e);
+        // Midpoint quadratic smoothing: a light finger tremor becomes one
+        // clean curve — the signature looks written, not scribbled.
+        drawCtx.beginPath();
+        drawCtx.moveTo(drawLast.x, drawLast.y);
+        drawCtx.quadraticCurveTo(p.x, p.y, (drawLast.x + p.x) / 2, (drawLast.y + p.y) / 2);
+        drawCtx.stroke();
+        drawLast = p;
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+        drawPad.addEventListener(ev, function () { drawDrawing = false; });
+      });
+    }
+
+    function exportCanvasToReview(sourceCanvas, namePrefix) {
+      // Always hand the server a PNG file + a data URL twin: the data URL
+      // shows instantly in the compare view while the server clean runs.
+      var dataUrl = sourceCanvas.toDataURL('image/png');
+      if (sourceCanvas.toBlob) {
+        sourceCanvas.toBlob(function (blob) {
+          if (!blob) { showSigToast('Could not create the signature image.', 'error'); return; }
+          openReviewStep(new File([blob], namePrefix + Date.now() + '.png', { type: 'image/png' }), dataUrl);
+        }, 'image/png');
+      } else {
+        fetch(dataUrl).then(function (r) { return r.blob(); }).then(function (blob) {
+          openReviewStep(new File([blob], namePrefix + Date.now() + '.png', { type: 'image/png' }), dataUrl);
+        }).catch(function () {
+          showSigToast('Could not create the signature image.', 'error');
+        });
+      }
+    }
+
+    document.getElementById('sigChoiceDraw').addEventListener('click', function () {
+      showStep('draw');
+      // Size after the step is visible (the stage has width only when active).
+      requestAnimationFrame(sizeDrawPad);
+    });
+    document.getElementById('sigDrawBack').addEventListener('click', function () { showStep('choice'); });
+    document.getElementById('sigDrawClear').addEventListener('click', function () { sizeDrawPad(); });
+    drawUse.addEventListener('click', function () {
+      if (!drawHasInk) return;
+      exportCanvasToReview(drawPad, 'signature_drawn_');
+    });
+
+    // ── Type step: renders the name in a handwriting font, exports PNG. ──
+    var typeInput = document.getElementById('sigTypeInput');
+    var typeCanvas = document.getElementById('sigTypeCanvas');
+    var typeUse = document.getElementById('sigTypeUse');
+    var TYPE_FONT = '"Segoe Script","Bradley Hand","Brush Script MT","Segoe Print","Comic Sans MS",cursive';
+
+    function renderTypePreview() {
+      if (!typeCanvas) return;
+      var dpr = window.devicePixelRatio || 1;
+      var w = Math.max(220, (typeCanvas.parentElement && typeCanvas.parentElement.clientWidth) || 320);
+      var h = 120;
+      typeCanvas.width = Math.round(w * dpr);
+      typeCanvas.height = Math.round(h * dpr);
+      typeCanvas.style.width = '100%';
+      typeCanvas.style.height = h + 'px';
+      var ctx = typeCanvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      var text = ((typeInput && typeInput.value) || '').trim();
+      if (typeUse) typeUse.disabled = !text;
+      if (!text) return;
+      // Shrink-to-fit: longest names must stay inside the signature box.
+      var size = Math.min(58, Math.max(24, Math.floor(w / Math.max(8, text.length) * 1.6)));
+      ctx.fillStyle = '#111827';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'italic ' + size + 'px ' + TYPE_FONT;
+      ctx.fillText(text, w / 2, h / 2);
+    }
+
+    document.getElementById('sigChoiceType').addEventListener('click', function () {
+      showStep('type');
+      renderTypePreview();
+      setTimeout(function () { if (typeInput) typeInput.focus(); }, 60);
+    });
+    document.getElementById('sigTypeBack').addEventListener('click', function () { showStep('choice'); });
+    if (typeInput) typeInput.addEventListener('input', renderTypePreview);
+    typeUse.addEventListener('click', function () {
+      if (!typeInput || !typeInput.value.trim()) return;
+      exportCanvasToReview(typeCanvas, 'signature_typed_');
+    });
+    // First visit: prefill from the signed-in user so Type is one click away.
+    try {
+      var prefill = (window.currentUserFullName || '').trim() ||
+        ((document.querySelector('meta[name="user-fullname"]') || {}).content || '').trim();
+      if (prefill && typeInput && !typeInput.value) { typeInput.value = prefill; }
+    } catch (e) {}
+
     document.getElementById('sigCaptureBtn').addEventListener('click', captureFrame);
     document.getElementById('sigRetakeBtn').addEventListener('click', function () { startCamera(); });
     document.getElementById('sigUsePhotoBtn').addEventListener('click', usePhoto);
@@ -628,26 +955,117 @@
       var file = pendingBlob instanceof File
         ? pendingBlob
         : new File([pendingBlob], pendingName, { type: pendingBlob.type || 'image/jpeg' });
-      setSignatureFile(file, uploadImg.src || null);
-      closeModal();
+      openReviewStep(file, uploadImg.src || null);
     });
 
     nativeCapture.addEventListener('change', onNativeSelected);
     nativeUpload.addEventListener('change', onNativeSelected);
+
+    document.getElementById('sigReviewRetake').addEventListener('click', function () {
+      resetReviewStep();
+      showStep('choice');
+    });
+    // AJAX save: POST only the file to /profile/. Avoids DataTransfer +
+    // full-form requestSubmit (both flaky on mobile browsers) and updates
+    // the sidebar preview with the SERVER-cleaned URL returned as JSON.
+    reviewApply.addEventListener('click', function () {
+      if (!pendingCommitFile || reviewApply.disabled) {
+        // Non-silent guard: with the openReviewStep order fixed this should
+        // never fire, but if it does the user gets feedback instead of a
+        // dead button.
+        if (typeof showToast === 'function') {
+          showToast('Signature preview not ready yet — please try again.', 'error');
+        }
+        return;
+      }
+      reviewApply.disabled = true;
+      var originalHtml = reviewApply.innerHTML;
+      reviewApply.innerHTML = '<i class="ph ph-circle-notch" style="animation:sigSpin 1s linear infinite"></i> Saving…';
+      var fd = new FormData();
+      fd.append('signature', pendingCommitFile);
+      fetch('/profile/', {
+        method: 'POST',
+        body: fd,
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken') || '',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      }).then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (j) {
+          return { body: j };
+        });
+      }).then(function (res) {
+        var j = res.body;
+        if (!j || !j.ok) {
+          throw new Error((j && j.message) || 'Could not save signature.');
+        }
+        var box = document.getElementById('sigBox');
+        var existing = document.getElementById('sigPreview');
+        if (existing) existing.remove();
+        var delBtn = document.getElementById('sigDeleteBtn');
+        if (delBtn) delBtn.style.display = 'none';
+        var noSig = document.getElementById('noSig');
+        if (noSig) noSig.style.display = 'none';
+        var img = document.createElement('img');
+        img.src = j.signature_url;
+        img.alt = 'Signature';
+        img.id = 'sigPreview';
+        box.prepend(img);
+        if (sigPending) sigPending.classList.remove('show');
+        deleteFlag.value = '0';
+        if (fileInput) fileInput.value = '';
+        pendingCommitFile = null;
+        closeModal();
+        showSigToast(j.message || 'Signature saved!', 'success');
+      }).catch(function (err) {
+        showSigToast(err.message || 'Could not save signature. Please try again.', 'error');
+      }).finally(function () {
+        reviewApply.disabled = false;
+        reviewApply.innerHTML = originalHtml;
+      });
+    });
   }
 
   var delBtn = document.getElementById('sigDeleteBtn');
   if (delBtn) {
     delBtn.addEventListener('click', function () {
-      deleteFlag.value = '1';
-      fileInput.value = '';
-      pendingBlob = null;
-      var p = document.getElementById('sigPreview');
-      if (p) p.style.display = 'none';
-      delBtn.style.display = 'none';
-      var n = document.getElementById('noSig');
-      if (n) n.style.display = 'flex';
-      if (sigPending) sigPending.classList.remove('show');
+      // AJAX delete — same fetch pattern as save. A full-form
+      // requestSubmit is flaky on some mobile browsers and navigates
+      // away; this removes the signature in place with a toast.
+      delBtn.disabled = true;
+      var fd = new FormData();
+      fd.append('delete_signature', '1');
+      fetch('/profile/', {
+        method: 'POST',
+        body: fd,
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken') || '',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      }).then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (j) {
+          return { body: j };
+        });
+      }).then(function (res) {
+        var j = res.body;
+        if (!j || !j.ok) {
+          throw new Error((j && j.message) || 'Could not remove signature.');
+        }
+        fileInput.value = '';
+        pendingBlob = null;
+        var p = document.getElementById('sigPreview');
+        if (p) p.remove();
+        delBtn.style.display = 'none';
+        var n = document.getElementById('noSig');
+        if (n) n.style.display = 'flex';
+        if (sigPending) sigPending.classList.remove('show');
+        deleteFlag.value = '0';
+        showSigToast(j.message || 'Signature removed.', 'success');
+      }).catch(function (err) {
+        showSigToast(err.message || 'Could not remove signature. Please try again.', 'error');
+      }).finally(function () {
+        delBtn.disabled = false;
+      });
     });
   }
 

@@ -1,0 +1,244 @@
+{% extends 'students/base.html' %}
+{% load static %}
+
+{% block sub_tabs %}
+<style>
+  @media (max-width: 1023px){
+    .app-content{background:transparent!important}
+  }
+</style>
+<nav class="sub-nav-bar dm-subnav">
+  <ul class="sub-nav-list">
+    <li class="sub-nav-item">
+      <a href="{% url 'admin_comments' %}?section=JSS" class="sub-nav-link {% if not is_primary %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        JSS
+      </a>
+    </li>
+    <li class="sub-nav-item">
+      <a href="{% url 'admin_comments' %}?section=PRIMARY" class="sub-nav-link {% if is_primary %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        Primary
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+{% include 'students/partials/messages_toast.html' %}
+<style>
+  .rf-page{max-width:1200px;margin:0 auto;padding:40px 40px 60px;background:#eaecf0;min-height:100vh}
+  .main-content{background:#eaecf0!important}
+  .app-content{background:#eaecf0!important;min-height:100vh}
+  body{background:#eaecf0!important}
+  .rf-card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:0;overflow:hidden}
+  .rf-card-header{display:flex;align-items:center;justify-content:space-between;padding:24px 32px 12px}
+  .rf-card-header h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:20px;color:#111827;margin:0}
+  .rf-subtitle{font-size:14px;color:#6b7280;margin:0;padding:0 32px 20px;font-family:'Inter',sans-serif;font-weight:500}
+  .rf-card-body{padding:0 32px 28px}
+  .cc-comment-divider{border:none;border-top:1px solid #e5e7eb;margin:0 32px}
+  .cc-comment-section{padding:0 32px 28px}
+  .cc-comment-header{display:flex;align-items:center;gap:12px;padding:20px 0 16px}
+  .cc-comment-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#24E55E,#199E41);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex-shrink:0;box-shadow:0 2px 8px rgba(36,229,94,0.25)}
+  .cc-comment-title{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;font-size:16px;color:#111827}
+  .cc-comment-subtitle{font-size:13px;color:#6b7280;font-weight:500;margin-top:2px}
+  .rf-footer{text-align:center;padding:20px 32px;color:#9ca3af;font-size:12px;margin-top:20px}
+  .tcc-date-card{background:#f8fafc;border:1px solid #f1f5f9;border-radius:14px;padding:14px;margin-bottom:20px}
+  .tcc-date-label{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px}
+  .tcc-date-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tcc-field{display:flex;flex-direction:column;gap:5px}
+  .tcc-field-label{font-size:11px;font-weight:600;color:#64748b}
+  .tcc-field-input{width:100%;padding:9px 11px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:#0f172a;outline:none;transition:border-color 0.2s,box-shadow 0.2s;box-sizing:border-box}
+  .tcc-field-input:focus{border-color:#24E55E;box-shadow:0 0 0 3px rgba(36,229,94,0.1)}
+  .tcc-context{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f8fafc;border:1px solid #f1f5f9;border-radius:14px;margin-bottom:20px}
+  .tcc-context-icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#24E55E,#199E41);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:15px;box-shadow:0 2px 8px rgba(36,229,94,0.25)}
+  .tcc-context-text{font-size:13px;font-weight:600;color:#0f172a}
+  .tcc-label{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px}
+  .tcc-comments{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+  .tcc-comment{background:#f8fafc;border:1px solid #f1f5f9;border-radius:12px;padding:14px;transition:border-color 0.2s,box-shadow 0.2s}
+  .tcc-comment:focus-within{border-color:#24E55E;box-shadow:0 0 0 3px rgba(36,229,94,0.08)}
+  .tcc-comment-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .tcc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .tcc-dot-ee{background:#22c55e}
+  .tcc-dot-me{background:#3b82f6}
+  .tcc-dot-ae{background:#f59e0b}
+  .tcc-dot-be{background:#ef4444}
+  .tcc-comment-name{font-size:12px;font-weight:700;color:#1e293b}
+  .tcc-comment textarea{width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;font-weight:500;color:#0f172a;line-height:1.45;resize:none;min-height:56px;outline:none;transition:border-color 0.2s;box-sizing:border-box}
+  .tcc-comment textarea:focus{border-color:#cbd5e1}
+  .tcc-comment textarea::placeholder{color:#cbd5e1}
+  .tcc-actions{display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid #f1f5f9}
+  .tcc-btn{height:42px;border:none;border-radius:10px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.15s;padding:0 24px}
+  .tcc-btn:active{transform:scale(0.97)}
+  .tcc-btn-cancel{background:#f1f5f9;color:#475569}
+  .tcc-btn-cancel:active{background:#e2e8f0}
+  .tcc-btn-save{background:linear-gradient(135deg,#199E41,#24E55E);color:#fff;box-shadow:0 4px 14px rgba(36,229,94,0.3)}
+  .tcc-btn-save:active{box-shadow:0 2px 8px rgba(36,229,94,0.2)}
+  .tcc-sticky-note{display:flex;align-items:flex-start;gap:8px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;margin-bottom:20px;font-size:12px;font-weight:600;color:#166534;line-height:1.45}
+  .tcc-sticky-note i{font-size:16px;color:#199E41;flex-shrink:0;margin-top:1px}
+
+  @media (max-width: 1023px){
+    body{background:linear-gradient(180deg,#C8E6C9 0%,#E8F5E9 40%,#f5f5f5 100%)!important;min-height:100dvh}
+    .main-content{background:transparent!important;padding:0!important}
+    .app-content{background:transparent!important;padding:0!important;padding-bottom:80px!important;min-height:100dvh}
+    .app-header,.global-header,.sidebar,.cp-mobile-header{display:none!important}
+    .rf-page{padding:0!important;margin:0!important;background:transparent!important;min-height:100dvh}
+    .rf-card{border:none!important;border-radius:20px!important;background:#fff!important;margin:16px 12px!important;padding:0!important;box-shadow:0 8px 32px rgba(0,0,0,0.08)!important}
+    .rf-card-header{padding:24px 20px 12px!important}
+    .rf-card-header h2{font-size:18px!important;color:#1b5e20!important}
+    .rf-subtitle{padding:0 20px 16px!important;font-size:13px!important}
+    .rf-card-body{padding:0 20px 20px!important}
+    .cc-comment-divider{margin:0 20px!important}
+    .cc-comment-section{padding:0 20px 20px!important}
+    .cc-comment-icon{width:40px!important;height:40px!important;border-radius:12px!important;box-shadow:0 4px 16px rgba(36,229,94,0.3)!important}
+    .tcc-date-card{background:#f0fdf4!important;border-color:#bbf7d0!important;border-radius:14px!important;padding:14px!important}
+    .tcc-date-grid{grid-template-columns:1fr 1fr!important;gap:10px!important}
+    .tcc-field-input{border:1.5px solid #e2e8f0!important;border-radius:12px!important;padding:12px 14px!important;font-size:15px!important;background:#f9fafb!important}
+    .tcc-field-input:focus{border-color:#4CAF50!important;background:#fff!important}
+    .tcc-context{background:#f0fdf4!important;border-color:#bbf7d0!important;border-radius:14px!important;padding:12px 14px!important;margin-bottom:16px!important}
+    .tcc-comments{gap:12px!important}
+    .tcc-comment{background:#f9fafb!important;border:1px solid #e5e7eb!important;border-radius:14px!important;padding:14px!important}
+    .tcc-comment:focus-within{border-color:#4CAF50!important;box-shadow:0 0 0 3px rgba(36,229,94,0.1)!important}
+    .tcc-comment textarea{background:#fff!important;border:1px solid #e2e8f0!important;border-radius:12px!important;padding:12px 14px!important;font-size:15px!important;min-height:64px!important}
+    .tcc-comment textarea:focus{border-color:#4CAF50!important}
+    .tcc-actions{flex-direction:column!important;gap:10px!important;padding:16px 0 0!important}
+    .tcc-btn{width:100%!important;height:48px!important;border-radius:14px!important;font-size:15px!important}
+    .tcc-btn-save{background:linear-gradient(135deg,#4CAF50,#43A047)!important;color:#fff!important;box-shadow:0 6px 20px rgba(76,175,80,0.35)!important;letter-spacing:0.01em}
+    .tcc-btn-cancel{background:#f1f5f9!important;color:#64748b!important}
+    .rf-footer{padding:16px 20px 32px!important;font-size:11px!important;color:#94a3b8!important}
+  }
+</style>
+
+<div class="rf-page">
+  <div class="rf-card">
+    <div class="rf-card-header">
+      <h2>Comments</h2>
+    </div>
+    <p class="rf-subtitle">
+      {% if is_primary %}Primary{% else %}Junior Secondary (JSS){% endif %}
+      &mdash; Whole-school Headteacher / Principal remarks
+      {% if latest_exam %} &middot; {{ latest_exam.name }} ({{ selected_term }} {{ selected_year }}){% else %} &middot; {{ selected_term }} {{ selected_year }}{% endif %}
+    </p>
+
+    <div class="rf-card-body">
+      <div class="tcc-sticky-note">
+        <i class="ph ph-pin"></i>
+        <span>These remarks are saved once for the whole school and stay on every report card until you change them. Switch section above to edit JSS or Primary separately.</span>
+      </div>
+
+      <hr class="cc-comment-divider">
+      <div class="cc-comment-section">
+        <div class="cc-comment-header">
+          <div class="cc-comment-icon"><i class="ph ph-chat-circle-text"></i></div>
+          <div>
+            <div class="cc-comment-title">Headteacher Remarks</div>
+            <div class="cc-comment-subtitle">
+              {% if is_primary %}
+                4 performance levels (EE, ME, AE, BE) — applied to every Primary report card
+              {% else %}
+                8 performance levels (EE1–BE2) — applied to every JSS report card
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <form method="POST" action="{% url 'admin_comments' %}?section={{ selected_section }}&year={{ selected_year }}&term={{ selected_term }}&assessment={{ selected_assessment }}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="hidden" name="section" value="{{ selected_section }}">
+
+          <div class="tcc-context">
+            <div class="tcc-context-icon"><i class="ph ph-file-text"></i></div>
+            <div class="tcc-context-text">
+              Whole School &middot; {% if is_primary %}Primary{% else %}JSS{% endif %} &middot;
+              {{ selected_assessment_display }} &middot; {{ selected_term }} {{ selected_year }}
+            </div>
+          </div>
+
+          <div class="tcc-label">Performance Level Remarks</div>
+          <div class="tcc-comments">
+            {% if is_primary %}
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ee"></span><span class="tcc-comment-name">EE &mdash; Excellent</span></div>
+              <textarea name="ht_comment_ee" rows="2" placeholder="Headteacher remark for excellent performance...">{{ comment_obj.ht_comment_ee }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-me"></span><span class="tcc-comment-name">ME &mdash; Good</span></div>
+              <textarea name="ht_comment_me" rows="2" placeholder="Headteacher remark for good performance...">{{ comment_obj.ht_comment_me }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ae"></span><span class="tcc-comment-name">AE &mdash; Satisfactory</span></div>
+              <textarea name="ht_comment_ae" rows="2" placeholder="Headteacher remark for satisfactory performance...">{{ comment_obj.ht_comment_ae }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-be"></span><span class="tcc-comment-name">BE &mdash; Needs Improvement</span></div>
+              <textarea name="ht_comment_be" rows="2" placeholder="Headteacher remark for needs improvement...">{{ comment_obj.ht_comment_be }}</textarea>
+            </div>
+            {% else %}
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ee"></span><span class="tcc-comment-name">EE1 &mdash; Exceptional</span></div>
+              <textarea name="ht_comment_ee1" rows="2" placeholder="Headteacher remark for exceptional performance...">{{ comment_obj.ht_comment_ee1 }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ee"></span><span class="tcc-comment-name">EE2 &mdash; High Mastery</span></div>
+              <textarea name="ht_comment_ee2" rows="2" placeholder="Headteacher remark for high mastery...">{{ comment_obj.ht_comment_ee2 }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-me"></span><span class="tcc-comment-name">ME1 &mdash; Solid Competence</span></div>
+              <textarea name="ht_comment_me1" rows="2" placeholder="Headteacher remark for solid competence...">{{ comment_obj.ht_comment_me1 }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-me"></span><span class="tcc-comment-name">ME2 &mdash; Basic Competence</span></div>
+              <textarea name="ht_comment_me2" rows="2" placeholder="Headteacher remark for basic competence...">{{ comment_obj.ht_comment_me2 }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ae"></span><span class="tcc-comment-name">AE1 &mdash; Approaching</span></div>
+              <textarea name="ht_comment_ae1" rows="2" placeholder="Headteacher remark for approaching competence...">{{ comment_obj.ht_comment_ae1 }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-ae"></span><span class="tcc-comment-name">AE2 &mdash; Developing</span></div>
+              <textarea name="ht_comment_ae2" rows="2" placeholder="Headteacher remark for developing competence...">{{ comment_obj.ht_comment_ae2 }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-be"></span><span class="tcc-comment-name">BE1 &mdash; Emerging</span></div>
+              <textarea name="ht_comment_be1" rows="2" placeholder="Headteacher remark for emerging competence...">{{ comment_obj.ht_comment_be1 }}</textarea>
+            </div>
+            <div class="tcc-comment">
+              <div class="tcc-comment-head"><span class="tcc-dot tcc-dot-be"></span><span class="tcc-comment-name">BE2 &mdash; Critical Support</span></div>
+              <textarea name="ht_comment_be2" rows="2" placeholder="Headteacher remark for critical support...">{{ comment_obj.ht_comment_be2 }}</textarea>
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="tcc-label">Principal Signature <span style="font-weight:400;color:#94a3b8;">(optional — appears on every report card)</span></div>
+          <div style="background:#f8fafc;border:1px solid #f1f5f9;border-radius:12px;padding:14px;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+              <div style="min-width:140px;min-height:56px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px dashed #e2e8f0;border-radius:10px;padding:8px;">
+                {% if school_signature %}
+                <img src="{{ school_signature }}" alt="Principal signature" style="max-height:72px;max-width:240px;object-fit:contain;">
+                {% else %}
+                <span style="font-size:12px;color:#94a3b8;font-weight:600;">No signature yet</span>
+                {% endif %}
+              </div>
+              <div style="flex:1;min-width:180px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Upload signature image</label>
+                <input type="file" name="headteacher_signature" accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif" style="font-size:12px;font-weight:600;color:#475569;width:100%;">
+                <div style="font-size:11px;color:#94a3b8;margin-top:6px;line-height:1.4;">Leave empty to keep the current signature. PNG with transparent background works best.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tcc-actions">
+            <a href="{% url 'school_admin_dashboard' %}" class="tcc-btn tcc-btn-cancel" style="display:inline-flex;align-items:center;text-decoration:none;">Cancel</a>
+            <button type="submit" class="tcc-btn tcc-btn-save">Save Comments</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="rf-footer">
+    &copy; 2026 EduNexus. All Rights Reserved.
+  </div>
+</div>
+{% endblock %}

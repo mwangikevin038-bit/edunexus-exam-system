@@ -19,7 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Avg, Count, F, Q
+from django.db.models import Avg, Case, Count, F, Q, When
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -38,6 +38,8 @@ from .constants import (
 )
 from .helpers import (
     build_analysis_from_snapshot,
+    bump_report_cache_version,
+    exam_covers_class,
     get_performance_level,
     get_religion_aware_student_count,
     get_stream_submission_summary,
@@ -201,6 +203,17 @@ def select_exam(request):
             id=exam_id,
             status='active',
         )
+
+        # The admin scopes each exam to a set of grades (Exam.classes). A
+        # crafted URL must not open a mark sheet for a class the exam never
+        # covered — e.g. KNEC ASSESSMENT marked for Grade 7+8 only.
+        if not exam_covers_class(selected_exam, selected_assignment.class_name):
+            messages.error(
+                request,
+                f"{selected_exam.name} was not created for "
+                f"{selected_assignment.class_name}.",
+            )
+            return _htmx_redirect(request, reverse('select_exam'))
 
         is_locked = AssessmentLock.all_objects.filter(
             school=school,
@@ -553,6 +566,7 @@ def select_exam(request):
                                 "admin_note": "",
                                 "reviewed_at": None,
                                 "published_at": None,
+                                "published_by": None,
                             }
                         )
 
@@ -653,6 +667,11 @@ def select_exam(request):
     # ==================================================================
     for exam in active_exams:
         for assignment in assignments:
+            # active_exams only requires the exam to cover at least ONE of
+            # the teacher's classes; a teacher spanning grades 7/8/9 would
+            # otherwise get a Grade 9 row for an exam scoped to 7+8 only.
+            if not exam_covers_class(exam, assignment.class_name):
+                continue
             akey = (
                 assignment.class_name, assignment.stream,
                 assignment.subject_id, assignment.school_section,
@@ -736,6 +755,72 @@ def _get_available_grades(school, section, active_sub):
     elif active_sub:
         qs = qs.filter(sub_section=active_sub)
     return qs.order_by('order')
+
+
+def _merge_section_exam_entries(exam_entries):
+    """Merge same-name exam display entries created per section.
+
+    When an admin creates one exam for Grades 1-9, the system creates
+    separate Exam records per section (PRIMARY/LOWER, PRIMARY/UPPER, JSS).
+    Manage Exams merges them into a single display row so all grades appear
+    together.
+
+    Status merge rule — the fix for cross-section status poisoning: the
+    merged row is ``closed`` ONLY when EVERY section's copy is closed.
+    The old rule inherited ``closed`` from any single finished section
+    (and never cleared it when a later copy was still active), so one
+    closed section locked the whole merged row while other sections were
+    still in progress. Among non-closed copies, ``active`` wins over
+    ``draft`` so the group never looks half-finished while usable.
+    """
+    merged_by_name = {}
+    merged_order = []
+    for exam_entry in exam_entries:
+        key = exam_entry['name']
+        if key not in merged_by_name:
+            exam_entry['_statuses'] = [exam_entry['status']]
+            merged_by_name[key] = exam_entry
+            merged_order.append(key)
+        else:
+            existing = merged_by_name[key]
+            existing_classes_by_name = {
+                cr['class_name']: cr for cr in existing['classes']
+            }
+            for cr in exam_entry['classes']:
+                if cr['class_name'] not in existing_classes_by_name:
+                    existing['classes'].append(cr)
+            existing['rowspan'] = len(existing['classes'])
+            existing.setdefault('_statuses', [existing['status']]).append(
+                exam_entry['status'])
+            if not exam_entry.get('all_published', False):
+                existing['all_published'] = False
+            existing['exam_ids'].append(exam_entry['id'])
+
+    # Re-sort merged classes Grade 1 → 9, resolve the merged status, and
+    # recalculate publish state from the combined class rows.
+    for name, entry in merged_by_name.items():
+        statuses = entry.pop('_statuses', [entry['status']])
+        if statuses and all(s == 'closed' for s in statuses):
+            entry['status'] = 'closed'
+        else:
+            # Not all closed: never display 'closed'. Prefer 'active', else
+            # the first other non-closed status (e.g. 'draft').
+            non_closed = [s for s in statuses if s != 'closed']
+            if any(s == 'active' for s in non_closed):
+                entry['status'] = 'active'
+            elif non_closed:
+                entry['status'] = non_closed[0]
+            else:
+                entry['status'] = 'closed'
+        entry['classes'].sort(key=lambda r: (int(m.group()) if (m := re.search(r'\d+', r['class_name'])) else 99))
+        entry['rowspan'] = len(entry['classes'])
+        entry['all_published'] = (
+            entry['classes']
+            and all(r['status'] == 'Published' for r in entry['classes'])
+            and entry['status'] != 'closed'
+        )
+    return [merged_by_name[k] for k in merged_order]
+
 
 @login_required(login_url='login')
 @school_admin_required
@@ -862,15 +947,18 @@ def manage_exams(request):
                 """
                 return sorted(set(old or []) | set(new or []), key=_grade_sort_key)
 
-            # Match existing exams the same way the page DISPLAYS them:
-            # 'knec assessment', 'KNEC  Assessment' and 'KNEC Assessment' must
-            # all land on the same row — exact-name matching used to create a
-            # second row that the display de-dupe then hid from the user.
-            target_norm = re.sub(r"\s+", " ", normalize_exam_display_name(exam_name)).strip().casefold()
+            # Match ONLY on casefold + collapsed whitespace of the typed name.
+            # The display normalizer collapses every "end"/"final"/"mid"/"opener"
+            # name onto one canonical label — using it here made "End Term
+            # Assessment 2" silently merge into the old "End of Term Assessment"
+            # (often already closed) instead of creating a new exam.
+            def _soft_name_key(name):
+                return re.sub(r"\s+", " ", str(name or '')).strip().casefold()
+
+            target_norm = _soft_name_key(exam_name)
 
             def _name_matches(existing_name):
-                cleaned = re.sub(r"\s+", " ", normalize_exam_display_name(existing_name)).strip()
-                return cleaned.casefold() == target_norm
+                return _soft_name_key(existing_name) == target_norm
 
             for (exam_db_section, exam_sub_section), classes in section_groups.items():
                 section_label = exam_db_section + (f' ({exam_sub_section})' if exam_sub_section else '')
@@ -878,9 +966,12 @@ def manage_exams(request):
                     school=school, term=term, year=year,
                     school_section=exam_db_section, sub_section=exam_sub_section,
                 )
-                # First check for a non-deleted exam
+                # Merge only into a live (non-deleted, non-closed) exam.
+                # A closed exam must never silently absorb new classes —
+                # teachers cannot enter marks on it.
                 exam_obj = next(
-                    (e for e in sect_qs.filter(is_deleted=False) if _name_matches(e.name)),
+                    (e for e in sect_qs.filter(is_deleted=False).exclude(status='closed')
+                     if _name_matches(e.name)),
                     None,
                 )
 
@@ -893,7 +984,9 @@ def manage_exams(request):
                         exam_obj.classes = merged
                         exam_obj.save(update_fields=['classes'])
                     if new_ones:
-                        added_labels.append(f"{', '.join(new_ones)} added to {section_label}")
+                        added_labels.append(
+                            f"{', '.join(new_ones)} added to '{exam_obj.name}' ({section_label})"
+                        )
                     created = False
                 else:
                     # Check for a soft-deleted exam with the same key and recover it
@@ -912,16 +1005,22 @@ def manage_exams(request):
                         exam_obj = deleted_exam
                         created = True
                     else:
-                        # No exam exists at all — create a new one
-                        exam_obj, created = Exam.all_objects.get_or_create(
+                        # No live match — create a new one. Never reuse a
+                        # closed exam row via get_or_create (same exact name).
+                        exam_obj = Exam.all_objects.filter(
                             school=school, name=exam_name, term=term, year=year,
                             school_section=exam_db_section, sub_section=exam_sub_section,
-                            defaults={"status": status, "classes": _merge_class_lists(None, classes)},
-                        )
-                        if created:
-                            pass
+                            is_deleted=False,
+                        ).exclude(status='closed').first()
+                        if exam_obj is None:
+                            exam_obj = Exam.all_objects.create(
+                                school=school, name=exam_name, term=term, year=year,
+                                school_section=exam_db_section, sub_section=exam_sub_section,
+                                status=status, classes=_merge_class_lists(None, classes),
+                            )
+                            created = True
                         else:
-                            # Race: exam appeared between filter and get_or_create.
+                            # Race: live exam appeared between filter and create.
                             old_classes = exam_obj.classes or []
                             merged = _merge_class_lists(old_classes, classes)
                             new_ones = [cl for cl in merged if cl not in set(old_classes)]
@@ -929,13 +1028,23 @@ def manage_exams(request):
                                 exam_obj.classes = merged
                                 exam_obj.save(update_fields=['classes'])
                             if new_ones:
-                                added_labels.append(f"{', '.join(new_ones)} added to {section_label}")
+                                added_labels.append(
+                                    f"{', '.join(new_ones)} added to '{exam_obj.name}' ({section_label})"
+                                )
+                            created = False
 
                 if created:
                     created_count += 1
                     created_sections.append(section_label)
                 else:
                     skipped_count += 1
+
+            if created_count or added_labels:
+                # New/merged classes change every grade's exam dropdown —
+                # drop the cached per-grade exam lists so the scoped filter
+                # takes effect immediately, not at TTL expiry.
+                from .students_mgmt import invalidate_score_sheet_caches
+                invalidate_score_sheet_caches(school.pk)
 
             if created_count:
                 request.session.pop('create_prefill', None)
@@ -1241,6 +1350,10 @@ def manage_exams(request):
                 school_id_snapshot=school.pk if school else None,
             )
 
+            # Close/reopen changes which exams appear in every dropdown.
+            from .students_mgmt import invalidate_score_sheet_caches
+            invalidate_score_sheet_caches(school.pk)
+
             messages.success(request, f"Assessment {action_label}.")
             post_year = request.POST.get('year') or request.GET.get('year') or exam.year
             redirect_url = reverse('manage_exams') + f'?tab=manage&year={post_year}'
@@ -1457,6 +1570,11 @@ def manage_exams(request):
                     count = len(all_exams_to_delete)
                     messages.success(request, f"{'Assessment' if count == 1 else 'Assessments'} {'has' if count == 1 else 'have'} been deleted.")
 
+            # Class-list changes and full deletes both land here: every
+            # grade's cached exam dropdown must drop immediately.
+            from .students_mgmt import invalidate_score_sheet_caches
+            invalidate_score_sheet_caches(school.pk)
+
             for cls in affected_classes:
                 invalidate_report_caches(
                     school.pk, cls, '',
@@ -1529,6 +1647,9 @@ def manage_exams(request):
             else:
                 messages.success(request, "Exam has been recovered. No mark backups found to restore.")
 
+            from .students_mgmt import invalidate_score_sheet_caches
+            invalidate_score_sheet_caches(school.pk)
+
             return redirect(reverse('manage_exams') + f'?tab=deleted&year={exam.year}')
 
         if action_type == "withdraw_results":
@@ -1563,8 +1684,21 @@ def manage_exams(request):
                 if withdraw_class:
                     sub_filter['class_name'] = withdraw_class
 
+                # Collect the (class, stream) pairs being reverted so the
+                # exact per-stream caches (leaderboard, merit, snapshot) can
+                # be evicted below — a blank stream key never matches them.
+                affected_pairs = list(
+                    MarkSubmission.all_objects.filter(
+                        **{k: v for k, v in sub_filter.items() if k != 'status'}
+                    ).values_list('class_name', 'stream').distinct()
+                )
+
+                # 'returned' (not 'submitted'): teachers must actually be able
+                # to edit after a withdraw — save_mark/batch_save freeze
+                # submitted sheets, so 'submitted' would contradict the
+                # "editable again" promise and strand the results.
                 reverted = MarkSubmission.all_objects.filter(**sub_filter).update(
-                    status='submitted',
+                    status='returned',
                     published_at=None,
                     published_by=None,
                 )
@@ -1593,10 +1727,21 @@ def manage_exams(request):
                     snapshot_filter['class_name'] = withdraw_class
                 ExamResultSnapshot.all_objects.filter(**snapshot_filter).delete()
 
-            invalidate_report_caches(
-                school.pk, withdraw_class or '', '',
-                withdraw_exam.year, withdraw_exam.term, withdraw_exam.name,
-            )
+            for pair_class, pair_stream in affected_pairs:
+                invalidate_report_caches(
+                    school.pk, pair_class, pair_stream,
+                    withdraw_exam.year, withdraw_exam.term, withdraw_exam.name,
+                )
+            if not withdraw_class:
+                # Withdraw-all: also sweep school-wide merit/report-forms keys
+                # for classes that had no published sheet in this exam.
+                from .helpers import invalidate_school_grade_caches
+                invalidate_school_grade_caches(school.pk)
+            # Withdrawal changes which exams look "complete" in dropdowns;
+            # a whole-school exam-list invalidation covers the empty-class
+            # (withdraw-all) case that the per-grade key above misses.
+            from .students_mgmt import invalidate_score_sheet_caches
+            invalidate_score_sheet_caches(school.pk)
 
             label = withdraw_class if withdraw_class else "all classes"
             messages.success(request, f"Withdrawn {reverted} published submission(s) for {label}. Results are now editable again.")
@@ -1663,7 +1808,12 @@ def manage_exams(request):
     # Exam list grouped by term
     # -----------------------------
     exam_list_by_term = {}
-    all_year_exams = list(Exam.all_objects.filter(school=school, year=selected_year, is_deleted=False).order_by("-term", "name"))
+    # Prefer active over closed when two exams share a display name — a
+    # newly created exam must never be hidden behind an older closed twin.
+    all_year_exams = list(
+        Exam.all_objects.filter(school=school, year=selected_year, is_deleted=False)
+        .order_by("-term", "name", Case(When(status='closed', then=1), default=0))
+    )
 
     def _normalize_exam_name(name):
         return normalize_exam_display_name(name)
@@ -1852,41 +2002,8 @@ def manage_exams(request):
             })
 
     # ── Merge exams with the same name+term across sections ────────
-    # When an admin creates one exam for Grades 1-9, the system creates
-    # separate Exam records per section (PRIMARY/LOWER, PRIMARY/UPPER, JSS).
-    # Merge them into a single display entry so all grades appear together.
     for term_key, term_data in exam_list_by_term.items():
-        merged_by_name = {}
-        merged_order = []
-        for exam_entry in term_data['exams']:
-            key = exam_entry['name']
-            if key not in merged_by_name:
-                merged_by_name[key] = exam_entry
-                merged_order.append(key)
-            else:
-                existing = merged_by_name[key]
-                existing_classes_by_name = {
-                    cr['class_name']: cr for cr in existing['classes']
-                }
-                for cr in exam_entry['classes']:
-                    if cr['class_name'] not in existing_classes_by_name:
-                        existing['classes'].append(cr)
-                existing['rowspan'] = len(existing['classes'])
-                if exam_entry['status'] == 'closed':
-                    existing['status'] = 'closed'
-                if not exam_entry.get('all_published', False):
-                    existing['all_published'] = False
-                existing['exam_ids'].append(exam_entry['id'])
-        # Re-sort merged classes Grade 1 → 9 and recalculate
-        for name, entry in merged_by_name.items():
-            entry['classes'].sort(key=lambda r: (int(m.group()) if (m := re.search(r'\d+', r['class_name'])) else 99))
-            entry['rowspan'] = len(entry['classes'])
-            entry['all_published'] = (
-                entry['classes']
-                and all(r['status'] == 'Published' for r in entry['classes'])
-                and entry['status'] != 'closed'
-            )
-        term_data['exams'] = [merged_by_name[k] for k in merged_order]
+        term_data['exams'] = _merge_section_exam_entries(term_data['exams'])
 
     term_order = {'Term 3': 1, 'Term 2': 2, 'Term 1': 3}
     exam_list_by_term = dict(
@@ -2172,6 +2289,26 @@ def edit_exam(request):
                 school_section=exam.school_section,
                 sub_section=exam.sub_section,
             ).update(exam_name=new_name)
+
+            # Class-teacher and headteacher remarks are keyed on the exam
+            # name — cascade them too, or a rename strands every saved
+            # remark (they become unfindable by the report-card readers).
+            from ..models import ClassTeacherMasterComment, SchoolHeadteacherComment
+            ClassTeacherMasterComment.all_objects.filter(
+                school=school, exam_type=old_name,
+                term=exam.term, year=exam.year,
+            ).update(exam_type=new_name)
+            SchoolHeadteacherComment.all_objects.filter(
+                school=school, exam_type=old_name,
+                term=exam.term, year=exam.year,
+            ).update(exam_type=new_name)
+
+        # The exam name is embedded in cached dropdowns and compiled report
+        # artefacts — refresh both so the rename is visible immediately.
+        # bump_report_cache_version never raises.
+        from .students_mgmt import invalidate_score_sheet_caches
+        invalidate_score_sheet_caches(school.pk)
+        bump_report_cache_version(school.pk)
 
         messages.success(request, "✓ Exam name updated")
         return redirect(f'{reverse("edit_exam")}?exam_id={exam_id}')
@@ -2830,6 +2967,13 @@ def review_stream_submission(request):
     class_name = request.GET.get("class_name") or request.POST.get("class_name")
     stream = request.GET.get("stream") or request.POST.get("stream")
 
+    if class_name and not exam_covers_class(exam, class_name):
+        messages.error(
+            request,
+            f"{exam.name} was not created for {class_name}.",
+        )
+        return redirect("manage_exams")
+
     if not class_name or not stream:
         exams = Exam.all_objects.filter(school=school, is_deleted=False).order_by("-year", "term", "name")
         stream_cards = []
@@ -2982,6 +3126,9 @@ def review_stream_submission(request):
 
     if request.method == "POST":
         import bleach
+        if exam.status == 'closed':
+            messages.error(request, "This assessment is closed. Reopen it before reviewing submissions.")
+            return redirect(f"{request.path}?exam_id={exam.id}&class_name={class_name}&stream={stream}")
         action_type = request.POST.get("action_type")
         admin_note = bleach.clean(request.POST.get("admin_note", "").strip())
         submissions = [
@@ -3007,6 +3154,8 @@ def review_stream_submission(request):
             target_submission.status = "returned"
             target_submission.admin_note = admin_note
             target_submission.reviewed_at = timezone.now()
+            target_submission.published_at = None
+            target_submission.published_by = None
             target_submission.save()
 
             # Unlock the assessment so the teacher can edit the returned sheet
@@ -3018,6 +3167,14 @@ def review_stream_submission(request):
                 exam_type=exam.name,
             ).update(is_locked=False)
 
+            # Returning (especially a published sheet) changes what report
+            # cards/leaderboards must show — evict before the redirect renders.
+            invalidate_report_caches(
+                school.pk, target_row["assignment"].class_name,
+                target_row["assignment"].stream,
+                exam.year, exam.term, exam.name,
+            )
+
             messages.success(
                 request,
                 f"{target_row['subject_name']} has been returned to {target_row['teacher_name']} without affecting the other subjects."
@@ -3028,6 +3185,8 @@ def review_stream_submission(request):
                 submission.status = "returned"
                 submission.admin_note = admin_note
                 submission.reviewed_at = timezone.now()
+                submission.published_at = None
+                submission.published_by = None
                 submission.save()
 
             # Unlock the assessment so teachers can edit returned sheets
@@ -3039,6 +3198,11 @@ def review_stream_submission(request):
                 exam_type=exam.name,
             ).update(is_locked=False)
 
+            invalidate_report_caches(
+                school.pk, class_name, stream,
+                exam.year, exam.term, exam.name,
+            )
+
             messages.success(request, f"{class_name} {stream} has been returned to teachers for correction.")
 
         elif action_type == "approve_stream":
@@ -3048,6 +3212,9 @@ def review_stream_submission(request):
             for row in rows:
                 submission = row["submission"]
                 if not submission:
+                    continue
+                # Never downgrade an already-published sheet back to approved.
+                if submission.status == "published":
                     continue
                 submission.status = "approved"
                 submission.admin_note = admin_note
@@ -3068,6 +3235,9 @@ def review_stream_submission(request):
             for row in rows:
                 submission = row["submission"]
                 if not submission:
+                    continue
+                # Idempotent: keep the original publish timestamp/author.
+                if submission.status == "published":
                     continue
                 submission.status = "published"
                 submission.admin_note = admin_note
@@ -3092,7 +3262,10 @@ def review_stream_submission(request):
                 })
 
             # Clear Redis + stale snapshots FIRST, then rebuild snapshot.
-            from students.views.helpers import invalidate_report_caches
+            # (invalidate_report_caches comes from the module-level import at
+            # the top of this file — a function-level import here would make
+            # the name local to review_stream_submission and break the
+            # earlier return_subject/return_stream invalidation calls.)
             invalidate_report_caches(
                 school.pk, class_name, stream, exam.year, exam.term, exam.name,
             )
@@ -3174,7 +3347,19 @@ def review_submission(request):
         messages.error(request, "This assessment is closed. Reopen it before reviewing submissions.")
         return redirect(reverse('manage_exams') + '?tab=manage')
 
-    submission = MarkSubmission.objects.filter(
+    # Exam.classes scoping: reviewing/approving/publishing a sheet for a
+    # class this exam never covered is never legitimate.
+    if not exam_covers_class(exam, assignment.class_name):
+        messages.error(
+            request,
+            f"{exam.name} was not created for {assignment.class_name}.",
+        )
+        return redirect("manage_exams")
+
+    # all_objects: the workspace-scoped default manager would resolve nothing
+    # when the admin's workspace section differs from the sheet's section
+    # (e.g. reviewing a JSS sheet from the PRIMARY workspace).
+    submission = MarkSubmission.all_objects.filter(
         school=school,
         teacher=assignment.teacher_profile,
         subject=assignment.subject,
@@ -3184,6 +3369,7 @@ def review_submission(request):
         term=exam.term,
         year=exam.year,
         school_section=assignment.school_section,
+        sub_section=assignment.sub_section,
     ).first()
 
     if request.method == "POST":
@@ -3197,6 +3383,23 @@ def review_submission(request):
                 if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                     return JsonResponse({"success": False, "error": "Only the Main School Admin can override published result scores."})
                 messages.error(request, "Only the Main School Admin can override published result scores.")
+                return redirect(
+                    f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+                )
+
+            # Same gate as every teacher write path — an admin override must
+            # not edit marks inside a locked assessment (unlock first).
+            if AssessmentLock.all_objects.filter(
+                school=school,
+                year=exam.year,
+                term=exam.term,
+                grade=assignment.class_name,
+                exam_type=exam.name,
+                is_locked=True,
+            ).exists():
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse({"success": False, "error": "Assessment is locked by admin"})
+                messages.error(request, "Assessment is locked by admin")
                 return redirect(
                     f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
                 )
@@ -3219,6 +3422,7 @@ def review_submission(request):
                 assignment.class_name,
                 assignment.stream,
                 assignment.subject,
+                school=school,
             )
 
             # ── BULK READ: fetch existing marks in ONE query (fixes N+1) ──
@@ -3436,6 +3640,8 @@ def review_submission(request):
                 submission.status = "returned"
                 submission.admin_note = admin_note
                 submission.reviewed_at = timezone.now()
+                submission.published_at = None
+                submission.published_by = None
                 submission.save()
 
                 # Unlock the assessment so the teacher can edit the returned sheet
@@ -3447,6 +3653,12 @@ def review_submission(request):
                     exam_type=exam.name,
                 ).update(is_locked=False)
 
+            # A return (esp. of a published sheet) changes report-card state.
+            invalidate_report_caches(
+                school.pk, assignment.class_name, assignment.stream,
+                exam.year, exam.term, exam.name,
+            )
+
             messages.success(request, "Assessment sheet has been returned to the teacher for correction.")
 
         elif action_type == "approve_submission":
@@ -3455,10 +3667,20 @@ def review_submission(request):
                 return redirect(
                     f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
                 )
+            # Never silently downgrade a published sheet back to approved.
+            if submission.status == "published":
+                messages.error(
+                    request,
+                    "This sheet is already published. Withdraw the results before changing its approval status.",
+                )
+                return redirect(
+                    f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+                )
             total_students = get_religion_aware_student_count(
                 assignment.class_name,
                 assignment.stream,
                 assignment.subject,
+                school=school,
             )
 
             captured_count = get_subject_marks(
@@ -3494,10 +3716,27 @@ def review_submission(request):
                 return redirect(
                     f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
                 )
+            # A returned sheet is mid-correction — publishing it would ship
+            # marks the teacher was told to revise. Already-published is a
+            # no-op (keeps the original publish timestamp/author).
+            if submission.status == "returned":
+                messages.error(
+                    request,
+                    "This sheet was returned to the teacher. It must be resubmitted before publishing.",
+                )
+                return redirect(
+                    f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+                )
+            if submission.status == "published":
+                messages.success(request, "This sheet is already published.")
+                return redirect(
+                    f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+                )
             total_students = get_religion_aware_student_count(
                 assignment.class_name,
                 assignment.stream,
                 assignment.subject,
+                school=school,
             )
 
             captured_count = get_subject_marks(
@@ -3971,6 +4210,16 @@ def select_exam_primary(request):
                 messages.error(request, "That exam belongs to a different sub-section.")
                 return _htmx_redirect(request, reverse('select_exam_primary'))
 
+        # Exam.classes scoping must hold on the open path too — a crafted
+        # URL cannot open a sheet for a class the exam was never assigned.
+        if not exam_covers_class(selected_exam, selected_assignment.class_name):
+            messages.error(
+                request,
+                f"{selected_exam.name} was not created for "
+                f"{selected_assignment.class_name}.",
+            )
+            return _htmx_redirect(request, reverse('select_exam_primary'))
+
         is_locked = AssessmentLock.all_objects.filter(
             school=school,
             year=selected_exam.year,
@@ -4321,6 +4570,7 @@ def select_exam_primary(request):
                             "admin_note": "",
                             "reviewed_at": None,
                             "published_at": None,
+                            "published_by": None,
                         }
                     )
 
@@ -4343,6 +4593,10 @@ def select_exam_primary(request):
 
     for exam in active_exams:
         for assignment in assignments:
+            # active_exams keeps exams covering ANY teacher class; skip the
+            # pairs where this exam was never assigned to this grade.
+            if not exam_covers_class(exam, assignment.class_name):
+                continue
             total_students = get_religion_aware_student_count(
                 assignment.class_name,
                 assignment.stream,
@@ -4469,6 +4723,14 @@ def clear_mark(request):
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
+    # Exam.classes scoping on every WRITE path: a forged POST must never
+    # touch marks for a class the admin never assigned to this exam.
+    if not exam_covers_class(exam, assignment.class_name):
+        return JsonResponse(
+            {'error': f'{exam.name} was not created for {assignment.class_name}.'},
+            status=400,
+        )
+
     try:
         student = Student.objects.get(id=student_id, school=school)
     except Student.DoesNotExist:
@@ -4495,8 +4757,10 @@ def clear_mark(request):
         sub_section=assignment.sub_section,
     ).first()
 
-    if submission and submission.status in ('approved', 'published'):
-        return JsonResponse({'error': 'This sheet has been approved/published and cannot be modified. Ask the admin to return it first.'}, status=403)
+    # Submitted sheets are frozen — same gate as save_mark/batch_save.
+    # Only 'returned' (admin sent it back) may be edited.
+    if submission and submission.status in ('submitted', 'approved', 'published'):
+        return JsonResponse({'error': 'This sheet has been submitted and cannot be modified. Ask the admin to return it first.'}, status=403)
 
     if AssessmentLock.all_objects.filter(
         school=school,
@@ -4530,21 +4794,6 @@ def clear_mark(request):
                 request=request,
             )
             marks_to_delete.delete()
-
-        if submission and submission.status == 'submitted' and deleted_count:
-            remaining = Mark.all_objects.filter(
-                school=school,
-                subject=assignment.subject,
-                student__class_name=assignment.class_name,
-                student__stream=assignment.stream,
-                term=exam.term,
-                exam_type=exam.name,
-                year=exam.year,
-                school_section=assignment.school_section,
-                sub_section=assignment.sub_section,
-            ).count()
-            if remaining == 0:
-                submission.delete()
 
     if deleted_count:
         invalidate_report_caches(
@@ -4648,6 +4897,14 @@ def save_mark(request):
         exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
+
+    # Exam.classes scoping on every WRITE path: a forged POST must never
+    # touch marks for a class the admin never assigned to this exam.
+    if not exam_covers_class(exam, assignment.class_name):
+        return JsonResponse(
+            {'error': f'{exam.name} was not created for {assignment.class_name}.'},
+            status=400,
+        )
 
     try:
         student = Student.objects.get(id=student_id, school=school)
@@ -4893,6 +5150,14 @@ def batch_save_marks(request):
         exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
+
+    # Exam.classes scoping on every WRITE path: a forged POST must never
+    # touch marks for a class the admin never assigned to this exam.
+    if not exam_covers_class(exam, assignment.class_name):
+        return JsonResponse(
+            {'error': f'{exam.name} was not created for {assignment.class_name}.'},
+            status=400,
+        )
 
     submission_teacher = teacher or assignment.teacher_profile
     submission = MarkSubmission.all_objects.filter(
@@ -5257,6 +5522,14 @@ def update_maximum_marks(request):
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
+    # Exam.classes scoping on every WRITE path: a forged POST must never
+    # touch marks for a class the admin never assigned to this exam.
+    if not exam_covers_class(exam, assignment.class_name):
+        return JsonResponse(
+            {'error': f'{exam.name} was not created for {assignment.class_name}.'},
+            status=400,
+        )
+
     submission_teacher = teacher or assignment.teacher_profile
     submission = MarkSubmission.all_objects.filter(
         school=school, teacher=submission_teacher, subject=assignment.subject,
@@ -5391,6 +5664,14 @@ def return_mark_sheet(request):
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
+    # Exam.classes scoping on every WRITE path: a forged POST must never
+    # touch marks for a class the admin never assigned to this exam.
+    if not exam_covers_class(exam, assignment.class_name):
+        return JsonResponse(
+            {'error': f'{exam.name} was not created for {assignment.class_name}.'},
+            status=400,
+        )
+
     submission_teacher = teacher or assignment.teacher_profile
     submission = MarkSubmission.all_objects.filter(
         school=school, teacher=submission_teacher, subject=assignment.subject,
@@ -5458,6 +5739,13 @@ def publish_results_overview(request):
         else:
             messages.error(request, "No classes found.")
             return redirect("manage_exams")
+
+    if not exam_covers_class(exam, class_name):
+        messages.error(
+            request,
+            f"{exam.name} was not created for {class_name}.",
+        )
+        return redirect("manage_exams")
 
     all_exams = Exam.all_objects.filter(
         school=school, is_deleted=False,
@@ -5602,7 +5890,7 @@ def upload_results(request):
         return redirect("manage_exams")
 
     assignment_id = request.GET.get("assignment_id") or request.POST.get("assignment_id")
-    exam_id = request.GET.get("exam_id") or request.POST.get("exam_id")
+    exam_id = _safe_id(request.GET.get("exam_id") or request.POST.get("exam_id"))
 
     assignment = SubjectAssignment.all_objects.filter(
         id=assignment_id,
@@ -5624,6 +5912,14 @@ def upload_results(request):
         messages.error(request, "Exam not found.")
         return redirect("manage_exams")
 
+    # Never enter marks into an exam that was never assigned to this grade.
+    if not exam_covers_class(exam, assignment.class_name):
+        messages.error(
+            request,
+            f"{exam.name} was not created for {assignment.class_name}.",
+        )
+        return redirect("manage_exams")
+
     is_locked = AssessmentLock.all_objects.filter(
         school=school,
         year=exam.year,
@@ -5633,7 +5929,11 @@ def upload_results(request):
         is_locked=True,
     ).exists()
 
-    submission = MarkSubmission.objects.filter(
+    # all_objects + sub_section: the workspace-scoped manager would miss this
+    # sheet when the admin's workspace differs from the assignment's section,
+    # and without sub_section the lookup can resolve the wrong LOWER/UPPER
+    # sheet and silently treat an editable sheet as submitted (or vice versa).
+    submission = MarkSubmission.all_objects.filter(
         school=school,
         teacher=assignment.teacher_profile,
         subject=assignment.subject,
@@ -5643,6 +5943,7 @@ def upload_results(request):
         term=exam.term,
         year=exam.year,
         school_section=assignment.school_section,
+        sub_section=assignment.sub_section,
     ).first()
 
     is_submitted = submission is not None and submission.status in [
@@ -5653,6 +5954,7 @@ def upload_results(request):
         assignment.class_name,
         assignment.stream,
         assignment.subject,
+        school=school,
     )
 
     marks_qs = get_subject_marks(
@@ -5702,6 +6004,12 @@ def upload_results(request):
 
     # ── POST handling (save + submit in one pass, matching teacher view) ──
     if request.method == "POST":
+        if exam.status == 'closed':
+            messages.error(request, "This assessment is closed. Reopen it before entering marks.")
+            return _htmx_redirect(request,
+                f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+            )
+
         if is_locked:
             messages.error(request, "This assessment sheet is locked by admin.")
             return _htmx_redirect(request,
@@ -5710,6 +6018,12 @@ def upload_results(request):
 
         if is_submitted:
             messages.error(request, "This sheet has been submitted and cannot be modified. Ask the admin to return it first.")
+            return _htmx_redirect(request,
+                f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+            )
+
+        if not students:
+            messages.error(request, "No learners found for this class/stream — nothing to submit.")
             return _htmx_redirect(request,
                 f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
             )
@@ -5836,12 +6150,15 @@ def upload_results(request):
             )
 
         from django.db import DatabaseError as _DBConcurrencyError
+        from django.db import IntegrityError as _IntegrityError
         try:
           with transaction.atomic():
             from students.models import MarkAuditLog
             _all_audit = []
 
             # Re-lock existing marks to prevent concurrent admin/teacher saves from racing
+            # (scoped to this class/stream — a whole-section lock would false-trigger
+            # "being edited by another user" across unrelated classes).
             _locked_marks = {
                 m.student_id: m for m in Mark.all_objects.select_for_update(
                     nowait=True,
@@ -5853,6 +6170,8 @@ def upload_results(request):
                     year=exam.year,
                     school_section=assignment.school_section,
                     sub_section=assignment.sub_section,
+                    student__class_name=assignment.class_name,
+                    student__stream=assignment.stream,
                 )
             }
 
@@ -5927,9 +6246,18 @@ def upload_results(request):
                         "admin_note": "",
                         "reviewed_at": None,
                         "published_at": None,
+                        "published_by": None,
                     }
                 )
 
+        except _IntegrityError:
+            # IntegrityError subclasses DatabaseError — catch it FIRST so a
+            # unique-constraint clash isn't reported as the misleading
+            # "being edited by another user" concurrency message.
+            messages.error(request, "This sheet could not be saved because it duplicates an existing entry. Reload the page and try again.")
+            return _htmx_redirect(request,
+                f"{request.path}?assignment_id={assignment.id}&exam_id={exam.id}"
+            )
         except _DBConcurrencyError:
             messages.warning(request, "This subject is being edited by another user. Please wait a moment and try again.")
             return _htmx_redirect(request,
@@ -6028,7 +6356,7 @@ def quick_publish_stream(request):
     if not school:
         return JsonResponse({'error': 'School context required'}, status=400)
 
-    exam_id = request.POST.get('exam_id')
+    exam_id = _safe_id(request.POST.get('exam_id'))
     class_name = request.POST.get('class_name')
     stream = request.POST.get('stream')
 
@@ -6039,6 +6367,13 @@ def quick_publish_stream(request):
         exam = Exam.all_objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found or closed'}, status=404)
+
+    # Never publish sheets for a class this exam was never assigned to.
+    if not exam_covers_class(exam, class_name):
+        return JsonResponse(
+            {'error': f'{exam.name} was not created for {class_name}.'},
+            status=400,
+        )
 
     # Validate with the SAME summary the readiness UI uses so the button's
     # ready_count / blockers can never disagree with what publish accepts
@@ -6063,6 +6398,16 @@ def quick_publish_stream(request):
             continue
 
         if submission.status == 'published':
+            continue
+
+        # A returned sheet is mid-correction — publishing it would ship marks
+        # the teacher was explicitly told to revise.
+        if submission.status == 'returned':
+            errors.append({
+                'subject': subject_name,
+                'teacher': teacher_name,
+                'issue': 'Returned to teacher — waiting for resubmission',
+            })
             continue
 
         missing = row.get('missing_count', 0)

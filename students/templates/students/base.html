@@ -249,6 +249,10 @@
                     <i class="ph ph-chalkboard-teacher"></i>
                     <span class="nav-label">Teachers</span>
                 </a>
+                <a class="ps-nav-link {% if request.resolver_match.url_name == 'admin_comments' %}active{% endif %}" href="{% url 'admin_comments' %}">
+                    <i class="ph ph-chats-circle"></i>
+                    <span class="nav-label">Comments</span>
+                </a>
                 <a class="ps-nav-link {% if request.resolver_match.url_name == 'printouts_hub' or request.resolver_match.url_name == 'class_list_printout' or request.resolver_match.url_name == 'score_sheet' or request.resolver_match.url_name == 'analysis_report' or request.resolver_match.url_name == 'report_forms' or request.resolver_match.url_name == 'report_forms_display' or request.resolver_match.url_name == 'merit_list' or request.resolver_match.url_name == 'report_card_lookup' %}active{% endif %}" href="{% url 'printouts_hub' %}">
                     <i class="ph ph-printer"></i>
                     <span class="nav-label">Printouts</span>
@@ -452,6 +456,10 @@
                             <a class="mm-card" href="{% url 'manage_exams' %}">
                                 <div class="mm-card-icon orange"><i class="ph ph-clipboard-text"></i></div>
                                 <span class="mm-card-label">Exams</span>
+                            </a>
+                            <a class="mm-card" href="{% url 'admin_comments' %}">
+                                <div class="mm-card-icon blue"><i class="ph ph-chats-circle"></i></div>
+                                <span class="mm-card-label">Comments</span>
                             </a>
                             <a class="mm-card" href="{% url 'printouts_hub' %}">
                                 <div class="mm-card-icon teal"><i class="ph ph-printer"></i></div>

@@ -42,6 +42,7 @@ from .health import healthz  # noqa: F401
 # ── Dashboard views ──────────────────────────────────────────────────────────
 from .dashboard import (  # noqa: F401
     profile_view,
+    signature_preview,
     dashboard,
     school_admin_dashboard,
     school_settings,
@@ -126,6 +127,7 @@ from .reports import (  # noqa: F401
 from .faculty import (  # noqa: F401
     manage_master_comments,
     manage_headteacher_comments,
+    admin_comments,
     manage_faculty_matrix,
     faculty_grade_streams,
     learner_profile,

@@ -8,6 +8,7 @@ urlpatterns = [
     # ── Dashboard & profile ───────────────────────────────────────────────
     path('dashboard/', views.dashboard, name='dashboard_alt'),
     path('profile/', views.profile_view, name='home_alt'),
+    path('signature/preview/', views.signature_preview, name='signature_preview'),
     path('password-change/',
          views.custom_password_change,
          name='password_change'),
@@ -79,6 +80,7 @@ urlpatterns = [
     # ── Comments ──────────────────────────────────────────────────────────
     path('manage-master-comments/', views.manage_master_comments, name='manage_master_comments'),
     path('manage-headteacher-comments/', views.manage_headteacher_comments, name='manage_headteacher_comments'),
+    path('school-admin/comments/', views.admin_comments, name='admin_comments'),
 
     # ── Workspace switching (admin only) ──────────────────────────
     path('switch-workspace/', views.switch_workspace, name='switch_workspace'),

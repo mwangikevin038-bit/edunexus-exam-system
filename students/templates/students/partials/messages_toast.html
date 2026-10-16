@@ -1,0 +1,71 @@
+{% if messages %}
+<style>
+    .en-msg-toast-wrap {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+        max-width: min(92vw, 560px);
+    }
+    .en-msg-toast {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 20px;
+        border-radius: 14px;
+        font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #FFFFFF;
+        background: linear-gradient(135deg, #199E41, #24E55E);
+        box-shadow: 0 8px 32px rgba(36, 229, 94, 0.35);
+        animation: enMsgToastIn 0.35s cubic-bezier(0.32,0.72,0,1), enMsgToastOut 0.3s ease-in 3.5s forwards;
+        pointer-events: auto;
+    }
+    .en-msg-toast.en-msg-error {
+        background: linear-gradient(135deg, #b91c1c, #ef4444);
+        box-shadow: 0 8px 32px rgba(239, 68, 68, 0.35);
+    }
+    .en-msg-toast.en-msg-warning {
+        background: linear-gradient(135deg, #b45309, #f59e0b);
+        box-shadow: 0 8px 32px rgba(245, 158, 11, 0.35);
+    }
+    .en-msg-toast.en-msg-info {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.35);
+    }
+    .en-msg-toast .en-msg-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    @keyframes enMsgToastIn {
+        from { transform: translateY(-30px); opacity: 0; }
+        to   { transform: translateY(0);     opacity: 1; }
+    }
+    @keyframes enMsgToastOut {
+        from { opacity: 1; }
+        to   { opacity: 0; transform: translateY(-10px); pointer-events: none; }
+    }
+</style>
+<div class="en-msg-toast-wrap" role="status" aria-live="polite">
+    {% for msg in messages %}
+    <div class="en-msg-toast{% if msg.tags == 'error' %} en-msg-error{% elif msg.tags == 'warning' %} en-msg-warning{% elif msg.tags == 'info' %} en-msg-info{% endif %}">
+        <span class="en-msg-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        {{ msg }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
