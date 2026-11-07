@@ -3,571 +3,661 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EDUNEXUS - Examination System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light">
+    <title>Sign in — EDUNEXUS Exam System</title>
+    <meta name="description" content="Sign in to EDUNEXUS — capture exam scores, auto-computed broadsheets, CBE-aligned analytics and print-ready report cards for your school.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#0f2240">
+
+    <!-- Open Graph / Twitter (login is noindex, but shared links still preview) -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="EDUNEXUS">
+    <meta property="og:title" content="Sign in — EDUNEXUS Exam System">
+    <meta property="og:description" content="Capture scores, publish broadsheets and print report cards — one secure workspace for your whole school.">
+    <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'login' %}">
+    <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/edunexus_logo_192.png' %}">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Sign in — EDUNEXUS Exam System">
+    <meta name="twitter:description" content="Capture scores, publish broadsheets and print report cards — one secure workspace for your whole school.">
+
+    <link rel="icon" type="image/png" href="{% static 'images/edunexus_logo_192.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'images/edunexus_logo_192.png' %}">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/bootstrap-icons.min.css">
+    <!-- Design-system tokens (--en-green, neutrals, type scale). -->
+    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
     <!-- Anti-tiny: compensate shrink-to-fit when a phone browser forces a
          desktop layout ("Desktop site"). See static/js/viewport_fit.js. -->
     <script src="{% static 'js/viewport_fit.js' %}?v=1"></script>
+
     <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ═══════════════════════════════════════════════════════════════
+   EDUNEXUS — SIGN IN
+   Mobile-first split auth: navy aurora brand panel + light form sheet.
+   Layout state lives in tokens so the two responsive blocks at the
+   bottom (≤1023px viewport / html.force-mobile) can flip it cheaply.
+   ═══════════════════════════════════════════════════════════════ */
 
-:root {
-    --green: #4CAF50;
-    --green-hover: #43A047;
-    --green-deeper: #2E7D32;
-    --navy: #0f172a;
-    --navy-dark: #0a1628;
-    --navy-light: #162d50;
-    --white: #ffffff;
-    --gray-50: #f8fafc;
-    --gray-100: #f1f5f9;
-    --gray-200: #e2e8f0;
-    --gray-400: #94a3b8;
-    --gray-600: #475569;
-    --gray-700: #334155;
-    --gray-900: #0f172a;
-    --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --radius: 16px;
-    --radius-xl: 24px;
-}
-
-html { height: 100%; }
+/* ── 1. RESET & BASE ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { height: 100%; -webkit-text-size-adjust: 100%; }
 body {
     min-height: 100%;
-    font-family: var(--font);
+    font-family: var(--sg-font);
     -webkit-font-smoothing: antialiased;
-    background: var(--white);
+    -moz-osx-font-smoothing: grayscale;
+    background: #f2f6f3;
+    color: var(--sg-ink);
+    text-rendering: optimizeLegibility;
+}
+img { display: block; max-width: 100%; }
+a { color: inherit; }
+button, input { font-family: inherit; }
+:focus-visible { outline: 3px solid rgba(76, 175, 80, .6); outline-offset: 2px; }
+
+/* ── 2. TOKENS ─────────────────────────────────────────────────── */
+:root {
+    /* Brand — references the design system (variables.css loads first). */
+    --sg-green: var(--en-green, #4CAF50);
+    --sg-green-hover: var(--en-green-hover, #43A047);
+    --sg-cta: var(--en-green-active, #2e6b31);        /* white text passes AA (≈6.4:1) */
+    --sg-cta-hover: #358239;                          /* ≈4.8:1 with white */
+    --sg-cta-active: #255828;
+    --sg-green-08: rgba(76, 175, 80, .08);
+    --sg-green-14: rgba(76, 175, 80, .14);
+    --sg-green-30: rgba(76, 175, 80, .30);
+
+    --sg-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    /* Ink & neutrals */
+    --sg-ink: #0f172a;
+    --sg-ink-2: #334155;
+    --sg-muted: #64748b;
+    --sg-faint: #94a3b8;
+    --sg-line: #e2e8f0;
+    --sg-line-soft: #eef2f6;
+    --sg-white: #ffffff;
+
+    /* Navy visual panel */
+    --sg-navy-900: #081120;
+    --sg-navy-800: #0a1628;
+    --sg-navy-700: #0f2240;
+
+    /* ── Layout state (mobile is the default) ── */
+    --sg-root-display: block;
+    --sg-cols: 1fr;
+    --sg-vis-pad: 30px 18px 84px;
+    --sg-vis-max: 560px;
+    --sg-vis-align: center;
+    --sg-vis-justify: center;
+    --sg-vis-gap: 16px;
+    --sg-vis-ta: center;
+    --sg-pitch-display: none;
+    --sg-foot-display: none;
+    --sg-panel-shift: -52px;
+    --sg-panel-radius: 30px 30px 0 0;
+    --sg-panel-pad: 0 16px 34px;
+    --sg-panel-bt: 1px solid rgba(255, 255, 255, .9);
+    --sg-panel-shadow: 0 -20px 44px -26px rgba(8, 17, 32, .45);
+    --sg-card-max: 460px;
+    --sg-logo: 44px;
 }
 
-/* ═══ DESKTOP — only ≥1024px (real desktops; phones + Desktop-site 980 stay mobile) ═══ */
-@media (min-width: 1024px) {
-    html { height: 100%; }
-    body {
-        min-height: 100%;
-        display: flex;
-        overflow-x: hidden;
-    }
+/* ── 3. SKIP LINK ──────────────────────────────────────────────── */
+.sg-skip {
+    position: absolute; left: 16px; top: -70px; z-index: 60;
+    background: var(--sg-white); color: var(--sg-cta);
+    padding: 12px 20px; border-radius: 0 0 14px 14px;
+    font-size: .9rem; font-weight: 700; text-decoration: none;
+    box-shadow: 0 12px 30px rgba(8, 17, 32, .28);
+    transition: top .18s ease;
+}
+.sg-skip:focus { top: 0; }
 
-    /* Left panel — white branding side */
-    .left-panel {
-        flex: 0 0 48%;
-        min-width: 0;
-        background: var(--white);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 60px 70px;
-        position: relative;
-        overflow: hidden;
-        min-height: 100vh;
-    }
-    .left-panel::before {
-        content: '';
-        position: absolute;
-        top: -120px;
-        left: -120px;
-        width: 350px;
-        height: 350px;
-        background: var(--green);
-        opacity: 0.07;
-        border-radius: 50%;
-        pointer-events: none;
-    }
-    .left-panel::after {
-        content: '';
-        position: absolute;
-        bottom: -80px;
-        right: -80px;
-        width: 250px;
-        height: 250px;
-        background: var(--green);
-        opacity: 0.05;
-        border-radius: 50%;
-        pointer-events: none;
-    }
-    .left-content {
-        position: relative;
-        z-index: 2;
-        text-align: center;
-        max-width: 400px;
-    }
-    .brand-logo { margin-bottom: 36px; }
-    .brand-logo img {
-        width: 80px;
-        height: 80px;
-        object-fit: contain;
-        margin-bottom: 12px;
-    }
-    .system-name {
-        font-size: 42px;
-        font-weight: 900;
-        letter-spacing: -1px;
-        color: var(--gray-900);
-        text-transform: uppercase;
-        line-height: 1;
-        margin-bottom: 4px;
-    }
-    .system-name .green { color: var(--green-hover); }
-    .system-tagline {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--gray-400);
-        text-transform: uppercase;
-        letter-spacing: 3px;
-    }
-    .welcome-heading {
-        font-size: 32px;
-        font-weight: 800;
-        color: var(--gray-900);
-        margin: 40px 0 16px;
-        line-height: 1.2;
-    }
-    .welcome-desc {
-        font-size: 16px;
-        color: var(--gray-600);
-        line-height: 1.7;
-        margin-bottom: 40px;
-    }
-    .platform-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(76,175,80,0.12);
-        color: var(--green-deeper);
-        border: 1px solid rgba(76,175,80,0.3);
-        border-radius: 100px;
-        padding: 10px 20px;
-        font-size: 13px;
-        font-weight: 700;
-    }
-    .platform-badge i { font-size: 14px; }
-    .decorative-dots {
-        position: absolute;
-        bottom: 40px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 6px;
-        z-index: 2;
-    }
-    .decorative-dots span {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--green);
-        opacity: 0.3;
-    }
-    .decorative-dots span:first-child { opacity: 0.6; }
-
-    /* Right panel — image background with card */
-    .right-panel {
-        flex: 1;
-        min-width: 0;
-        min-height: 100vh;
-        background: url('/static/images/login-bg.png') center/cover no-repeat;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 40px;
-        position: relative;
-    }
-    .right-panel::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.15) 100%);
-        pointer-events: none;
-    }
-    @media (max-height: 520px) {
-        .right-panel { align-items: flex-start; padding-top: 24px; }
-        .left-panel { justify-content: flex-start; padding-top: 40px; }
-    }
-    .mobile-brand { display: none !important; }
-    .login-card {
-        position: relative;
-        z-index: 2;
-        background: var(--white);
-        border-radius: 20px;
-        width: 440px;
-        max-width: 100%;
-        padding: 44px 36px 36px;
-        box-shadow: 0 25px 60px rgba(0,0,0,0.15);
-        animation: cardIn 0.5s cubic-bezier(0.16,1,0.3,1);
-    }
+/* ── 4. SHELL ──────────────────────────────────────────────────── */
+.sg-root {
+    display: var(--sg-root-display);
+    grid-template-columns: var(--sg-cols);
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 
-/* ═══ MOBILE — ALWAYS the default (≤1023px: phones + Chrome Desktop-site 980px) ═══ */
-@media (max-width: 1023px) {
-    .left-panel { display: none !important; }
-    .right-panel {
-        width: 100%;
-        min-height: 100vh;
-        min-height: 100dvh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 20px 20px 32px;
-        background: linear-gradient(180deg, var(--gray-50) 0%, var(--white) 40%);
-        position: relative;
-    }
-    .mobile-brand {
-        display: flex !important;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 28px;
-        flex-shrink: 0;
-    }
-    .mobile-brand img {
-        width: 64px;
-        height: 64px;
-        border-radius: 16px;
-        object-fit: contain;
-        background: var(--white);
-        padding: 6px;
-        border: 1px solid var(--gray-200);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .mobile-brand-name {
-        font-size: 22px;
-        font-weight: 800;
-        color: var(--gray-900);
-        letter-spacing: -0.5px;
-    }
-    .mobile-brand-sub {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--gray-400);
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        margin-top: -4px;
-    }
-    .login-card {
-        width: 100%;
-        max-width: 400px;
-        background: var(--white);
-        border-radius: var(--radius-xl);
-        padding: 32px 24px 28px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-        border: 1px solid var(--gray-100);
-        flex-shrink: 0;
-    }
-}
-
-/* ═══ SHARED ═════════════════════════════════════════════════ */
-@keyframes cardIn {
-    from { opacity: 0; transform: translateY(20px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.card-header { text-align: center; margin-bottom: 32px; }
-.card-header h2 {
-    font-size: 24px;
-    font-weight: 800;
-    color: var(--gray-900);
-    margin-bottom: 6px;
-}
-.card-header p {
-    font-size: 14px;
-    color: var(--gray-400);
-}
-
-.alert-error {
-    background: #fef2f2;
-    border: 1px solid #fee2e2;
-    border-radius: var(--radius);
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    color: #dc2626;
-    font-size: 13px;
-    font-weight: 600;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-}
-.alert-error i { margin-top: 1px; flex-shrink: 0; }
-
-.form-group { margin-bottom: 20px; }
-.form-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--gray-700);
-    margin-bottom: 8px;
-}
-.form-group label span { color: #ef4444; margin-left: 2px; }
-
-.input-wrap {
+/* ── 5. VISUAL PANEL (navy aurora) ─────────────────────────────── */
+.sg-visual {
     position: relative;
+    isolation: isolate;
+    overflow: hidden;
     display: flex;
-    align-items: center;
+    padding: var(--sg-vis-pad);
+    color: #fff;
+    background:
+        radial-gradient(ellipse 85% 62% at 12% 4%, rgba(76, 175, 80, .30), transparent 62%),
+        radial-gradient(ellipse 70% 55% at 94% 90%, rgba(37, 99, 235, .26), transparent 66%),
+        radial-gradient(ellipse 55% 42% at 78% 16%, rgba(76, 175, 80, .12), transparent 70%),
+        linear-gradient(163deg, var(--sg-navy-700) 0%, var(--sg-navy-800) 52%, var(--sg-navy-900) 100%);
 }
-.input-icon {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--gray-400);
-    font-size: 18px;
-    pointer-events: none;
-    z-index: 2;
-    transition: color 0.2s;
+/* fine grid, faded toward the middle */
+.sg-visual::before {
+    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px);
+    background-size: 54px 54px;
+    -webkit-mask-image: radial-gradient(ellipse 78% 66% at 50% 34%, #000 16%, transparent 80%);
+    mask-image: radial-gradient(ellipse 78% 66% at 50% 34%, #000 16%, transparent 80%);
 }
-.input-wrap input {
-    width: 100%;
-    height: 52px;
-    padding: 0 16px 0 48px;
-    background: var(--gray-50);
-    border: 1.5px solid var(--gray-200);
-    border-radius: var(--radius);
-    font-family: var(--font);
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--gray-900);
+/* film grain */
+.sg-visual::after {
+    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .05;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+.sg-orb {
+    position: absolute; border-radius: 50%; filter: blur(64px);
+    pointer-events: none; z-index: 0;
+}
+.sg-orb-a {
+    width: 340px; height: 300px; left: -90px; top: -80px;
+    background: radial-gradient(circle, rgba(76, 175, 80, .42), transparent 68%);
+    animation: sgFloatA 15s ease-in-out infinite alternate;
+}
+.sg-orb-b {
+    width: 320px; height: 300px; right: -100px; bottom: -70px;
+    background: radial-gradient(circle, rgba(59, 130, 246, .32), transparent 68%);
+    animation: sgFloatB 17s ease-in-out infinite alternate;
+}
+@keyframes sgFloatA { to { transform: translate3d(38px, 30px, 0) scale(1.08); } }
+@keyframes sgFloatB { to { transform: translate3d(-34px, -26px, 0) scale(1.06); } }
+
+.sg-visual-inner {
+    position: relative; z-index: 2;
+    flex: 1 1 auto;
+    width: 100%; max-width: var(--sg-vis-max);
+    margin-inline: auto;
+    display: flex; flex-direction: column;
+    align-items: var(--sg-vis-align);
+    justify-content: var(--sg-vis-justify);
+    gap: var(--sg-vis-gap);
+    text-align: var(--sg-vis-ta);
+}
+
+/* Brand */
+.sg-brand {
+    display: inline-flex; align-items: center; gap: 13px;
+    text-decoration: none; align-self: var(--sg-vis-align);
+}
+.sg-brand-img {
+    width: var(--sg-logo); height: var(--sg-logo);
+    border-radius: 14px; padding: 6px; background: #fff;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .3);
+}
+.sg-brand-text {
+    display: flex; flex-direction: column; line-height: 1.04;
+    font-weight: 800; font-size: 1.32rem; letter-spacing: -.4px; color: #fff;
+}
+.sg-brand-text .green { color: var(--sg-green); }
+.sg-brand-text small {
+    font-size: .58rem; font-weight: 700; letter-spacing: .24em;
+    text-transform: uppercase; color: rgba(255, 255, 255, .6); margin-top: 6px;
+}
+
+/* Pitch (desktop only) */
+.sg-pitch { display: var(--sg-pitch-display); }
+.sg-eyebrow {
+    display: inline-flex; align-items: center; gap: 9px; margin: 0;
+    font-size: .7rem; font-weight: 700; letter-spacing: .15em;
+    text-transform: uppercase; color: rgba(255, 255, 255, .8);
+    background: rgba(255, 255, 255, .07);
+    border: 1px solid rgba(255, 255, 255, .17);
+    padding: 8px 15px; border-radius: 999px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.sg-eyebrow-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    background: var(--sg-green);
+    box-shadow: 0 0 0 4px rgba(76, 175, 80, .22);
+    animation: sgPulse 2.6s ease-in-out infinite;
+}
+@keyframes sgPulse { 50% { box-shadow: 0 0 0 7px rgba(76, 175, 80, .06); } }
+.sg-title {
+    margin: 0;
+    font-size: clamp(1.85rem, 1.2rem + 2vw, 2.75rem);
+    line-height: 1.08; letter-spacing: -.03em; font-weight: 800;
+    text-wrap: balance; color: #fff;
+}
+.sg-title em {
+    font-style: normal;
+    background: linear-gradient(103deg, #a7f3c0 0%, var(--sg-green) 58%, #7ee787 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.sg-desc {
+    margin: 0; max-width: 47ch;
+    font-size: clamp(.95rem, .9rem + .3vw, 1.05rem);
+    line-height: 1.68; color: rgba(255, 255, 255, .76);
+}
+.sg-proof {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-wrap: wrap; gap: 10px 22px;
+}
+.sg-proof li {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: .9rem; font-weight: 600; color: rgba(255, 255, 255, .88);
+}
+.sg-proof i { color: var(--sg-green); font-size: 1.04rem; }
+
+/* Decorative flow strip */
+.sg-flow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 15px; border-radius: 16px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .15);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.sg-flow-step {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: .78rem; font-weight: 700; letter-spacing: .02em;
+    color: rgba(255, 255, 255, .92);
+}
+.sg-flow-step i { color: var(--sg-green); }
+.sg-flow-arrow { color: rgba(255, 255, 255, .38); font-size: .78rem; }
+
+/* Contact strip */
+.sg-visual-foot {
+    display: var(--sg-foot-display);
+    flex-wrap: wrap; gap: 10px 24px; margin: 0;
+    font-size: .82rem; font-weight: 600;
+}
+.sg-visual-foot a {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: rgba(255, 255, 255, .72); text-decoration: none;
+    transition: color .2s ease;
+}
+.sg-visual-foot a:hover { color: #fff; }
+.sg-visual-foot i { color: var(--sg-green); }
+
+/* ── 6. FORM PANEL ─────────────────────────────────────────────── */
+.sg-panel {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px;
+    margin-top: var(--sg-panel-shift);
+    padding: var(--sg-panel-pad);
+    border-radius: var(--sg-panel-radius);
+    border-top: var(--sg-panel-bt);
+    box-shadow: var(--sg-panel-shadow);
+    background:
+        radial-gradient(ellipse 70% 46% at 100% 0%, rgba(76, 175, 80, .10), transparent 62%),
+        radial-gradient(ellipse 60% 40% at 0% 100%, rgba(37, 99, 235, .06), transparent 65%),
+        linear-gradient(180deg, #fbfdfc 0%, #f2f6f3 100%);
+}
+
+/* ── 7. CARD ───────────────────────────────────────────────────── */
+.sg-card {
+    position: relative;
+    width: 100%; max-width: var(--sg-card-max);
+    background: var(--sg-white);
+    border: 1px solid var(--sg-line-soft);
+    border-radius: 24px;
+    padding: clamp(26px, 5vw, 38px);
+    overflow: hidden;
+    box-shadow:
+        0 1px 2px rgba(8, 17, 32, .05),
+        0 28px 60px -26px rgba(8, 17, 32, .35);
+}
+.sg-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent 4%, var(--sg-green) 50%, transparent 96%);
+    opacity: .9;
+}
+.sg-card-head { text-align: center; margin-bottom: 26px; }
+.sg-card-mark {
+    display: grid; place-items: center;
+    width: 54px; height: 54px; margin: 0 auto 16px;
+    border-radius: 17px;
+    background: linear-gradient(160deg, var(--sg-green-14), var(--sg-green-08));
+    border: 1px solid var(--sg-green-30);
+    box-shadow: 0 8px 20px -12px rgba(46, 107, 49, .6);
+}
+.sg-card-mark img { width: 32px; height: 32px; }
+.sg-card-head h1 {
+    margin: 0 0 7px;
+    font-size: clamp(1.5rem, 1.35rem + .7vw, 1.8rem);
+    font-weight: 800; letter-spacing: -.025em; color: var(--sg-ink);
+    text-wrap: balance;
+}
+.sg-card-head p { margin: 0; font-size: .93rem; color: var(--sg-muted); }
+
+/* ── 8. ALERTS ─────────────────────────────────────────────────── */
+.sg-alert {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 14px; padding: 13px 15px; margin-bottom: 20px;
+    color: #b91c1c; font-size: .85rem; font-weight: 600; line-height: 1.5;
+    animation: sgAlertIn .35s cubic-bezier(.16, 1, .3, 1);
+}
+.sg-alert i { margin-top: 1px; flex-shrink: 0; font-size: 1rem; }
+@keyframes sgAlertIn { from { opacity: 0; transform: translateY(-6px); } }
+
+/* ── 9. FIELDS ─────────────────────────────────────────────────── */
+.sg-field { margin-bottom: 18px; }
+.sg-label {
+    display: block; margin-bottom: 8px;
+    font-size: .82rem; font-weight: 700; color: var(--sg-ink-2);
+    letter-spacing: .01em;
+}
+.sg-req { color: #dc2626; margin-left: 2px; }
+.sg-input-wrap { position: relative; display: flex; align-items: center; }
+.sg-input-icon {
+    position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+    color: var(--sg-faint); font-size: 1.05rem; pointer-events: none; z-index: 2;
+    transition: color .2s ease;
+}
+.sg-input {
+    width: 100%; height: 54px;
+    padding: 0 48px 0 46px;
+    background: #f8fafc;
+    border: 1.5px solid var(--sg-line);
+    border-radius: 14px;
+    font-size: 16px;               /* 16px: stops iOS from zooming on focus */
+    font-weight: 500; color: var(--sg-ink);
     outline: none;
-    transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+    transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
 }
-.input-wrap input::placeholder { color: var(--gray-400); }
-.input-wrap input:focus {
-    border-color: var(--green-hover);
-    background: var(--white);
-    box-shadow: 0 0 0 4px rgba(76,175,80,0.12);
+.sg-input::placeholder { color: var(--sg-faint); font-weight: 400; }
+.sg-input:hover { border-color: #cbd5e1; }
+.sg-input:focus {
+    background: var(--sg-white);
+    border-color: var(--sg-green);
+    box-shadow: 0 0 0 4px rgba(76, 175, 80, .16);
 }
-.input-wrap:focus-within .input-icon { color: var(--green-hover); }
+.sg-input:focus ~ .sg-input-icon,
+.sg-input-wrap:focus-within .sg-input-icon { color: var(--sg-green-hover); }
 
-.toggle-password {
-    position: absolute;
-    right: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--gray-400);
-    padding: 4px;
-    display: flex;
-    z-index: 2;
-    transition: color 0.2s;
+/* Password reveal */
+.sg-toggle {
+    position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+    width: 40px; height: 40px; display: grid; place-items: center;
+    background: none; border: none; border-radius: 11px;
+    color: var(--sg-faint); cursor: pointer; z-index: 2;
+    transition: color .18s ease, background-color .18s ease;
 }
-.toggle-password:hover { color: var(--green-hover); }
-.toggle-password i { font-size: 18px; }
+.sg-toggle:hover { color: var(--sg-cta); background: var(--sg-green-08); }
+.sg-toggle i { font-size: 1.05rem; }
 
-.form-extras {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 4px;
-    margin-bottom: 28px;
+/* Caps Lock warning */
+.sg-caps {
+    display: none; align-items: center; gap: 7px;
+    margin: 9px 0 0; padding: 7px 11px;
+    background: #fff7ed; border: 1px solid #fed7aa;
+    border-radius: 10px; color: #9a3412;
+    font-size: .76rem; font-weight: 700;
 }
-.remember-me {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--gray-600);
-    user-select: none;
-}
-.remember-me input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--green-hover);
-    cursor: pointer;
-}
-.forgot-link {
-    color: var(--green-hover);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 700;
-    white-space: nowrap;
-    flex-shrink: 0;
-    margin-left: auto;
-}
-.forgot-link:hover { color: var(--green-deeper); text-decoration: underline; }
+.sg-caps.is-on { display: inline-flex; animation: sgAlertIn .25s ease; }
 
-.login-btn {
-    width: 100%;
-    height: 52px;
-    background: var(--green);
-    color: var(--navy-dark);
-    border: none;
-    border-radius: var(--radius);
-    font-family: var(--font);
-    font-size: 15px;
-    font-weight: 800;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+/* ── 10. EXTRAS ────────────────────────────────────────────────── */
+.sg-extras {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin: 2px 0 24px;
 }
-.login-btn:hover {
-    background: var(--green-hover);
+.sg-check {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: .86rem; font-weight: 500; color: var(--sg-muted);
+    cursor: pointer; user-select: none;
+}
+.sg-check input {
+    appearance: none; -webkit-appearance: none;
+    width: 18px; height: 18px; margin: 0; flex-shrink: 0;
+    border: 1.5px solid #cbd5e1; border-radius: 6px;
+    background: #fff; display: grid; place-content: center;
+    cursor: pointer;
+    transition: background-color .18s ease, border-color .18s ease;
+}
+.sg-check input::after {
+    content: ''; width: 10px; height: 10px;
+    transform: scale(0); transition: transform .18s cubic-bezier(.34, 1.56, .64, 1);
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    box-shadow: inset 1em 1em #fff;
+}
+.sg-check input:checked { background: var(--sg-cta); border-color: var(--sg-cta); }
+.sg-check input:checked::after { transform: scale(1); }
+.sg-forgot {
+    font-size: .86rem; font-weight: 700; color: var(--sg-cta);
+    text-decoration: none; white-space: nowrap;
+}
+.sg-forgot:hover { color: var(--sg-green-hover); text-decoration: underline; }
+
+/* ── 11. SUBMIT ────────────────────────────────────────────────── */
+.sg-submit {
+    width: 100%; height: 54px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    border: none; border-radius: 14px;
+    background: linear-gradient(180deg, #358239 0%, #2e6b31 100%);
+    color: #fff; font-size: 1rem; font-weight: 800; letter-spacing: .01em;
+    cursor: pointer;
+    box-shadow: 0 12px 26px -12px rgba(46, 107, 49, .7), inset 0 1px 0 rgba(255, 255, 255, .22);
+    transition: transform .2s cubic-bezier(.16, 1, .3, 1), box-shadow .2s ease, filter .2s ease;
+}
+.sg-submit:hover {
+    background: linear-gradient(180deg, #3a8f3f 0%, #358239 100%);
     transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(76,175,80,0.35);
+    box-shadow: 0 18px 32px -14px rgba(46, 107, 49, .75), inset 0 1px 0 rgba(255, 255, 255, .22);
 }
-.login-btn:active { transform: translateY(0) scale(0.98); }
+.sg-submit:active { transform: translateY(0) scale(.99); }
+.sg-submit i { font-size: 1.05rem; }
+.sg-spinner {
+    display: none; width: 18px; height: 18px;
+    border: 2.5px solid rgba(255, 255, 255, .35);
+    border-top-color: #fff; border-radius: 50%;
+    animation: sgSpin .7s linear infinite;
+}
+@keyframes sgSpin { to { transform: rotate(360deg); } }
+.sg-submit.is-loading { pointer-events: none; filter: saturate(.85); opacity: .9; }
+.sg-submit.is-loading .sg-spinner { display: block; }
+.sg-submit.is-loading .sg-submit-icon,
+.sg-submit.is-loading .sg-submit-text { display: none; }
 
-.card-footer {
+.sg-hint {
+    margin: 14px 0 0; text-align: center;
+    font-size: .72rem; font-weight: 600; color: var(--sg-faint);
+}
+.sg-hint kbd {
+    display: inline-block; padding: 2px 7px; margin: 0 2px;
+    font-family: var(--sg-font); font-size: .68rem; font-weight: 700;
+    color: var(--sg-ink-2); background: #f1f5f9;
+    border: 1px solid var(--sg-line); border-bottom-width: 2px;
+    border-radius: 6px;
+}
+/* Touch devices don't need the keyboard hint */
+@media (pointer: coarse) { .sg-hint { display: none; } }
+
+/* ── 12. CARD FOOTER + TRUST ───────────────────────────────────── */
+.sg-card-foot {
+    margin-top: 26px; padding-top: 20px;
+    border-top: 1px solid var(--sg-line-soft);
     text-align: center;
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--gray-100);
 }
-.card-footer a {
-    color: var(--green-hover);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+.sg-onboard {
+    margin: 0; font-size: .88rem; font-weight: 600; color: var(--sg-muted);
 }
-.card-footer a:hover { color: var(--green-deeper); text-decoration: underline; }
-.support-text {
-    margin-top: 12px;
-    font-size: 12px;
-    color: var(--gray-400);
+.sg-onboard a {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-weight: 800; color: var(--sg-cta); text-decoration: none;
 }
-.support-text a { color: var(--green-hover); font-weight: 700; text-decoration: none; }
-.support-text a:hover { text-decoration: underline; }
+.sg-onboard a:hover { color: var(--sg-green-hover); text-decoration: underline; }
+.sg-onboard a i { font-size: .85em; transition: transform .2s ease; }
+.sg-onboard a:hover i { transform: translateX(3px); }
+.sg-support { margin: 12px 0 0; font-size: .78rem; color: var(--sg-faint); }
+.sg-support a { font-weight: 700; color: var(--sg-muted); text-decoration: none; }
+.sg-support a:hover { color: var(--sg-cta); text-decoration: underline; }
 
-/* ═══ AUTOFILL STYLING ═══════════════════════════════════════ */
-.input-wrap input:-webkit-autofill,
-.input-wrap input:-webkit-autofill:hover,
-.input-wrap input:-webkit-autofill:focus {
-    -webkit-box-shadow: 0 0 0 1000px var(--gray-50) inset !important;
-    -webkit-text-fill-color: var(--gray-900) !important;
-    border-color: var(--gray-200) !important;
-    transition: background-color 5000s ease-in-out 0s;
+.sg-trust {
+    display: inline-flex; align-items: center; gap: 8px; margin: 0;
+    font-size: .76rem; font-weight: 600; color: var(--sg-muted);
 }
-.input-wrap input:focus:-webkit-autofill {
-    -webkit-box-shadow: 0 0 0 1000px var(--white) inset !important;
-    border-color: var(--green-hover) !important;
-}
+.sg-trust i { color: var(--sg-green-hover); font-size: .95rem; }
 
-/* ═══ INPUT FOCUS ANIMATIONS ═════════════════════════════════ */
-.form-group label {
-    transition: color 0.2s;
+/* ── 13. ENTRANCE MOTION ───────────────────────────────────────── */
+@keyframes sgIn { from { opacity: 0; transform: translateY(16px); } }
+@keyframes sgCardIn { from { opacity: 0; transform: translateY(22px) scale(.985); } }
+.sg-brand, .sg-pitch > *, .sg-visual-foot, .sg-card, .sg-trust {
+    animation: sgIn .6s cubic-bezier(.16, 1, .3, 1) backwards;
 }
-.input-wrap:focus-within ~ .form-group label,
-.form-group:focus-within label {
-    color: var(--green-hover);
-}
+.sg-card { animation-name: sgCardIn; animation-delay: .08s; }
+.sg-trust { animation-delay: .24s; }
+.sg-brand { animation-delay: .04s; }
+.sg-pitch > *:nth-child(1) { animation-delay: .12s; }
+.sg-pitch > *:nth-child(2) { animation-delay: .18s; }
+.sg-pitch > *:nth-child(3) { animation-delay: .24s; }
+.sg-pitch > *:nth-child(4) { animation-delay: .3s; }
+.sg-pitch > *:nth-child(5) { animation-delay: .36s; }
+.sg-visual-foot { animation-delay: .44s; }
 
-/* ═══ BUTTON LOADING STATE ═══════════════════════════════════ */
-.login-btn .btn-text,
-.login-btn .btn-icon { transition: opacity 0.2s; }
-.login-btn .btn-spinner {
-    display: none;
-    width: 20px;
-    height: 20px;
-    border: 2.5px solid rgba(10,22,40,0.2);
-    border-top-color: var(--navy-dark);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
+/* ── 14. DESKTOP (≥1024px) — real desktops only ────────────────── */
+@media (min-width: 1024px) {
+    :root {
+        --sg-root-display: grid;
+        --sg-cols: minmax(0, 1.04fr) minmax(0, 1fr);
+        --sg-vis-pad: clamp(40px, 7vh, 74px) clamp(40px, 5vw, 84px);
+        --sg-vis-align: flex-start;
+        --sg-vis-justify: space-between;
+        --sg-vis-gap: clamp(26px, 5vh, 52px);
+        --sg-vis-ta: left;
+        --sg-pitch-display: block;
+        --sg-foot-display: flex;
+        --sg-panel-shift: 0px;
+        --sg-panel-radius: 0;
+        --sg-panel-pad: 44px clamp(34px, 5vw, 76px);
+        --sg-panel-bt: 0 solid transparent;
+        --sg-panel-shadow: 24px 0 56px -34px rgba(8, 17, 32, .55);
+        --sg-card-max: 440px;
+        --sg-logo: 48px;
+    }
+    .sg-brand { align-self: flex-start; }
+    .sg-visual-foot { align-self: flex-start; }
 }
-.login-btn.loading .btn-text,
-.login-btn.loading .btn-icon { opacity: 0; width: 0; overflow: hidden; margin: 0; }
-.login-btn.loading .btn-spinner { display: block; }
-.login-btn.loading { pointer-events: none; opacity: 0.85; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ═══ KEYBOARD HINT ══════════════════════════════════════════ */
-.keyboard-hint {
-    text-align: center;
-    margin-top: 14px;
-    font-size: 11px;
-    color: var(--gray-400);
-    font-weight: 500;
+/* Short desktop windows: drop the decorative layers before anything crowds */
+@media (min-width: 1024px) and (max-height: 780px) {
+    .sg-flow { display: none; }
 }
-.keyboard-hint kbd {
-    display: inline-block;
-    padding: 2px 7px;
-    font-family: var(--font);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--gray-600);
-    background: var(--gray-100);
-    border: 1px solid var(--gray-200);
-    border-radius: 5px;
-    box-shadow: 0 1px 0 var(--gray-200);
+@media (min-width: 1024px) and (max-height: 640px) {
+    .sg-proof { display: none; }
 }
 
-/* ═══ PAGE LOAD STAGGER ══════════════════════════════════════ */
-@keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
+/* ── 15. RESPONSIVE FLIP ─────────────────────────────────────────
+   Mobile state above is the default. A phone can still report a wide
+   viewport ("Desktop site" / agent ignoring the meta), so the same
+   token flip is restated for html.force-mobile (set by viewport_fit.js)
+   — higher specificity than the :root block, so it always wins. */
+html.force-mobile {
+    --sg-root-display: block;
+    --sg-cols: 1fr;
+    --sg-vis-pad: 30px 18px 84px;
+    --sg-vis-max: 560px;
+    --sg-vis-align: center;
+    --sg-vis-justify: center;
+    --sg-vis-gap: 16px;
+    --sg-vis-ta: center;
+    --sg-pitch-display: none;
+    --sg-foot-display: none;
+    --sg-panel-shift: -52px;
+    --sg-panel-radius: 30px 30px 0 0;
+    --sg-panel-pad: 0 16px 34px;
+    --sg-panel-bt: 1px solid rgba(255, 255, 255, .9);
+    --sg-panel-shadow: 0 -20px 44px -26px rgba(8, 17, 32, .45);
+    --sg-card-max: 460px;
+    --sg-logo: 44px;
 }
-.left-content .brand-logo,
-.left-content .welcome-heading,
-.left-content .welcome-desc,
-.left-content .platform-badge,
-.mobile-brand,
-.login-card {
-    opacity: 0;
-    animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) forwards;
+html.force-mobile .sg-brand { align-self: center; }
+html.force-mobile .sg-visual-foot { align-self: center; }
+
+/* ── 16. SMALL PHONES ──────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .sg-visual { padding: 26px 16px 78px; }
+    .sg-brand-text { font-size: 1.18rem; }
+    .sg-card { padding: 26px 20px 24px; border-radius: 22px; }
+    .sg-card-head { margin-bottom: 22px; }
+    .sg-extras { margin-bottom: 20px; }
+    .sg-input { padding-left: 44px; }
 }
-.left-content .brand-logo { animation-delay: 0.1s; }
-.left-content .welcome-heading { animation-delay: 0.2s; }
-.left-content .welcome-desc { animation-delay: 0.3s; }
-.left-content .platform-badge { animation-delay: 0.4s; }
-.mobile-brand { animation-delay: 0.05s; }
-.login-card { animation-delay: 0.15s; }
+
+/* ── 17. REDUCED MOTION ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        transition-delay: 0ms !important;
+    }
+    .sg-orb-a, .sg-orb-b { animation: none !important; }
+}
     </style>
 </head>
 <body>
+<a class="sg-skip" href="#signin">Skip to sign-in form</a>
 
-    <!-- Left Panel — Branding (desktop only) -->
-    <section class="left-panel">
-        <div class="left-content">
-            <div class="brand-logo">
-                <img src="{% static 'images/edunexus_logo_192.png' %}" alt="EDUNEXUS Logo">
-                <div class="system-name">EDU<span class="green">NEXUS</span></div>
-                <p class="system-tagline">Examination System</p>
+<div class="sg-root">
+
+    <!-- ═══ VISUAL PANEL — brand story (compact band on phones) ═══ -->
+    <section class="sg-visual" aria-label="About EDUNEXUS">
+        <span class="sg-orb sg-orb-a" aria-hidden="true"></span>
+        <span class="sg-orb sg-orb-b" aria-hidden="true"></span>
+
+        <div class="sg-visual-inner">
+            <a class="sg-brand" href="{% url 'welcome_page' %}" aria-label="EDUNEXUS — back to home">
+                <img class="sg-brand-img" src="{% static 'images/edunexus_logo_192.png' %}?v=2" alt="" width="48" height="48">
+                <span class="sg-brand-text">
+                    <span>EDU<span class="green">NEXUS</span></span>
+                    <small>Examination System</small>
+                </span>
+            </a>
+
+            <div class="sg-pitch">
+                <p class="sg-eyebrow"><span class="sg-eyebrow-dot" aria-hidden="true"></span> Kenya's Smart Exam Management Platform</p>
+                <h2 class="sg-title">Welcome back to <em>smarter exam results</em>.</h2>
+                <p class="sg-desc">Sign in to capture scores, publish broadsheets and print report cards — one secure workspace for your whole school.</p>
+                <ul class="sg-proof">
+                    <li><i class="bi bi-check2-circle" aria-hidden="true"></i> CBE-aligned grading</li>
+                    <li><i class="bi bi-check2-circle" aria-hidden="true"></i> Auto-computed broadsheets</li>
+                    <li><i class="bi bi-check2-circle" aria-hidden="true"></i> Print-ready report cards</li>
+                </ul>
+                <div class="sg-flow" aria-hidden="true">
+                    <span class="sg-flow-step"><i class="bi bi-pencil-square"></i> Capture</span>
+                    <i class="bi bi-arrow-right sg-flow-arrow"></i>
+                    <span class="sg-flow-step"><i class="bi bi-graph-up-arrow"></i> Analyse</span>
+                    <i class="bi bi-arrow-right sg-flow-arrow"></i>
+                    <span class="sg-flow-step"><i class="bi bi-printer"></i> Publish</span>
+                </div>
             </div>
-            <h2 class="welcome-heading">Welcome Back</h2>
-            <p class="welcome-desc">Access your education management portal to streamline learning and administrative processes.</p>
-            <div class="platform-badge">
-                <i class="bi bi-mortarboard-fill"></i>
-                EDUNEXUS Examination System
-            </div>
-        </div>
-        <div class="decorative-dots">
-            <span></span><span></span><span></span>
+
+            <p class="sg-visual-foot">
+                <a href="mailto:edunexus.system@gmail.com"><i class="bi bi-envelope" aria-hidden="true"></i> edunexus.system@gmail.com</a>
+                <a href="https://wa.me/254728007320"><i class="bi bi-whatsapp" aria-hidden="true"></i> +254 728 007 320</a>
+            </p>
         </div>
     </section>
 
-    <!-- Right Panel — Login Form -->
-    <section class="right-panel">
-        <div class="mobile-brand">
-            <img src="{% static 'images/edunexus_logo_192.png' %}" alt="EDUNEXUS">
-            <div class="mobile-brand-name">EDUNEXUS</div>
-            <div class="mobile-brand-sub">Examination System</div>
-        </div>
-
-        <div class="login-card">
-            <div class="card-header">
-                <h2>Login</h2>
+    <!-- ═══ FORM PANEL ═══ -->
+    <main class="sg-panel" id="signin" tabindex="-1">
+        <section class="sg-card" aria-labelledby="signin-title">
+            <header class="sg-card-head">
+                <span class="sg-card-mark" aria-hidden="true">
+                    <img src="{% static 'images/edunexus_logo_192.png' %}?v=2" alt="" width="32" height="32">
+                </span>
+                <h1 id="signin-title">Sign in</h1>
                 <p>Enter your credentials to continue</p>
-            </div>
+            </header>
 
             {% if messages %}
                 {% for message in messages %}
                     {% if message.tags == 'error' or message.tags == 'danger' %}
-                        <div class="alert-error">
-                            <i class="bi bi-exclamation-circle-fill"></i>
-                            {{ message }}
+                        <div class="sg-alert" role="alert">
+                            <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                            <span>{{ message }}</span>
                         </div>
                     {% endif %}
                 {% endfor %}
@@ -576,72 +666,105 @@ body {
             <form id="loginForm" method="post" action="{% url 'login' %}">
                 {% csrf_token %}
 
-                <div class="form-group">
-                    <label for="username">Phone Number @ School Code <span>*</span></label>
-                    <div class="input-wrap">
-                        <i class="bi bi-envelope-fill input-icon"></i>
-                        <input type="text" id="username" name="username" placeholder="e.g. 0712345678@schoolcode" required autofocus>
+                <div class="sg-field">
+                    <label class="sg-label" for="username">Phone Number @ School Code <span class="sg-req" aria-hidden="true">*</span></label>
+                    <div class="sg-input-wrap">
+                        <input class="sg-input" type="text" id="username" name="username"
+                               placeholder="e.g. 0712345678@schoolcode"
+                               value="{{ request.POST.username|default:'' }}"
+                               autocomplete="username" autocapitalize="off" autocorrect="off"
+                               spellcheck="false" required>
+                        <i class="bi bi-person-fill sg-input-icon" aria-hidden="true"></i>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="password">Password <span>*</span></label>
-                    <div class="input-wrap">
-                        <i class="bi bi-lock-fill input-icon"></i>
-                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
-                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility()" tabindex="-1">
-                            <i class="bi bi-eye-slash-fill"></i>
+                <div class="sg-field">
+                    <label class="sg-label" for="password">Password <span class="sg-req" aria-hidden="true">*</span></label>
+                    <div class="sg-input-wrap">
+                        <input class="sg-input" type="password" id="password" name="password"
+                               placeholder="Enter your password"
+                               autocomplete="current-password" required>
+                        <i class="bi bi-lock-fill sg-input-icon" aria-hidden="true"></i>
+                        <button type="button" class="sg-toggle" id="togglePwd"
+                                aria-label="Show password" aria-pressed="false">
+                            <i class="bi bi-eye-fill" aria-hidden="true"></i>
                         </button>
                     </div>
+                    <p class="sg-caps" id="capsHint"><i class="bi bi-capslock-fill" aria-hidden="true"></i> Caps Lock is on</p>
                 </div>
 
-                <div class="form-extras">
-                    <label class="remember-me">
+                <div class="sg-extras">
+                    <label class="sg-check">
                         <input type="checkbox" id="remember" name="remember">
                         <span>Remember me</span>
                     </label>
-                    <a href="/forgot-password/?v=1" class="forgot-link">Forgot password?</a>
+                    <a href="{% url 'password_reset' %}" class="sg-forgot">Forgot password?</a>
                 </div>
 
-                <button type="submit" class="login-btn" id="loginBtn">
-                    <span class="btn-spinner"></span>
-                    <i class="bi bi-box-arrow-in-right btn-icon"></i>
-                    <span class="btn-text">Login</span>
+                <button type="submit" class="sg-submit" id="loginBtn">
+                    <span class="sg-spinner" aria-hidden="true"></span>
+                    <i class="bi bi-box-arrow-in-right sg-submit-icon" aria-hidden="true"></i>
+                    <span class="sg-submit-text">Sign in</span>
                 </button>
-                <div class="keyboard-hint">
-                    Press <kbd>Enter</kbd> to sign in
-                </div>
+                <p class="sg-hint">Press <kbd>Enter</kbd> to sign in</p>
             </form>
 
-            <div class="card-footer">
-                <a href="#">
-                    <i class="bi bi-building"></i>
-                    Institution Onboarding
-                </a>
-                <p class="support-text">Need help? <a href="#">Contact Support</a></p>
-            </div>
-        </div>
-    </section>
+            <footer class="sg-card-foot">
+                <p class="sg-onboard">New to EDUNEXUS? <a href="{% url 'welcome_page' %}#contact">Institution Onboarding <i class="bi bi-arrow-right" aria-hidden="true"></i></a></p>
+                <p class="sg-support">Need help? <a href="mailto:edunexus.system@gmail.com">Contact support</a></p>
+            </footer>
+        </section>
 
-    <script>
-        function togglePasswordVisibility() {
-            var passwordInput = document.getElementById('password');
-            var icon = document.querySelector('.toggle-password i');
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.className = 'bi bi-eye-fill';
-            } else {
-                passwordInput.type = 'password';
-                icon.className = 'bi bi-eye-slash-fill';
-            }
-        }
+        <p class="sg-trust"><i class="bi bi-shield-check" aria-hidden="true"></i> Rate-limited sign-in · Secured session</p>
+    </main>
+</div>
 
-        // Loading spinner on submit
-        document.getElementById('loginForm').addEventListener('submit', function() {
-            var btn = document.getElementById('loginBtn');
-            btn.classList.add('loading');
-            btn.querySelector('.btn-text').textContent = 'Signing in...';
+<script>
+(function () {
+    var d = document;
+    var pw = d.getElementById('password');
+    var toggle = d.getElementById('togglePwd');
+    var caps = d.getElementById('capsHint');
+    var form = d.getElementById('loginForm');
+    var btn = d.getElementById('loginBtn');
+
+    /* Password reveal — keeps focus on the button so the keyboard never jumps */
+    if (pw && toggle) {
+        toggle.addEventListener('click', function () {
+            var showing = pw.type === 'password';
+            pw.type = showing ? 'text' : 'password';
+            toggle.setAttribute('aria-pressed', String(showing));
+            toggle.setAttribute('aria-label', showing ? 'Hide password' : 'Show password');
+            toggle.querySelector('i').className = showing ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill';
         });
-    </script>
+    }
+
+    /* Caps Lock warning on the password field */
+    if (pw && caps) {
+        var sync = function (e) {
+            if (e.getModifierState) caps.classList.toggle('is-on', e.getModifierState('CapsLock'));
+        };
+        pw.addEventListener('keydown', sync);
+        pw.addEventListener('keyup', sync);
+        pw.addEventListener('blur', function () { caps.classList.remove('is-on'); });
+    }
+
+    /* Signing-in state */
+    if (form && btn) {
+        form.addEventListener('submit', function () {
+            btn.classList.add('is-loading');
+            btn.setAttribute('aria-busy', 'true');
+            var t = btn.querySelector('.sg-submit-text');
+            if (t) t.textContent = 'Signing in…';
+        });
+    }
+
+    /* Focus the ID field on desktop only — never pop the keyboard on phones */
+    var u = d.getElementById('username');
+    if (u && window.matchMedia('(min-width: 1024px)').matches) {
+        try { u.focus({ preventScroll: true }); } catch (e) { u.focus(); }
+    }
+})();
+</script>
 </body>
 </html>

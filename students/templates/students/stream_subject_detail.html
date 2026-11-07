@@ -1,35 +1,9 @@
 {% extends 'students/base.html' %}
+{% load nav %}
 {% load static %}
 
 {% block sub_tabs %}
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=manage" class="sub-nav-link active">
-        <i class="ph ph-gear-six"></i>
-        Manage Exams
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=create" class="sub-nav-link">
-        <i class="ph ph-plus-circle"></i>
-        Create Exam
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=grading" class="sub-nav-link">
-        <i class="ph ph-chart-line-up"></i>
-        Grading Systems
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=deleted" class="sub-nav-link">
-        <i class="ph ph-trash"></i>
-        Deleted Exams
-      </a>
-    </li>
-  </ul>
-</nav>
+{% sub_nav "exams" %}
 {% endblock %}
 
 {% block content %}

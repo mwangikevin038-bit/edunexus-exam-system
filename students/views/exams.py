@@ -19,7 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Avg, Case, Count, F, Q, When
+from django.db.models import Avg, Case, Count, F, When
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -40,12 +40,14 @@ from .helpers import (
     build_analysis_from_snapshot,
     bump_report_cache_version,
     exam_covers_class,
+    exam_covers_grade,
     get_performance_level,
     get_religion_aware_student_count,
     get_stream_submission_summary,
     get_subject_level_fast,
     get_subject_marks,
     get_subject_students,
+    latest_published_exam,
     to_primary_descriptor,
     upsert_mark,
 )
@@ -127,17 +129,19 @@ def _resolve_opposite_religion_subject(school, assignment):
 def _resolve_teacher_or_admin(request, school):
     """
     Resolve teacher profile for the request user.
-    For teachers: returns (teacher_instance, False).
-    For admins/superusers: returns (None, True) — caller should use
-    assignment.teacher_profile for submission lookups.
+    Admins/superusers are checked FIRST and return (None, True) even when a
+    Teacher profile is linked to their account — the admin is unrestricted
+    across sections/sub-sections and must not be scoped to that profile's
+    assignments. For teachers: returns (teacher_instance, False); caller
+    should use assignment.teacher_profile for submission lookups.
     Raises PermissionDenied if user is neither.
     """
+    if user_has_main_school_admin_override(request.user):
+        return None, True
     try:
         teacher = get_school_object_or_403(Teacher, request, user=request.user)
         return teacher, False
     except (PermissionDenied, Http404):
-        if user_has_main_school_admin_override(request.user):
-            return None, True
         raise PermissionDenied("Only teachers and school admins may mutate marks.")
 
 
@@ -757,71 +761,6 @@ def _get_available_grades(school, section, active_sub):
     return qs.order_by('order')
 
 
-def _merge_section_exam_entries(exam_entries):
-    """Merge same-name exam display entries created per section.
-
-    When an admin creates one exam for Grades 1-9, the system creates
-    separate Exam records per section (PRIMARY/LOWER, PRIMARY/UPPER, JSS).
-    Manage Exams merges them into a single display row so all grades appear
-    together.
-
-    Status merge rule — the fix for cross-section status poisoning: the
-    merged row is ``closed`` ONLY when EVERY section's copy is closed.
-    The old rule inherited ``closed`` from any single finished section
-    (and never cleared it when a later copy was still active), so one
-    closed section locked the whole merged row while other sections were
-    still in progress. Among non-closed copies, ``active`` wins over
-    ``draft`` so the group never looks half-finished while usable.
-    """
-    merged_by_name = {}
-    merged_order = []
-    for exam_entry in exam_entries:
-        key = exam_entry['name']
-        if key not in merged_by_name:
-            exam_entry['_statuses'] = [exam_entry['status']]
-            merged_by_name[key] = exam_entry
-            merged_order.append(key)
-        else:
-            existing = merged_by_name[key]
-            existing_classes_by_name = {
-                cr['class_name']: cr for cr in existing['classes']
-            }
-            for cr in exam_entry['classes']:
-                if cr['class_name'] not in existing_classes_by_name:
-                    existing['classes'].append(cr)
-            existing['rowspan'] = len(existing['classes'])
-            existing.setdefault('_statuses', [existing['status']]).append(
-                exam_entry['status'])
-            if not exam_entry.get('all_published', False):
-                existing['all_published'] = False
-            existing['exam_ids'].append(exam_entry['id'])
-
-    # Re-sort merged classes Grade 1 → 9, resolve the merged status, and
-    # recalculate publish state from the combined class rows.
-    for name, entry in merged_by_name.items():
-        statuses = entry.pop('_statuses', [entry['status']])
-        if statuses and all(s == 'closed' for s in statuses):
-            entry['status'] = 'closed'
-        else:
-            # Not all closed: never display 'closed'. Prefer 'active', else
-            # the first other non-closed status (e.g. 'draft').
-            non_closed = [s for s in statuses if s != 'closed']
-            if any(s == 'active' for s in non_closed):
-                entry['status'] = 'active'
-            elif non_closed:
-                entry['status'] = non_closed[0]
-            else:
-                entry['status'] = 'closed'
-        entry['classes'].sort(key=lambda r: (int(m.group()) if (m := re.search(r'\d+', r['class_name'])) else 99))
-        entry['rowspan'] = len(entry['classes'])
-        entry['all_published'] = (
-            entry['classes']
-            and all(r['status'] == 'Published' for r in entry['classes'])
-            and entry['status'] != 'closed'
-        )
-    return [merged_by_name[k] for k in merged_order]
-
-
 @login_required(login_url='login')
 @school_admin_required
 def manage_exams(request):
@@ -932,20 +871,6 @@ def manage_exams(request):
             created_count = 0
             skipped_count = 0
             created_sections = []
-            added_labels = []
-
-            def _grade_sort_key(name):
-                m = re.search(r'\d+', str(name))
-                return int(m.group()) if m else 99
-
-            def _merge_class_lists(old, new):
-                """Union of class lists sorted Grade 1 -> 9.
-
-                Creating an exam again for an additional class (e.g. Grade 9
-                after Grade 7+8) must NEVER drop classes already attached —
-                that made earlier classes vanish from the manage list.
-                """
-                return sorted(set(old or []) | set(new or []), key=_grade_sort_key)
 
             # Match ONLY on casefold + collapsed whitespace of the typed name.
             # The display normalizer collapses every "end"/"final"/"mid"/"opener"
@@ -960,87 +885,91 @@ def manage_exams(request):
             def _name_matches(existing_name):
                 return _soft_name_key(existing_name) == target_norm
 
+            def _section_label(sec, sub):
+                if sec == 'JSS':
+                    return 'Junior Secondary'
+                if sub == 'LOWER':
+                    return 'Lower Primary'
+                if sub == 'UPPER':
+                    return 'Upper Primary'
+                return 'Primary'
+
+            def _class_sort(names):
+                def _key(n):
+                    m = re.search(r'\d+', str(n))
+                    return int(m.group()) if m else 99
+                return sorted(names or [], key=_key)
+
+            # ── Collision pre-flight ────────────────────────────────────
+            # (name, term, year, section, sub-section) is a DB unique
+            # constraint, so a name already used in one section can never
+            # become a second row there. Classes must stay independent, so
+            # instead of silently unioning them onto the existing exam (or
+            # letting a closed twin turn the create into an IntegrityError
+            # 500), report every clash up front and create nothing.
+            # Cross-section reuse stays allowed: each section keeps its own
+            # row and its own class list.
+            collisions = []
             for (exam_db_section, exam_sub_section), classes in section_groups.items():
-                section_label = exam_db_section + (f' ({exam_sub_section})' if exam_sub_section else '')
-                sect_qs = Exam.all_objects.filter(
-                    school=school, term=term, year=year,
-                    school_section=exam_db_section, sub_section=exam_sub_section,
-                )
-                # Merge only into a live (non-deleted, non-closed) exam.
-                # A closed exam must never silently absorb new classes —
-                # teachers cannot enter marks on it.
-                exam_obj = next(
-                    (e for e in sect_qs.filter(is_deleted=False).exclude(status='closed')
-                     if _name_matches(e.name)),
+                clash = next(
+                    (
+                        e for e in Exam.all_objects.filter(
+                            school=school, term=term, year=year,
+                            school_section=exam_db_section,
+                            sub_section=exam_sub_section,
+                        ) if _name_matches(e.name)
+                    ),
                     None,
                 )
-
-                if exam_obj:
-                    # MERGE with the existing class list — never replace it.
-                    old_classes = exam_obj.classes or []
-                    merged = _merge_class_lists(old_classes, classes)
-                    new_ones = [cl for cl in merged if cl not in set(old_classes)]
-                    if merged != old_classes:
-                        exam_obj.classes = merged
-                        exam_obj.save(update_fields=['classes'])
-                    if new_ones:
-                        added_labels.append(
-                            f"{', '.join(new_ones)} added to '{exam_obj.name}' ({section_label})"
-                        )
-                    created = False
-                else:
-                    # Check for a soft-deleted exam with the same key and recover it
-                    deleted_exam = next(
-                        (e for e in sect_qs.filter(is_deleted=True) if _name_matches(e.name)),
-                        None,
+                if not clash:
+                    continue
+                wanted = _class_sort(classes)
+                have = _class_sort(clash.classes)
+                where = _section_label(exam_db_section, exam_sub_section)
+                if clash.is_deleted:
+                    collisions.append(
+                        f"'{exam_name}' already exists in the Deleted Assessments tab "
+                        f"for {where} ({term} {year}). Restore it from there instead."
                     )
+                elif have != wanted:
+                    have_txt = ', '.join(have) if have else 'all grades in this section'
+                    collisions.append(
+                        f"'{exam_name}' already exists in {where} for {term} {year}, scoped "
+                        f"to {have_txt} (status: {clash.status}). Pick a different name, or "
+                        f"edit that assessment to cover {', '.join(wanted)}."
+                    )
+            if collisions:
+                return _create_error(' '.join(collisions))
 
-                    if deleted_exam:
-                        deleted_exam.is_deleted = False
-                        deleted_exam.deleted_at = None
-                        deleted_exam.deleted_by = None
-                        deleted_exam.status = status
-                        deleted_exam.classes = _merge_class_lists(deleted_exam.classes, classes)
-                        deleted_exam.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by', 'status', 'classes'])
-                        exam_obj = deleted_exam
-                        created = True
-                    else:
-                        # No live match — create a new one. Never reuse a
-                        # closed exam row via get_or_create (same exact name).
-                        exam_obj = Exam.all_objects.filter(
-                            school=school, name=exam_name, term=term, year=year,
-                            school_section=exam_db_section, sub_section=exam_sub_section,
-                            is_deleted=False,
-                        ).exclude(status='closed').first()
-                        if exam_obj is None:
-                            exam_obj = Exam.all_objects.create(
-                                school=school, name=exam_name, term=term, year=year,
-                                school_section=exam_db_section, sub_section=exam_sub_section,
-                                status=status, classes=_merge_class_lists(None, classes),
-                            )
-                            created = True
-                        else:
-                            # Race: live exam appeared between filter and create.
-                            old_classes = exam_obj.classes or []
-                            merged = _merge_class_lists(old_classes, classes)
-                            new_ones = [cl for cl in merged if cl not in set(old_classes)]
-                            if merged != old_classes:
-                                exam_obj.classes = merged
-                                exam_obj.save(update_fields=['classes'])
-                            if new_ones:
-                                added_labels.append(
-                                    f"{', '.join(new_ones)} added to '{exam_obj.name}' ({section_label})"
-                                )
-                            created = False
-
-                if created:
-                    created_count += 1
-                    created_sections.append(section_label)
-                else:
+            for (exam_db_section, exam_sub_section), classes in section_groups.items():
+                section_label = exam_db_section + (f' ({exam_sub_section})' if exam_sub_section else '')
+                # Identical scope already exists — nothing to create and
+                # nothing to change.
+                existing_same = next(
+                    (
+                        e for e in Exam.all_objects.filter(
+                            school=school, term=term, year=year,
+                            school_section=exam_db_section,
+                            sub_section=exam_sub_section, is_deleted=False,
+                        ) if _name_matches(e.name)
+                        and _class_sort(e.classes) == _class_sort(classes)
+                    ),
+                    None,
+                )
+                if existing_same:
                     skipped_count += 1
+                    continue
 
-            if created_count or added_labels:
-                # New/merged classes change every grade's exam dropdown —
+                Exam.all_objects.create(
+                    school=school, name=exam_name, term=term, year=year,
+                    school_section=exam_db_section, sub_section=exam_sub_section,
+                    status=status, classes=_class_sort(classes),
+                )
+                created_count += 1
+                created_sections.append(section_label)
+
+            if created_count:
+                # A new scoped exam changes every grade's exam dropdown —
                 # drop the cached per-grade exam lists so the scoped filter
                 # takes effect immediately, not at TTL expiry.
                 from .students_mgmt import invalidate_score_sheet_caches
@@ -1049,15 +978,9 @@ def manage_exams(request):
             if created_count:
                 request.session.pop('create_prefill', None)
                 msg = f"Assessment created for: {', '.join(created_sections)}."
-                if added_labels:
-                    msg += " " + "; ".join(added_labels) + "."
-                elif skipped_count:
+                if skipped_count:
                     msg += f" {skipped_count} section(s) already existed."
                 messages.success(request, msg)
-                return redirect(reverse('manage_exams') + f'?tab=manage&year={year}')
-            elif added_labels:
-                request.session.pop('create_prefill', None)
-                messages.success(request, "; ".join(added_labels) + ".")
                 return redirect(reverse('manage_exams') + f'?tab=manage&year={year}')
             else:
                 # Nothing new — hand the typed values back so the user can
@@ -1927,6 +1850,12 @@ def manage_exams(request):
                         continue
                     if exam.sub_section == 'UPPER' and gn < 4:
                         continue
+                # Class scoping: a submission only belongs to this exam when the
+                # admin actually scoped the exam to that grade. Without this,
+                # same-name submissions from sibling grades (Grade 3 on a
+                # Grade 1+2 exam) leaked into the row as if they sat it.
+                if not exam_covers_class(exam, sub.class_name):
+                    continue
                 class_key = sub.class_name
                 if class_key in classes_seen:
                     continue
@@ -1999,12 +1928,22 @@ def manage_exams(request):
                 'rowspan': len(class_rows),
                 'all_published': all_published,
                 'exam_ids': [exam.id],
+                # Sections are no longer merged into one display row, so the
+                # same name can legitimately appear once per section — the
+                # label tells them apart.
+                'section_label': (
+                    'Junior Secondary' if exam.school_section == 'JSS'
+                    else 'Lower Primary' if exam.sub_section == 'LOWER'
+                    else 'Upper Primary' if exam.sub_section == 'UPPER'
+                    else 'Primary'
+                ),
             })
 
-    # ── Merge exams with the same name+term across sections ────────
-    for term_key, term_data in exam_list_by_term.items():
-        term_data['exams'] = _merge_section_exam_entries(term_data['exams'])
-
+    # Exams are displayed one row per section — they are never merged by
+    # name across PRIMARY/LOWER, PRIMARY/UPPER and JSS. Merging keyed on the
+    # normalized display name alone, so a Grade-6-only exam surfaced every
+    # grade that any same-named sibling section had ever touched. Each
+    # section's exam keeps its own row, classes and status.
     term_order = {'Term 3': 1, 'Term 2': 2, 'Term 1': 3}
     exam_list_by_term = dict(
         sorted(
@@ -2334,7 +2273,13 @@ def analyse_exam(request):
     exam_id = _safe_id(request.GET.get('exam_id'))
     class_name_filter = request.GET.get('class_name', '').strip()
     if not exam_id:
-        latest_exam = Exam.all_objects.filter(school=school, is_deleted=False).order_by('-year', 'term', 'name').first()
+        # Default = the exam whose results were published most recently
+        # (grade-scoped when the URL names a grade), never term/name order.
+        latest_exam = latest_published_exam(school, class_name_filter or None)
+        if latest_exam is None:
+            latest_exam = Exam.all_objects.filter(
+                school=school, is_deleted=False,
+            ).order_by('-year', '-term', 'name').first()
         if latest_exam:
             exam_id = latest_exam.id
         else:
@@ -2346,6 +2291,25 @@ def analyse_exam(request):
         messages.error(request, "Exam not found.")
         return redirect('dashboard_alt')
 
+    # A grade the chosen exam never covered can only render empty or foreign
+    # scopes — silently swap to the latest exam that really covers it, so a
+    # hand-edited/mismatched URL still lands on valid data.
+    if class_name_filter and not exam_covers_grade(school, exam, class_name_filter):
+        covering = latest_published_exam(school, class_name_filter)
+        if covering is None:
+            covering = next(
+                (
+                    e
+                    for e in Exam.all_objects.filter(
+                        school=school, is_deleted=False,
+                    ).order_by('-year', '-term', 'name')
+                    if exam_covers_grade(school, e, class_name_filter)
+                ),
+                None,
+            )
+        if covering:
+            exam = covering
+
     from ..models import ExamSummary
     from .constants import ORDERED_LEVELS
 
@@ -2355,16 +2319,29 @@ def analyse_exam(request):
     breakdown_levels = PRIMARY_ORDERED_LEVELS if section == 'PRIMARY' else ORDERED_LEVELS
     sub_section = exam.sub_section
 
-    # If no class_name passed, try to auto-detect from the exam's summaries
+    # If no class_name passed, try to auto-detect from the exam's summaries.
+    # Deterministic (alphabetical) and section-scoped first: name+term+year
+    # alone also matches same-named exams in the OTHER section (both sections
+    # run e.g. 'End Term Assessment' in the same term), which used to land a
+    # JSS exam's page on Grade 1.
     if not class_name_filter:
-        auto_grades = (
-            ExamSummary.all_objects.filter(
-                school=school, exam_name=exam.name, term=exam.term, year=exam.year,
-            )
-            .values_list('student__class_name', flat=True)
-            .distinct()
+        base_summaries = ExamSummary.all_objects.filter(
+            school=school, exam_name=exam.name, term=exam.term, year=exam.year,
         )
-        auto_grades_list = list(auto_grades)
+        scoped_summaries = base_summaries.filter(school_section=section)
+        if exam.sub_section:
+            scoped_summaries = scoped_summaries.filter(sub_section=exam.sub_section)
+        auto_grades_list = list(
+            scoped_summaries.values_list('student__class_name', flat=True)
+            .distinct()
+            .order_by('student__class_name')
+        )
+        if not auto_grades_list:
+            auto_grades_list = list(
+                base_summaries.values_list('student__class_name', flat=True)
+                .distinct()
+                .order_by('student__class_name')
+            )
         if len(auto_grades_list) >= 1:
             class_name_filter = auto_grades_list[0]
 
@@ -2400,7 +2377,10 @@ def analyse_exam(request):
 
     total_students = all_students.count()
 
-    snapshot_ctx = build_analysis_from_snapshot(school, exam)
+    snapshot_ctx = build_analysis_from_snapshot(
+        school, exam, class_name=class_name_filter or None, section=section,
+        breakdown_levels=breakdown_levels,
+    )
     if snapshot_ctx:
         streams = snapshot_ctx['streams']
         students_who_sat = snapshot_ctx['students_who_sat']
@@ -2414,6 +2394,16 @@ def analyse_exam(request):
             summaries.values_list('student__stream', flat=True).distinct().order_by('student__stream')
         )
         grade_name = summaries.values_list('student__class_name', flat=True).first() or exam.name
+
+    if class_name_filter:
+        grade_name = class_name_filter
+
+    # "Sat out of total" must stay one coherent population: intersect with
+    # the active class roster so the KPI can never exceed the roll (it used
+    # to show 209 sat out of 106 when snapshots spanned several grades, and
+    # could still exceed it via students who sat but are no longer active).
+    roster_ids = set(all_students.values_list('id', flat=True))
+    students_who_sat = len([sid for sid in student_ids if sid in roster_ids])
 
     if snapshot_ctx:
         subject_perf = snapshot_ctx['subject_perf']
@@ -2480,12 +2470,12 @@ def analyse_exam(request):
     subject_rows.sort(key=lambda x: x['points'], reverse=True)
 
     if snapshot_ctx:
-        overall_mean_points = round(
-            sum(s.get('_total_pts', 0) for s in stream_stats.values()) /
-            max(sum(s.get('_count', 0) for s in stream_stats.values()), 1), 4)
-        overall_mean_marks = round(
-            sum(s.get('_total_marks', 0) for s in stream_stats.values()) /
-            max(sum(s.get('_count', 0) for s in stream_stats.values()), 1), 1)
+        # Per-SUBJECT means straight from the helper: report_card totals
+        # sum across subjects, so dividing by students inflated Mean Marks
+        # past 100 % ("181.6 %") and made the change vs the previous exam
+        # meaningless ("+161.8").
+        overall_mean_points = snapshot_ctx['overall_mean_points']
+        overall_mean_marks = snapshot_ctx['overall_mean_marks']
     else:
         stream_stats = {}
         total_all_pts = 0
@@ -2778,7 +2768,7 @@ def analyse_exam(request):
     all_exams_for_school = Exam.all_objects.filter(
         school=school, year=exam.year, is_deleted=False,
         school_section=section,
-    ).order_by('-year', 'term', 'name')
+    ).order_by('-year', '-term', 'name')
 
     # Only show exams that have published submissions or actual marks for the current grade
     if class_name_filter:
@@ -4719,7 +4709,7 @@ def clear_mark(request):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
 
     try:
-        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
+        exam = Exam.all_objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
@@ -4732,7 +4722,7 @@ def clear_mark(request):
         )
 
     try:
-        student = Student.objects.get(id=student_id, school=school)
+        student = Student.all_objects.get(id=student_id, school=school)
     except Student.DoesNotExist:
         return JsonResponse({'error': 'Student not found'}, status=404)
 
@@ -4894,7 +4884,7 @@ def save_mark(request):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
 
     try:
-        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
+        exam = Exam.all_objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
@@ -4907,7 +4897,7 @@ def save_mark(request):
         )
 
     try:
-        student = Student.objects.get(id=student_id, school=school)
+        student = Student.all_objects.get(id=student_id, school=school)
     except Student.DoesNotExist:
         return JsonResponse({'error': 'Student not found'}, status=404)
 
@@ -5147,7 +5137,7 @@ def batch_save_marks(request):
     except SubjectAssignment.DoesNotExist:
         return JsonResponse({'error': 'Assignment not found'}, status=404)
     try:
-        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
+        exam = Exam.all_objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
@@ -5213,7 +5203,7 @@ def batch_save_marks(request):
         # another class must not receive this subject's mark.
         student_ids = [item.get('student_id') for item in marks_data if item.get('student_id')]
         students_map = {
-            s.id: s for s in Student.objects.filter(
+            s.id: s for s in Student.all_objects.filter(
                 id__in=student_ids, school=school,
                 class_name=assignment.class_name,
                 stream=assignment.stream,
@@ -5518,7 +5508,7 @@ def update_maximum_marks(request):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
 
     try:
-        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
+        exam = Exam.all_objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 
@@ -5660,7 +5650,7 @@ def return_mark_sheet(request):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
 
     try:
-        exam = Exam.objects.get(id=exam_id, school=school, status='active', is_deleted=False)
+        exam = Exam.all_objects.get(id=exam_id, school=school, status='active', is_deleted=False)
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
 

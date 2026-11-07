@@ -81,3 +81,6 @@ redis_data/
 android-apk/android-keystore.jks
 .gradle/
 android-apk/.gradle/
+
+# Visual regression screenshots - regenerate with: python scripts/shot.py
+shots/

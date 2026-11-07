@@ -13,7 +13,7 @@ import string
 
 import numpy as np
 from django.core.cache import cache
-from django.db.models import Avg, Count, Q, Sum, IntegerField, Value, F, Window
+from django.db.models import Avg, Count, Max, Q, Sum, IntegerField, Value, F, Window
 from django.db.models.functions import Cast, DenseRank
 
 from .constants import (
@@ -1123,6 +1123,83 @@ def exam_covers_class(exam, class_name):
         return False
     classes = exam.classes or []
     return not classes or class_name in classes
+
+
+def exam_covers_grade(school, exam, class_name):
+    """Section-aware sibling of ``exam_covers_class``.
+
+    ``exam_covers_class`` treats an empty ``classes`` list as "all grades",
+    which is only true within the exam's own section. For bare HTML pages
+    (which cannot 400 a bad URL) we need the strict answer: does this exam
+    genuinely belong to this grade? Legacy exams with no class targeting are
+    resolved through the Grade table's section instead.
+    """
+    if not class_name:
+        return True
+    classes = exam.classes or []
+    if classes:
+        return class_name in classes
+    from ..models import Grade
+    grade = Grade.all_objects.filter(school=school, name=class_name).first()
+    if grade is None:
+        return True
+    return grade.school_section == exam.school_section
+
+
+def latest_published_exam(school, class_name=None):
+    """The exam whose results were published most recently for this school.
+
+    Single source of truth for "show the latest published exam" defaults:
+    orders by ``MarkSubmission.published_at`` — the timestamp set only when
+    an admin actually publishes — never by term/name heuristics, so the
+    answer can never drift to an older, draft, or never-published exam.
+
+    When ``class_name`` is given only that grade's submissions vote, and the
+    returned exam is one that really covers the grade (a school may hold two
+    same-named exams in different sections for the same term/year).
+
+    Returns None when nothing has been published yet.
+    """
+    subs = MarkSubmission.all_objects.filter(
+        school=school, status='published', published_at__isnull=False,
+    )
+    if class_name:
+        subs = subs.filter(class_name=class_name)
+    key = (
+        subs.values('exam_name', 'term', 'year')
+        .annotate(latest_publish=Max('published_at'))
+        .order_by('-latest_publish', '-year', 'exam_name')
+        .first()
+    )
+    if not key:
+        return None
+    from ..models import Exam, ExamSummary, Grade
+    exams = list(
+        Exam.all_objects.filter(
+            school=school, is_deleted=False,
+            name=key['exam_name'], term=key['term'], year=key['year'],
+        ).order_by('school_section', 'sub_section', 'id')
+    )
+    if not exams:
+        return None
+    if not class_name:
+        return exams[0]
+    grade = Grade.all_objects.filter(school=school, name=class_name).first()
+    pool = [e for e in exams if grade is None or e.school_section == grade.school_section]
+    pool = pool or exams
+    for ex in pool:
+        if class_name in (ex.classes or []):
+            return ex
+    for ex in pool:
+        if exam_covers_grade(school, ex, class_name):
+            return ex
+    for ex in pool:
+        if ExamSummary.all_objects.filter(
+            school=school, exam_name=ex.name, term=ex.term, year=ex.year,
+            school_section=ex.school_section, student__class_name=class_name,
+        ).exists():
+            return ex
+    return pool[0]
 
 
 def resolve_class_teachers_for_grade(school, grade, stream=None):
@@ -2853,21 +2930,38 @@ def get_exam_snapshot(school, exam, class_name, stream):
     )
 
 
-def build_analysis_from_snapshot(school, exam):
+def build_analysis_from_snapshot(school, exam, class_name=None, section=None,
+                                 breakdown_levels=None):
     """
     Build analysis page data from snapshots for ALL streams in the exam.
+
+    Scoped by ``class_name`` when given, else by ``section``: snapshots are
+    keyed only by (term, year, exam_name) and an exam routinely covers
+    several grades (e.g. KNEC ASSESSMENT for Grade 7 + Grade 8). Merging
+    every matching snapshot used to pool both grades — showing 209 sitters
+    out of 106, and labelling Grade 8's "Main" stream as "Grade 7 Main".
+
+    ``breakdown_levels`` is the page's PLV column list (fine-grained
+    EE1..BE2 for JSS, EE..BE for Primary) — must match the table header.
+
     Returns a dict with keys: streams, students_who_sat, student_ids, grade_name,
     subject_perf, stream_stats, grade_breakdown, overall_plv, subject_breakdowns,
-    gender_streams, total_girls, total_boys.
+    overall_mean_marks, overall_mean_points, gender_streams, total_girls,
+    total_boys.
     Returns None if no snapshots exist.
     """
     from ..models import ExamResultSnapshot
     from collections import Counter
 
-    # Find all snapshots for this exam
-    snapshots = list(ExamResultSnapshot.all_objects.filter(
+    # Find all snapshots for this exam (grade-scoped)
+    snapshots_qs = ExamResultSnapshot.all_objects.filter(
         school=school, term=exam.term, year=exam.year, exam_name=exam.name,
-    ).order_by('class_name', 'stream'))
+    )
+    if class_name:
+        snapshots_qs = snapshots_qs.filter(class_name=class_name)
+    elif section:
+        snapshots_qs = snapshots_qs.filter(school_section=section)
+    snapshots = list(snapshots_qs.order_by('class_name', 'stream'))
 
     if not snapshots:
         return None
@@ -2970,7 +3064,10 @@ def build_analysis_from_snapshot(school, exam):
         total_marks = sum(d.get('total_marks', 0) for d in stream_students.values())
         # Count total subjects across all students
         total_subj = sum(d.get('subject_count', 0) for d in stream_students.values())
-        mean_pts = round(total_pts / entries, 4) if entries else 0
+        # Per-SUBJECT means: report_card_data totals sum ACROSS subjects, so
+        # dividing points by students produced values like "Mean Points 21.06"
+        # against a 0–4 point scale (and inflated the overall Mean Marks KPI).
+        mean_pts = round(total_pts / total_subj, 4) if total_subj else 0
         mean_marks = round(total_marks / total_subj, 1) if total_subj else 0
         stream_stats[s_name] = {
             'mean_points': mean_pts,
@@ -2979,14 +3076,38 @@ def build_analysis_from_snapshot(school, exam):
             '_total_pts': total_pts,
             '_total_marks': total_marks,
             '_count': entries,
+            '_subj_count': total_subj,
         }
 
+    # ── Page-wide per-SUBJECT means + overall PLV (computed up front so
+    #    every row below can carry deviations) ─────────────────────────
+    # report_card_data totals are sums ACROSS subjects; the KPI cards, the
+    # previous-exam comparison and the subject table all use per-subject
+    # means, so dividing by students produced impossible values like
+    # "Mean Marks 181.6 %" and a "+161.8" change.
+    all_subj_total = sum(d.get('subject_count', 0) for d in all_student_data.values())
+    all_marks_total = sum(d.get('total_marks', 0) for d in all_student_data.values())
+    all_pts_total = sum(d.get('total_points', 0) for d in all_student_data.values())
+    overall_mean_marks = round(all_marks_total / all_subj_total, 1) if all_subj_total else 0
+    overall_mean_points = round(all_pts_total / all_subj_total, 4) if all_subj_total else 0
+
+    all_plvs = [(d.get('overall_plv') or '-').strip().upper() for d in all_student_data.values()]
+    plv_counter = Counter(all_plvs)
+    overall_plv = plv_counter.most_common(1)[0][0] if plv_counter else '—'
+
+    def _row_plv(counts):
+        nonzero = {k: v for k, v in counts.items() if k not in ('-', '—') and v}
+        return max(nonzero, key=nonzero.get) if nonzero else '-'
+
     # ── Grade breakdown (per-stream PLV distribution) ───────────────────
-    breakdown_levels = ['EE', 'ME', 'AE', 'BE']
+    # The column list comes from the page's grading config (fine-grained
+    # EE1..BE2 for JSS): hardcoding the coarse legacy list left every fine
+    # column at 0 because the table JS only renders keys that exist.
+    if not breakdown_levels:
+        breakdown_levels = ['EE', 'ME', 'AE', 'BE']
     grade_breakdown = []
     total_row = {'form': grade_name, 'entries': 0, 'X': 0, 'Y': 0}
     total_row.update({lvl: 0 for lvl in breakdown_levels})
-    total_row.update({'mean_marks': 0, 'mm_dev': 0, 'mean_points': 0, 'mp_dev': 0, 'performance_level': '—'})
 
     for s_name in streams:
         stream_students = {sid: d for sid, d in all_student_data.items() if d.get('stream') == s_name}
@@ -3001,43 +3122,92 @@ def build_analysis_from_snapshot(school, exam):
         total_subj = sum(d.get('subject_count', 0) for d in stream_students.values())
         total_pts = sum(d.get('total_points', 0) for d in stream_students.values())
         mean_m = round(total_marks / total_subj, 1) if total_subj else 0
-        mean_p = round(total_pts / entries, 4) if entries else 0
+        mean_p = round(total_pts / total_subj, 4) if total_subj else 0
 
         row = {
             'form': f'{grade_name} {s_name}',
             'entries': entries,
             'X': 0, 'Y': 0,
             'mean_marks': mean_m,
+            'mm_dev': round(mean_m - overall_mean_marks, 4),
             'mean_points': mean_p,
+            'mp_dev': round(mean_p - overall_mean_points, 4),
+            'performance_level': _row_plv(dist),
         }
         for lvl in breakdown_levels:
             row[lvl] = dist.get(lvl, 0)
         grade_breakdown.append(row)
 
         total_row['entries'] += entries
-        total_row['mean_marks'] += total_marks
-        total_row['mean_points'] += total_pts
         for lvl in breakdown_levels:
             total_row[lvl] += row[lvl]
 
-    # Overall row
-    if total_row['entries'] > 0:
-        total_row['mean_marks'] = round(total_row['mean_marks'] / sum(d.get('subject_count', 0) for d in all_student_data.values() or [1]), 1)
-        total_row['mean_points'] = round(total_row['mean_points'] / total_row['entries'], 4)
-
-    # Overall PLV from most common
-    all_plvs = [(d.get('overall_plv') or '-').strip().upper() for d in all_student_data.values()]
-    plv_counter = Counter(all_plvs)
-    overall_plv = plv_counter.most_common(1)[0][0] if plv_counter else '—'
+    total_row.update({
+        'mean_marks': overall_mean_marks, 'mm_dev': 0,
+        'mean_points': overall_mean_points, 'mp_dev': 0,
+        'performance_level': overall_plv,
+    })
 
     # ── Subject breakdowns (per-subject, per-stream) ────────────────────
+    # Built from each snapshot's broadsheet distribution — the empty-rows
+    # stub used to leave the subject dropdown's table completely blank.
     subject_breakdowns = {}
-    for code, data in merged_subjects.items():
-        subj_name = subject_code_to_name.get(str(code), str(code))
-        subject_breakdowns[subj_name] = {
-            'rows': [],
-            'total': {'entries': data.get('student_count', 0), 'mean_marks': data.get('mean_score', 0)},
-        }
+    for snap in snapshots:
+        per_name = {}
+        for code, data in (snap.broadsheet_data or {}).items():
+            subj_name = subject_code_to_name.get(str(code), str(code))
+            # Different codes can share one subject name (902/KIS …) —
+            # accumulate per snapshot before splitting by stream.
+            agg = per_name.get(subj_name)
+            if agg is None:
+                agg = per_name[subj_name] = {'entries': 0, 'total_score': 0,
+                                             'pts_total': 0, 'dist': {}}
+            n = data.get('student_count') or 0
+            agg['entries'] += n
+            agg['total_score'] += data.get('total_score') or 0
+            agg['pts_total'] += (data.get('mean_points') or 0) * n
+            for lvl, cnt in (data.get('distribution') or {}).items():
+                agg['dist'][lvl] = agg['dist'].get(lvl, 0) + (cnt or 0)
+        for subj_name, agg in per_name.items():
+            n = agg['entries']
+            mean_m = round(agg['total_score'] / n, 1) if n else 0
+            mean_p = round(agg['pts_total'] / n, 4) if n else 0
+            bd = subject_breakdowns.get(subj_name)
+            if bd is None:
+                bd = subject_breakdowns[subj_name] = {'rows': [], 'total': {}}
+            row = {
+                'form': f'{grade_name} {snap.stream}',
+                'entries': n,
+                'X': 0, 'Y': 0,
+                'mean_marks': mean_m,
+                'mm_dev': round(mean_m - overall_mean_marks, 4),
+                'mean_points': mean_p,
+                'mp_dev': round(mean_p - overall_mean_points, 4),
+                'performance_level': _row_plv(agg['dist']),
+            }
+            for lvl in breakdown_levels:
+                row[lvl] = agg['dist'].get(lvl, 0)
+            bd['rows'].append(row)
+
+    for subj_name, bd in subject_breakdowns.items():
+        rows = bd['rows']
+        n = sum(r['entries'] for r in rows)
+        tot = {'form': grade_name, 'entries': n, 'X': 0, 'Y': 0}
+        tot['mean_marks'] = (
+            round(sum(r['mean_marks'] * r['entries'] for r in rows) / n, 1) if n else 0
+        )
+        tot['mean_points'] = (
+            round(sum(r['mean_points'] * r['entries'] for r in rows) / n, 4) if n else 0
+        )
+        tot['mm_dev'] = round(tot['mean_marks'] - overall_mean_marks, 4)
+        tot['mp_dev'] = round(tot['mean_points'] - overall_mean_points, 4)
+        lvl_totals = {lvl: 0 for lvl in breakdown_levels}
+        for r in rows:
+            for lvl in breakdown_levels:
+                lvl_totals[lvl] += r.get(lvl) or 0
+        tot.update(lvl_totals)
+        tot['performance_level'] = _row_plv(lvl_totals)
+        bd['total'] = tot
 
     # ── Gender streams ──────────────────────────────────────────────────
     gender_streams = {}
@@ -3061,6 +3231,8 @@ def build_analysis_from_snapshot(school, exam):
         'grade_breakdown': grade_breakdown,
         'total_row': total_row,
         'overall_plv': overall_plv,
+        'overall_mean_marks': overall_mean_marks,
+        'overall_mean_points': overall_mean_points,
         'subject_breakdowns': subject_breakdowns,
         'gender_streams': gender_streams,
         'total_girls': total_girls,

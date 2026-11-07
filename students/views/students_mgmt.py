@@ -3844,16 +3844,27 @@ def api_analysis_data(request):
     breakdown_levels = PRIMARY_ORDERED_LEVELS if section == 'PRIMARY' else ORDERED_LEVELS
     sub_section = exam.sub_section
 
-    # Auto-detect class_name if not provided
+    # Auto-detect class_name if not provided — alphabetical (deterministic)
+    # and section-scoped first, so a JSS exam never resolves to Grade 1 via
+    # the other section's same-named exam in the same term/year.
     if not class_name_filter:
-        auto_grades = (
-            ExamSummary.all_objects.filter(
-                school=school, exam_name=exam.name, term=exam.term, year=exam.year,
-            )
-            .values_list('student__class_name', flat=True)
-            .distinct()
+        base_summaries = ExamSummary.all_objects.filter(
+            school=school, exam_name=exam.name, term=exam.term, year=exam.year,
         )
-        auto_grades_list = list(auto_grades)
+        scoped_summaries = base_summaries.filter(school_section=section)
+        if exam.sub_section:
+            scoped_summaries = scoped_summaries.filter(sub_section=exam.sub_section)
+        auto_grades_list = list(
+            scoped_summaries.values_list('student__class_name', flat=True)
+            .distinct()
+            .order_by('student__class_name')
+        )
+        if not auto_grades_list:
+            auto_grades_list = list(
+                base_summaries.values_list('student__class_name', flat=True)
+                .distinct()
+                .order_by('student__class_name')
+            )
         if auto_grades_list:
             class_name_filter = auto_grades_list[0]
 

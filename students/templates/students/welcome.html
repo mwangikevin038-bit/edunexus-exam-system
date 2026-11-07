@@ -1,1336 +1,1445 @@
 {% extends 'students/base.html' %}
 {% load static %}
 
+{% block title %}EDUNEXUS — Smart Exam Management &amp; Analytics for Kenyan Schools{% endblock %}
+
 {% block extra_head %}
-<style>
-    .sidebar, .premium-sidebar, .sidebar-nav, .hamburger-btn, .sidebar-overlay,
-    .mobile-topbar, .bottom-nav, .mobile-menu-sheet,
-    .topbar, .global-loader-overlay,
-    .global-header, .mobile-global-header, .sub-nav-bar, .dm-subnav { display: none !important; }
-    .app-content { width: 100% !important; max-width: none !important; margin-left: 0 !important; margin-top: 0 !important; padding: 0 !important; }
-    .main-content { padding: 0 !important; max-width: none !important; margin-left: 0 !important; }
-    body { background: #f8fafc !important; overflow-x: hidden !important; }
-    html.force-mobile .app-content,
-    html.force-mobile .main-content { margin-left: 0 !important; width: 100% !important; max-width: none !important; padding: 0 !important; }
-    /* layout.css force-mobile rules re-show mobile chrome with higher specificity —
-       the landing page must stay chrome-free on phones too. */
-    html.force-mobile .mobile-global-header,
-    html.force-mobile .bottom-nav,
-    html.force-mobile .global-header,
-    html.force-mobile .premium-sidebar,
-    html.force-mobile .sub-nav-bar,
-    html.force-mobile .mobile-menu-sheet { display: none !important; }
-</style>
-{% endblock %}
+<!-- ── SEO / Social ─────────────────────────────────────────── -->
+<meta name="description" content="Score capture, auto-computed broadsheets, CBE-aligned analytics and print-ready report cards — EDUNEXUS unifies exam management for primary and junior secondary schools in Kenya.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="EDUNEXUS">
+<meta property="og:title" content="EDUNEXUS — Smart Exam Management for Kenyan Schools">
+<meta property="og:description" content="Score capture, auto-computed broadsheets, CBE-aligned analytics and print-ready report cards — one unified platform for Kenyan schools.">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/edunexus_logo_192.png' %}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="EDUNEXUS — Smart Exam Management for Kenyan Schools">
+<meta name="twitter:description" content="Score capture, auto-computed broadsheets, CBE-aligned analytics and print-ready report cards — one unified platform for Kenyan schools.">
+<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/edunexus_logo_192.png' %}">
 
-{% block content %}
+<!-- Progressive enhancement: reveal animations only hide content when JS runs. -->
+<script>document.documentElement.classList.add('js');</script>
 
-<link rel="stylesheet" href="/static/css/bootstrap-icons.min.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"EDUNEXUS","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Exam management, real-time analytics and reporting for primary and junior secondary schools in Kenya.","areaServed":{"@type":"Country","name":"Kenya"},"featureList":"Score capture, broadsheet analytics, CBE-aligned report cards, learner registry, faculty management, assessment locks","contactPoint":{"@type":"ContactPoint","contactType":"customer support","email":"edunexus.system@gmail.com","availableLanguage":"English"}}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"How is our school's data protected?","acceptedAnswer":{"@type":"Answer","text":"Every school's data is completely isolated on its own secure workspace — there is no cross-school access, ever. EDUNEXUS is built so your records remain yours alone."}},
+{"@type":"Question","name":"Is EDUNEXUS aligned to the CBE curriculum?","acceptedAnswer":{"@type":"Answer","text":"Yes. Grading, performance (PLV) levels and analytics are designed around Kenya's Competency-Based Education framework, from Lower Primary through Junior School."}},
+{"@type":"Question","name":"Who in my school can use it?","acceptedAnswer":{"@type":"Answer","text":"School admins manage learners, classes and faculty, while subject teachers capture scores for the classes and subjects assigned to them. A role-based permission matrix controls exactly who can see and do what."}},
+{"@type":"Question","name":"What can we print?","acceptedAnswer":{"@type":"Answer","text":"Broadsheets, class registers and individual or bulk report cards are formatted to exact A4 print dimensions — ready to hand out the same day."}},
+{"@type":"Question","name":"How do we get started?","acceptedAnswer":{"@type":"Answer","text":"Sign in with the credentials issued to your school. If you need help or want access for your institution, contact us at edunexus.system@gmail.com or WhatsApp +254 728 007 320."}}
+]}
+</script>
 
 <style>
 /* ══════════════════════════════════════════════════════════════
-   EDUNEXUS LANDING PAGE — iOS 17 / Modern SaaS Redesign
-   Navy + Green palette · Plus Jakarta Sans · Glassmorphism
+   EDUNEXUS LANDING — premium rebuild
+   · system green #4CAF50 (never lime) + deep navy ink
+   · tokens + two small responsive flip blocks (≤1023px / force-mobile)
+   · no build step: hand-written CSS, Plus Jakarta Sans (loaded by base)
    ══════════════════════════════════════════════════════════════ */
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── 1. SHELL: hide app chrome, flatten the flex chain ────────── */
+.sidebar, .premium-sidebar, .sidebar-nav, .hamburger-btn, .sidebar-overlay,
+.mobile-topbar, .bottom-nav, .mobile-menu-sheet,
+.topbar, .global-loader-overlay,
+.global-header, .mobile-global-header, .sub-nav-bar, .dm-subnav { display: none !important; }
+.app-content { width: 100% !important; max-width: none !important; margin-left: 0 !important; margin-top: 0 !important; padding: 0 !important; }
+.main-content { padding: 0 !important; max-width: none !important; margin-left: 0 !important; }
+/* Flatten the app's flex height chain unconditionally (was duplicated in a
+   media block and a force-mobile block — this page is a document, not an app). */
+.app-content, .main-content { display: block !important; flex: none !important; height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }
+html.force-mobile .app-content,
+html.force-mobile .main-content { margin-left: 0 !important; width: 100% !important; max-width: none !important; padding: 0 !important; }
+/* layout.css force-mobile rules re-show mobile chrome with higher specificity —
+   the landing page must stay chrome-free on phones too. */
+html.force-mobile .mobile-global-header,
+html.force-mobile .bottom-nav,
+html.force-mobile .global-header,
+html.force-mobile .premium-sidebar,
+html.force-mobile .sub-nav-bar,
+html.force-mobile .mobile-menu-sheet { display: none !important; }
 
-/* Body-only horizontal clip: html must keep overflow visible so the
-   viewport keeps normal vertical scroll propagation (html overflow-x
-   flips overflow-y to auto and can trap/clip the document on phones). */
+html {
+    /* base.css already sets scroll-behavior: smooth — anchors need the fixed-nav offset. */
+    scroll-padding-top: calc(var(--lp-nav-h, 72px) + 16px);
+    background: var(--lp-ink);
+    -webkit-tap-highlight-color: transparent;
+}
 body {
+    background: var(--lp-ink);
+    color: var(--lp-gray-600);
+    font-family: var(--lp-font);
     overflow-x: hidden;
-    max-width: 100%;
 }
 
+/* ── 2. TOKENS ────────────────────────────────────────────────── */
 :root {
-    --lp-green: #a3e635;
-    --lp-green-hover: #84cc16;
-    --lp-green-deeper: #65a30d;
-    --lp-green-glow: rgba(163, 230, 53, 0.12);
+    --lp-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    /* Brand — references the design system (variables.css loads first). */
+    --lp-green: var(--en-green, #4CAF50);
+    --lp-green-hover: var(--en-green-hover, #43A047);
+    --lp-cta: var(--en-green-active, #2e6b31);   /* deep fill — white text passes AA (≈6.5:1) */
+    --lp-cta-hover: #358239;                     /* lighter hover — still AA (≈4.8:1) */
+    --lp-cta-active: #255828;
+    --lp-green-10: color-mix(in srgb, var(--lp-green) 10%, transparent);
+    --lp-green-16: color-mix(in srgb, var(--lp-green) 16%, transparent);
+    --lp-green-30: color-mix(in srgb, var(--lp-green) 30%, transparent);
+
+    /* Ink & neutrals */
+    --lp-ink: #081120;
     --lp-navy-900: #0a1628;
     --lp-navy-800: #0f2240;
     --lp-navy-700: #162d50;
-    --lp-navy-600: #1e3a5f;
+    --lp-head: #0f2240;
     --lp-white: #ffffff;
     --lp-gray-50: #f8fafc;
     --lp-gray-100: #f1f5f9;
     --lp-gray-200: #e2e8f0;
-    --lp-gray-300: #cbd5e1;
     --lp-gray-500: #64748b;
     --lp-gray-600: #475569;
-    --lp-gray-700: #334155;
-    --lp-gray-800: #1e293b;
-    --lp-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --lp-line: #e5eaf1;
+
+    /* Geometry */
+    --lp-container: 1200px;
+    --lp-pad-x: clamp(20px, 4.5vw, 40px);
+    --lp-section-y: clamp(76px, 9vw, 116px);
+    --lp-radius-xl: 26px;
+    --lp-radius-lg: 18px;
+    --lp-radius-md: 14px;
+    --lp-ease: cubic-bezier(.16, 1, .3, 1);
+
+    /* Type scale */
+    --lp-display: clamp(2.45rem, 1.5rem + 3.4vw, 4.3rem);
+    --lp-h2: clamp(1.9rem, 1.35rem + 2vw, 2.7rem);
+    --lp-h3: clamp(1.12rem, 1.04rem + .45vw, 1.35rem);
+    --lp-lead: clamp(1.02rem, .97rem + .28vw, 1.16rem);
+
+    /* Elevation */
+    --lp-shadow-card: 0 1px 2px rgba(10, 22, 40, .04), 0 12px 32px rgba(10, 22, 40, .06);
+    --lp-shadow-lift: 0 2px 6px rgba(10, 22, 40, .06), 0 24px 48px rgba(10, 22, 40, .12);
+    --lp-shadow-float: 0 40px 90px rgba(3, 10, 20, .55);
+
+    /* ── Desktop state (default). Mobile flips these in section 16. ── */
+    --lp-nav-h: 72px;
+    --lp-logo: 40px;
+    --lp-navlinks-d: flex;
+    --lp-login-d: inline-flex;
+    --lp-burger-d: none;
+    --lp-sticky-d: none;
+    --lp-stats-cols: 4;
+    --lp-stats-shift: -68px;
+    --lp-bento-cols: 6;
+    --lp-why-cols: 1fr 1fr;
+    --lp-gap-why: clamp(40px, 5vw, 72px);
+    --lp-footer-cols: 1.7fr 1fr 1fr;
+    --lp-footer-dir: row;
+    --lp-row-dir: row;
+    --lp-preview-panels: 1.06fr .94fr;
+    --lp-steps-cols: repeat(3, minmax(0, 1fr));
+    --lp-steps-line-d: block;
+    --lp-hero-min: min(100svh, 960px);
 }
 
-.lp-root {
-    background: var(--lp-gray-50);
-    color: var(--lp-gray-600);
-    font-family: var(--lp-font);
-    min-height: 100vh;
-    min-height: 100dvh;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-    width: 100%;
-    max-width: 100%;
+/* ── 3. PRIMITIVES ────────────────────────────────────────────── */
+.lp-root { position: relative; overflow-x: clip; }
+.lp-container { width: 100%; max-width: var(--lp-container); margin-inline: auto; padding-inline: var(--lp-pad-x); }
+
+.lp-skip {
+    position: absolute; top: -80px; left: 16px; z-index: 2000;
+    background: #fff; color: var(--lp-head); font-weight: 700; font-size: .9rem;
+    padding: 12px 18px; border-radius: 12px; box-shadow: var(--lp-shadow-lift);
+    transition: top .2s ease;
+}
+.lp-skip:focus-visible { top: 16px; }
+
+.lp-root a:focus-visible,
+.lp-root button:focus-visible,
+.lp-root summary:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--lp-green) 65%, white);
+    outline-offset: 3px;
 }
 
-/* ── NAVBAR ────────────────────────────────────────────────── */
+/* Section scaffolding */
+.lp-band-gray { background: var(--lp-gray-50); }
+.lp-band-white { background: var(--lp-white); }
+.lp-section { padding-block: var(--lp-section-y); }
+.lp-sec-head { max-width: 660px; margin-inline: auto; text-align: center; margin-bottom: clamp(36px, 4vw, 56px); }
+.lp-sec-tag {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: .76rem; font-weight: 800; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--lp-cta);
+    margin-bottom: 16px;
+}
+.lp-sec-tag::before { content: ''; width: 22px; height: 3px; border-radius: 3px; background: var(--lp-green); }
+.lp-sec-title {
+    font-size: var(--lp-h2); font-weight: 800; color: var(--lp-head);
+    line-height: 1.1; letter-spacing: -.025em; text-wrap: balance;
+}
+.lp-sec-sub {
+    margin-top: 16px; font-size: var(--lp-lead); line-height: 1.7;
+    color: var(--lp-gray-600); text-wrap: pretty;
+}
+
+/* Buttons */
+.lp-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    font-family: inherit; font-weight: 700; font-size: .98rem; line-height: 1;
+    padding: 17px 30px; border-radius: 14px; text-decoration: none;
+    border: 1px solid transparent; cursor: pointer;
+    transition: transform .25s var(--lp-ease), box-shadow .25s var(--lp-ease),
+                background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+.lp-btn i { font-size: 1.05em; transition: transform .25s var(--lp-ease); }
+.lp-btn:hover i.bi-arrow-right, .lp-btn:hover i.bi-chevron-right { transform: translateX(4px); }
+.lp-btn-primary {
+    background: var(--lp-cta); color: #fff;
+    box-shadow: 0 10px 26px rgba(46, 107, 49, .32), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.lp-btn-primary:hover { background: var(--lp-cta-hover); transform: translateY(-2px); box-shadow: 0 16px 34px rgba(46, 107, 49, .38), inset 0 1px 0 rgba(255, 255, 255, .22); color: #fff; }
+.lp-btn-primary:active { background: var(--lp-cta-active); transform: translateY(0); }
+.lp-btn-ghost {
+    background: rgba(255, 255, 255, .07); color: #fff;
+    border-color: rgba(255, 255, 255, .22); backdrop-filter: blur(8px);
+}
+.lp-btn-ghost:hover { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .4); color: #fff; transform: translateY(-2px); }
+
+/* Chips */
+.lp-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: .74rem; font-weight: 700; letter-spacing: .02em;
+    padding: 7px 12px; border-radius: 999px;
+    background: var(--lp-gray-100); color: var(--lp-gray-600);
+    border: 1px solid var(--lp-line);
+}
+.lp-chip-green { background: var(--lp-green-10); color: var(--lp-cta); border-color: var(--lp-green-30); }
+
+/* Icon chips */
+.lp-icon-chip {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--lp-green-10); color: var(--lp-cta);
+    font-size: 1.3rem; flex-shrink: 0;
+}
+
+/* Scroll-reveal system (hidden only when JS is present) */
+.lp-reveal, .lp-reveal-left, .lp-reveal-right, .lp-reveal-scale, .lp-reveal-tilt {
+    transition: opacity .7s var(--lp-ease), transform .7s var(--lp-ease);
+}
+html.js .lp-reveal:not(.visible) { opacity: 0; transform: translateY(26px); }
+html.js .lp-reveal-left:not(.visible) { opacity: 0; transform: translateX(-30px); }
+html.js .lp-reveal-right:not(.visible) { opacity: 0; transform: translateX(30px); }
+html.js .lp-reveal-scale:not(.visible) { opacity: 0; transform: scale(.96); }
+html.js .lp-reveal-tilt:not(.visible) { opacity: 0; transform: perspective(1600px) rotateX(14deg) translateY(56px); transform-origin: 50% 100%; }
+.lp-reveal.visible, .lp-reveal-left.visible, .lp-reveal-right.visible, .lp-reveal-scale.visible { opacity: 1; transform: none; }
+.lp-reveal-tilt.visible { opacity: 1; transform: perspective(1600px) rotateX(0deg); }
+.lp-stagger > *:nth-child(1) { transition-delay: 0ms; }
+.lp-stagger > *:nth-child(2) { transition-delay: 70ms; }
+.lp-stagger > *:nth-child(3) { transition-delay: 140ms; }
+.lp-stagger > *:nth-child(4) { transition-delay: 210ms; }
+.lp-stagger > *:nth-child(5) { transition-delay: 280ms; }
+.lp-stagger > *:nth-child(6) { transition-delay: 350ms; }
+
+/* ── 4. NAVBAR ────────────────────────────────────────────────── */
 .lp-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    padding: 0 40px;
-    height: 72px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    height: var(--lp-nav-h);
+    transition: background-color .35s var(--lp-ease), box-shadow .35s var(--lp-ease),
+                border-color .35s var(--lp-ease);
+    border-bottom: 1px solid transparent;
 }
 .lp-nav.scrolled {
-    background: rgba(255, 255, 255, 0.82);
+    background: color-mix(in srgb, #fff 82%, transparent);
     backdrop-filter: blur(16px) saturate(180%);
     -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border-bottom-color: color-mix(in srgb, var(--lp-line) 70%, transparent);
+    box-shadow: 0 1px 3px rgba(10, 22, 40, .05);
 }
-.lp-nav-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-decoration: none;
+.lp-nav-inner {
+    height: 100%; display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; width: 100%; max-width: var(--lp-container);
+    margin-inline: auto; padding-inline: var(--lp-pad-x);
 }
-.lp-nav-brand img {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-    border-radius: 10px;
-    flex-shrink: 0;
+.lp-nav-progress {
+    position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+    background: linear-gradient(90deg, var(--lp-green), color-mix(in srgb, var(--lp-green) 55%, #7ee787));
+    transform: scaleX(var(--lp-progress, 0)); transform-origin: left;
+    opacity: .9;
+}
+.lp-nav-brand { display: flex; align-items: center; gap: 11px; text-decoration: none; min-width: 0; }
+.lp-nav-logo {
+    width: var(--lp-logo); height: var(--lp-logo); object-fit: contain;
+    border-radius: 11px; box-shadow: 0 2px 8px rgba(0, 0, 0, .22);
 }
 .lp-nav-brand-text {
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: var(--lp-white);
-    letter-spacing: -0.5px;
-    transition: color 0.35s;
-    white-space: nowrap;
-    min-width: 0;
+    font-size: 1.16rem; font-weight: 800; letter-spacing: -.5px;
+    color: #fff; white-space: nowrap; transition: color .35s var(--lp-ease);
 }
-.lp-nav.scrolled .lp-nav-brand-text {
-    color: var(--lp-navy-800);
-}
-.lp-nav-brand-text span {
-    color: var(--lp-green);
-}
-.lp-nav-links {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.lp-nav-link {
-    padding: 8px 18px;
-    border-radius: 10px;
-    color: rgba(255, 255, 255, 0.7);
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-decoration: none;
-    transition: all 0.2s;
-}
-.lp-nav.scrolled .lp-nav-link {
-    color: var(--lp-gray-600);
-}
-.lp-nav-link:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: var(--lp-white);
-}
-.lp-nav.scrolled .lp-nav-link:hover {
-    background: var(--lp-gray-100);
-    color: var(--lp-navy-800);
-}
-.lp-nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.lp-nav-login {
-    padding: 10px 24px;
-    background: var(--lp-green);
-    color: var(--lp-navy-900);
-    font-weight: 700;
-    font-size: 0.9rem;
-    border-radius: 12px;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp-nav-login:hover {
-    background: var(--lp-green-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(163, 230, 53, 0.35);
-}
+.lp-nav-brand-text span { color: var(--lp-green); transition: color .35s var(--lp-ease); }
+.lp-nav.scrolled .lp-nav-brand-text { color: var(--lp-head); }
+.lp-nav.scrolled .lp-nav-brand-text span { color: var(--lp-cta); }
 
-/* ── HERO ──────────────────────────────────────────────────── */
+.lp-nav-links { display: var(--lp-navlinks-d); align-items: center; gap: 2px; }
+.lp-nav-link {
+    padding: 9px 16px; border-radius: 10px; text-decoration: none;
+    font-size: .9rem; font-weight: 600; color: rgba(255, 255, 255, .76);
+    transition: color .2s ease, background-color .2s ease;
+}
+.lp-nav-link:hover { color: #fff; background: rgba(255, 255, 255, .12); }
+.lp-nav-link.is-active { color: #fff; background: rgba(255, 255, 255, .14); }
+.lp-nav.scrolled .lp-nav-link { color: var(--lp-gray-600); }
+.lp-nav.scrolled .lp-nav-link:hover { color: var(--lp-head); background: var(--lp-gray-100); }
+.lp-nav.scrolled .lp-nav-link.is-active { color: var(--lp-cta); background: var(--lp-green-10); }
+
+.lp-nav-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.lp-nav-login {
+    display: var(--lp-login-d); align-items: center; gap: 8px;
+    padding: 11px 22px; border-radius: 12px; text-decoration: none;
+    background: var(--lp-cta); color: #fff; font-weight: 700; font-size: .9rem;
+    box-shadow: 0 8px 20px rgba(46, 107, 49, .3), inset 0 1px 0 rgba(255, 255, 255, .2);
+    transition: background-color .2s ease, transform .25s var(--lp-ease), box-shadow .25s var(--lp-ease);
+}
+.lp-nav-login:hover { background: var(--lp-cta-hover); transform: translateY(-1px); color: #fff; box-shadow: 0 12px 26px rgba(46, 107, 49, .36), inset 0 1px 0 rgba(255, 255, 255, .2); }
+
+.lp-burger {
+    display: var(--lp-burger-d); flex-direction: column; align-items: center; justify-content: center;
+    gap: 5px; width: 44px; height: 44px; border-radius: 13px;
+    background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18);
+    transition: background-color .2s ease, border-color .2s ease;
+}
+.lp-burger span { display: block; width: 18px; height: 2px; border-radius: 2px; background: #fff; transition: background-color .3s ease; }
+.lp-nav.scrolled .lp-burger { background: var(--lp-gray-100); border-color: var(--lp-line); }
+.lp-nav.scrolled .lp-burger span { background: var(--lp-head); }
+.lp-burger:hover { background: rgba(255, 255, 255, .2); }
+.lp-nav.scrolled .lp-burger:hover { background: var(--lp-gray-200); }
+
+/* ── 5. HERO ─────────────────────────────────────────────────── */
 .lp-hero {
     position: relative;
-    padding: 160px 40px 120px;
-    min-height: 85vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    background: linear-gradient(160deg, var(--lp-navy-800) 0%, var(--lp-navy-700) 50%, #12294a 100%);
+    min-height: var(--lp-hero-min);
+    padding-top: calc(var(--lp-nav-h) + clamp(52px, 8vh, 100px));
+    padding-bottom: clamp(88px, 11vh, 132px);
+    display: flex; align-items: center;
+    background:
+        radial-gradient(ellipse 70% 55% at 50% -8%, rgba(76, 175, 80, .16), transparent 62%),
+        radial-gradient(ellipse 45% 42% at 86% 18%, rgba(37, 99, 235, .16), transparent 65%),
+        linear-gradient(165deg, var(--lp-navy-800) 0%, var(--lp-navy-900) 58%, var(--lp-ink) 100%);
     overflow: hidden;
 }
+/* grain */
 .lp-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-        radial-gradient(ellipse 60% 50% at 50% 0%, rgba(163, 230, 53, 0.10) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 40% at 80% 80%, rgba(37, 99, 235, 0.12) 0%, transparent 60%);
-    z-index: 0;
+    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .05;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
 }
+/* fine grid, faded at the edges */
 .lp-hero::after {
-    content: '';
-    position: absolute;
-    inset: 0;
+    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
     background-image:
-        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 64px 64px;
-    z-index: 0;
+        linear-gradient(rgba(255, 255, 255, .045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .045) 1px, transparent 1px);
+    background-size: 56px 56px;
+    -webkit-mask-image: radial-gradient(ellipse 72% 62% at 50% 34%, #000 18%, transparent 78%);
+    mask-image: radial-gradient(ellipse 72% 62% at 50% 34%, #000 18%, transparent 78%);
 }
-.lp-hero-content {
-    position: relative;
-    z-index: 1;
-    max-width: 860px;
+.lp-glow {
+    position: absolute; border-radius: 50%; filter: blur(70px); pointer-events: none; z-index: 0;
+    transform: translate3d(calc(var(--mx, 0) * var(--gx, 0px)), calc(var(--my, 0) * var(--gy, 0px)), 0);
+    transition: transform .6s ease-out;
+}
+.lp-glow-a { width: 560px; height: 440px; left: 6%; top: -14%; --gx: 26px; --gy: 18px;
+    background: radial-gradient(circle, rgba(76, 175, 80, .3), transparent 65%); }
+.lp-glow-b { width: 520px; height: 460px; right: 4%; top: 12%; --gx: -22px; --gy: 16px;
+    background: radial-gradient(circle, rgba(59, 130, 246, .22), transparent 65%); }
+.lp-nav-sentinel { position: absolute; top: 44px; left: 0; width: 1px; height: 1px; }
+
+.lp-hero-inner {
+    position: relative; z-index: 2;
+    width: 100%; max-width: var(--lp-container); margin-inline: auto;
+    padding-inline: var(--lp-pad-x); text-align: center;
+    display: flex; flex-direction: column; align-items: center;
 }
 .lp-hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(163, 230, 53, 0.10);
-    border: 1px solid rgba(163, 230, 53, 0.25);
-    color: var(--lp-green);
-    border-radius: 999px;
-    padding: 8px 20px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    margin-bottom: 32px;
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 9px 18px; border-radius: 999px;
+    background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .16);
+    backdrop-filter: blur(8px); color: rgba(255, 255, 255, .88);
+    font-size: .8rem; font-weight: 700; letter-spacing: .04em;
+    margin-bottom: clamp(20px, 3vh, 30px);
 }
-.lp-hero-badge-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--lp-green);
-    animation: lp-pulse 1.8s infinite;
+.lp-badge-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--lp-green);
+    animation: lp-pulse 2.2s ease-out infinite;
 }
 @keyframes lp-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.5); }
+    0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, .55); }
+    70% { box-shadow: 0 0 0 9px rgba(76, 175, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
 }
-.lp-hero h1 {
-    font-size: clamp(2.6rem, 5.5vw, 4rem);
-    font-weight: 800;
-    line-height: 1.08;
-    letter-spacing: -1.5px;
-    margin-bottom: 24px;
-    color: var(--lp-white);
+.lp-hero-title {
+    font-size: var(--lp-display); font-weight: 800; color: #fff;
+    line-height: 1.06; letter-spacing: -.03em; text-wrap: balance;
+    max-width: 18ch;
 }
-.lp-hero h1 .accent {
-    color: var(--lp-green);
+.lp-hero-title .lp-accent {
+    background: linear-gradient(115deg, #57c95f 10%, #8ce894 90%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.lp-hero p {
-    color: rgba(255, 255, 255, 0.55);
-    font-size: clamp(1rem, 1.8vw, 1.15rem);
-    line-height: 1.7;
-    max-width: 600px;
-    margin: 0 auto 44px;
-    font-weight: 500;
+.lp-hero-sub {
+    margin-top: clamp(18px, 2.4vh, 26px);
+    font-size: var(--lp-lead); line-height: 1.72; color: rgba(255, 255, 255, .72);
+    max-width: 640px; text-wrap: pretty;
 }
 .lp-hero-cta {
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-    flex-wrap: wrap;
+    display: flex; flex-direction: var(--lp-row-dir); flex-wrap: wrap;
+    justify-content: center; gap: 14px;
+    margin-top: clamp(26px, 3.4vh, 38px);
 }
-.lp-btn-primary {
-    padding: 16px 36px;
-    background: var(--lp-green);
-    color: var(--lp-navy-900);
-    font-weight: 800;
-    font-size: 0.95rem;
-    border-radius: 14px;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 4px 20px rgba(163, 230, 53, 0.3);
+.lp-hero-proof {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 26px;
+    margin-top: clamp(20px, 2.6vh, 28px); list-style: none;
 }
-.lp-btn-primary:hover {
-    background: var(--lp-green-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 12px 32px rgba(163, 230, 53, 0.4);
+.lp-hero-proof li {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: .84rem; font-weight: 600; color: rgba(255, 255, 255, .6);
 }
-.lp-btn-primary:active {
-    transform: translateY(0) scale(0.98);
-}
-.lp-btn-outline {
-    padding: 16px 36px;
-    background: transparent;
-    color: var(--lp-white);
-    font-weight: 700;
-    font-size: 0.95rem;
-    border-radius: 14px;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    border: 1.5px solid rgba(255, 255, 255, 0.18);
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp-btn-outline:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
-}
+.lp-hero-proof i { color: var(--lp-green); font-size: 1rem; }
 
-/* ── STATS ─────────────────────────────────────────────────── */
+/* ── 6. PRODUCT PREVIEW (hero mock) ──────────────────────────── */
+.lp-preview {
+    margin: clamp(40px, 6vh, 72px) auto 0;
+    width: 100%; max-width: 960px;
+    border-radius: 20px; overflow: hidden;
+    background: #fff;
+    border: 1px solid rgba(255, 255, 255, .5);
+    box-shadow: var(--lp-shadow-float), 0 0 90px rgba(76, 175, 80, .1);
+    text-align: left;
+}
+.lp-preview-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 13px 18px; background: var(--lp-navy-900);
+}
+.lp-dot { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
+.lp-dot:nth-child(2) { background: #febc2e; }
+.lp-dot:nth-child(3) { background: var(--lp-green); }
+.lp-preview-url {
+    margin-left: 10px; padding: 5px 14px; border-radius: 8px;
+    background: rgba(255, 255, 255, .08); color: rgba(255, 255, 255, .66);
+    font-size: .72rem; font-weight: 600; letter-spacing: .03em; flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lp-live {
+    display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
+    font-size: .66rem; font-weight: 800; letter-spacing: .12em; color: #7ee787;
+}
+.lp-live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--lp-green); animation: lp-pulse 2.2s ease-out infinite; }
+.lp-preview-body { padding: clamp(18px, 2.4vw, 26px); display: grid; gap: 16px; }
+.lp-preview-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.lp-kpi {
+    background: var(--lp-gray-50); border: 1px solid var(--lp-line);
+    border-radius: var(--lp-radius-md); padding: 15px 16px;
+}
+.lp-kpi strong { display: block; font-size: clamp(1.3rem, 1.8vw, 1.6rem); font-weight: 800; color: var(--lp-head); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.lp-kpi span { display: block; margin-top: 4px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--lp-gray-500); }
+.lp-preview-panels { display: grid; grid-template-columns: var(--lp-preview-panels); gap: 12px; }
+.lp-panel {
+    background: var(--lp-gray-50); border: 1px solid var(--lp-line);
+    border-radius: var(--lp-radius-md); padding: 15px 16px;
+}
+.lp-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.lp-panel-head b { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--lp-gray-500); }
+.lp-delta { font-size: .7rem; font-weight: 800; color: var(--lp-cta); background: var(--lp-green-10); padding: 4px 9px; border-radius: 999px; }
+.lp-chart { display: flex; align-items: flex-end; gap: clamp(6px, 1vw, 10px); height: 150px; }
+.lp-chart-bar {
+    flex: 1; height: var(--h); border-radius: 7px 7px 3px 3px;
+    background: linear-gradient(180deg, var(--lp-green), color-mix(in srgb, var(--lp-green) 52%, var(--lp-navy-800)));
+    opacity: .9; transform-origin: bottom;
+}
+.lp-preview:hover .lp-chart-bar { opacity: 1; }
+html.js .lp-preview .lp-chart-bar { transform: scaleY(.04); transition: transform .8s var(--lp-ease) calc(var(--i, 0) * 70ms), opacity .2s ease; }
+html.js .lp-preview.visible .lp-chart-bar { transform: scaleY(1); }
+.lp-table { display: grid; gap: 0; }
+.lp-table-row {
+    display: grid; grid-template-columns: 1fr 58px 46px; gap: 10px; align-items: center;
+    padding: 9px 4px; border-bottom: 1px solid var(--lp-line);
+    font-size: .8rem; color: var(--lp-gray-600);
+}
+.lp-table-row:last-child { border-bottom: none; }
+.lp-table-row.is-head { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--lp-gray-500); padding-top: 0; }
+.lp-table-row .who { display: flex; align-items: center; gap: 9px; font-weight: 600; color: var(--lp-head); min-width: 0; }
+.lp-table-row .who::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--lp-green); flex-shrink: 0; }
+.lp-table-row .num { font-weight: 800; color: var(--lp-head); text-align: right; font-variant-numeric: tabular-nums; }
+.lp-plv { justify-self: end; font-size: .66rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--lp-green-10); color: var(--lp-cta); }
+
+/* ── 7. STATS (overlaps the hero edge) ────────────────────────── */
+.lp-stats-wrap { position: relative; z-index: 5; background: var(--lp-gray-50); }
 .lp-stats {
-    background: var(--lp-white);
-    border-top: 1px solid var(--lp-gray-200);
-    border-bottom: 1px solid var(--lp-gray-200);
-    padding: 32px 40px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0;
+    display: grid; grid-template-columns: repeat(var(--lp-stats-cols), minmax(0, 1fr));
+    gap: 1px; list-style: none;
+    margin-top: var(--lp-stats-shift);
+    background: var(--lp-line); border: 1px solid var(--lp-line);
+    border-radius: 22px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(10, 22, 40, .12);
 }
-.lp-stat {
-    text-align: center;
-    padding: 16px 20px;
-    border-right: 1px solid var(--lp-gray-200);
-}
-.lp-stat:last-child {
-    border-right: none;
-}
-.lp-stat-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    margin-bottom: 12px;
-}
-.lp-stat-icon.green { background: rgba(163, 230, 53, 0.12); color: var(--lp-green-hover); }
-.lp-stat-icon.blue { background: rgba(59, 130, 246, 0.10); color: #3b82f6; }
-.lp-stat-icon.navy { background: rgba(15, 23, 42, 0.06); color: var(--lp-navy-800); }
-.lp-stat-value {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--lp-navy-800);
-    line-height: 1;
-    margin-bottom: 6px;
-    letter-spacing: -0.5px;
-}
-.lp-stat-value.green { color: var(--lp-green-hover); }
-.lp-stat-label {
-    font-size: 0.78rem;
-    color: var(--lp-gray-500);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
+.lp-stat { background: #fff; padding: clamp(20px, 2.4vw, 28px) clamp(18px, 2vw, 26px); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.lp-stat-value { font-size: clamp(1.55rem, 2vw, 2.05rem); font-weight: 800; color: var(--lp-head); letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+.lp-stat-label { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--lp-gray-500); }
 
-/* ── SECTIONS SHARED ───────────────────────────────────────── */
-.lp-section {
-    padding: 100px 40px;
-    max-width: 1280px;
-    margin: 0 auto;
-}
-.lp-section-tag {
-    display: inline-block;
-    font-size: 0.78rem;
-    font-weight: 800;
-    color: var(--lp-green-hover);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 14px;
-}
-.lp-section-title {
-    font-size: clamp(1.8rem, 3vw, 2.6rem);
-    font-weight: 800;
-    color: var(--lp-navy-800);
-    line-height: 1.15;
-    letter-spacing: -0.8px;
-    margin-bottom: 16px;
-}
-.lp-section-sub {
-    color: var(--lp-gray-500);
-    font-size: 1.05rem;
-    max-width: 560px;
-    line-height: 1.7;
-    margin-bottom: 52px;
-}
+/* ── 8. MODULES (bento grid) ─────────────────────────────────── */
+.lp-bento { display: grid; grid-template-columns: repeat(var(--lp-bento-cols), minmax(0, 1fr)); gap: 20px; }
+.lp-bento > * { grid-column: span var(--lp-span, 6); }
+:where(.lp-bento > :nth-child(1)) { --lp-span: 4; }
+:where(.lp-bento > :nth-child(2)) { --lp-span: 2; }
+:where(.lp-bento > :nth-child(3)) { --lp-span: 2; }
+:where(.lp-bento > :nth-child(4)) { --lp-span: 2; }
+:where(.lp-bento > :nth-child(5)) { --lp-span: 2; }
+:where(.lp-bento > :nth-child(6)) { --lp-span: 6; }
 
-/* ── MODULES GRID ──────────────────────────────────────────── */
-.lp-modules-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+.lp-card {
+    position: relative; overflow: hidden;
+    background: #fff; border: 1px solid var(--lp-line); border-radius: 22px;
+    padding: clamp(24px, 2.4vw, 30px);
+    transition: transform .35s var(--lp-ease), box-shadow .35s var(--lp-ease), border-color .25s ease;
 }
-.lp-module-card {
-    background: var(--lp-white);
-    border: 1px solid var(--lp-gray-200);
-    border-radius: 20px;
-    padding: 32px;
-    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
-    overflow: hidden;
-}
-.lp-module-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
+.lp-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
     background: linear-gradient(90deg, var(--lp-green), var(--lp-green-hover));
-    opacity: 0;
-    transition: opacity 0.3s;
+    opacity: 0; transition: opacity .3s ease;
 }
-.lp-module-card:hover {
-    border-color: rgba(163, 230, 53, 0.25);
-    transform: translateY(-6px);
-    box-shadow: 0 20px 40px rgba(10, 22, 40, 0.08);
+.lp-card:hover { transform: translateY(-5px); border-color: var(--lp-green-30); box-shadow: var(--lp-shadow-lift); }
+.lp-card:hover::before { opacity: 1; }
+.lp-card .lp-icon-chip { margin-bottom: 18px; transition: transform .3s var(--lp-ease), background-color .25s ease; }
+.lp-card:hover .lp-icon-chip { transform: translateY(-2px) scale(1.05); background: var(--lp-green); color: #fff; }
+.lp-card-title { font-size: var(--lp-h3); font-weight: 800; color: var(--lp-head); letter-spacing: -.01em; margin-bottom: 9px; }
+.lp-card-desc { font-size: .93rem; line-height: 1.68; color: var(--lp-gray-600); text-wrap: pretty; }
+
+.lp-card-wide { display: flex; flex-direction: column; gap: 20px; }
+.lp-card-wide .lp-card-main { display: flex; gap: 18px; align-items: flex-start; }
+.lp-card-wide .lp-card-copy { flex: 1; min-width: 0; }
+.lp-status-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* mini visuals */
+.lp-viz { margin-top: 18px; display: grid; gap: 10px; }
+.lp-viz-row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--lp-gray-50); border: 1px solid var(--lp-line);
+    border-radius: 12px; padding: 11px 13px;
 }
-.lp-module-card:hover::before {
-    opacity: 1;
+.lp-viz-subject { flex: 1; font-size: .82rem; font-weight: 700; color: var(--lp-head); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-viz-input {
+    min-width: 52px; text-align: center; padding: 6px 10px; border-radius: 9px;
+    background: #fff; border: 1.5px solid var(--lp-line);
+    font-size: .85rem; font-weight: 800; color: var(--lp-head); font-variant-numeric: tabular-nums;
 }
-.lp-module-icon {
-    width: 52px;
-    height: 52px;
-    background: rgba(163, 230, 53, 0.10);
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    color: var(--lp-green-hover);
-    margin-bottom: 20px;
-    transition: all 0.3s;
-}
-.lp-module-card:hover .lp-module-icon {
-    background: var(--lp-green);
-    color: var(--lp-navy-900);
-    transform: scale(1.05);
-}
-.lp-module-title {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: var(--lp-navy-800);
-    margin-bottom: 10px;
-}
-.lp-module-desc {
-    font-size: 0.9rem;
-    color: var(--lp-gray-500);
-    line-height: 1.65;
+.lp-viz-ok { color: var(--lp-cta); font-size: 1.05rem; }
+.lp-viz-foot { display: flex; flex-wrap: wrap; gap: 8px; }
+.lp-viz-spark { display: flex; align-items: flex-end; gap: 7px; height: 84px; margin-top: 18px;
+    background: var(--lp-gray-50); border: 1px solid var(--lp-line); border-radius: 12px; padding: 12px; }
+.lp-viz-spark span {
+    flex: 1; height: var(--h); border-radius: 5px 5px 2px 2px;
+    background: linear-gradient(180deg, var(--lp-green), color-mix(in srgb, var(--lp-green) 55%, var(--lp-navy-800)));
+    opacity: .85;
 }
 
-/* ── WHY SECTION ───────────────────────────────────────────── */
-.lp-why {
-    background: var(--lp-white);
-    border-top: 1px solid var(--lp-gray-200);
-    border-bottom: 1px solid var(--lp-gray-200);
-    padding: 100px 40px;
+/* ── 9. HOW IT WORKS ─────────────────────────────────────────── */
+.lp-steps {
+    position: relative; list-style: none; display: grid;
+    grid-template-columns: var(--lp-steps-cols); gap: 22px;
 }
-.lp-why-inner {
-    max-width: 1280px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 72px;
-    align-items: center;
+.lp-steps::before {
+    content: ''; position: absolute; top: 50px; left: 13%; right: 13%; height: 2px; z-index: 0;
+    display: var(--lp-steps-line-d);
+    background: repeating-linear-gradient(90deg, var(--lp-green) 0 8px, transparent 8px 17px);
+    opacity: .5;
 }
-.lp-why-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-top: 40px;
+.lp-step {
+    position: relative; z-index: 1;
+    background: var(--lp-gray-50); border: 1px solid var(--lp-line);
+    border-radius: 22px; padding: clamp(24px, 2.4vw, 30px);
+    transition: transform .3s var(--lp-ease), box-shadow .3s var(--lp-ease), border-color .2s ease;
 }
-.lp-why-item {
-    display: flex;
-    gap: 18px;
-    padding: 22px;
-    background: var(--lp-gray-50);
-    border: 1px solid var(--lp-gray-200);
-    border-radius: 16px;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp-why-item:hover {
-    border-color: rgba(163, 230, 53, 0.3);
-    transform: translateX(6px);
-    box-shadow: 0 4px 12px rgba(10, 22, 40, 0.04);
-}
-.lp-why-icon {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    background: rgba(163, 230, 53, 0.10);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--lp-green-hover);
-    font-size: 1.15rem;
-}
-.lp-why-text h4 {
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--lp-navy-800);
-    margin-bottom: 6px;
-}
-.lp-why-text p {
-    font-size: 0.88rem;
-    color: var(--lp-gray-500);
-    line-height: 1.6;
-}
-
-/* ── DASHBOARD MOCKUP ──────────────────────────────────────── */
-.lp-mock {
-    background: var(--lp-white);
-    border: 1px solid var(--lp-gray-200);
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow:
-        0 30px 60px rgba(10, 22, 40, 0.10),
-        0 0 80px rgba(163, 230, 53, 0.06);
-}
-.lp-mock-bar {
-    background: var(--lp-navy-800);
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.lp-mock-dot {
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-}
-.lp-mock-body {
-    padding: 24px;
-}
-.lp-mock-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-.lp-mock-kpi {
-    background: var(--lp-gray-50);
-    border: 1px solid var(--lp-gray-200);
-    border-radius: 12px;
-    padding: 16px;
-}
-.lp-mock-kpi-val {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--lp-navy-800);
-    letter-spacing: -0.3px;
-}
-.lp-mock-kpi-lbl {
-    font-size: 0.72rem;
-    color: var(--lp-gray-500);
-    margin-top: 4px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-.lp-mock-chart {
-    background: var(--lp-gray-50);
-    border: 1px solid var(--lp-gray-200);
-    border-radius: 12px;
-    padding: 18px;
-    height: 110px;
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-}
-.lp-mock-bar-item {
-    flex: 1;
-    border-radius: 6px 6px 0 0;
-    background: linear-gradient(180deg, var(--lp-green) 0%, var(--lp-green-hover) 100%);
-    min-height: 12px;
-    opacity: 0.8;
-    transition: opacity 0.3s;
-}
-.lp-mock-chart:hover .lp-mock-bar-item {
-    opacity: 1;
-}
-.lp-mock-table {
-    margin-top: 16px;
-    background: var(--lp-gray-50);
-    border: 1px solid var(--lp-gray-200);
-    border-radius: 12px;
-    overflow: hidden;
-}
-.lp-mock-table-hdr {
-    display: flex;
-    padding: 10px 16px;
-    gap: 12px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--lp-gray-500);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--lp-gray-200);
-    background: var(--lp-white);
-}
-.lp-mock-table-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--lp-gray-200);
-    font-size: 0.8rem;
-}
-.lp-mock-table-row:last-child {
-    border-bottom: none;
-}
-.lp-mock-table-row .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--lp-green);
-}
-.lp-mock-table-row .name {
-    flex: 1;
-    color: var(--lp-navy-800);
-    font-weight: 600;
-}
-.lp-mock-table-row .score {
-    color: var(--lp-navy-800);
-    font-weight: 800;
-}
-.lp-mock-table-row .plv {
-    color: var(--lp-gray-500);
-    font-size: 0.72rem;
-    font-weight: 700;
-}
-
-/* ── CTA BANNER ────────────────────────────────────────────── */
-.lp-cta-wrap {
-    padding: 0 40px 100px;
-    max-width: 1280px;
-    margin: 0 auto;
-}
-.lp-cta {
-    background: linear-gradient(135deg, var(--lp-navy-800) 0%, #12294a 100%);
-    border-radius: 24px;
-    padding: 64px 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 40px;
-    flex-wrap: wrap;
-    position: relative;
-    overflow: hidden;
-}
-.lp-cta::before {
-    content: '';
-    position: absolute;
-    right: -80px;
-    top: -80px;
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(163, 230, 53, 0.12), transparent 70%);
-}
-.lp-cta::after {
-    content: '';
-    position: absolute;
-    left: -40px;
-    bottom: -40px;
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.08), transparent 70%);
-}
-.lp-cta-text {
-    position: relative;
-    z-index: 1;
-}
-.lp-cta-text h2 {
-    font-size: clamp(1.6rem, 2.5vw, 2.2rem);
-    font-weight: 800;
-    color: var(--lp-white);
-    letter-spacing: -0.5px;
-    margin-bottom: 12px;
-}
-.lp-cta-text p {
-    color: rgba(255, 255, 255, 0.55);
-    font-size: 1rem;
-    line-height: 1.7;
-    max-width: 480px;
-}
-.lp-cta-btn {
-    position: relative;
-    z-index: 1;
-}
-
-/* ── FOOTER ────────────────────────────────────────────────── */
-.lp-footer {
-    background: var(--lp-navy-900);
-    padding: 48px 40px 32px;
-}
-.lp-footer-top {
-    max-width: 1280px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr 1fr;
-    gap: 48px;
-    padding-bottom: 36px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-.lp-footer-brand {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-.lp-footer-brand-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.lp-footer-brand-row img {
-    width: 36px;
-    height: 36px;
-    object-fit: contain;
-    border-radius: 8px;
-    flex-shrink: 0;
-}
-.lp-footer-brand-row span {
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: var(--lp-white);
-}
-.lp-footer-brand-row span em {
-    color: var(--lp-green);
-    font-style: normal;
-}
-.lp-footer-brand p {
-    font-size: 0.88rem;
-    color: rgba(255, 255, 255, 0.4);
-    line-height: 1.6;
-    max-width: 280px;
-}
-.lp-footer-col h4 {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+.lp-step:hover { transform: translateY(-4px); border-color: var(--lp-green-30); box-shadow: var(--lp-shadow-card); }
+.lp-step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--lp-cta); color: #fff; font-weight: 800; font-size: 1.05rem;
+    box-shadow: 0 8px 20px rgba(46, 107, 49, .3), inset 0 1px 0 rgba(255, 255, 255, .25);
     margin-bottom: 18px;
 }
-.lp-footer-col a {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.88rem;
-    color: rgba(255, 255, 255, 0.45);
-    text-decoration: none;
-    margin-bottom: 12px;
-    transition: color 0.2s;
+.lp-step h3 { font-size: var(--lp-h3); font-weight: 800; color: var(--lp-head); margin-bottom: 9px; letter-spacing: -.01em; }
+.lp-step p { font-size: .93rem; line-height: 1.68; color: var(--lp-gray-600); text-wrap: pretty; }
+
+/* ── 10. WHY EDUNEXUS ────────────────────────────────────────── */
+.lp-why-inner {
+    display: grid; grid-template-columns: var(--lp-why-cols);
+    gap: var(--lp-gap-why); align-items: center;
 }
-.lp-footer-col a:hover {
-    color: var(--lp-green);
+.lp-why .lp-sec-head { max-width: none; margin-inline: 0; text-align: left; margin-bottom: 0; }
+.lp-why .lp-sec-sub { margin-inline: 0; }
+.lp-why-list { display: grid; gap: 14px; margin-top: clamp(28px, 3vw, 40px); list-style: none; }
+.lp-why-item {
+    display: flex; gap: 16px; align-items: flex-start;
+    background: #fff; border: 1px solid var(--lp-line); border-radius: 16px;
+    padding: 20px 22px;
+    transition: transform .3s var(--lp-ease), border-color .2s ease, box-shadow .3s var(--lp-ease);
 }
-.lp-footer-col a i {
-    font-size: 1rem;
-    width: 20px;
-    text-align: center;
+.lp-why-item:hover { transform: translateX(5px); border-color: var(--lp-green-30); box-shadow: var(--lp-shadow-card); }
+.lp-why-item .lp-icon-chip { width: 44px; height: 44px; border-radius: 12px; font-size: 1.1rem; }
+.lp-why-text h3 { font-size: 1rem; font-weight: 800; color: var(--lp-head); margin-bottom: 5px; }
+.lp-why-text p { font-size: .89rem; line-height: 1.62; color: var(--lp-gray-500); text-wrap: pretty; }
+
+/* report-card document mock */
+.lp-doc { position: relative; }
+.lp-doc-sheet {
+    background: #fff; border: 1px solid var(--lp-line); border-radius: 18px;
+    overflow: hidden; box-shadow: var(--lp-shadow-lift);
 }
-.lp-footer-bottom {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding-top: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
+.lp-doc-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: linear-gradient(135deg, var(--lp-navy-800), var(--lp-navy-900));
+    padding: 15px 20px;
 }
-.lp-footer-copy {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.3);
-    font-weight: 500;
+.lp-doc-brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.lp-doc-brand img { width: 26px; height: 26px; border-radius: 7px; }
+.lp-doc-brand b { color: #fff; font-size: .92rem; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+.lp-doc-brand b span { color: var(--lp-green); }
+.lp-doc-chip { font-size: .64rem; font-weight: 800; letter-spacing: .1em; color: #9be8a2; background: rgba(76, 175, 80, .16); border: 1px solid rgba(76, 175, 80, .35); padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+.lp-doc-learner { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 20px 6px; }
+.lp-doc-learner b { font-size: .98rem; font-weight: 800; color: var(--lp-head); }
+.lp-doc-learner span { font-size: .72rem; font-weight: 600; color: var(--lp-gray-500); font-variant-numeric: tabular-nums; }
+.lp-doc-rows { padding: 6px 20px 4px; }
+.lp-doc-row {
+    display: grid; grid-template-columns: 1fr 52px 48px; gap: 10px; align-items: center;
+    padding: 10px 0; border-bottom: 1px dashed var(--lp-line); font-size: .84rem;
 }
-.lp-footer-legal {
-    display: flex;
-    gap: 24px;
+.lp-doc-row:last-child { border-bottom: none; }
+.lp-doc-row .subj { color: var(--lp-gray-600); font-weight: 600; }
+.lp-doc-row .mark { text-align: right; font-weight: 800; color: var(--lp-head); font-variant-numeric: tabular-nums; }
+.lp-doc-row .plv { justify-self: end; font-size: .66rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--lp-green-10); color: var(--lp-cta); }
+.lp-doc-remark { margin: 8px 20px 18px; background: var(--lp-gray-50); border: 1px solid var(--lp-line); border-radius: 12px; padding: 12px 14px; }
+.lp-doc-remark b { display: block; font-size: .64rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--lp-gray-500); margin-bottom: 4px; }
+.lp-doc-remark span { font-size: .85rem; color: var(--lp-head); font-weight: 600; }
+.lp-doc-float {
+    position: absolute; right: -12px; bottom: -16px;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #fff; border: 1px solid var(--lp-line); border-radius: 999px;
+    padding: 11px 18px; font-size: .78rem; font-weight: 800; color: var(--lp-head);
+    box-shadow: var(--lp-shadow-lift);
 }
-.lp-footer-legal a {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.3);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s;
+.lp-doc-float i { color: var(--lp-cta); }
+
+/* ── 11. FAQ ─────────────────────────────────────────────────── */
+.lp-faq-list { display: grid; gap: 12px; max-width: 840px; margin-inline: auto; }
+.lp-faq-item {
+    background: #fff; border: 1px solid var(--lp-line); border-radius: 16px;
+    padding-inline: 22px; transition: border-color .2s ease, box-shadow .25s ease;
 }
-.lp-footer-legal a:hover {
-    color: var(--lp-green);
+.lp-faq-item:hover { border-color: var(--lp-green-30); }
+.lp-faq-item[open] { border-color: var(--lp-green-30); box-shadow: var(--lp-shadow-card); }
+.lp-faq-item summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    padding: 20px 0; cursor: pointer; list-style: none;
+    font-size: 1.01rem; font-weight: 700; color: var(--lp-head); letter-spacing: -.01em;
+}
+.lp-faq-item summary::-webkit-details-marker { display: none; }
+.lp-faq-item summary i { color: var(--lp-cta); font-size: .95rem; flex-shrink: 0; transition: transform .3s var(--lp-ease); }
+.lp-faq-item[open] summary i { transform: rotate(45deg); }
+.lp-faq-a { padding: 0 0 22px; max-width: 68ch; }
+.lp-faq-a p { font-size: .95rem; line-height: 1.72; color: var(--lp-gray-600); text-wrap: pretty; }
+.lp-faq-a a { color: var(--lp-cta); font-weight: 700; }
+
+/* ── 12. CTA BANNER ──────────────────────────────────────────── */
+.lp-cta {
+    position: relative; overflow: hidden; text-align: center;
+    border-radius: var(--lp-radius-xl);
+    padding: clamp(44px, 6vw, 76px) clamp(24px, 5vw, 64px);
+    background:
+        radial-gradient(ellipse 55% 70% at 15% 0%, rgba(76, 175, 80, .2), transparent 60%),
+        radial-gradient(ellipse 50% 60% at 90% 100%, rgba(37, 99, 235, .18), transparent 62%),
+        linear-gradient(150deg, var(--lp-navy-800), var(--lp-ink) 75%);
+    box-shadow: 0 34px 80px rgba(3, 10, 20, .35);
+}
+.lp-cta::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .05;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+.lp-cta > * { position: relative; z-index: 1; }
+.lp-cta h2 { font-size: var(--lp-h2); font-weight: 800; color: #fff; letter-spacing: -.025em; text-wrap: balance; max-width: 22ch; margin-inline: auto; }
+.lp-cta p { margin-top: 16px; font-size: var(--lp-lead); line-height: 1.7; color: rgba(255, 255, 255, .62); max-width: 560px; margin-inline: auto; text-wrap: pretty; }
+.lp-cta-btns { display: flex; flex-direction: var(--lp-row-dir); flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: clamp(26px, 3.4vw, 38px); }
+
+/* ── 13. FOOTER ──────────────────────────────────────────────── */
+.lp-footer { background: var(--lp-ink); padding-block: clamp(48px, 6vw, 72px) 28px; color: rgba(255, 255, 255, .62); }
+.lp-footer-grid { display: grid; grid-template-columns: var(--lp-footer-cols); gap: clamp(32px, 4vw, 56px); padding-bottom: clamp(28px, 3.4vw, 40px); border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.lp-footer-brand-row { display: flex; align-items: center; gap: 11px; }
+.lp-footer-brand-row img { width: 38px; height: 38px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, .3); }
+.lp-footer-brand-row b { font-size: 1.14rem; font-weight: 800; color: #fff; letter-spacing: -.02em; }
+.lp-footer-brand-row b span { color: var(--lp-green); }
+.lp-footer-blurb { margin-top: 15px; font-size: .9rem; line-height: 1.65; color: rgba(255, 255, 255, .5); max-width: 340px; text-wrap: pretty; }
+.lp-footer-contact { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.lp-footer-contact a {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 11px 16px; border-radius: 12px; text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .05);
+    color: rgba(255, 255, 255, .78); font-size: .84rem; font-weight: 600;
+    transition: border-color .2s ease, color .2s ease, background-color .2s ease;
+}
+.lp-footer-contact a:hover { border-color: var(--lp-green-30); color: #fff; background: rgba(76, 175, 80, .12); }
+.lp-footer-contact i { color: var(--lp-green); font-size: 1rem; }
+.lp-footer-col h4 { font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: rgba(255, 255, 255, .55); margin-bottom: 17px; }
+.lp-footer-col ul { list-style: none; display: grid; gap: 11px; }
+.lp-footer-col a { font-size: .9rem; color: rgba(255, 255, 255, .62); text-decoration: none; transition: color .2s ease; }
+.lp-footer-col a:hover { color: var(--lp-green); }
+.lp-footer-bottom { display: flex; flex-direction: var(--lp-footer-dir); align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding-top: 24px; }
+.lp-footer-copy { font-size: .82rem; color: rgba(255, 255, 255, .5); font-weight: 500; }
+.lp-footer-chip { display: inline-flex; align-items: center; gap: 8px; font-size: .76rem; font-weight: 700; color: rgba(255, 255, 255, .55); }
+.lp-footer-chip i { color: var(--lp-green); }
+
+/* ── 14. STICKY MOBILE CTA ───────────────────────────────────── */
+.lp-sticky {
+    display: var(--lp-sticky-d, none);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, #fff 88%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--lp-line);
+    transform: translateY(112%); visibility: hidden;
+    transition: transform .38s var(--lp-ease), visibility .38s;
+}
+.lp-sticky.is-visible { transform: none; visibility: visible; }
+.lp-sticky .lp-btn { width: 100%; }
+
+/* ── 15. MOBILE MENU (native <dialog>) ───────────────────────── */
+.lp-menu {
+    width: min(430px, calc(100vw - 32px)); border: 1px solid var(--lp-line);
+    background: #fff; border-radius: 24px; padding: 20px;
+    box-shadow: 0 40px 100px rgba(8, 19, 32, .4);
+    opacity: 1; transform: none;
+    transition: opacity .26s var(--lp-ease), transform .26s var(--lp-ease),
+                display .26s allow-discrete, overlay .26s allow-discrete;
+}
+@starting-style { .lp-menu[open] { opacity: 0; transform: translateY(18px) scale(.96); } }
+.lp-menu:not([open]) { opacity: 0; transform: translateY(18px) scale(.96); }
+.lp-menu::backdrop {
+    background: rgba(8, 19, 32, .6); opacity: 1;
+    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+    transition: opacity .26s ease, display .26s allow-discrete, overlay .26s allow-discrete;
+}
+@starting-style { .lp-menu[open]::backdrop { opacity: 0; } }
+.lp-menu:not([open])::backdrop { opacity: 0; }
+body:has(.lp-menu[open]) { overflow: hidden; }
+
+.lp-menu-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.lp-menu-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.lp-menu-brand img { width: 36px; height: 36px; border-radius: 10px; }
+.lp-menu-brand b { font-size: 1.05rem; font-weight: 800; color: var(--lp-head); letter-spacing: -.02em; }
+.lp-menu-brand b span { color: var(--lp-cta); }
+.lp-menu-close {
+    width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    background: var(--lp-gray-100); color: var(--lp-head); font-size: 1.05rem;
+    transition: background-color .2s ease;
+}
+.lp-menu-close:hover { background: var(--lp-gray-200); }
+.lp-menu-links { display: grid; gap: 4px; margin-top: 8px; }
+.lp-menu-link {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 12px; border-radius: 13px; text-decoration: none;
+    font-size: 1rem; font-weight: 700; color: var(--lp-head);
+    transition: background-color .18s ease, color .18s ease;
+}
+.lp-menu-link i { color: var(--lp-gray-500); font-size: .95rem; }
+.lp-menu-link:hover, .lp-menu-link.is-active { background: var(--lp-green-10); color: var(--lp-cta); }
+.lp-menu-link:hover i, .lp-menu-link.is-active i { color: var(--lp-cta); }
+.lp-menu-login { width: 100%; margin-top: 14px; }
+.lp-menu-note { margin-top: 14px; text-align: center; font-size: .8rem; color: var(--lp-gray-500); }
+.lp-menu-note a { color: var(--lp-cta); font-weight: 700; }
+
+/* ── 16. REDUCED MOTION ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        transition-delay: 0ms !important;
+    }
+    html.js [class*="lp-reveal"]:not(.visible) { opacity: 1 !important; transform: none !important; }
+    html.js .lp-preview .lp-chart-bar { transform: scaleY(1) !important; }
 }
 
-/* ── SCROLL ANIMATIONS ─────────────────────────────────────── */
-.lp-reveal {
-    opacity: 0;
-    transform: translateY(24px);
-    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp-reveal.visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-.lp-reveal-left {
-    opacity: 0;
-    transform: translateX(-24px);
-    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp-reveal-left.visible {
-    opacity: 1;
-    transform: translateX(0);
-}
-.lp-reveal-right {
-    opacity: 0;
-    transform: translateX(24px);
-    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp-reveal-right.visible {
-    opacity: 1;
-    transform: translateX(0);
-}
-.lp-reveal-scale {
-    opacity: 0;
-    transform: scale(0.95);
-    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp-reveal-scale.visible {
-    opacity: 1;
-    transform: scale(1);
-}
-
-/* Stagger children */
-.lp-stagger > *:nth-child(1) { transition-delay: 0ms; }
-.lp-stagger > *:nth-child(2) { transition-delay: 80ms; }
-.lp-stagger > *:nth-child(3) { transition-delay: 160ms; }
-.lp-stagger > *:nth-child(4) { transition-delay: 240ms; }
-.lp-stagger > *:nth-child(5) { transition-delay: 320ms; }
-.lp-stagger > *:nth-child(6) { transition-delay: 400ms; }
-
-/* ── RESPONSIVE ───────────────────────────────────────────────
-   MOBILE IS ALWAYS THE DEFAULT (≤1023px). This includes phones
-   portrait + landscape AND Chrome "Desktop site" (forces 980px).
-   Desktop chrome only at ≥1024px (real desktops). */
+/* ── 17. RESPONSIVE ────────────────────────────────────────────
+   Desktop values live in :root (section 2). Phones flip a small token
+   set — twice, because a phone can report a wide viewport:
+     (a) ≤1023px viewport media query, and
+     (b) html.force-mobile (base.html marks real phones / "Desktop site")
+   Both blocks below are intentionally identical token flips. */
 @media (max-width: 1023px) {
-    /* Flatten the flex height chain so nothing can shrink the document
-       vertically (app-content/main-content default flex:1). */
-    .app-content, .main-content {
-        display: block !important;
-        flex: none !important;
-        height: auto !important;
-        min-height: 0 !important;
-        max-height: none !important;
-        overflow: visible !important;
+    .lp-root {
+        --lp-nav-h: 64px;
+        --lp-logo: 36px;
+        --lp-navlinks-d: none;
+        --lp-login-d: none;
+        --lp-burger-d: flex;
+        --lp-sticky-d: block;
+        --lp-stats-cols: 2;
+        --lp-stats-shift: -44px;
+        --lp-bento-cols: 1;
+        --lp-why-cols: 1fr;
+        --lp-gap-why: 36px;
+        --lp-footer-cols: 1fr;
+        --lp-footer-dir: column;
+        --lp-row-dir: column;
+        --lp-preview-panels: 1fr;
+        --lp-steps-cols: 1fr;
+        --lp-steps-line-d: none;
+        --lp-hero-min: auto;
+        --lp-section-y: 64px;
     }
-    .lp-nav { padding: 0 16px; height: 64px; gap: 8px; min-width: 0; }
-    .lp-nav-brand { gap: 8px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
-    .lp-nav-brand img { width: 36px; height: 36px; }
-    .lp-nav-brand-text { font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; }
-    .lp-nav-links { display: none; }
-    .lp-nav-actions { flex-shrink: 0; }
-    .lp-nav-login { padding: 9px 14px; font-size: 0.82rem; border-radius: 10px; }
-    .lp-hero { padding: 112px 20px 72px; min-height: auto !important; height: auto !important; }
-    .lp-hero-badge {
-        font-size: 0.68rem;
-        letter-spacing: 0.4px;
-        padding: 7px 14px;
-        max-width: 100%;
-        white-space: normal;
-        text-align: center;
-        line-height: 1.35;
-        margin-bottom: 22px;
-    }
-    .lp-hero h1 {
-        font-size: clamp(1.75rem, 7.5vw, 2.35rem) !important;
-        letter-spacing: -0.5px;
-        line-height: 1.15;
-        overflow-wrap: break-word;
-        word-break: break-word;
-    }
-    .lp-hero p {
-        font-size: 0.95rem !important;
-        line-height: 1.6;
-        margin-bottom: 28px;
-    }
-    .lp-hero-cta { flex-direction: column; align-items: stretch; gap: 12px; }
-    .lp-btn-primary, .lp-btn-outline {
-        justify-content: center;
-        padding: 14px 20px;
-        font-size: 0.9rem;
-        white-space: normal;
-        text-align: center;
-    }
-    .lp-section { padding: 64px 20px; }
-    .lp-why { padding: 64px 20px; }
-    .lp-section-title { font-size: clamp(1.45rem, 5.5vw, 1.85rem) !important; }
-    .lp-section-sub { font-size: 0.95rem; margin-bottom: 32px; }
-    .lp-modules-grid { grid-template-columns: 1fr; gap: 14px; }
-    .lp-module-card { padding: 24px 20px; border-radius: 16px; }
-    .lp-why-inner { grid-template-columns: 1fr; gap: 40px; }
-    .lp-mock { display: none; }
-    .lp-stats { grid-template-columns: repeat(2, 1fr); padding: 20px 12px; }
-    .lp-stat { border-bottom: 1px solid var(--lp-gray-200); padding: 16px 10px; }
-    .lp-stat:nth-child(2n) { border-right: none; }
-    .lp-stat-value { font-size: 1.45rem; }
-    .lp-stat-label { font-size: 0.68rem; letter-spacing: 0.3px; }
-    .lp-cta-wrap { padding: 0 18px 48px; }
-    .lp-cta { padding: 32px 20px; flex-direction: column; text-align: center; border-radius: 18px; gap: 24px; }
-    .lp-cta-text h2 { font-size: 1.35rem !important; }
-    .lp-cta-text p { font-size: 0.92rem; max-width: none; }
-    .lp-cta-btn, .lp-cta-btn .lp-btn-primary { width: 100%; white-space: normal !important; padding: 16px 18px !important; }
-    .lp-footer { padding: 36px 18px 24px; }
-    .lp-footer-top { grid-template-columns: 1fr; gap: 28px; }
+    .lp-bento > * { --lp-span: 1; }
+    .lp-hero { padding-top: calc(var(--lp-nav-h) + 56px); padding-bottom: 76px; }
+    .lp-hero-title { max-width: 16ch; }
+    .lp-chart { height: 128px; }
+    .lp-sec-head { margin-bottom: 34px; }
+    .lp-card-wide .lp-card-main { flex-direction: column; gap: 16px; }
+    .lp-doc-float { right: 8px; }
+    .lp-footer-contact a { width: 100%; justify-content: center; }
     .lp-footer-bottom { flex-direction: column; text-align: center; }
-    .lp-footer-legal { justify-content: center; }
-    .lp-footer-col a { word-break: break-word; }
+    .lp-faq-list { gap: 10px; }
 }
 
-/* Phone-width hardening (works with or without force-mobile) */
-@media (max-width: 480px) {
-    .lp-nav { padding: 0 12px; }
-    .lp-nav-brand-text { font-size: 0.98rem; }
-    .lp-hero { padding: 100px 16px 64px; }
-    .lp-hero h1 { font-size: clamp(1.55rem, 8vw, 2rem) !important; }
-    .lp-hero-badge { font-size: 0.64rem; padding: 6px 12px; }
-    .lp-section, .lp-why { padding: 56px 16px; }
-    .lp-cta { padding: 28px 16px; }
+html.force-mobile .lp-root {
+    --lp-nav-h: 64px;
+    --lp-logo: 36px;
+    --lp-navlinks-d: none;
+    --lp-login-d: none;
+    --lp-burger-d: flex;
+    --lp-sticky-d: block;
+    --lp-stats-cols: 2;
+    --lp-stats-shift: -44px;
+    --lp-bento-cols: 1;
+    --lp-why-cols: 1fr;
+    --lp-gap-why: 36px;
+    --lp-footer-cols: 1fr;
+    --lp-footer-dir: column;
+    --lp-row-dir: column;
+    --lp-preview-panels: 1fr;
+    --lp-steps-cols: 1fr;
+    --lp-steps-line-d: none;
+    --lp-hero-min: auto;
+    --lp-section-y: 64px;
 }
-
-/* Same mobile landing when force-mobile is set even if viewport reports
-   wide (Chrome Desktop site on phones can report ≥1024px). Full parity
-   with the ≤1023px block above so nothing falls back to desktop rules. */
-html.force-mobile .app-content,
-html.force-mobile .main-content {
-    display: block !important;
-    flex: none !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: visible !important;
-}
-html.force-mobile .lp-nav { padding: 0 16px; height: 64px; gap: 8px; min-width: 0; }
-html.force-mobile .lp-nav-brand { gap: 8px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
-html.force-mobile .lp-nav-brand img { width: 36px; height: 36px; }
-html.force-mobile .lp-nav-brand-text { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-html.force-mobile .lp-nav-links { display: none !important; }
-html.force-mobile .lp-nav-actions { flex-shrink: 0; }
-html.force-mobile .lp-nav-login { padding: 9px 14px; font-size: 0.82rem; border-radius: 10px; }
-html.force-mobile .lp-hero { padding: 112px 20px 72px; min-height: auto !important; height: auto !important; }
-html.force-mobile .lp-hero-badge {
-    font-size: 0.68rem;
-    letter-spacing: 0.4px;
-    padding: 7px 14px;
-    max-width: 100%;
-    white-space: normal;
-    text-align: center;
-    line-height: 1.35;
-    margin-bottom: 22px;
-}
-html.force-mobile .lp-hero h1 {
-    font-size: clamp(1.75rem, 7.5vw, 2.35rem) !important;
-    letter-spacing: -0.5px;
-    line-height: 1.15;
-    overflow-wrap: break-word;
-    word-break: break-word;
-}
-html.force-mobile .lp-hero p {
-    font-size: 0.95rem !important;
-    line-height: 1.6;
-    margin-bottom: 28px;
-}
-html.force-mobile .lp-hero-cta { flex-direction: column; align-items: stretch; gap: 12px; }
-html.force-mobile .lp-btn-primary,
-html.force-mobile .lp-btn-outline {
-    justify-content: center;
-    padding: 14px 20px;
-    font-size: 0.9rem;
-    white-space: normal;
-    text-align: center;
-}
-html.force-mobile .lp-section { padding: 64px 20px; }
-html.force-mobile .lp-why { padding: 64px 20px; }
-html.force-mobile .lp-section-title { font-size: clamp(1.45rem, 5.5vw, 1.85rem) !important; }
-html.force-mobile .lp-section-sub { font-size: 0.95rem; margin-bottom: 32px; }
-html.force-mobile .lp-modules-grid { grid-template-columns: 1fr !important; gap: 14px; }
-html.force-mobile .lp-module-card { padding: 24px 20px; border-radius: 16px; }
-html.force-mobile .lp-why-inner { grid-template-columns: 1fr !important; gap: 40px; }
-html.force-mobile .lp-mock { display: none !important; }
-html.force-mobile .lp-stats { grid-template-columns: repeat(2, 1fr) !important; padding: 20px 12px; }
-html.force-mobile .lp-stat { border-bottom: 1px solid var(--lp-gray-200); padding: 16px 10px; }
-html.force-mobile .lp-stat:nth-child(2n) { border-right: none; }
-html.force-mobile .lp-stat-value { font-size: 1.45rem; }
-html.force-mobile .lp-stat-label { font-size: 0.68rem; letter-spacing: 0.3px; }
-html.force-mobile .lp-cta-wrap { padding: 0 18px 48px; }
-html.force-mobile .lp-cta { padding: 32px 20px; flex-direction: column; text-align: center; border-radius: 18px; gap: 24px; }
-html.force-mobile .lp-cta-text h2 { font-size: 1.35rem !important; }
-html.force-mobile .lp-cta-text p { font-size: 0.92rem; max-width: none; }
-html.force-mobile .lp-cta-btn,
-html.force-mobile .lp-cta-btn .lp-btn-primary { width: 100%; white-space: normal !important; padding: 16px 18px !important; }
-html.force-mobile .lp-footer { padding: 36px 18px 24px; }
-html.force-mobile .lp-footer-top { grid-template-columns: 1fr !important; gap: 28px; }
+html.force-mobile .lp-bento > * { --lp-span: 1; }
+html.force-mobile .lp-hero { padding-top: calc(var(--lp-nav-h) + 56px); padding-bottom: 76px; }
+html.force-mobile .lp-hero-title { max-width: 16ch; }
+html.force-mobile .lp-chart { height: 128px; }
+html.force-mobile .lp-sec-head { margin-bottom: 34px; }
+html.force-mobile .lp-card-wide .lp-card-main { flex-direction: column; gap: 16px; }
+html.force-mobile .lp-doc-float { right: 8px; }
+html.force-mobile .lp-footer-contact a { width: 100%; justify-content: center; }
 html.force-mobile .lp-footer-bottom { flex-direction: column; text-align: center; }
-html.force-mobile .lp-footer-legal { justify-content: center; }
-html.force-mobile .lp-footer-col a { word-break: break-word; }
-html.force-mobile .app-content,
-html.force-mobile .main-content,
-html.force-mobile .lp-root { margin-left: 0 !important; max-width: none !important; width: 100% !important; }
+html.force-mobile .lp-faq-list { gap: 10px; }
 
-@media (min-width: 1024px) {
-    /* Real desktop only — phones and Desktop-site (980px) stay mobile */
-    .lp-nav-links { display: flex; }
-    html.force-mobile .lp-nav-links { display: none !important; }
+/* Phones only — small refinements that don't need a force-mobile mirror
+   (cosmetic at ≤480px; the layout itself is already correct without them). */
+@media (max-width: 480px) {
+    .lp-hero-title { font-size: clamp(1.95rem, 8.6vw, 2.5rem); letter-spacing: -.02em; }
+    .lp-hero-badge { font-size: .7rem; padding: 8px 14px; text-align: center; }
+    .lp-hero-proof { gap: 8px 16px; }
+    .lp-hero-proof li { font-size: .78rem; }
+    .lp-stat { padding: 18px 16px; }
+    .lp-stat-value { font-size: 1.45rem; }
+    .lp-table-row { grid-template-columns: 1fr 48px 42px; font-size: .76rem; }
+    .lp-doc-row { grid-template-columns: 1fr 44px 44px; font-size: .8rem; }
+    .lp-menu { padding: 16px; border-radius: 20px; }
 }
 </style>
+{% endblock %}
+
+{% block content %}
+<a class="lp-skip" href="#lp-main">Skip to content</a>
 
 <div class="lp-root">
 
     <!-- ═══ NAVBAR ═══════════════════════════════════════════ -->
-    <nav class="lp-nav" id="lpNav">
-        <a href="#" class="lp-nav-brand">
-            <img src="{% static 'images/edunexus_logo_192.png' %}" alt="EDUNEXUS">
-            <span class="lp-nav-brand-text">EDU<span>NEXUS</span></span>
-        </a>
-        <div class="lp-nav-links">
-            <a href="#modules" class="lp-nav-link">Modules</a>
-            <a href="#features" class="lp-nav-link">Features</a>
-            <a href="#contact" class="lp-nav-link">Contact</a>
+    <nav class="lp-nav" id="lpNav" aria-label="Primary">
+        <div class="lp-nav-inner">
+            <a href="{% url 'welcome_page' %}" class="lp-nav-brand" aria-label="EDUNEXUS home">
+                <img src="{% static 'images/edunexus_logo_192.png' %}?v=2" alt="" class="lp-nav-logo" width="40" height="40">
+                <span class="lp-nav-brand-text">EDU<span>NEXUS</span></span>
+            </a>
+            <div class="lp-nav-links">
+                <a href="#modules" class="lp-nav-link">Modules</a>
+                <a href="#how" class="lp-nav-link">How it works</a>
+                <a href="#features" class="lp-nav-link">Features</a>
+                <a href="#faq" class="lp-nav-link">FAQ</a>
+                <a href="#contact" class="lp-nav-link">Contact</a>
+            </div>
+            <div class="lp-nav-actions">
+                <a href="{% url 'login' %}" class="lp-nav-login"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Login</a>
+                <button class="lp-burger" id="lpBurger" type="button" aria-label="Open menu" aria-controls="lpMenu" aria-expanded="false">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
         </div>
-        <div class="lp-nav-actions">
-            <a href="{% url 'login' %}" class="lp-nav-login"><i class="bi bi-box-arrow-in-right"></i> Login</a>
-        </div>
+        <div class="lp-nav-progress" aria-hidden="true"></div>
     </nav>
 
     <!-- ═══ HERO ═════════════════════════════════════════════ -->
-    <section class="lp-hero">
-        <div class="lp-hero-content">
-            <div class="lp-hero-badge">
-                <span class="lp-hero-badge-dot"></span>
+    <header class="lp-hero">
+        <div class="lp-glow lp-glow-a" aria-hidden="true"></div>
+        <div class="lp-glow lp-glow-b" aria-hidden="true"></div>
+        <span class="lp-nav-sentinel" id="lpNavSentinel" aria-hidden="true"></span>
+
+        <div class="lp-hero-inner">
+            <p class="lp-hero-badge lp-reveal">
+                <span class="lp-badge-dot" aria-hidden="true"></span>
                 Kenya's Smart Exam Management Platform
+            </p>
+            <h1 class="lp-hero-title lp-reveal">Powering Smarter <span class="lp-accent">School Analytics</span> for Every Institution</h1>
+            <p class="lp-hero-sub lp-reveal">Professional-grade exam management, real-time analytics, and seamless reporting for primary and junior secondary schools across Kenya — all from one unified platform.</p>
+            <div class="lp-hero-cta lp-reveal">
+                <a href="{% url 'login' %}" class="lp-btn lp-btn-primary">Access Your Portal <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                <a href="#modules" class="lp-btn lp-btn-ghost"><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i> Explore Modules</a>
             </div>
-            <h1>Powering Smarter<br><span class="accent">School Analytics</span><br>for Every Institution</h1>
-            <p>Professional-grade exam management, real-time analytics, and seamless reporting for primary and junior secondary schools across Kenya — all from one unified platform.</p>
-            <div class="lp-hero-cta">
-                <a href="{% url 'login' %}" class="lp-btn-primary">Access Your Portal <i class="bi bi-arrow-right"></i></a>
-                <a href="#modules" class="lp-btn-outline"><i class="bi bi-grid-3x3-gap"></i> Explore Modules</a>
-            </div>
-        </div>
-    </section>
+            <ul class="lp-hero-proof lp-reveal">
+                <li><i class="bi bi-check2-circle" aria-hidden="true"></i> CBE-aligned grading</li>
+                <li><i class="bi bi-check2-circle" aria-hidden="true"></i> 9 grade levels</li>
+                <li><i class="bi bi-check2-circle" aria-hidden="true"></i> Print-ready A4 outputs</li>
+            </ul>
 
-    <!-- ═══ STATS ════════════════════════════════════════════ -->
-    <div class="lp-stats lp-reveal">
-        <div class="lp-stat">
-            <div class="lp-stat-icon green"><i class="bi bi-book"></i></div>
-            <div class="lp-stat-value"><span class="lp-counter" data-target="9">0</span></div>
-            <div class="lp-stat-label">Grade Levels Supported</div>
-        </div>
-        <div class="lp-stat">
-            <div class="lp-stat-icon blue"><i class="bi bi-patch-check"></i></div>
-            <div class="lp-stat-value green">CBE</div>
-            <div class="lp-stat-label">Curriculum Aligned</div>
-        </div>
-        <div class="lp-stat">
-            <div class="lp-stat-icon navy"><i class="bi bi-shield-check"></i></div>
-            <div class="lp-stat-value"><span class="lp-counter" data-target="100">0</span>%</div>
-            <div class="lp-stat-label">Data Security</div>
-        </div>
-        <div class="lp-stat">
-            <div class="lp-stat-icon green"><i class="bi bi-lightning"></i></div>
-            <div class="lp-stat-value">24/7</div>
-            <div class="lp-stat-label">System Availability</div>
-        </div>
-    </div>
-
-    <!-- ═══ MODULES ══════════════════════════════════════════ -->
-    <section class="lp-section" id="modules">
-        <div class="lp-section-tag lp-reveal">System Modules</div>
-        <h2 class="lp-section-title lp-reveal">Everything Your School Needs<br>In One Platform</h2>
-        <p class="lp-section-sub lp-reveal">From score capture to final report card generation, EDUNEXUS handles your entire exam workflow with precision and speed.</p>
-        <div class="lp-modules-grid lp-stagger">
-            <div class="lp-module-card lp-reveal">
-                <div class="lp-module-icon"><i class="bi bi-input-cursor-text"></i></div>
-                <div class="lp-module-title">Score Capture</div>
-                <div class="lp-module-desc">Subject teachers enter marks directly online per stream and exam. Bulk CSV upload available for fast data entry across all classes.</div>
-            </div>
-            <div class="lp-module-card lp-reveal">
-                <div class="lp-module-icon"><i class="bi bi-graph-up-arrow"></i></div>
-                <div class="lp-module-title">Published Results & Analytics</div>
-                <div class="lp-module-desc">Auto-computed broadsheet with ranks, means, PLV levels, and grade distributions. Export to PDF with one click.</div>
-            </div>
-            <div class="lp-module-card lp-reveal">
-                <div class="lp-module-icon"><i class="bi bi-file-earmark-pdf"></i></div>
-                <div class="lp-module-title">Report Cards</div>
-                <div class="lp-module-desc">Generate individual and bulk report cards with teacher remarks, performance levels and scores formatted to print-ready standards.</div>
-            </div>
-            <div class="lp-module-card lp-reveal">
-                <div class="lp-module-icon"><i class="bi bi-people"></i></div>
-                <div class="lp-module-title">Learner Registry</div>
-                <div class="lp-module-desc">Manage complete student profiles including guardian contacts, class assignments, religion subjects, gender and full enrolment history.</div>
-            </div>
-            <div class="lp-module-card lp-reveal">
-                <div class="lp-module-icon"><i class="bi bi-diagram-3"></i></div>
-                <div class="lp-module-title">Faculty Management</div>
-                <div class="lp-module-desc">Assign teachers to classes and subjects. Control which teachers can access which streams with a precise role-based permission matrix.</div>
-            </div>
-            <div class="lp-module-card lp-reveal">
-                <div class="lp-module-icon"><i class="bi bi-shield-lock"></i></div>
-                <div class="lp-module-title">Assessment Locks & Audit</div>
-                <div class="lp-module-desc">Lock or unlock specific exam entry windows per class. Track submission status, reviews, and publishing across all streams in real time.</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══ WHY EDUNEXUS ═════════════════════════════════════ -->
-    <div class="lp-why" id="features">
-        <div class="lp-why-inner">
-            <div>
-                <div class="lp-section-tag lp-reveal-left">Why EDUNEXUS</div>
-                <h2 class="lp-section-title lp-reveal-left">Built for Kenya's<br>CBE Framework</h2>
-                <p class="lp-section-sub lp-reveal-left">Designed from the ground up for schools operating the Competency-Based Education system, with CBE-aligned grading, PLV levels, and local context baked in.</p>
-                <div class="lp-why-list lp-stagger">
-                    <div class="lp-why-item lp-reveal-left">
-                        <div class="lp-why-icon"><i class="bi bi-lock-fill"></i></div>
-                        <div class="lp-why-text">
-                            <h4>School-Isolated Data</h4>
-                            <p>Every school's data is completely isolated. No cross-school data leakage — ever. Your records are yours alone.</p>
-                        </div>
+            <!-- product preview -->
+            <figure class="lp-preview lp-reveal-tilt" role="img"
+                    aria-label="EDUNEXUS results dashboard preview: grade mean 87.4 percent, 312 learners, subject means chart and ranked results with performance levels.">
+                <div class="lp-preview-bar" aria-hidden="true">
+                    <span class="lp-dot"></span><span class="lp-dot"></span><span class="lp-dot"></span>
+                    <span class="lp-preview-url">edunexus · results · term 1 · grade 9</span>
+                    <span class="lp-live">LIVE</span>
+                </div>
+                <div class="lp-preview-body" aria-hidden="true">
+                    <div class="lp-preview-kpis">
+                        <div class="lp-kpi"><strong>87.4%</strong><span>Grade 9 mean</span></div>
+                        <div class="lp-kpi"><strong>312</strong><span>Learners</span></div>
+                        <div class="lp-kpi"><strong>ME</strong><span>Top PLV</span></div>
                     </div>
-                    <div class="lp-why-item lp-reveal-left">
-                        <div class="lp-why-icon"><i class="bi bi-lightning-charge-fill"></i></div>
-                        <div class="lp-why-text">
-                            <h4>Instant Result Publishing</h4>
-                            <p>Admin reviews, approves, and publishes results in seconds. Teachers see status in real-time without chasing paper.</p>
+                    <div class="lp-preview-panels">
+                        <div class="lp-panel">
+                            <div class="lp-panel-head"><b>Subject means</b><span class="lp-delta">▲ +6.2%</span></div>
+                            <div class="lp-chart">
+                                <span class="lp-chart-bar" style="--h:55%; --i:0"></span>
+                                <span class="lp-chart-bar" style="--h:70%; --i:1"></span>
+                                <span class="lp-chart-bar" style="--h:48%; --i:2"></span>
+                                <span class="lp-chart-bar" style="--h:82%; --i:3"></span>
+                                <span class="lp-chart-bar" style="--h:60%; --i:4"></span>
+                                <span class="lp-chart-bar" style="--h:91%; --i:5"></span>
+                                <span class="lp-chart-bar" style="--h:74%; --i:6"></span>
+                                <span class="lp-chart-bar" style="--h:65%; --i:7"></span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="lp-why-item lp-reveal-left">
-                        <div class="lp-why-icon"><i class="bi bi-bar-chart-fill"></i></div>
-                        <div class="lp-why-text">
-                            <h4>Deep Performance Analytics</h4>
-                            <p>View performance by stream, grade, subject and student. Identify outliers and track improvement trends across terms.</p>
-                        </div>
-                    </div>
-                    <div class="lp-why-item lp-reveal-left">
-                        <div class="lp-why-icon"><i class="bi bi-printer-fill"></i></div>
-                        <div class="lp-why-text">
-                            <h4>Print-Ready Outputs</h4>
-                            <p>Broadsheets, class registers and report cards are formatted to exact A4 print dimensions — ready to hand out same day.</p>
+                        <div class="lp-panel">
+                            <div class="lp-panel-head"><b>Ranked results</b><span class="lp-delta">Published</span></div>
+                            <div class="lp-table">
+                                <div class="lp-table-row is-head"><span>Student</span><span class="num">Score</span><span class="plv" style="background:none;color:inherit;padding:0;justify-self:end">PLV</span></div>
+                                <div class="lp-table-row"><span class="who">Amina W.</span><span class="num">94%</span><span class="plv">EE</span></div>
+                                <div class="lp-table-row"><span class="who">Brian O.</span><span class="num">88%</span><span class="plv">ME</span></div>
+                                <div class="lp-table-row"><span class="who">Clara M.</span><span class="num">81%</span><span class="plv">ME</span></div>
+                                <div class="lp-table-row"><span class="who">Dan K.</span><span class="num">76%</span><span class="plv">ME</span></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="lp-mock lp-reveal-right">
-                <div class="lp-mock-bar">
-                    <div class="lp-mock-dot" style="background:#ff5f57;"></div>
-                    <div class="lp-mock-dot" style="background:#febc2e;"></div>
-                    <div class="lp-mock-dot" style="background:var(--lp-green);"></div>
-                </div>
-                <div class="lp-mock-body">
-                    <div class="lp-mock-row">
-                        <div class="lp-mock-kpi"><div class="lp-mock-kpi-val">87.4%</div><div class="lp-mock-kpi-lbl">Grade 9 Mean</div></div>
-                        <div class="lp-mock-kpi"><div class="lp-mock-kpi-val">312</div><div class="lp-mock-kpi-lbl">Students</div></div>
-                        <div class="lp-mock-kpi"><div class="lp-mock-kpi-val">ME</div><div class="lp-mock-kpi-lbl">Top PLV</div></div>
-                    </div>
-                    <div class="lp-mock-chart">
-                        <div class="lp-mock-bar-item" style="height:55%;"></div>
-                        <div class="lp-mock-bar-item" style="height:70%;"></div>
-                        <div class="lp-mock-bar-item" style="height:48%;"></div>
-                        <div class="lp-mock-bar-item" style="height:82%;"></div>
-                        <div class="lp-mock-bar-item" style="height:60%;"></div>
-                        <div class="lp-mock-bar-item" style="height:91%;"></div>
-                        <div class="lp-mock-bar-item" style="height:74%;"></div>
-                        <div class="lp-mock-bar-item" style="height:65%;"></div>
-                    </div>
-                    <div class="lp-mock-table">
-                        <div class="lp-mock-table-hdr">
-                            <div style="flex:1;">Student</div>
-                            <div style="width:60px;">Score</div>
-                            <div style="width:40px;">PLV</div>
-                        </div>
-                        <div class="lp-mock-table-row">
-                            <div class="dot"></div>
-                            <div class="name">Amina W.</div>
-                            <div class="score">94%</div>
-                            <div class="plv">EE</div>
-                        </div>
-                        <div class="lp-mock-table-row">
-                            <div class="dot"></div>
-                            <div class="name">Brian O.</div>
-                            <div class="score">88%</div>
-                            <div class="plv">ME</div>
-                        </div>
-                        <div class="lp-mock-table-row">
-                            <div class="dot"></div>
-                            <div class="name">Clara M.</div>
-                            <div class="score">81%</div>
-                            <div class="plv">ME</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </figure>
         </div>
-    </div>
+    </header>
 
-    <!-- ═══ CTA BANNER ═══════════════════════════════════════ -->
-    <div class="lp-cta-wrap">
-        <div class="lp-cta lp-reveal-scale">
-            <div class="lp-cta-text">
-                <h2>Ready to Transform Your School's<br>Exam Management?</h2>
-                <p>Join schools across Kenya using EDUNEXUS to manage assessments, publish results, and generate report cards faster than ever before.</p>
+    <main id="lp-main" tabindex="-1">
+
+        <!-- ═══ STATS ═════════════════════════════════════════ -->
+        <section class="lp-stats-wrap" aria-label="Platform highlights">
+            <ul class="lp-stats lp-reveal">
+                <li class="lp-stat">
+                    <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-book"></i></span>
+                    <span class="lp-stat-value"><span class="lp-counter" data-target="9">9</span></span>
+                    <span class="lp-stat-label">Grade Levels Supported</span>
+                </li>
+                <li class="lp-stat">
+                    <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-patch-check"></i></span>
+                    <span class="lp-stat-value">CBE</span>
+                    <span class="lp-stat-label">Curriculum Aligned</span>
+                </li>
+                <li class="lp-stat">
+                    <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-shield-check"></i></span>
+                    <span class="lp-stat-value"><span class="lp-counter" data-target="100">100</span>%</span>
+                    <span class="lp-stat-label">Data Security</span>
+                </li>
+                <li class="lp-stat">
+                    <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-lightning"></i></span>
+                    <span class="lp-stat-value">24/7</span>
+                    <span class="lp-stat-label">System Availability</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- ═══ MODULES ═══════════════════════════════════════ -->
+        <section class="lp-section lp-band-gray" id="modules">
+            <div class="lp-container">
+                <header class="lp-sec-head lp-reveal">
+                    <p class="lp-sec-tag">System Modules</p>
+                    <h2 class="lp-sec-title">Everything Your School Needs in One Platform</h2>
+                    <p class="lp-sec-sub">From score capture to final report card generation, EDUNEXUS handles your entire exam workflow with precision and speed.</p>
+                </header>
+
+                <div class="lp-bento lp-stagger">
+                    <article class="lp-card lp-reveal">
+                        <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-input-cursor-text"></i></span>
+                        <h3 class="lp-card-title">Score Capture</h3>
+                        <p class="lp-card-desc">Subject teachers enter marks directly online per stream and exam. Bulk CSV upload available for fast data entry across all classes.</p>
+                        <div class="lp-viz" aria-hidden="true">
+                            <div class="lp-viz-row">
+                                <span class="lp-viz-subject">Mathematics · Grade 9 Blue</span>
+                                <span class="lp-viz-input">84</span>
+                                <i class="bi bi-check2-circle lp-viz-ok"></i>
+                            </div>
+                            <div class="lp-viz-row">
+                                <span class="lp-viz-subject">English · Grade 9 Blue</span>
+                                <span class="lp-viz-input">77</span>
+                                <i class="bi bi-check2-circle lp-viz-ok"></i>
+                            </div>
+                            <div class="lp-viz-foot">
+                                <span class="lp-chip lp-chip-green"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i> Saved · stream Blue</span>
+                                <span class="lp-chip"><i class="bi bi-journal-text" aria-hidden="true"></i> CSV bulk upload</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="lp-card lp-reveal">
+                        <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-graph-up-arrow"></i></span>
+                        <h3 class="lp-card-title">Published Results &amp; Analytics</h3>
+                        <p class="lp-card-desc">Auto-computed broadsheet with ranks, means, PLV levels, and grade distributions. Export to PDF with one click.</p>
+                        <div class="lp-viz-spark" aria-hidden="true">
+                            <span style="--h:46%"></span><span style="--h:68%"></span><span style="--h:54%"></span>
+                            <span style="--h:82%"></span><span style="--h:62%"></span><span style="--h:92%"></span>
+                        </div>
+                    </article>
+
+                    <article class="lp-card lp-reveal">
+                        <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-file-earmark-pdf"></i></span>
+                        <h3 class="lp-card-title">Report Cards</h3>
+                        <p class="lp-card-desc">Generate individual and bulk report cards with teacher remarks, performance levels and scores formatted to print-ready standards.</p>
+                    </article>
+
+                    <article class="lp-card lp-reveal">
+                        <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-people"></i></span>
+                        <h3 class="lp-card-title">Learner Registry</h3>
+                        <p class="lp-card-desc">Manage complete student profiles including guardian contacts, class assignments, religion subjects, gender and full enrolment history.</p>
+                    </article>
+
+                    <article class="lp-card lp-reveal">
+                        <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
+                        <h3 class="lp-card-title">Faculty Management</h3>
+                        <p class="lp-card-desc">Assign teachers to classes and subjects. Control which teachers can access which streams with a precise role-based permission matrix.</p>
+                    </article>
+
+                    <article class="lp-card lp-card-wide lp-reveal">
+                        <div class="lp-card-main">
+                            <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-shield-lock"></i></span>
+                            <div class="lp-card-copy">
+                                <h3 class="lp-card-title">Assessment Locks &amp; Audit</h3>
+                                <p class="lp-card-desc">Lock or unlock specific exam entry windows per class. Track submission status, reviews, and publishing across all streams in real time.</p>
+                            </div>
+                        </div>
+                        <div class="lp-status-row" aria-hidden="true">
+                            <span class="lp-chip lp-chip-green"><i class="bi bi-lock-fill" aria-hidden="true"></i> Entry locked</span>
+                            <span class="lp-chip"><i class="bi bi-clipboard-check" aria-hidden="true"></i> In review</span>
+                            <span class="lp-chip lp-chip-green"><i class="bi bi-shield-fill-check" aria-hidden="true"></i> Published</span>
+                        </div>
+                    </article>
+                </div>
             </div>
-            <div class="lp-cta-btn">
-                <a href="{% url 'login' %}" class="lp-btn-primary" style="white-space:nowrap; font-size:1rem; padding:18px 40px;">
-                    Access Your Portal <i class="bi bi-arrow-right"></i>
-                </a>
+        </section>
+
+        <!-- ═══ HOW IT WORKS ══════════════════════════════════ -->
+        <section class="lp-section lp-band-white" id="how">
+            <div class="lp-container">
+                <header class="lp-sec-head lp-reveal">
+                    <p class="lp-sec-tag">How it works</p>
+                    <h2 class="lp-sec-title">From Mark Sheet to Report Card in Three Steps</h2>
+                    <p class="lp-sec-sub">No paper, no double entry, no waiting — the same workflow your school already follows, made instant.</p>
+                </header>
+                <ol class="lp-steps lp-stagger">
+                    <li class="lp-step lp-reveal">
+                        <span class="lp-step-num" aria-hidden="true">1</span>
+                        <h3>Capture Scores Online</h3>
+                        <p>Subject teachers enter marks per stream and exam, or bulk-upload a CSV — every submission is tracked as it happens.</p>
+                    </li>
+                    <li class="lp-step lp-reveal">
+                        <span class="lp-step-num" aria-hidden="true">2</span>
+                        <h3>Review &amp; Publish</h3>
+                        <p>EDUNEXUS auto-computes the broadsheet — ranks, means, grades and PLV levels — so admins can approve and publish in seconds.</p>
+                    </li>
+                    <li class="lp-step lp-reveal">
+                        <span class="lp-step-num" aria-hidden="true">3</span>
+                        <h3>Print &amp; Share</h3>
+                        <p>Generate individual report cards and A4 broadsheets, ready to print and hand out the same day.</p>
+                    </li>
+                </ol>
             </div>
-        </div>
-    </div>
+        </section>
+
+        <!-- ═══ WHY EDUNEXUS ══════════════════════════════════ -->
+        <section class="lp-section lp-band-gray" id="features">
+            <div class="lp-container lp-why">
+                <div class="lp-why-inner">
+                    <div>
+                        <header class="lp-sec-head lp-reveal-left">
+                            <p class="lp-sec-tag">Why EDUNEXUS</p>
+                            <h2 class="lp-sec-title">Built for Kenya's CBE Framework</h2>
+                            <p class="lp-sec-sub">Designed from the ground up for schools operating the Competency-Based Education system, with CBE-aligned grading, PLV levels, and local context baked in.</p>
+                        </header>
+                        <ul class="lp-why-list lp-stagger">
+                            <li class="lp-why-item lp-reveal-left">
+                                <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-lock-fill"></i></span>
+                                <div class="lp-why-text">
+                                    <h3>School-Isolated Data</h3>
+                                    <p>Every school's data is completely isolated. No cross-school data leakage — ever. Your records are yours alone.</p>
+                                </div>
+                            </li>
+                            <li class="lp-why-item lp-reveal-left">
+                                <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-lightning-charge-fill"></i></span>
+                                <div class="lp-why-text">
+                                    <h3>Instant Result Publishing</h3>
+                                    <p>Admin reviews, approves, and publishes results in seconds. Teachers see status in real-time without chasing paper.</p>
+                                </div>
+                            </li>
+                            <li class="lp-why-item lp-reveal-left">
+                                <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-bar-chart-fill"></i></span>
+                                <div class="lp-why-text">
+                                    <h3>Deep Performance Analytics</h3>
+                                    <p>View performance by stream, grade, subject and student. Identify outliers and track improvement trends across terms.</p>
+                                </div>
+                            </li>
+                            <li class="lp-why-item lp-reveal-left">
+                                <span class="lp-icon-chip" aria-hidden="true"><i class="bi bi-printer-fill"></i></span>
+                                <div class="lp-why-text">
+                                    <h3>Print-Ready Outputs</h3>
+                                    <p>Broadsheets, class registers and report cards are formatted to exact A4 print dimensions — ready to hand out same day.</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="lp-doc lp-reveal-right" role="img"
+                         aria-label="Statement of results preview for learner Amina Wanjiku showing subject marks, performance levels and a teacher's remark, formatted as a print-ready A4 report card.">
+                        <div class="lp-doc-sheet" aria-hidden="true">
+                            <div class="lp-doc-head">
+                                <span class="lp-doc-brand">
+                                    <img src="{% static 'images/edunexus_logo_192.png' %}?v=2" alt="">
+                                    <b>EDU<span>NEXUS</span></b>
+                                </span>
+                                <span class="lp-doc-chip">TERM 1 · GRADE 9</span>
+                            </div>
+                            <div class="lp-doc-learner">
+                                <b>Amina Wanjiku</b>
+                                <span>ADM/2026/0412 · Grade 9 Blue</span>
+                            </div>
+                            <div class="lp-doc-rows">
+                                <div class="lp-doc-row"><span class="subj">Mathematics</span><span class="mark">94</span><span class="plv">EE</span></div>
+                                <div class="lp-doc-row"><span class="subj">English</span><span class="mark">88</span><span class="plv">ME</span></div>
+                                <div class="lp-doc-row"><span class="subj">Kiswahili</span><span class="mark">81</span><span class="plv">ME</span></div>
+                                <div class="lp-doc-row"><span class="subj">Science &amp; Technology</span><span class="mark">76</span><span class="plv">ME</span></div>
+                            </div>
+                            <div class="lp-doc-remark">
+                                <b>Teacher's remark</b>
+                                <span>Excellent progress — keep it up.</span>
+                            </div>
+                        </div>
+                        <span class="lp-doc-float" aria-hidden="true"><i class="bi bi-printer-fill"></i> Print-ready A4</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ FAQ ═══════════════════════════════════════════ -->
+        <section class="lp-section lp-band-white" id="faq">
+            <div class="lp-container">
+                <header class="lp-sec-head lp-reveal">
+                    <p class="lp-sec-tag">FAQ</p>
+                    <h2 class="lp-sec-title">Questions, Answered</h2>
+                    <p class="lp-sec-sub">Everything schools usually ask before getting started with EDUNEXUS.</p>
+                </header>
+                <div class="lp-faq-list">
+                    <details class="lp-faq-item lp-reveal" name="lp-faq">
+                        <summary>How is our school's data protected? <i class="bi bi-plus-lg" aria-hidden="true"></i></summary>
+                        <div class="lp-faq-a"><p>Every school's data is completely isolated on its own secure workspace — there is no cross-school access, ever. EDUNEXUS is built so your records remain yours alone.</p></div>
+                    </details>
+                    <details class="lp-faq-item lp-reveal" name="lp-faq">
+                        <summary>Is EDUNEXUS aligned to the CBE curriculum? <i class="bi bi-plus-lg" aria-hidden="true"></i></summary>
+                        <div class="lp-faq-a"><p>Yes. Grading, performance (PLV) levels and analytics are designed around Kenya's Competency-Based Education framework, from Lower Primary through Junior School.</p></div>
+                    </details>
+                    <details class="lp-faq-item lp-reveal" name="lp-faq">
+                        <summary>Who in my school can use it? <i class="bi bi-plus-lg" aria-hidden="true"></i></summary>
+                        <div class="lp-faq-a"><p>School admins manage learners, classes and faculty, while subject teachers capture scores for the classes and subjects assigned to them. A role-based permission matrix controls exactly who can see and do what.</p></div>
+                    </details>
+                    <details class="lp-faq-item lp-reveal" name="lp-faq">
+                        <summary>What can we print? <i class="bi bi-plus-lg" aria-hidden="true"></i></summary>
+                        <div class="lp-faq-a"><p>Broadsheets, class registers and individual or bulk report cards are formatted to exact A4 print dimensions — ready to hand out the same day.</p></div>
+                    </details>
+                    <details class="lp-faq-item lp-reveal" name="lp-faq">
+                        <summary>How do we get started? <i class="bi bi-plus-lg" aria-hidden="true"></i></summary>
+                        <div class="lp-faq-a"><p>Sign in with the credentials issued to your school. If you need help or want access for your institution, contact us at <a href="mailto:edunexus.system@gmail.com">edunexus.system@gmail.com</a> or WhatsApp <a href="https://wa.me/254728007320">+254 728 007 320</a>.</p></div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ CTA BANNER ════════════════════════════════════ -->
+        <section class="lp-section lp-band-white" aria-label="Get started">
+            <div class="lp-container">
+                <div class="lp-cta lp-reveal-scale">
+                    <h2>Ready to Transform Your School's Exam Management?</h2>
+                    <p>Join schools across Kenya using EDUNEXUS to manage assessments, publish results, and generate report cards faster than ever before.</p>
+                    <div class="lp-cta-btns">
+                        <a href="{% url 'login' %}" class="lp-btn lp-btn-primary">Access Your Portal <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                        <a href="mailto:edunexus.system@gmail.com" class="lp-btn lp-btn-ghost"><i class="bi bi-envelope" aria-hidden="true"></i> Talk to us</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
 
     <!-- ═══ FOOTER ═══════════════════════════════════════════ -->
     <footer class="lp-footer" id="contact">
-        <div class="lp-footer-top">
-            <div class="lp-footer-brand">
-                <div class="lp-footer-brand-row">
-                    <img src="{% static 'images/edunexus_logo_192.png' %}" alt="Logo">
-                    <span>EDU<em>NEXUS</em></span>
+        <div class="lp-container">
+            <div class="lp-footer-grid">
+                <div class="lp-footer-brand">
+                    <div class="lp-footer-brand-row">
+                        <img src="{% static 'images/edunexus_logo_192.png' %}?v=2" alt="">
+                        <b>EDU<span>NEXUS</span></b>
+                    </div>
+                    <p class="lp-footer-blurb">Professional exam management and analytics for primary and junior secondary schools across Kenya.</p>
+                    <div class="lp-footer-contact">
+                        <a href="mailto:edunexus.system@gmail.com"><i class="bi bi-envelope" aria-hidden="true"></i> edunexus.system@gmail.com</a>
+                        <a href="https://wa.me/254728007320"><i class="bi bi-whatsapp" aria-hidden="true"></i> +254 728 007 320</a>
+                    </div>
                 </div>
-                <p>Professional exam management and analytics for primary and junior secondary schools across Kenya.</p>
+                <nav class="lp-footer-col" aria-label="Product">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#modules">System Modules</a></li>
+                        <li><a href="#how">How it works</a></li>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#faq">FAQ</a></li>
+                    </ul>
+                </nav>
+                <nav class="lp-footer-col" aria-label="Get started">
+                    <h4>Get started</h4>
+                    <ul>
+                        <li><a href="{% url 'login' %}">Login to Portal</a></li>
+                        <li><a href="mailto:edunexus.system@gmail.com">Request access</a></li>
+                        <li><a href="https://wa.me/254728007320">WhatsApp support</a></li>
+                    </ul>
+                </nav>
             </div>
-            <div class="lp-footer-col">
-                <h4>Support</h4>
-                <a href="mailto:edunexus.system@gmail.com"><i class="bi bi-envelope"></i> edunexus.system@gmail.com</a>
-                <a href="https://wa.me/254728007320"><i class="bi bi-whatsapp"></i> +254 728 007 320</a>
-            </div>
-            <div class="lp-footer-col">
-                <h4>Quick Links</h4>
-                <a href="{% url 'login' %}"><i class="bi bi-box-arrow-in-right"></i> Login to Portal</a>
-                <a href="#modules"><i class="bi bi-grid-3x3-gap"></i> System Modules</a>
-                <a href="#features"><i class="bi bi-star"></i> Features</a>
-            </div>
-            <div class="lp-footer-col">
-                <h4>Platform</h4>
-                <a href="#"><i class="bi bi-shield-check"></i> Security</a>
-                <a href="#"><i class="bi bi-clock-history"></i> System Status</a>
-                <a href="#"><i class="bi bi-book"></i> Documentation</a>
-            </div>
-        </div>
-        <div class="lp-footer-bottom">
-            <div class="lp-footer-copy">&copy; 2026 EDUNEXUS Exam Management System. All Rights Reserved.</div>
-            <div class="lp-footer-legal">
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
+            <div class="lp-footer-bottom">
+                <div class="lp-footer-copy">&copy; 2026 EDUNEXUS Exam Management System. All Rights Reserved.</div>
+                <div class="lp-footer-chip"><i class="bi bi-patch-check" aria-hidden="true"></i> Aligned to Kenya's CBE curriculum</div>
             </div>
         </div>
     </footer>
 
+    <!-- ═══ MOBILE MENU ══════════════════════════════════════ -->
+    <dialog class="lp-menu" id="lpMenu" aria-label="Site menu">
+        <div class="lp-menu-head">
+            <a href="{% url 'welcome_page' %}" class="lp-menu-brand">
+                <img src="{% static 'images/edunexus_logo_192.png' %}?v=2" alt="">
+                <b>EDU<span>NEXUS</span></b>
+            </a>
+            <button class="lp-menu-close" id="lpMenuClose" type="button" aria-label="Close menu">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <nav class="lp-menu-links" aria-label="Menu links">
+            <a href="#modules" class="lp-menu-link">Modules <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+            <a href="#how" class="lp-menu-link">How it works <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+            <a href="#features" class="lp-menu-link">Features <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+            <a href="#faq" class="lp-menu-link">FAQ <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+            <a href="#contact" class="lp-menu-link">Contact <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+        </nav>
+        <a href="{% url 'login' %}" class="lp-btn lp-btn-primary lp-menu-login">Login to Portal <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+        <p class="lp-menu-note">Support: <a href="mailto:edunexus.system@gmail.com">edunexus.system@gmail.com</a></p>
+    </dialog>
+
+    <!-- ═══ STICKY MOBILE CTA ════════════════════════════════ -->
+    <div class="lp-sticky" id="lpSticky" aria-hidden="true">
+        <a href="{% url 'login' %}" class="lp-btn lp-btn-primary">Access Your Portal <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    </div>
+
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
-(function() {
-    /* ── Navbar glassmorphism on scroll ──────────────────────── */
-    const nav = document.getElementById('lpNav');
-    function handleNavScroll() {
-        if (window.scrollY > 40) {
-            nav.classList.add('scrolled');
-        } else {
-            nav.classList.remove('scrolled');
-        }
+(function () {
+    'use strict';
+    var doc = document;
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ── Nav: glass state + scroll progress ───────────────────── */
+    var nav = doc.getElementById('lpNav');
+    var sentinel = doc.getElementById('lpNavSentinel');
+    if (nav && sentinel && 'IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+            nav.classList.toggle('scrolled', !entries[0].isIntersecting);
+        }).observe(sentinel);
+    } else if (nav) {
+        nav.classList.add('scrolled'); /* no IO → always readable glass */
     }
-    window.addEventListener('scroll', handleNavScroll, { passive: true });
-    handleNavScroll();
+    if (nav) {
+        var rafPending = false;
+        var updateProgress = function () {
+            rafPending = false;
+            var max = doc.documentElement.scrollHeight - window.innerHeight;
+            var pct = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
+            nav.style.setProperty('--lp-progress', pct.toFixed(3));
+        };
+        window.addEventListener('scroll', function () {
+            if (!rafPending) { rafPending = true; requestAnimationFrame(updateProgress); }
+        }, { passive: true });
+        updateProgress();
+    }
 
-    /* ── Smooth scroll for anchor links ──────────────────────── */
-    document.querySelectorAll('a[href^="#"]').forEach(function(a) {
-        a.addEventListener('click', function(e) {
-            var target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                e.preventDefault();
-                var offset = 80;
-                var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
-                window.scrollTo({ top: top, behavior: 'smooth' });
-            }
-        });
-    });
-
-    /* ── Scroll reveal (Intersection Observer) ────────────────── */
-    var revealEls = document.querySelectorAll('.lp-reveal, .lp-reveal-left, .lp-reveal-right, .lp-reveal-scale');
+    /* ── Scroll reveals ───────────────────────────────────────── */
+    var revealEls = doc.querySelectorAll('[class*="lp-reveal"]');
     if ('IntersectionObserver' in window) {
-        var observer = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
+        var revealIO = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('visible');
-                    observer.unobserve(entry.target);
+                    revealIO.unobserve(entry.target);
                 }
             });
-        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-        revealEls.forEach(function(el) { observer.observe(el); });
+        }, { threshold: 0.12, rootMargin: '0px 0px -5% 0px' });
+        revealEls.forEach(function (el) { revealIO.observe(el); });
     } else {
-        revealEls.forEach(function(el) { el.classList.add('visible'); });
+        revealEls.forEach(function (el) { el.classList.add('visible'); });
     }
 
-    /* ── Stats counter animation ──────────────────────────────── */
-    var counters = document.querySelectorAll('.lp-counter');
-    function animateCounter(el) {
-        var target = parseInt(el.getAttribute('data-target'), 10);
-        var duration = 1200;
-        var start = 0;
-        var startTime = null;
-        function step(timestamp) {
-            if (!startTime) startTime = timestamp;
-            var progress = Math.min((timestamp - startTime) / duration, 1);
-            var eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.floor(eased * target);
-            if (progress < 1) {
-                requestAnimationFrame(step);
-            } else {
-                el.textContent = target;
-            }
-        }
-        requestAnimationFrame(step);
-    }
-    if ('IntersectionObserver' in window) {
-        var counterObserver = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
+    /* ── Stat counters (final values are already in the HTML) ─── */
+    if (!reduce && 'IntersectionObserver' in window) {
+        var animateCounter = function (el) {
+            var target = parseInt(el.getAttribute('data-target'), 10) || 0;
+            var duration = 1300, startTime = null;
+            el.textContent = '0';
+            var step = function (ts) {
+                if (!startTime) startTime = ts;
+                var p = Math.min((ts - startTime) / duration, 1);
+                var eased = 1 - Math.pow(1 - p, 3);
+                el.textContent = String(Math.round(eased * target));
+                if (p < 1) requestAnimationFrame(step);
+                else el.textContent = String(target);
+            };
+            requestAnimationFrame(step);
+        };
+        var counterIO = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
                 if (entry.isIntersecting) {
                     animateCounter(entry.target);
-                    counterObserver.unobserve(entry.target);
+                    counterIO.unobserve(entry.target);
                 }
             });
-        }, { threshold: 0.5 });
-        counters.forEach(function(c) { counterObserver.observe(c); });
-    } else {
-        counters.forEach(function(c) { c.textContent = c.getAttribute('data-target'); });
+        }, { threshold: 0.6 });
+        doc.querySelectorAll('.lp-counter').forEach(function (c) { counterIO.observe(c); });
+    }
+
+    /* ── Scrollspy (nav + menu stay in sync) ──────────────────── */
+    if ('IntersectionObserver' in window) {
+        var setActive = function (id) {
+            doc.querySelectorAll('.lp-nav-link, .lp-menu-link').forEach(function (a) {
+                a.classList.toggle('is-active', a.getAttribute('href') === '#' + id);
+            });
+        };
+        var spyIO = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) setActive(entry.target.id);
+            });
+        }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 });
+        ['modules', 'how', 'features', 'faq'].forEach(function (id) {
+            var el = doc.getElementById(id);
+            if (el) spyIO.observe(el);
+        });
+        /* Footer is short — at max scroll its top sits low in the viewport,
+           so it gets a detection band that reaches the bottom edge. */
+        var contactEl = doc.getElementById('contact');
+        if (contactEl) {
+            new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) setActive(entry.target.id);
+                });
+            }, { rootMargin: '-50% 0px 0px 0px', threshold: 0 }).observe(contactEl);
+        }
+    }
+
+    /* ── Mobile menu (native <dialog>) ────────────────────────── */
+    var menu = doc.getElementById('lpMenu');
+    var burger = doc.getElementById('lpBurger');
+    var menuClose = doc.getElementById('lpMenuClose');
+    if (menu && burger) {
+        var openMenu = function () {
+            if (typeof menu.showModal === 'function') menu.showModal();
+            else menu.setAttribute('open', '');
+            burger.setAttribute('aria-expanded', 'true');
+        };
+        var closeMenu = function () {
+            if (typeof menu.close === 'function') menu.close();
+            else menu.removeAttribute('open');
+            burger.setAttribute('aria-expanded', 'false');
+        };
+        burger.addEventListener('click', openMenu);
+        if (menuClose) menuClose.addEventListener('click', closeMenu);
+        menu.addEventListener('close', function () { burger.setAttribute('aria-expanded', 'false'); });
+        menu.addEventListener('click', function (e) { if (e.target === menu) closeMenu(); });
+        menu.querySelectorAll('a[href^="#"]').forEach(function (link) {
+            link.addEventListener('click', closeMenu);
+        });
+    }
+
+    /* ── Sticky mobile CTA (after hero, hidden near footer) ───── */
+    var sticky = doc.getElementById('lpSticky');
+    var heroEl = doc.querySelector('.lp-hero');
+    var footEl = doc.querySelector('.lp-footer');
+    if (sticky && heroEl && 'IntersectionObserver' in window) {
+        var heroIn = true, footIn = false;
+        var syncSticky = function () {
+            var show = !heroIn && !footIn;
+            sticky.classList.toggle('is-visible', show);
+            sticky.setAttribute('aria-hidden', show ? 'false' : 'true');
+        };
+        new IntersectionObserver(function (es) { heroIn = es[0].isIntersecting; syncSticky(); }).observe(heroEl);
+        if (footEl) {
+            new IntersectionObserver(function (es) { footIn = es[0].isIntersecting; syncSticky(); }).observe(footEl);
+        }
+    }
+
+    /* ── Hero pointer parallax (fine pointers only) ───────────── */
+    var hero = doc.querySelector('.lp-hero');
+    if (hero && !reduce && window.matchMedia('(pointer: fine)').matches) {
+        var pxRaf = false, mx = 0, my = 0;
+        var applyParallax = function () {
+            pxRaf = false;
+            hero.style.setProperty('--mx', mx.toFixed(3));
+            hero.style.setProperty('--my', my.toFixed(3));
+        };
+        hero.addEventListener('pointermove', function (e) {
+            var r = hero.getBoundingClientRect();
+            mx = (e.clientX - r.left) / r.width - 0.5;
+            my = (e.clientY - r.top) / r.height - 0.5;
+            if (!pxRaf) { pxRaf = true; requestAnimationFrame(applyParallax); }
+        }, { passive: true });
+        hero.addEventListener('pointerleave', function () {
+            mx = 0; my = 0;
+            if (!pxRaf) { pxRaf = true; requestAnimationFrame(applyParallax); }
+        });
     }
 })();
 </script>

@@ -1,4 +1,5 @@
 {% extends 'students/base.html' %}
+{% load nav %}
 {% load static %}
 
 {% block sub_tabs %}
@@ -7,22 +8,7 @@
     .app-content{background:transparent!important}
   }
 </style>
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="{% url 'home_alt' %}" class="sub-nav-link active">
-        <i class="ph ph-user"></i>
-        Update Profile
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'password_change' %}" class="sub-nav-link">
-        <i class="ph ph-shield-check"></i>
-        Change Password
-      </a>
-    </li>
-  </ul>
-</nav>
+{% sub_nav "profile" %}
 {% endblock %}
 
 {% block content %}

@@ -1,35 +1,9 @@
 ﻿{% extends 'students/base.html' %}
+{% load nav %}
 {% load static %}
 
 {% block sub_tabs %}
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="?tab=manage" class="sub-nav-link {% if active_tab == 'manage' or not active_tab %}active{% endif %}">
-        <i class="ph ph-gear-six"></i>
-        Manage Exams
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="?tab=create" class="sub-nav-link {% if active_tab == 'create' %}active{% endif %}">
-        <i class="ph ph-plus-circle"></i>
-        Create Exam
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="?tab=grading" class="sub-nav-link {% if active_tab == 'grading' %}active{% endif %}">
-        <i class="ph ph-chart-line-up"></i>
-        Grading Systems
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="?tab=deleted" class="sub-nav-link {% if active_tab == 'deleted' %}active{% endif %}">
-        <i class="ph ph-trash"></i>
-        Deleted Exams
-      </a>
-    </li>
-  </ul>
-</nav>
+{% sub_nav "exams" %}
 {% endblock %}
 
 {% block content %}
@@ -332,6 +306,24 @@
     }
     .lifecycle-closed i {
         font-size: 11px;
+    }
+
+    .exam-section-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 4px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        white-space: nowrap;
+        vertical-align: middle;
+        background: #eef2ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
     }
 
     .exam-name-cell {
@@ -2257,6 +2249,9 @@ if (GS_PREFILL && typeof GS_PREFILL === 'object' && !Array.isArray(GS_PREFILL)) 
                                 <td rowspan="{{ exam.rowspan }}" style="white-space: normal; word-wrap: break-word;">
                                     <div class="exam-name-cell">
                                         <span>{{ exam.name }}</span>
+                                        {% if exam.section_label %}
+                                        <span class="exam-section-pill">{{ exam.section_label }}</span>
+                                        {% endif %}
                                         {% if exam.status == 'closed' %}
                                         <span class="lifecycle-pill lifecycle-closed"><i class="ph ph-lock"></i> Closed</span>
                                         {% else %}
@@ -2379,6 +2374,9 @@ if (GS_PREFILL && typeof GS_PREFILL === 'object' && !Array.isArray(GS_PREFILL)) 
                     <div class="exam-mobile-card{% if exam.status == 'closed' %} exam-mob-closed{% endif %}">
                         <div class="exam-mob-header">
                             <span class="exam-mob-name">{{ exam.name }}</span>
+                            {% if exam.section_label %}
+                            <span class="exam-section-pill">{{ exam.section_label }}</span>
+                            {% endif %}
                             {% if exam.status == 'closed' %}
                             <span class="lifecycle-pill lifecycle-closed"><i class="ph ph-lock"></i> Closed</span>
                             {% endif %}

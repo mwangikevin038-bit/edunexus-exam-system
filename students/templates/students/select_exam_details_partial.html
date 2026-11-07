@@ -942,8 +942,9 @@
         if (submitBar) {
             document.body.appendChild(submitBar);
             // Already submitted or locked — never show the floating bar
+            // (hide, don't remove: initTotalGate re-reads data-submitted/data-locked)
             if (isSubmitted || isLocked) {
-                submitBar.remove();
+                submitBar.style.display = 'none';
             }
         }
 

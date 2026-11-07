@@ -62,7 +62,7 @@
     bottom: calc(var(--bottomnav-height, 72px) + env(safe-area-inset-bottom, 0px));
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, #C8E6C9 0%, #E8F5E9 30%, #f5f5f5 100%);
+    background: var(--en-bg, #eef2f7);
     font-family: var(--dm-font);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -85,7 +85,13 @@
     backdrop-filter: blur(24px) saturate(200%);
     -webkit-backdrop-filter: blur(24px) saturate(200%);
     border-bottom: 0.5px solid var(--dm-separator);
-    z-index: 10;
+    /* Must stack ABOVE the .dm-subnav — sub-nav.css sets .sub-nav-bar to
+       z-index: 40 and loads AFTER layout.css (which says 10), so the green
+       bar actually computes to 40. The avatar dropdown is a child of this
+       header; its own z-index is trapped in this stacking context, so the
+       header must beat 40 or the bar paints over the top of the open menu.
+       100 stays below .event-modal-dialog (10000). */
+    z-index: 100;
 }
 
 .dash-greeting,
@@ -160,23 +166,24 @@
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background: linear-gradient(145deg, #34D399 0%, #15803D 50%, #065F46 100%);
-    color: #fff;
-    font-weight: 700;
+    background: var(--en-green, #9be816);
+    color: var(--en-navy, #0f172a);
+    font-weight: 800;
     font-size: 0.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     border: 2px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 2px 8px rgba(21, 128, 61, 0.25);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
     -webkit-tap-highlight-color: transparent;
     transition: transform 0.15s ease;
 }
 
 .admin-avatar-btn {
-    background: linear-gradient(145deg, #60A5FA 0%, #2563EB 50%, #1E40AF 100%);
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    background: var(--en-green, #9be816);
+    color: var(--en-navy, #0f172a);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
 }
 
 .dash-avatar-btn:active,
@@ -225,8 +232,8 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: linear-gradient(145deg, #60A5FA 0%, #2563EB 50%, #1E40AF 100%);
-    color: #fff;
+    background: var(--en-green, #9be816);
+    color: var(--en-navy, #0f172a);
     font-weight: 700;
     font-size: 0.75rem;
     display: flex;
@@ -317,12 +324,12 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    background: linear-gradient(135deg, #2E7D32 0%, #388E3C 40%, #43A047 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     border-radius: var(--dm-radius-lg);
     padding: 18px 16px;
     margin-bottom: 16px;
     overflow: hidden;
-    box-shadow: 0 4px 20px -4px rgba(46, 125, 50, 0.35);
+    box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.35);
 }
 
 .dm-welcome::before {
@@ -458,10 +465,10 @@
     gap: 12px;
     padding: 16px;
     margin-bottom: 20px;
-    background: linear-gradient(135deg, #16A34A 0%, #15803D 50%, #166534 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
     border-radius: var(--dm-radius-lg);
     text-decoration: none;
-    box-shadow: 0 4px 24px -4px rgba(22, 163, 74, 0.4);
+    box-shadow: 0 4px 24px -4px rgba(15, 23, 42, 0.4);
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
     -webkit-tap-highlight-color: transparent;
     position: relative;
@@ -1111,122 +1118,132 @@
 /* ═══════════════════════════════════════════════════════════════
    ACADEMIC PERFORMANCE CARDS
    ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   PERFORMANCE CARDS — mobile shell
+   The .admin-ios / .dash-ios shells render the very same
+   .analysis-card partial as the desktop grid, so the two layouts
+   can never drift apart. This container only decides how those
+   cards stack on each phone width.
+   ═══════════════════════════════════════════════════════════════ */
 .dash-perf-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
     margin-bottom: 20px;
 }
 
-.dash-perf-card {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-radius: var(--dm-radius-md);
-    box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.06);
-    border: 0.5px solid rgba(255, 255, 255, 0.6);
-    overflow: hidden;
+.dash-perf-cards .analysis-card {
+    -webkit-tap-highlight-color: rgba(76, 175, 80, 0.18);
 }
 
-.dash-perf-header {
-    padding: 12px 14px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 0.5px solid var(--dm-separator);
+.dash-perf-cards .btn-view-analysis {
+    -webkit-tap-highlight-color: transparent;
 }
 
-.dash-perf-grade {
-    font-size: 0.875rem;
-    font-weight: 700;
+/* Touch devices stick :hover after a tap — keep the card from freezing in
+   its lifted desktop state. */
+@media (hover: none) {
+    .dash-perf-cards .analysis-card:hover {
+        transform: none;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
 }
 
-.dash-perf-exam {
-    font-size: 0.5625rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--dm-text-muted);
-}
-
-.dash-perf-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-}
-
-.dash-perf-cell {
-    padding: 10px 14px;
-    border-bottom: 0.5px solid var(--dm-separator);
-    border-right: 0.5px solid var(--dm-separator);
-}
-
-.dash-perf-cell:nth-child(2n) {
-    border-right: none;
-}
-
-.dash-perf-cell:nth-last-child(-n+2) {
-    border-bottom: none;
-}
-
-.dash-perf-cell-label {
-    font-size: 0.5625rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--dm-text-muted);
-    display: block;
-    margin-bottom: 3px;
-}
-
-.dash-perf-cell-value {
-    font-size: 0.8125rem;
-    font-weight: 700;
-    color: var(--dm-text);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.dash-perf-dev {
-    font-size: 0.5625rem;
-    font-weight: 700;
-}
-
-.dash-perf-dev.up {
-    color: #16A34A;
-}
-
-.dash-perf-dev.down {
-    color: #DC2626;
-}
-
-.dash-perf-btn {
+/* Names the exam a delta is measured against.  Deltas are per-grade, so one
+   card may compare within a term while the next compares against last term. */
+.dev-baseline {
     width: 100%;
-    padding: 11px;
-    border: none;
-    color: #fff;
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    transition: opacity 0.15s;
-    font-family: var(--dm-font);
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    line-height: 1.2;
 }
 
-.dash-perf-btn:active {
-    opacity: 0.8;
+/* Enrolment gap behind the 'Students' figure — the mean is computed over the
+   students who sat, not the whole register. */
+.perf-absent {
+    font-size: 11px;
+    font-weight: 600;
+    color: #DC2626;
+    line-height: 1.2;
 }
 
-.dash-perf-btn i {
-    font-size: 13px;
-    transition: transform 0.15s;
+/* Phones / small tablets (600px–1023px): two cards per row, mirroring the
+   desktop grid's own 2-up layout below 1200px. */
+@media (min-width: 600px) and (max-width: 1023px) {
+    .dash-perf-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
-.dash-perf-btn:active i {
-    transform: translateX(2px);
+/* Standard phones (375px–428px): tighten padding and type so the 2×2 metric
+   matrix keeps its desktop proportions without crowding the card. */
+@media (max-width: 428px) {
+    .dash-perf-cards .analysis-card {
+        padding: 14px;
+        gap: 12px;
+        border-radius: 12px;
+    }
+
+    .dash-perf-cards .class-level-title {
+        font-size: 17px;
+    }
+
+    .dash-perf-cards .exam-period-label {
+        font-size: 12px;
+    }
+
+    .dash-perf-cards .metric-cell {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .dash-perf-cards .cell-label {
+        font-size: 13px;
+    }
+
+    /* Let the label keep its natural width; the nowrap badge wraps to the
+       next line instead of squeezing the label into stacked words. */
+    .dash-perf-cards .cell-label-row .cell-label {
+        flex: 1 1 auto;
+    }
+
+    .dash-perf-cards .cell-number {
+        font-size: 21px;
+    }
+
+    .dash-perf-cards .btn-view-analysis {
+        padding: 12px;
+        font-size: 13px;
+    }
+}
+
+/* Small phones (320px–374px) — iPhone SE-class widths. */
+@media (max-width: 374px) {
+    .dash-perf-cards .analysis-card {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .dash-perf-cards .metric-cell {
+        padding: 10px;
+        gap: 8px;
+        border-radius: 8px;
+    }
+
+    .dash-perf-cards .cell-number {
+        font-size: 19px;
+    }
+
+    .dash-perf-cards .dev-badge {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+
+    .dash-perf-cards .btn-view-analysis {
+        padding: 11px;
+        font-size: 13px;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════

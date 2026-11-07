@@ -1,17 +1,9 @@
 {% extends 'students/base.html' %}
+{% load nav %}
 {% load static %}
 
 {% block sub_tabs %}
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="{% url 'edit_exam' %}?exam_id={{ exam.id }}" class="sub-nav-link active">
-        <i class="ph ph-gear-six"></i>
-        Edit Exam
-      </a>
-    </li>
-  </ul>
-</nav>
+{% sub_nav "edit_exam" %}
 {% endblock %}
 
 {% block content %}

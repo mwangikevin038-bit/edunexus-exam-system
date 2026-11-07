@@ -19,6 +19,8 @@
     display: flex;
     align-items: stretch;
     z-index: calc(var(--z-sidebar) + 10);
+    /* One continuous rule under the whole header — separates it from the
+       sidebar links and sub-nav tabs below, across both colour halves. */
     border-bottom: 1px solid var(--en-border);
 }
 
@@ -27,61 +29,63 @@
     display: none;
 }
 
-/* ── Brand Panel (white, fixed width) ─────────────────────── */
+/* ── Brand Panel (green — continues the sidebar rail to the top) ─ */
 .header-brand {
     width: 260px;
     flex: 0 0 260px;
-    background: #ffffff;
+    background: var(--en-green, #4CAF50);
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: 0 var(--space-5);
+    /* 24px = .ps-nav (10px) + .ps-nav-link (14px): the logo sits on the
+       same vertical axis as the sidebar icons below it. */
+    padding: 0 var(--space-6);
     flex-shrink: 0;
 }
 
 .brand-logo {
     height: 38px;
     width: auto;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
 
 .brand-text {
     font-size: 1.2rem;
     font-weight: 800;
-    color: #0f172a;
+    color: #ffffff;
     letter-spacing: -0.5px;
     white-space: nowrap;
     display: inline-block;
 }
 
-.brand-text span {
-    color: #4CAF50;
-}
-
-/* ── Surface Panel (grey, flex stretch) ───────────────────── */
+/* ── Surface Panel (white — client name + controls) ─────────── */
 .header-surface {
     flex: 1;
-    background: var(--en-surface, #f1f5f9);
+    background: var(--en-bg-elevated, #ffffff);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--space-5);
+    /* 14px puts the client name on the exact axis of the sub-nav tabs
+       below it (.sub-nav-bar starts at 260px, .sub-nav-link pads 14px). */
+    padding: 0 var(--space-5) 0 14px;
     min-width: 0;
     gap: var(--space-4);
 }
 
 .school-name {
-    font-size: 1.1rem;
-    font-weight: 900;
-    color: #4CAF50;
+    font-size: 1.0625rem;
+    font-weight: 800;
+    color: var(--en-text, #0f172a);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .school-name span {
-    color: #4CAF50;
+    color: var(--en-text, #0f172a);
 }
 
 /* ── Controls Group ───────────────────────────────────────── */
@@ -188,8 +192,8 @@
     width: 40px;
     height: 40px;
     border-radius: var(--radius-full);
-    background-color: #EF4444;
-    color: #ffffff;
+    background-color: var(--en-green, #4CAF50);
+    color: var(--en-navy, #0f172a);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -389,8 +393,8 @@
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: #EF4444;
-    color: #ffffff;
+    background: var(--en-green, #4CAF50);
+    color: var(--en-navy, #0f172a);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -449,7 +453,14 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    margin-top: calc(var(--global-header-height) + 35px);
+    margin-top: calc(var(--global-header-height) + var(--subnav-height));
+}
+
+/* Pages with no sub-nav shouldn't reserve space for one. This is a
+   separate rule so browsers without :has() support simply keep the
+   offset above instead of overlapping content. */
+body:not(:has(.sub-nav-bar)) .app-content {
+    margin-top: var(--global-header-height);
 }
 
 .main-content {
@@ -866,15 +877,15 @@ body.sidebar-collapsed .main-content {
 }
 
 .bottom-nav-item.active {
-    color: #2563EB;
+    color: var(--en-navy, #0f172a);
 }
 
 .bottom-nav-item.active::before {
-    background: rgba(37, 99, 235, 0.15);
+    background: var(--en-green-light, rgba(76, 175, 80, 0.16));
 }
 
 .bottom-nav-item.active i {
-    color: #2563EB;
+    color: var(--en-navy, #0f172a);
 }
 
 .bottom-nav-item:active {
@@ -897,13 +908,13 @@ body.sidebar-collapsed .main-content {
     border-radius: 50%;
     background:
         radial-gradient(circle at 34% 22%, rgba(255, 255, 255, 0.72), transparent 18px),
-        linear-gradient(145deg, #b7ff2f 0%, var(--en-green) 46%, #72b70d 100%);
+        linear-gradient(145deg, #81c784 0%, var(--en-green) 46%, #2e6b31 100%);
     border: 3px solid rgba(255, 255, 255, 0.95);
     display: flex;
     align-items: center;
     justify-content: center;
     margin-top: -20px;
-    box-shadow: 0 10px 20px rgba(155, 232, 22, 0.38),
+    box-shadow: 0 10px 20px rgba(76, 175, 80, 0.38),
                 0 4px 10px rgba(15, 23, 42, 0.18);
     transition: transform var(--duration-fast) var(--ease-out),
                 box-shadow var(--duration-fast) var(--ease-out),
@@ -931,11 +942,11 @@ body.sidebar-collapsed .main-content {
 }
 
 .bottom-nav-item.nav-center.active .nav-center-ring i {
-    color: #2563EB;
+    color: var(--en-green, #4CAF50);
 }
 
 .bottom-nav-item.nav-center.active {
-    color: #2563EB;
+    color: var(--en-navy, #0f172a);
 }
 
 /* ── Mobile Menu Sheet ──────────────────────────────────────── */
@@ -2228,8 +2239,8 @@ body.sidebar-collapsed .main-content {
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: linear-gradient(145deg, #60A5FA 0%, #2563EB 50%, #1E40AF 100%);
-        color: #fff;
+        background: var(--en-green, #4CAF50);
+        color: var(--en-navy, #0f172a);
         font-weight: 700;
         font-size: 0.8125rem;
         display: flex;
@@ -2277,8 +2288,8 @@ body.sidebar-collapsed .main-content {
         width: 40px;
         height: 40px;
         border-radius: 12px;
-        background: linear-gradient(145deg, #60A5FA 0%, #2563EB 50%, #1E40AF 100%);
-        color: #fff;
+        background: var(--en-green, #4CAF50);
+        color: var(--en-navy, #0f172a);
         font-weight: 700;
         font-size: 0.875rem;
         display: flex;

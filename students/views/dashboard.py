@@ -9,7 +9,7 @@ import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Case, Count, IntegerField, Q, When, Value
+from django.db.models import Avg, Case, Count, IntegerField, Max, Q, When, Value
 from django.db.models.functions import Cast, Substr
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -66,26 +66,125 @@ def _term_number(term):
         return 0
 
 
+def _section_for_grade(grade):
+    """(school_section, sub_section) an Exam row must carry to cover a grade.
+
+    Mirrors Exam's own scoping so a card can never resolve to a same-named
+    exam row from another section.  ``sub_section`` is None for JSS, which
+    matches the column's NULL.
+    """
+    if grade in ('Grade 1', 'Grade 2', 'Grade 3'):
+        return 'PRIMARY', 'LOWER'
+    if grade in ('Grade 4', 'Grade 5', 'Grade 6'):
+        return 'PRIMARY', 'UPPER'
+    return 'JSS', None
+
+
 def _exam_sort_key(key):
     """Sort key placing the most recent exam first (year, term, name order)."""
     name, term, year = key
     return (-int(year or 0), -_term_number(term), -_exam_name_rank(name), name or '')
 
 
-def _latest_exam_keys_by_grade(submission_qs, grades):
-    """{grade: [newest_key, prev_key]} built from PUBLISHED submissions only.
+def _publish_rank(key, published_ts):
+    """Sort key putting the exam the admin published LAST first.
+
+    ``published_ts`` is a float timestamp (``MarkSubmission.published_at``) or
+    None for rows published before that column existed.  Unknown times sort
+    last and fall back to the academic order, so a legacy exam never loses
+    its slot merely because nobody recorded when it went out.
+    """
+    if published_ts is None:
+        return (1, 0.0) + _exam_sort_key(key)
+    return (0, -float(published_ts)) + _exam_sort_key(key)
+
+
+def _exam_covers_grade(school, key, grade):
+    """True when an Exam row for this key exists AND covers the grade.
+
+    Published submissions can outlive the Exam row that scoped them, or name a
+    class that row never covered.  A performance card must not surface such an
+    exam — that is the same class-independence rule the mark-entry sheets and
+    the Manage Exams list already enforce.
+    """
+    if not school or not grade or not key:
+        return False
+    name, term, year = key
+    sec, sub = _section_for_grade(grade)
+    qs = Exam.all_objects.filter(
+        school=school, name=name, term=term, year=year,
+        school_section=sec, sub_section=sub, is_deleted=False,
+    )
+    for exam in qs:
+        if not exam.classes or grade in exam.classes:
+            return True
+    return False
+
+
+def _latest_exam_keys_by_grade(submission_qs, grades, school=None):
+    """{grade: [most_recently_published_key, prev_key]} from PUBLISHED rows.
 
     key = (exam_name, term, year). Grades with nothing published get no entry.
+
+    Keys are ordered by ``MarkSubmission.published_at`` — the exam the admin
+    published LAST is what the card shows, not whichever name the academic
+    calendar ranks newest (End of Term > Mid Term > Opener would otherwise
+    keep a stale end-of-term assessment in front of a freshly published
+    opener). Ties and rows published before the column existed fall back to
+    the academic order.  When ``school`` is supplied, keys with no covering
+    Exam row are dropped so an orphaned submission cannot put an out-of-scope
+    exam on a card.
     """
     per_grade = {}
     rows = submission_qs.filter(status='published', class_name__in=grades) \
-        .values_list('class_name', 'exam_name', 'term', 'year').distinct()
-    for cls, name, term, year in rows:
-        per_grade.setdefault(cls, set()).add((name, term, year))
-    return {
-        g: sorted(keys, key=_exam_sort_key)[:2]
-        for g, keys in per_grade.items()
+        .values('class_name', 'exam_name', 'term', 'year') \
+        .annotate(latest_publish=Max('published_at'))
+    for row in rows:
+        key = (row['exam_name'], row['term'], row['year'])
+        ts = row['latest_publish'].timestamp() if row['latest_publish'] else None
+        per_grade.setdefault(row['class_name'], {})[key] = ts
+    result = {
+        g: [k for k, _ in sorted(
+            key_ts.items(), key=lambda kv: _publish_rank(kv[0], kv[1]),
+        )][:2]
+        for g, key_ts in per_grade.items()
     }
+    if school is None:
+        return result
+    covered = {}
+    for g, keys in result.items():
+        kept = []
+        for k in keys:
+            ok = covered.get((g, k))
+            if ok is None:
+                ok = _exam_covers_grade(school, k, g)
+                covered[(g, k)] = ok
+            if ok:
+                kept.append(k)
+        result[g] = kept
+    return result
+
+
+def _latest_publish_ts(submission_qs, keys):
+    """{key: newest published_at timestamp} across PUBLISHED submissions.
+
+    Fuels the header tie-break and the 'newest published exam' KPI pick with
+    the same publish clock the cards themselves are ordered by.
+    """
+    if not keys:
+        return {}
+    q = Q()
+    for name, term, year in keys:
+        q |= Q(exam_name=name, term=term, year=year)
+    result = {}
+    for row in submission_qs.filter(q, status='published').values(
+        'exam_name', 'term', 'year',
+    ).annotate(latest_publish=Max('published_at')):
+        if row['latest_publish']:
+            result[(row['exam_name'], row['term'], row['year'])] = \
+                row['latest_publish'].timestamp()
+    return result
+
 
 
 def _published_tuples_by_exam(submission_qs, grades, exam_keys):
@@ -190,19 +289,95 @@ def _exam_label_for(key):
     return f"{(name or '').upper()} - ({year} TERM {term_num})"
 
 
-def _exam_id_for(school, key):
-    """Exam row id for a key; prefers the active row among duplicates."""
+def _exam_id_for(school, key, grade=None):
+    """Exam row id for a key, resolved for one grade.
+
+    Matching on name+term+year alone is not enough: three Exam rows can share
+    one name across PRIMARY/LOWER, PRIMARY/UPPER and JSS inside the same term.
+    Without ``grade`` the resolver returned whichever row sorted first, so the
+    Grade 7 card linked at the PRIMARY/UPPER exam.  With ``grade`` the section
+    and class scope are applied so "View Analysis" opens the row that really
+    covers the card's grade.
+    """
     if not key or not school:
         return None
     name, term, year = key
-    return (
-        Exam.all_objects.filter(
-            school=school, name=name, term=term, year=year, is_deleted=False,
-        )
-        .order_by('status')
-        .values_list('id', flat=True)
-        .first()
+    qs = Exam.all_objects.filter(
+        school=school, name=name, term=term, year=year, is_deleted=False,
     )
+    if grade:
+        sec, sub = _section_for_grade(grade)
+        qs = qs.filter(school_section=sec, sub_section=sub)
+
+    best_id = None
+    best_rank = None
+    for exam in qs.order_by('pk'):
+        if grade:
+            if exam.classes and grade not in exam.classes:
+                continue
+            # 0 = the row names this grade explicitly; 1 = section-wide row.
+            scope_rank = 0 if exam.classes else 1
+        else:
+            scope_rank = 0
+        # Prefer the open row when a name is duplicated inside the section.
+        status_rank = 0 if exam.status == 'active' else 1
+        rank = (scope_rank, status_rank)
+        if best_rank is None or rank < best_rank:
+            best_id, best_rank = exam.pk, rank
+    return best_id
+
+
+def _delta_baseline_label(cur_key, prev_key):
+    """Short 'vs …' caption naming the exam a delta is measured against.
+
+    Deltas are per-grade, so one card may compare within a term while the next
+    compares against last term.  Naming the baseline stops the arrows from
+    looking comparable when they are not.
+    """
+    if not prev_key:
+        return ''
+    pname, pterm, pyear = prev_key
+    cname, cterm, cyear = cur_key or (None, None, None)
+    label = (pname or '').strip().title()
+    if pterm == cterm and pyear == cyear:
+        return f"vs {label}"
+    return f"vs {label} {pyear} {pterm}".strip()
+
+
+def _header_exam_key(grade_exam_keys, publish_ts=None):
+    """Exam the section header should name: the one most grades are sitting on.
+
+    Grades land on different exams whenever one exam was published later than
+    another for only some of them.  The old behaviour named the globally newest
+    exam, so one early-publishing grade dictated a header that contradicted
+    every other card.  Ties break toward the exam the admin published most
+    recently (academic order when no publish time is known).
+    """
+    current = [keys[0] for keys in grade_exam_keys.values() if keys]
+    if not current:
+        return None
+    counts = {}
+    for k in current:
+        counts[k] = counts.get(k, 0) + 1
+    top = max(counts.values())
+    publish_ts = publish_ts or {}
+    return min(
+        (k for k, c in counts.items() if c == top),
+        key=lambda k: _publish_rank(k, publish_ts.get(k)),
+    )
+
+
+
+def _enrolled_by_class(school, grades):
+    """{grade: active headcount} — the population a card's 'Students' shows."""
+    if not school:
+        return {}
+    return {
+        r['class_name']: r['cnt']
+        for r in Student.all_objects.filter(
+            school=school, is_active=True, class_name__in=grades,
+        ).values('class_name').annotate(cnt=Count('id'))
+    }
 
 
 @login_required(login_url='login')
@@ -746,21 +921,24 @@ def dashboard(request):
     submission_qs = MarkSubmission.all_objects.filter(school=school) if school else MarkSubmission.objects.none()
     mark_qs = Mark.all_objects.filter(school=school) if school else Mark.objects.none()
 
-    # Per-grade latest two exams — chronological, from PUBLISHED submissions only.
-    grade_exam_keys = _latest_exam_keys_by_grade(submission_qs, section_grades)
+    # Per-grade latest two exams — ordered by when the admin PUBLISHED them,
+    # from PUBLISHED submissions only, and only where an Exam row covers the
+    # grade.
+    grade_exam_keys = _latest_exam_keys_by_grade(submission_qs, section_grades, school)
     needed_keys = sorted(
         {k for keys in grade_exam_keys.values() for k in keys}, key=_exam_sort_key,
     )
     tuples_by_exam = _published_tuples_by_exam(submission_qs, section_grades, needed_keys)
     stats_by_key = _stats_by_exam_and_grade(mark_qs, tuples_by_exam)
-    newest_key = min(
-        (keys[0] for keys in grade_exam_keys.values() if keys),
-        key=_exam_sort_key, default=None,
-    )
-    exam_label = _exam_label_for(newest_key)
+    # Header names the exam most cards show, not whichever grade published last.
+    current_keys = [keys[0] for keys in grade_exam_keys.values() if keys]
+    exam_label = _exam_label_for(_header_exam_key(
+        grade_exam_keys, _latest_publish_ts(submission_qs, current_keys),
+    ))
+    enrolled_by_class = _enrolled_by_class(school, section_grades)
 
     grade_performance_cards = []
-    if newest_key:
+    if exam_label:
         for g in section_grades:
             sk = _section_key_for_grade(g)
             colors = SECTION_COLORS[sk]
@@ -774,7 +952,7 @@ def dashboard(request):
             student_count = cur.get('student_count', 0)
             mean_grade = _mean_grade_for(mean_score, sk, school) if student_count else '\u2014'
             score_dev = round(mean_score - prev.get('mean_score', mean_score), 2) if (prev and student_count) else None
-            points_dev = round(mean_points - prev.get('mean_points', mean_points), 4) if (prev and student_count) else None
+            points_dev = round(mean_points - prev.get('mean_points', mean_points), 2) if (prev and student_count) else None
             grade_performance_cards.append({
                 'label': g,
                 'section_key': sk,
@@ -786,10 +964,16 @@ def dashboard(request):
                 'mean_points': mean_points,
                 'mean_grade': mean_grade,
                 'student_count': student_count,
+                'enrolled_count': enrolled_by_class.get(g, 0),
+                # Students with no published mark for this exam.  Reconciles
+                # the headcount with the mean's denominator (enrolled = sat +
+                # absent) — counting "any absent subject" instead would not.
+                'absent_count': max(enrolled_by_class.get(g, 0) - student_count, 0) if student_count else 0,
                 'score_dev': score_dev,
                 'points_dev': points_dev,
+                'dev_baseline': _delta_baseline_label(cur_key, prev_key),
                 'exam_label': _exam_label_for(cur_key),
-                'exam_id': _exam_id_for(school, cur_key) if cur_key else None,
+                'exam_id': _exam_id_for(school, cur_key, g) if cur_key else None,
             })
 
     return render(request, 'students/dashboard.html', {
@@ -928,18 +1112,29 @@ def school_admin_dashboard(request):
             return 'PRIMARY'
         return 'JSS'
 
-    # Per-grade latest two exams — chronological, from PUBLISHED submissions only.
-    grade_exam_keys = _latest_exam_keys_by_grade(submission_qs, grade_choices)
+    # Per-grade latest two exams — ordered by when the admin PUBLISHED them,
+    # from PUBLISHED submissions only, and only where an Exam row covers the
+    # grade.
+    grade_exam_keys = _latest_exam_keys_by_grade(submission_qs, grade_choices, school)
     needed_keys = sorted(
         {k for keys in grade_exam_keys.values() for k in keys}, key=_exam_sort_key,
     )
     tuples_by_exam = _published_tuples_by_exam(submission_qs, grade_choices, needed_keys)
     stats_by_key = _stats_by_exam_and_grade(mark_qs, tuples_by_exam)
+    current_keys = [keys[0] for keys in grade_exam_keys.values() if keys]
+    publish_ts = _latest_publish_ts(submission_qs, current_keys)
+    # Overall KPIs track the exam the admin published last — the same clock
+    # that orders the cards, rather than the academic calendar's name rank.
     newest_key = min(
-        (keys[0] for keys in grade_exam_keys.values() if keys),
-        key=_exam_sort_key, default=None,
+        current_keys,
+        key=lambda k: _publish_rank(k, publish_ts.get(k)),
+        default=None,
     )
-    exam_label = _exam_label_for(newest_key)
+    # Header names the exam most cards show.  Naming the globally newest exam
+    # let a single early-publishing grade label the whole section with an exam
+    # that 8 of the 9 cards were not showing.
+    exam_label = _exam_label_for(_header_exam_key(grade_exam_keys, publish_ts))
+    enrolled_by_class = _enrolled_by_class(school, grade_choices)
 
     # Build performance cards list
     grade_performance_cards = []
@@ -956,11 +1151,11 @@ def school_admin_dashboard(request):
             mean_score = cur.get('mean_score', 0)
             mean_points = cur.get('mean_points', 0)
             student_count = cur.get('student_count', 0)
-            mean_grade = _mean_grade_for(mean_score, sk, school) if student_count else '\u2014'
+            mean_grade = _mean_grade_for(mean_score, sk, school) if student_count else '—'
 
             # Deviation from the grade's previous exam (hidden without current data)
             score_dev = round(mean_score - prev.get('mean_score', mean_score), 2) if (prev and student_count) else None
-            points_dev = round(mean_points - prev.get('mean_points', mean_points), 4) if (prev and student_count) else None
+            points_dev = round(mean_points - prev.get('mean_points', mean_points), 2) if (prev and student_count) else None
 
             grade_performance_cards.append({
                 'label': g,
@@ -973,10 +1168,16 @@ def school_admin_dashboard(request):
                 'mean_points': mean_points,
                 'mean_grade': mean_grade,
                 'student_count': student_count,
+                'enrolled_count': enrolled_by_class.get(g, 0),
+                # Students with no published mark for this exam.  Reconciles
+                # the headcount with the mean's denominator (enrolled = sat +
+                # absent) — counting "any absent subject" instead would not.
+                'absent_count': max(enrolled_by_class.get(g, 0) - student_count, 0) if student_count else 0,
                 'score_dev': score_dev,
                 'points_dev': points_dev,
+                'dev_baseline': _delta_baseline_label(cur_key, prev_key),
                 'exam_label': _exam_label_for(cur_key),
-                'exam_id': _exam_id_for(school, cur_key) if cur_key else None,
+                'exam_id': _exam_id_for(school, cur_key, g) if cur_key else None,
             })
 
     overall_average = 0

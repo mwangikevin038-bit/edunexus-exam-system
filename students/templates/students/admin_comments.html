@@ -1,4 +1,5 @@
 {% extends 'students/base.html' %}
+{% load nav %}
 {% load static %}
 
 {% block sub_tabs %}
@@ -7,22 +8,7 @@
     .app-content{background:transparent!important}
   }
 </style>
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="{% url 'admin_comments' %}?section=JSS" class="sub-nav-link {% if not is_primary %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        JSS
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'admin_comments' %}?section=PRIMARY" class="sub-nav-link {% if is_primary %}active{% endif %}">
-        <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-        Primary
-      </a>
-    </li>
-  </ul>
-</nav>
+{% if is_primary %}{% sub_nav "comment_sections" active="Primary" %}{% else %}{% sub_nav "comment_sections" active="JSS" %}{% endif %}
 {% endblock %}
 
 {% block content %}

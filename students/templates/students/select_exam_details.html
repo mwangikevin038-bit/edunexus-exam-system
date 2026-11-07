@@ -1,4 +1,5 @@
 {% extends 'students/base.html' %}
+{% load nav %}
 {% load static %}
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/capture-mobile.css' %}">
@@ -6,49 +7,9 @@
 {% endblock %}
 {% block sub_tabs %}
 {% if is_admin_view %}
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=manage" class="sub-nav-link">
-        <i class="ph ph-gear-six"></i>
-        Manage Exams
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=create" class="sub-nav-link">
-        <i class="ph ph-plus-circle"></i>
-        Create Exam
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=grading" class="sub-nav-link">
-        <i class="ph ph-chart-line-up"></i>
-        Grading Systems
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=deleted" class="sub-nav-link">
-        <i class="ph ph-trash"></i>
-        Deleted Exams
-      </a>
-    </li>
-  </ul>
-</nav>
+{% sub_nav "exams" active="" %}
 {% else %}
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      {% if section == 'JSS' %}
-      <a href="{% url 'select_exam' %}" class="sub-nav-link active">
-      {% else %}
-      <a href="{% url 'select_exam_primary' %}" class="sub-nav-link active">
-      {% endif %}
-        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        Score Capture
-      </a>
-    </li>
-  </ul>
-</nav>
+{% sub_nav "score_capture" %}
 {% endif %}
 {% endblock %}
 {% block content %}
@@ -73,6 +34,52 @@
     .cp-dt-alert-success{background:#f0fdf4;color:#15803d}
     .cp-dt-alert-info{background:#eff6ff;color:#1d4ed8}
     .cp-dt-alert-danger{background:#fef2f2;color:#dc2626}
+
+    /* ── Focused capture mode (mobile) ─────────────────────────────
+       While the score sheet is on screen (body.en-capture, set by JS),
+       the page becomes ONE scroll container: the sheet itself. The
+       sticky header, sub-nav and bottom nav are hidden so nothing
+       overlaps the grid, the shell fills the viewport exactly, and the
+       submit bar pins to the real bottom. Assessment-list mode is
+       untouched (class removed), keeping its normal nav chrome. */
+    @media (max-width: 1023px) {
+        body.en-capture { overflow: hidden !important; }
+        body.en-capture .mobile-global-header { display: none !important; }
+        body.en-capture .dm-subnav { display: none !important; }
+        body.en-capture .bottom-nav { display: none !important; }
+        body.en-capture .app-content { overflow: visible !important; }
+        body.en-capture .main-content {
+            overflow: visible !important;
+            max-height: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        body.en-capture .en-shell { height: 100dvh !important; }
+        body.en-capture .cap { padding-bottom: 0 !important; }
+        body.en-capture .en-header {
+            padding-top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+            padding-bottom: 10px !important;
+        }
+        body.en-capture .en-body {
+            padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+        }
+        body.en-capture .en-body.has-submit-bar {
+            padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px)) !important;
+        }
+        body.en-capture .en-inline-submit.is-visible {
+            bottom: 0 !important;
+            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+        }
+        body.en-capture .en-unsaved-pill.is-visible {
+            bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+        }
+        /* De-clutter the top of the sheet while capturing: the Import/
+           Key-In segment (import is not live yet) and the meta pills
+           duplicate the hero card above the learner grid. */
+        body.en-capture .en-segment { display: none !important; }
+        body.en-capture .en-meta-pills { display: none !important; }
+        body.en-capture .en-hero { margin-bottom: 12px !important; padding: 14px !important; }
+    }
 </style>
 
 <div class="cp-desktop" id="examContent">
@@ -819,7 +826,7 @@
         if (submitBar) {
             document.body.appendChild(submitBar);
             if (isSubmitted || isLocked) {
-                submitBar.remove();
+                submitBar.style.display = 'none';
             }
         }
 
@@ -1068,6 +1075,44 @@
             }
         }).catch(function() { showToast('Network error', 'error'); });
     };
+})();
+</script>
+<script>
+(function () {
+    // ── Focused capture mode ───────────────────────────────────────
+    // Adds body.en-capture only while the score sheet (en-shell) is on
+    // screen. CSS then hides the mobile chrome (header/sub-nav/bottom
+    // nav), gives the sheet the full viewport and keeps IT as the one
+    // scroll container — so the grid can always scroll to the very last
+    // learner and nothing floats over the mark-entry rows.
+    function syncCaptureMode() {
+        if (!document.body) return;
+        var entry = document.querySelector('#examContent .en-shell');
+        document.body.classList.toggle('en-capture', !!entry);
+    }
+    syncCaptureMode();
+    document.addEventListener('DOMContentLoaded', syncCaptureMode);
+    // HTMX swaps in/out of the sheet (tap subject / back to list)
+    document.addEventListener('htmx:afterSwap', syncCaptureMode);
+
+    // ── Premium entry flow: keyboard Next/Go follows with the view ──
+    // When focus moves to a score box (keyboard next key, Enter handler,
+    // or tap), centre that learner's row inside the sheet so it is never
+    // hidden behind the keyboard, header or submit bar.
+    document.addEventListener('focusin', function (e) {
+        var el = e.target;
+        if (!el || !el.classList || !el.classList.contains('js-score')) return;
+        if (window.innerWidth >= 1024) return;
+        var row = el.closest ? el.closest('.en-student') : null;
+        setTimeout(function () {
+            var target = row || el;
+            try {
+                target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            } catch (err) {
+                try { target.scrollIntoView({ block: 'center' }); } catch (e2) {}
+            }
+        }, 90);
+    });
 })();
 </script>
 {% endblock %}

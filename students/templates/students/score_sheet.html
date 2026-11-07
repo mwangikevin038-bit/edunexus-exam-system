@@ -1,19 +1,11 @@
 {% extends 'students/base.html' %}
+{% load nav %}
 
 {% block sub_tabs %}
 <style>
   .main-content{background:#eaecf0!important}
 </style>
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="{% url 'printouts_hub' %}" class="sub-nav-link active">
-        <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Printouts
-      </a>
-    </li>
-  </ul>
-</nav>
+{% sub_nav "printouts" %}
 {% endblock %}
 
 {% block content %}

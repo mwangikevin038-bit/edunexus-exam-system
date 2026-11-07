@@ -1,4 +1,5 @@
 {% extends 'students/base.html' %}
+{% load nav %}
 {% load static %}
 
 {% block sub_tabs %}
@@ -7,36 +8,7 @@
     .app-content{background:transparent!important}
   }
 </style>
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=manage" class="sub-nav-link active">
-        <i class="ph ph-gear-six"></i>
-        Manage Exams
-      </a>
-    </li>
-    {% if is_admin %}
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=create" class="sub-nav-link">
-        <i class="ph ph-plus-circle"></i>
-        Create Exam
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'grading_configuration' %}" class="sub-nav-link">
-        <i class="ph ph-chart-line-up"></i>
-        Grading Systems
-      </a>
-    </li>
-    <li class="sub-nav-item">
-      <a href="{% url 'manage_exams' %}?tab=deleted" class="sub-nav-link">
-        <i class="ph ph-trash"></i>
-        Deleted Exams
-      </a>
-    </li>
-    {% endif %}
-  </ul>
-</nav>
+{% if is_admin %}{% sub_nav "exams_config" %}{% else %}{% sub_nav "exams_config" only="Manage Exams" %}{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -850,21 +822,29 @@ document.addEventListener('DOMContentLoaded', function() {
             examDropdownMenu.classList.remove('open');
         });
 
-        // Handle item selection
+        // Handle item selection — carry the SELECTED grade, not the server's
+        // auto-detected one, so switching grade then exam stays coherent.
         var items = examDropdownMenu.querySelectorAll('.dropdown-item');
         items.forEach(function(item) {
             item.addEventListener('click', function() {
                 var examId = this.getAttribute('data-exam-id');
-                window.location.href = "{% url 'analyse_exam' %}?exam_id=" + examId + "&class_name={{ grade_name|escapejs }}";
+                var gradeSel = document.getElementById('gradeSelect');
+                var className = (gradeSel && gradeSel.value)
+                    ? gradeSel.value
+                    : "{{ grade_name|escapejs }}";
+                window.location.href = "{% url 'analyse_exam' %}?exam_id=" + examId
+                    + "&class_name=" + encodeURIComponent(className);
             });
         });
     }
 
-    // Handle grade dropdown change (placeholder — needs backend support)
+    // Grade switch: reload with only the class so the server picks that
+    // grade's LATEST PUBLISHED exam (was an empty TODO placeholder).
     var gradeSelect = document.getElementById('gradeSelect');
     if (gradeSelect) {
         gradeSelect.addEventListener('change', function() {
-            // TODO: redirect to analyse_exam with grade filter
+            window.location.href = "{% url 'analyse_exam' %}?class_name="
+                + encodeURIComponent(this.value);
         });
     }
 

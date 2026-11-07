@@ -1,21 +1,13 @@
 {% extends 'students/base.html' %}
+{% load nav %}
 {% load static %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/dashboard-mobile.css' %}">
+<link rel="stylesheet" href="{% static 'css/dashboard-mobile.css' %}?v=2">
 {% endblock %}
 
 {% block sub_tabs %}
-<nav class="sub-nav-bar dm-subnav">
-  <ul class="sub-nav-list">
-    <li class="sub-nav-item">
-      <a href="{% url 'school_admin_dashboard' %}" class="sub-nav-link active">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Overview
-      </a>
-    </li>
-  </ul>
-</nav>
+{% sub_nav "overview_admin" %}
 {% endblock %}
 
 {% block content %}
@@ -234,57 +226,7 @@
 <!-- Dynamic Performance Cards Grid (Grade 1 to Grade 9) -->
 <div class="performance-analysis-grid">
     {% for card in grade_performance_cards %}
-    <div class="analysis-card">
-        <div class="analysis-card-header">
-            <h4 class="class-level-title">{{ card.label }}</h4>
-            <span class="exam-period-label">{{ card.exam_label|default:"No Exam Data" }}</span>
-        </div>
-        <div class="metrics-matrix-subgrid">
-            <div class="metric-cell">
-                <div class="cell-label-row">
-                    <span class="cell-label">Mean Points</span>
-                    {% if card.points_dev is not None %}
-                        {% if card.points_dev > 0 %}
-                        <span class="dev-badge">{{ card.points_dev|floatformat:3 }} <span class="dev-arrow up">↑</span></span>
-                        {% elif card.points_dev < 0 %}
-                        <span class="dev-badge">{{ card.points_dev|floatformat:3 }} <span class="dev-arrow down">↓</span></span>
-                        {% else %}
-                        <span style="color:#9CA3AF;font-weight:600;font-size:13px;">0.0</span>
-                        {% endif %}
-                    {% endif %}
-                </div>
-                <span class="cell-number">{% if card.student_count %}{{ card.mean_points|floatformat:4 }}{% else %}&mdash;{% endif %}</span>
-            </div>
-            <div class="metric-cell">
-                <div class="cell-label-row">
-                    <span class="cell-label">Mean Marks</span>
-                    {% if card.score_dev is not None %}
-                        {% if card.score_dev > 0 %}
-                        <span class="dev-badge">{{ card.score_dev|floatformat:3 }} <span class="dev-arrow up">↑</span></span>
-                        {% elif card.score_dev < 0 %}
-                        <span class="dev-badge">{{ card.score_dev|floatformat:3 }} <span class="dev-arrow down">↓</span></span>
-                        {% else %}
-                        <span style="color:#9CA3AF;font-weight:600;font-size:13px;">0.0</span>
-                        {% endif %}
-                    {% endif %}
-                </div>
-                <span class="cell-number">{% if card.student_count %}{{ card.mean_score|floatformat:2 }}%{% else %}&mdash;{% endif %}</span>
-            </div>
-            <div class="metric-cell">
-                <span class="cell-label">Mean Grade</span>
-                <span class="cell-number">{{ card.mean_grade }}</span>
-            </div>
-            <div class="metric-cell">
-                <span class="cell-label">Students</span>
-                <span class="cell-number">{{ card.student_count }}</span>
-            </div>
-        </div>
-        {% if card.exam_id %}
-        <button class="btn-view-analysis" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
-            View Analysis
-        </button>
-        {% endif %}
-    </div>
+    {% include 'students/partials/grade_performance_card.html' %}
     {% empty %}
     <div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:#94a3b8;">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin:0 auto 12px"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 4-6"/></svg>
@@ -349,16 +291,7 @@
     </header>
 
     <!-- MOBILE SUB-NAV -->
-    <nav class="sub-nav-bar dm-subnav">
-      <ul class="sub-nav-list">
-        <li class="sub-nav-item">
-          <a href="{% url 'school_admin_dashboard' %}" class="sub-nav-link active">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            Overview
-          </a>
-        </li>
-      </ul>
-    </nav>
+    {% sub_nav "overview_admin" %}
 
     <!-- SCROLLABLE BODY -->
     <main class="admin-body">
@@ -449,49 +382,7 @@
             </div>
             <div class="dash-perf-cards">
                 {% for card in grade_performance_cards %}
-                <div class="dash-perf-card" style="border-top: 3px solid {{ card.accent }}">
-                    <div class="dash-perf-header" style="background:{{ card.bg }}">
-                        <span class="dash-perf-grade" style="color:{{ card.text }}">{{ card.label }}</span>
-                        <span class="dash-perf-exam">{{ card.exam_label|default:"No Data" }}</span>
-                    </div>
-                    <div class="dash-perf-grid">
-                        <div class="dash-perf-cell">
-                            <span class="dash-perf-cell-label">Mean Points</span>
-                            <span class="dash-perf-cell-value">{% if card.student_count %}{{ card.mean_points|floatformat:4 }}{% else %}&mdash;{% endif %}</span>
-                            {% if card.points_dev is not None %}
-                                {% if card.points_dev > 0 %}
-                                <span class="dash-perf-dev up">+{{ card.points_dev|floatformat:3 }}</span>
-                                {% elif card.points_dev < 0 %}
-                                <span class="dash-perf-dev down">{{ card.points_dev|floatformat:3 }}</span>
-                                {% endif %}
-                            {% endif %}
-                        </div>
-                        <div class="dash-perf-cell">
-                            <span class="dash-perf-cell-label">Mean Marks</span>
-                            <span class="dash-perf-cell-value">{% if card.student_count %}{{ card.mean_score|floatformat:2 }}%{% else %}&mdash;{% endif %}</span>
-                            {% if card.score_dev is not None %}
-                                {% if card.score_dev > 0 %}
-                                <span class="dash-perf-dev up">+{{ card.score_dev|floatformat:2 }}</span>
-                                {% elif card.score_dev < 0 %}
-                                <span class="dash-perf-dev down">{{ card.score_dev|floatformat:2 }}</span>
-                                {% endif %}
-                            {% endif %}
-                        </div>
-                        <div class="dash-perf-cell">
-                            <span class="dash-perf-cell-label">Mean Grade</span>
-                            <span class="dash-perf-cell-value">{{ card.mean_grade }}</span>
-                        </div>
-                        <div class="dash-perf-cell">
-                            <span class="dash-perf-cell-label">Students</span>
-                            <span class="dash-perf-cell-value" style="color:{{ card.accent }}">{{ card.student_count }}</span>
-                        </div>
-                    </div>
-                    {% if card.exam_id %}
-                    <button class="dash-perf-btn" style="background:{{ card.accent }}" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
-                        View Analysis <i class="ph ph-arrow-right"></i>
-                    </button>
-                    {% endif %}
-                </div>
+                {% include 'students/partials/grade_performance_card.html' %}
                 {% endfor %}
             </div>
         </section>

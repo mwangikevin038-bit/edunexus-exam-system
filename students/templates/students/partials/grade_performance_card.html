@@ -1,0 +1,58 @@
+{# One grade-performance card — rendered by BOTH the desktop .performance-analysis-grid and the mobile .dash-perf-cards shell, so the two layouts can never drift apart in markup or content. #}
+<div class="analysis-card">
+    <div class="analysis-card-header">
+        <h4 class="class-level-title">{{ card.label }}</h4>
+        <span class="exam-period-label">{{ card.exam_label|default:"No Exam Data" }}</span>
+    </div>
+    <div class="metrics-matrix-subgrid">
+        <div class="metric-cell">
+            <div class="cell-label-row">
+                <span class="cell-label">Mean Points</span>
+                {% if card.points_dev is not None %}
+                    {% if card.points_dev > 0 %}
+                    <span class="dev-badge">{{ card.points_dev|floatformat:2 }} <span class="dev-arrow up">↑</span></span>
+                    {% elif card.points_dev < 0 %}
+                    <span class="dev-badge">{{ card.points_dev|floatformat:2 }} <span class="dev-arrow down">↓</span></span>
+                    {% else %}
+                    <span style="color:#9CA3AF;font-weight:600;font-size:13px;">0.0</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+            <span class="cell-number">{% if card.student_count %}{{ card.mean_points|floatformat:2 }}{% else %}&mdash;{% endif %}</span>
+        </div>
+        <div class="metric-cell">
+            <div class="cell-label-row">
+                <span class="cell-label">Mean Marks</span>
+                {% if card.score_dev is not None %}
+                    {% if card.score_dev > 0 %}
+                    <span class="dev-badge">{{ card.score_dev|floatformat:2 }} <span class="dev-arrow up">↑</span></span>
+                    {% elif card.score_dev < 0 %}
+                    <span class="dev-badge">{{ card.score_dev|floatformat:2 }} <span class="dev-arrow down">↓</span></span>
+                    {% else %}
+                    <span style="color:#9CA3AF;font-weight:600;font-size:13px;">0.0</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+            <span class="cell-number">{% if card.student_count %}{{ card.mean_score|floatformat:2 }}%{% else %}&mdash;{% endif %}</span>
+            {% if card.dev_baseline and card.score_dev is not None %}
+            <span class="dev-baseline">{{ card.dev_baseline }}</span>
+            {% endif %}
+        </div>
+        <div class="metric-cell">
+            <span class="cell-label">Mean Grade</span>
+            <span class="cell-number">{{ card.mean_grade }}</span>
+        </div>
+        <div class="metric-cell">
+            <span class="cell-label">Students</span>
+            <span class="cell-number">{% if card.student_count %}{% if card.enrolled_count %}{{ card.enrolled_count }}{% else %}{{ card.student_count }}{% endif %}{% else %}&mdash;{% endif %}</span>
+            {% if card.student_count and card.absent_count %}
+            <span class="perf-absent">{{ card.absent_count }} absent</span>
+            {% endif %}
+        </div>
+    </div>
+    {% if card.exam_id %}
+    <button class="btn-view-analysis" onclick="window.location.href='{% url 'analyse_exam' %}?exam_id={{ card.exam_id }}&class_name={{ card.label|urlencode }}'">
+        View Analysis
+    </button>
+    {% endif %}
+</div>
