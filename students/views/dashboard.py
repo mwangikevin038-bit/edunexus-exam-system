@@ -869,7 +869,6 @@ def dashboard(request):
             assignment.progress_pct = 0
 
     # --- Term dates for calendar ---
-    import json as _json
     term_dates_qs = TermDate.objects.filter(school=school).order_by('-academic_year', 'term') if school else TermDate.objects.none()
     term_events = []
     for td in term_dates_qs:
@@ -991,8 +990,8 @@ def dashboard(request):
         'class_teacher_scope': class_scope,
         'current_year': datetime.date.today().year,
         'section': section,
-        'term_events_json': _json.dumps(term_events),
-        'school_events_json': _json.dumps(school_events),
+        'term_events':          term_events,
+        'school_events':        school_events,
         'grade_performance_cards': grade_performance_cards,
         'exam_label': exam_label,
     })
@@ -1221,9 +1220,33 @@ def school_admin_dashboard(request):
     # --- Active classes count ---
     active_classes = len([g for g, d in class_stats.items() if d['total'] > 0])
 
+    # --- Recent activity feed (dashboard "what just happened") -------------
+    # published_at / reviewed_at are both nullable, so a single SQL ORDER BY
+    # would order NULLs inconsistently across backends.  Fetch a bounded
+    # window newest-first, then re-sort in Python on whichever timestamp the
+    # submission last moved.
+    _activity_pool = list(
+        submission_qs.select_related('teacher__user', 'subject')
+        .order_by('-submitted_at')[:250]
+    )
+    _activity_pool.sort(
+        key=lambda s: s.published_at or s.reviewed_at or s.submitted_at,
+        reverse=True,
+    )
+    recent_activity = []
+    for sub in _activity_pool[:6]:
+        recent_activity.append({
+            'title': f"{sub.subject.name if sub.subject else 'Marks'} · "
+                     f"{sub.class_name} {sub.stream}",
+            'who': sub.teacher.get_full_title() if sub.teacher else '—',
+            'exam': f"{sub.exam_name} · {sub.term} {sub.year}",
+            'status': sub.get_status_display(),
+            'status_key': sub.status,
+            'when': sub.published_at or sub.reviewed_at or sub.submitted_at,
+        })
+
     # --- Term dates for calendar ---
     from ..models import TermDate
-    import json as _json
     term_dates_qs = TermDate.objects.filter(school=school).order_by('-academic_year', 'term')
     term_events = []
     for td in term_dates_qs:
@@ -1273,8 +1296,9 @@ def school_admin_dashboard(request):
         'active_classes':       active_classes,
         'is_primary':           True,
         'section_label':        'All Sections',
-        'term_events_json':     _json.dumps(term_events),
-        'school_events_json':   _json.dumps(school_events),
+        'term_events':          term_events,
+        'school_events':        school_events,
+        'recent_activity':      recent_activity,
     })
 
 

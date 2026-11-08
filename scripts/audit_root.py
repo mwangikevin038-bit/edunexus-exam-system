@@ -6,7 +6,7 @@ import re
 ROOT = pathlib.Path("static/css")
 files = [
     "capture-mobile.css",
-    "dashboard-mobile.css",
+    "dashboard.css",
     "entry-mobile.css",
     "rc-mobile.css",
     "results-mobile.css",

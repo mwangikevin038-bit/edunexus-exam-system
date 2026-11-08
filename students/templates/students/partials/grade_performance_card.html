@@ -1,4 +1,4 @@
-{# One grade-performance card — rendered by BOTH the desktop .performance-analysis-grid and the mobile .dash-perf-cards shell, so the two layouts can never drift apart in markup or content. #}
+{# One grade-performance card, shared by every page that shows the analysis grid (both dashboards, results_list, teacher_classes). Rendered inside .performance-analysis-grid, which reflows 3 -> 2 -> 1 columns via css/dashboard.css. #}
 <div class="analysis-card">
     <div class="analysis-card-header">
         <h4 class="class-level-title">{{ card.label }}</h4>

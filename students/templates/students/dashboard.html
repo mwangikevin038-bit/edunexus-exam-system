@@ -1,8 +1,27 @@
 ﻿{% extends 'students/base.html' %}
 {% load nav %}
 {% load static %}
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     TEACHER DASHBOARD  —  /dashboard/
+     Reachable by any authenticated teacher (students/security/roles.py).
+
+     ONE responsive DOM: every element below is rendered once and reflows via
+     css/dashboard.css between desktop (1440x900) and phone (390x844).
+
+     ROLE SEPARATION — this file is deliberately view-only:
+       * No data-add-url / data-delete-pattern on #dashCalendar, so
+         dashboard_calendar.js has no event-write endpoint to call.
+       * No Add Event modal, no saveEvent / deleteEvent.
+       * Every href below is a teacher-safe page (Score Capture, Results,
+         Class Lists, Find Report, Profile). No admin-only route is ever
+         linked from here.
+     ═══════════════════════════════════════════════════════════════════════ -->
+
+{% block title %}Teacher Dashboard · EDUNEXUS{% endblock %}
+
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/dashboard-mobile.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=3">
 {% endblock %}
 
 {% block sub_tabs %}
@@ -11,1013 +30,379 @@
 
 {% block content %}
 {% include 'students/partials/messages_toast.html' %}
-<style>
-    @keyframes tdFadeUp {
-        from { opacity:0; transform:translateY(16px); }
-        to   { opacity:1; transform:translateY(0); }
-    }
-    .td{padding:0;max-width:100%;animation:tdFadeUp .5s cubic-bezier(.16,1,.3,1) both}
-    .td-greet{margin-bottom:28px;display:flex;align-items:flex-start;justify-content:space-between}
-    .td-greet-text h1{font-size:1.65rem;font-weight:800;color:#1a1a1a;letter-spacing:-.035em;margin:0;line-height:1.25}
-    .td-greet-text h1 em{font-style:normal;background:linear-gradient(135deg,#2d9d3a 0%,#4CAF50 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .td-greet-text p{font-size:.8125rem;color:#86868b;margin:5px 0 0;font-weight:500;letter-spacing:-.01em}
-    .td-greet-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:rgba(76,175,80,.08);color:#2d9d3a;font-size:.6875rem;font-weight:700;letter-spacing:.02em;flex-shrink:0;margin-top:2px}
-    .td-greet-badge i{font-size:13px}
-    .td-hero{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#4CAF50 0%,#43A047 50%,#388E3C 100%);border-radius:16px;padding:20px 22px;margin-bottom:16px;text-decoration:none;color:#fff;box-shadow:0 4px 20px -4px rgba(76,175,80,.35);transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .2s}
-    .td-hero:hover{transform:translateY(-2px);box-shadow:0 8px 30px -6px rgba(76,175,80,.45)}
-    .td-hero-left{display:flex;align-items:center;gap:14px}
-    .td-hero-icon{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.2);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .td-hero-icon i{font-size:22px;color:#fff}
-    .td-hero-text h3{font-size:.9375rem;font-weight:700;color:#fff;margin:0 0 2px;letter-spacing:-.01em}
-    .td-hero-text p{font-size:.75rem;color:rgba(255,255,255,.8);margin:0;font-weight:500}
-    .td-hero-arrow{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;transition:background .15s}
-    .td-hero:hover .td-hero-arrow{background:rgba(255,255,255,.28)}
-    .td-hero-arrow i{font-size:16px;color:#fff}
 
-    .dashboard-master-grid-60-40{display:grid;grid-template-columns:6fr 4fr;gap:20px;align-items:start}
-    .dashboard-left-column{display:flex;flex-direction:column;gap:20px}
-    .dashboard-right-column{height:100%}
+{# Score Capture lives on a different route per section. #}
+{% if section == 'JSS' %}
+    {% url 'select_exam' as capture_url %}
+{% else %}
+    {% url 'select_exam_primary' as capture_url %}
+{% endif %}
 
-    .dashboard-welcome-banner{position:relative;height:110px;border-radius:14px;overflow:hidden;background:url('/static/images/login-bg.png') center/cover no-repeat;display:flex;align-items:center;padding:0 24px}
-    .banner-overlay{position:absolute;inset:0;background:rgba(15,23,42,.75)}
-    .banner-content{position:relative;z-index:2;display:flex;align-items:center;gap:16px;width:100%}
-    .banner-avatar-wrapper{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-    .banner-avatar-img{width:100%;height:100%;object-fit:cover}
-    .banner-avatar-wrapper i{font-size:36px;color:#fff}
-    .banner-text-block{display:flex;flex-direction:column;gap:4px}
-    .banner-greeting{font-size:20px;font-weight:700;color:#fff;margin:0}
-    .banner-subtext{font-size:14px;color:#cbd5e1;margin:0}
+<div class="dash-shell">
 
-    .statistics-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .stat-card{display:flex;align-items:center;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;text-decoration:none;color:inherit;position:relative;transition:box-shadow .15s}
-    .stat-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.06)}
-    .stat-icon-box{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:14px;font-size:22px}
-    .stat-icon-box.blue-theme{background:#e0f2fe;color:#0284c7}
-    .stat-info{display:flex;flex-direction:column;gap:2px}
-    .stat-number{font-size:22px;font-weight:700;color:#1e293b}
-    .stat-label{font-size:13px;color:#64748b;font-weight:500}
-    .stat-arrow{position:absolute;right:16px;color:#94a3b8;font-size:14px}
+    {# ── 1 · HERO ─────────────────────────────────────────────────────── #}
+    <header class="dash-hero">
+        <span class="dash-hero-orb dash-hero-orb-a"></span>
+        <span class="dash-hero-orb dash-hero-orb-b"></span>
 
-    .upcoming-events-card.tall-layout{background-color:#ffffff;border:1px solid rgba(0,0,0,.04);border-radius:var(--radius-sm);padding:var(--space-4);display:flex;flex-direction:column;height:100%;gap:var(--space-3);box-shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)}
-    .events-header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #22c55e;padding-bottom:10px;margin-bottom:10px}
-    .events-title{font-size:15px;font-weight:700;color:var(--en-navy);margin:0}
-    .events-header-actions{display:flex;align-items:center;gap:8px}
-    .icon-toggle-group{display:flex;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0}
-    .icon-toggle-btn{width:38px;height:36px;display:flex;align-items:center;justify-content:center;border:none;background:#f8fafc;color:#64748b;cursor:pointer;font-size:17px;transition:background .15s,color .15s}
-    .icon-toggle-btn+.icon-toggle-btn{border-left:1px solid #e2e8f0}
-    .icon-toggle-btn.active{background:#1e293b;color:#fff}
-    .btn-add-event{background-color:#22c55e;color:#fff;border:none;border-radius:6px;padding:0 16px;height:34px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer}
-    .events-nav-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .events-nav-row .events-date-slider{flex-shrink:0}
-    .events-nav-row .view-filter-pills{max-width:none}
-    .events-date-slider{display:flex;align-items:center;justify-content:center;gap:var(--space-6);padding:var(--space-2) 0}
-    .date-nav-arrow{background:transparent;border:none;color:#3b82f6;cursor:pointer;font-size:18px;display:flex;align-items:center;padding:4px}
-    .date-display-box{display:flex;flex-direction:column;align-items:center;text-align:center}
-    .main-date-range{font-size:18px;font-weight:700;color:var(--en-navy)}
-    .sub-date-range{font-size:14px;font-weight:600;color:#64748b}
-    .view-filter-pills{display:flex;align-items:center;gap:2px}
-    .view-pill{background:transparent;border:none;font-size:13px;font-weight:600;color:#64748b;padding:6px 12px;border-radius:6px;cursor:pointer;text-align:center;transition:background .15s,color .15s}
-    .view-pill.active{background-color:#3b82f6;color:#fff}
-    .events-viewport.extended-panel{flex-grow:1;background-color:transparent;border:none;border-radius:0;display:block;align-items:unset;justify-content:unset;min-height:120px;padding:0}
-    .empty-events-text{font-size:13px;color:#94a3b8;margin:0;font-style:italic}
-
-    .section-header-title{padding-top:24px;font-size:16px;font-weight:700;color:#1e293b}
-    .performance-analysis-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;padding:16px 0;width:100%}
-    .analysis-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;display:flex;flex-direction:column;gap:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);transition:transform .2s,box-shadow .2s}
-    .analysis-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
-    .analysis-card-header{display:flex;flex-direction:column;gap:4px}
-    .class-level-title{font-size:19px;font-weight:700;color:#1e293b;margin:0;letter-spacing:-.02em}
-    .exam-period-label{font-size:14px;font-weight:500;color:#64748b;letter-spacing:0;text-transform:uppercase}
-    .metrics-matrix-subgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
-    .metric-cell{background:#f1f5f9;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px}
-    .cell-label-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px}
-    .cell-label{font-size:14px;font-weight:500;color:#1f2937;min-width:0}
-    .cell-label-row .cell-label{flex:0 1 33%}
-    .dev-badge{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;background:#e5e7eb;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:600;color:#334155;line-height:1.2;white-space:nowrap}
-    .dev-badge .dev-arrow.up{color:#16A34A}
-    .dev-badge .dev-arrow.down{color:#DC2626}
-    .cell-number{font-size:24px;font-weight:700;color:#4CAF50;line-height:1.1}
-    .btn-view-analysis{width:100%;padding:13px;border:none;background-color:#4CAF50;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;border-radius:8px}
-    .btn-view-analysis:hover{opacity:.9}
-
-    .global-workspace-footer{width:100%;padding:24px 16px;margin-top:16px;border-top:1px solid #f1f5f9}
-    .footer-copyright-note{font-size:13px;color:#94a3b8;font-weight:500;margin:0}
-
-    @media (max-width:1199px){
-        .performance-analysis-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-    }
-    @media (max-width:1023px){
-        .dashboard-master-grid-60-40{grid-template-columns:1fr}
-        .performance-analysis-grid{grid-template-columns:repeat(2,1fr)}
-    }
-    @media (max-width: 1023px){
-        .performance-analysis-grid{grid-template-columns:1fr}
-    }
-</style>
-
-<!-- DESKTOP DASHBOARD -->
-<div class="td">
-
-    <!-- 60/40 GRID -->
-    <div class="dashboard-master-grid-60-40">
-
-        <!-- LEFT COLUMN (60%) -->
-        <div class="dashboard-left-column">
-
-            <!-- Welcome Banner -->
-            <div class="dashboard-welcome-banner">
-                <div class="banner-overlay"></div>
-                <div class="banner-content">
-                    <div class="banner-avatar-wrapper">
-                        {% if user.profile_picture %}
-                            <img src="{{ user.profile_picture.url }}" alt="Profile" class="banner-avatar-img">
-                        {% else %}
-                            <i class="ph-fill ph-user-circle"></i>
-                        {% endif %}
-                    </div>
-                    <div class="banner-text-block">
-                        <h2 class="banner-greeting">Welcome, {{ request.user.first_name|default:"Teacher" }}</h2>
-                        <p class="banner-subtext">{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stat Cards -->
-            <div class="statistics-cards-grid">
-                <a href="{% url 'class_lists' %}" class="stat-card" style="text-decoration:none;color:inherit">
-                    <div class="stat-icon-box blue-theme"><i class="ph ph-books"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-number">{{ assignment_count }}</span>
-                        <span class="stat-label">My Allocations</span>
-                    </div>
-                    <i class="ph ph-arrow-right stat-arrow"></i>
-                </a>
-                <a href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}" class="stat-card" style="text-decoration:none;color:inherit">
-                    <div class="stat-icon-box blue-theme"><i class="ph ph-clipboard-text"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-number">{{ active_exam_count }}</span>
-                        <span class="stat-label">Active Exams</span>
-                    </div>
-                    <i class="ph ph-arrow-right stat-arrow"></i>
-                </a>
-                <a href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}" class="stat-card" style="text-decoration:none;color:inherit">
-                    <div class="stat-icon-box blue-theme"><i class="ph ph-paper-plane-tilt"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-number">{{ submitted_count }}</span>
-                        <span class="stat-label">Submitted</span>
-                    </div>
-                    <i class="ph ph-arrow-right stat-arrow"></i>
-                </a>
-                <a href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}" class="stat-card" style="text-decoration:none;color:inherit">
-                    <div class="stat-icon-box blue-theme"><i class="ph ph-arrow-u-up-left"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-number">{{ returned_count }}</span>
-                        <span class="stat-label">Returned</span>
-                    </div>
-                    <i class="ph ph-arrow-right stat-arrow"></i>
-                </a>
-            </div>
-
-        </div>
-
-        <!-- RIGHT COLUMN (40%) - Calendar -->
-        <div class="dashboard-right-column">
-            <div class="upcoming-events-card tall-layout">
-                <!-- Header Row -->
-                <div class="events-header">
-                    <h3 class="events-title">Upcoming Events</h3>
-                    <div class="events-header-actions">
-                        <div class="icon-toggle-group">
-                            <button class="icon-toggle-btn active" id="calViewListBtn" onclick="setCalView('list',null)" title="List view"><i class="ph ph-list-bullets"></i></button>
-                            <button class="icon-toggle-btn" id="calViewGridBtn" onclick="setCalView('month',null)" title="Calendar view"><i class="ph ph-calendar"></i></button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Month Navigator + View Pills Row -->
-                <div class="events-nav-row">
-                    <div class="events-date-slider">
-                        <button class="date-nav-arrow" onclick="calNav(-1)"><i class="ph ph-caret-left"></i></button>
-                        <div class="date-display-box">
-                            <span class="main-date-range" id="calMain"></span>
-                            <span class="sub-date-range" id="calSub"></span>
-                        </div>
-                        <button class="date-nav-arrow" onclick="calNav(1)"><i class="ph ph-caret-right"></i></button>
-                    </div>
-                    <div class="view-filter-pills">
-                        <button class="view-pill active" onclick="setCalView('month',this)">Month</button>
-                        <button class="view-pill" onclick="setCalView('week',this)">Week</button>
-                        <button class="view-pill" onclick="setCalView('day',this)">Day</button>
-                        <button class="view-pill" onclick="setCalView('list',this)">List</button>
-                    </div>
-                </div>
-
-                <!-- Calendar Grid Viewport -->
-                <div class="events-viewport extended-panel" id="eventsViewport">
-                    <div class="cal-grid" id="calGrid"></div>
-                </div>
+        <div class="dash-hero-main">
+            <span class="dash-hero-eyebrow">
+                <i class="ph ph-chalkboard-teacher"></i>
+                {% if section == 'JSS' %}Junior Secondary{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section
+            </span>
+            <h1 class="dash-hero-title">Welcome back, <em>{{ teacher.get_full_title|default:user.first_name|default:"Teacher" }}</em></h1>
+            <p class="dash-hero-sub">
+                Your allocations, mark-entry progress and the results your
+                school has published — all in one place.
+            </p>
+            <div class="dash-hero-meta">
+                <span class="dash-chip"><i class="ph ph-books"></i> {{ assignment_count }} allocation{{ assignment_count|pluralize }}</span>
+                <span class="dash-chip"><i class="ph ph-clipboard-text"></i> {{ active_exam_count }} active exam{{ active_exam_count|pluralize }}</span>
+                {% if exam_label %}<span class="dash-chip"><i class="ph ph-chart-bar"></i> {{ exam_label }}</span>{% endif %}
+                {% if class_teacher_scope %}
+                <span class="dash-chip is-success"><i class="ph ph-chalkboard"></i> Class teacher · {{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</span>
+                {% endif %}
             </div>
         </div>
 
-    </div>
-
-<!-- ═══ Add Event Modal ═══════════════════════════════════════ -->
-<div class="event-modal-overlay" id="eventModalOverlay" onclick="closeEventModal()">
-    <div class="event-modal-dialog" onclick="event.stopPropagation()">
-        <div class="event-modal-header">
-            <h3 class="event-modal-title">Add Event</h3>
-            <button class="event-modal-close" onclick="closeEventModal()">&times;</button>
-        </div>
-        <div class="event-modal-body">
-            <div class="event-modal-row">
-                <!-- Left Column -->
-                <div class="event-modal-col">
-                    <div class="event-field">
-                        <label class="event-label">Event Name</label>
-                        <input type="text" id="evtName" class="event-input" placeholder="Event Name">
-                    </div>
-                    <div class="event-field">
-                        <label class="event-label">Event Dates</label>
-                        <div class="event-radio-group">
-                            <label class="event-radio">
-                                <input type="radio" name="dateMode" value="single" checked onchange="toggleDateMode()">
-                                <span class="event-radio-dot"></span>
-                                Single
-                            </label>
-                            <label class="event-radio">
-                                <input type="radio" name="dateMode" value="range" onchange="toggleDateMode()">
-                                <span class="event-radio-dot"></span>
-                                Range
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <!-- Right Column -->
-                <div class="event-modal-col">
-                    <div class="event-field">
-                        <label class="event-label">Event Participants</label>
-                        <div class="event-custom-select" id="participantSelect" onclick="toggleParticipantDropdown()">
-                            <span class="event-select-display" id="participantDisplay">Select participants</span>
-                            <div class="event-dropdown" id="participantDropdown">
-                                <div class="event-dropdown-item" onclick="selectParticipant('Teachers', event)">Teachers</div>
-                                <div class="event-dropdown-item" onclick="selectParticipant('Parents', event)">Parents</div>
-                                <div class="event-dropdown-item" onclick="selectParticipant('All', event)">All</div>
-                            </div>
-                        </div>
-                        <i class="ph ph-caret-down event-select-chevron"></i>
-                    </div>
-                    <div class="event-field">
-                        <label class="event-label" id="pickDateLabel">Pick date</label>
-                        <div class="event-datepicker-trigger" id="datePickerTrigger" onclick="openDatePicker()">
-                            <div class="event-datepicker-icon"><i class="ph ph-calendar"></i></div>
-                            <span class="event-datepicker-text" id="datePickerDisplay">Pick date/time</span>
-                        </div>
-                    </div>
-                </div>
+        <div class="dash-hero-actions">
+            <div class="dash-hero-badge">
+                <span class="dash-hero-avatar">
+                    {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture.url }}" alt="">
+                    {% else %}
+                        {{ user.get_full_name|first|default:"T" }}
+                    {% endif %}
+                </span>
+                <span class="dash-hero-badge-text">
+                    <span class="dash-hero-badge-name">{{ user.get_full_name|default:"Teacher" }}</span>
+                    <span class="dash-hero-badge-role">{{ user.username }}</span>
+                </span>
             </div>
-        </div>
-        <div class="event-modal-footer">
-            <button class="event-btn-close" onclick="closeEventModal()">Close</button>
-            <button class="event-btn-save" onclick="saveEvent()">Save Event</button>
-        </div>
-
-        <!-- Custom Date/Time Picker Popup -->
-        <div class="event-datepicker-popup" id="datePickerPopup">
-            <div class="edp-header">
-                <button class="edp-nav" onclick="edpNavMonth(-1)"><i class="ph ph-caret-left"></i></button>
-                <span class="edp-month-year" id="edpMonthYear"></span>
-                <button class="edp-nav" onclick="edpNavMonth(1)"><i class="ph ph-caret-right"></i></button>
-            </div>
-            <div class="edp-weekdays">
-                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-            </div>
-            <div class="edp-grid" id="edpGrid"></div>
-            <div class="edp-time">
-                <div class="edp-time-col">
-                    <button class="edp-time-arrow" onclick="edpTimeAdj('h',1)"><i class="ph ph-caret-up"></i></button>
-                    <span class="edp-time-val" id="edpHour">14</span>
-                    <button class="edp-time-arrow" onclick="edpTimeAdj('h',-1)"><i class="ph ph-caret-down"></i></button>
-                </div>
-                <span class="edp-time-sep">:</span>
-                <div class="edp-time-col">
-                    <button class="edp-time-arrow" onclick="edpTimeAdj('m',1)"><i class="ph ph-caret-up"></i></button>
-                    <span class="edp-time-val" id="edpMin">00</span>
-                    <button class="edp-time-arrow" onclick="edpTimeAdj('m',-1)"><i class="ph ph-caret-down"></i></button>
-                </div>
-            </div>
-            <div class="edp-actions">
-                <button class="edp-btn-cancel" onclick="closeDatePicker()">Cancel</button>
-                <button class="edp-btn-set" onclick="setDatePicker()">Set</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-    <!-- Academic Performance Section -->
-    <div class="section-header-title">
-        Academic Performance
-        {% if exam_label %}
-        <span style="font-size:12px;font-weight:500;color:#94a3b8;margin-left:8px;text-transform:none;letter-spacing:0">{{ exam_label }}</span>
-        {% endif %}
-    </div>
-
-    <div class="performance-analysis-grid">
-        {% for card in grade_performance_cards %}
-        {% include 'students/partials/grade_performance_card.html' %}
-        {% empty %}
-        <div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:#94a3b8;">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin:0 auto 12px"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 4-6"/></svg>
-            <p style="font-size:15px;font-weight:600;color:#64748b;margin:0 0 4px">No Performance Data</p>
-            <p style="font-size:13px;color:#94a3b8;margin:0">Publish exam results to see grade performance cards here.</p>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- Footer -->
-    <footer class="global-workspace-footer">
-        <p class="footer-copyright-note">&copy; 2026 EduNexus. All Rights Reserved.</p>
-    </footer>
-</div>
-
-<!-- iOS 17 MOBILE DASHBOARD -->
-<div class="dash-ios" id="dashIos">
-    <header class="dash-header">
-        <div class="dash-greeting">
-            <div class="dash-greeting-main">{% if request.school %}{{ request.school.name }}{% else %}EduNexus{% endif %}</div>
-        </div>
-        <div class="dash-header-controls">
-            {% if request.user.teacher_profile %}
-            <a href="{% url 'teacher_search_student' %}" class="admin-icon-btn" aria-label="Search Students">
-                <i class="ph ph-magnifying-glass"></i>
+            <a class="dash-btn dash-btn-primary" href="{{ capture_url }}">
+                <i class="ph ph-pencil-simple-line"></i> Capture Scores
             </a>
-            {% endif %}
-            <button class="admin-icon-btn" type="button" aria-label="Notifications">
-                <i class="ph ph-bell"></i>
-                <span class="notif-dot"></span>
-            </button>
-            <div class="admin-user-menu" id="dashUserMenu">
-                <div class="dash-avatar-btn">{{ request.user.first_name|first|default:"U" }}</div>
-                <div class="admin-dropdown" id="dashDropdown">
-                    <div class="admin-dropdown-header">
-                        <div class="admin-dropdown-avatar">{{ request.user.get_full_name|first|default:request.user.username|first|upper }}</div>
-                        <div>
-                            <div class="admin-dropdown-name">{{ request.user.get_full_name|default:request.user.username }}</div>
-                            <div class="admin-dropdown-role">{{ user.username }}</div>
-                        </div>
-                    </div>
-                    <div class="admin-dropdown-divider"></div>
-                    <a href="{% url 'home_alt' %}" class="admin-dropdown-item"><i class="ph ph-user"></i> Profile</a>
-                    <a href="{% url 'password_change' %}" class="admin-dropdown-item"><i class="ph ph-shield-check"></i> Change Password</a>
-                    <a href="{% url 'logout' %}" class="admin-dropdown-item admin-logout"><i class="ph ph-sign-out"></i> Logout</a>
-                </div>
-            </div>
         </div>
     </header>
 
-    {% sub_nav "overview" %}
+    {# ── 2 · KPI STRIP ────────────────────────────────────────────────── #}
+    <section class="dash-kpi-row" aria-label="Your key numbers">
 
-    <main class="dash-body">
-
-        <!-- WELCOME BANNER -->
-        <div class="dm-welcome">
-            <div class="dm-welcome-avatar">{{ request.user.first_name|first|default:"T" }}</div>
-            <div class="dm-welcome-text">
-                <div class="dm-welcome-name">Welcome, {{ request.user.first_name|default:"Teacher" }}</div>
-                <div class="dm-welcome-sub">{% if teacher %}{{ teacher.get_full_title }}{% endif %} &middot; {% if section == 'JSS' %}JSS{% elif section == 'LOWER_PRIMARY' %}Lower Primary{% elif section == 'PRIMARY' %}Upper Primary{% else %}Primary{% endif %} Section</div>
+        <a class="dash-kpi tone-navy" href="{% url 'class_lists' %}">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="ph ph-books"></i></span>
+                <i class="ph ph-arrow-right dash-kpi-arrow"></i>
             </div>
+            <div>
+                <span class="dash-kpi-label">Allocations</span>
+                <strong class="dash-kpi-value">{{ assignment_count }}</strong>
+                <span class="dash-kpi-note">Class and subject pairs</span>
+            </div>
+        </a>
+
+        <a class="dash-kpi tone-amber" href="{{ capture_url }}">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="ph ph-clipboard-text"></i></span>
+                <i class="ph ph-arrow-right dash-kpi-arrow"></i>
+            </div>
+            <div>
+                <span class="dash-kpi-label">Open sheets</span>
+                <strong class="dash-kpi-value">{{ active_sheet_count }}</strong>
+                <span class="dash-kpi-note"><b>{{ in_progress_count }}</b> still in progress</span>
+            </div>
+        </a>
+
+        <a class="dash-kpi tone-green" href="{{ capture_url }}">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="ph ph-paper-plane-tilt"></i></span>
+                <i class="ph ph-arrow-right dash-kpi-arrow"></i>
+            </div>
+            <div>
+                <span class="dash-kpi-label">Submitted</span>
+                <strong class="dash-kpi-value">{{ submitted_count }}</strong>
+                <span class="dash-kpi-note">Awaiting admin review</span>
+            </div>
+        </a>
+
+        <a class="dash-kpi tone-rose" href="{{ capture_url }}">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="ph ph-arrow-u-up-left"></i></span>
+                <i class="ph ph-arrow-right dash-kpi-arrow"></i>
+            </div>
+            <div>
+                <span class="dash-kpi-label">Returned</span>
+                <strong class="dash-kpi-value">{{ returned_count }}</strong>
+                <span class="dash-kpi-note">Needs your correction</span>
+            </div>
+        </a>
+
+        <a class="dash-kpi tone-blue" href="{% url 'results_list' %}">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="ph ph-trophy"></i></span>
+                <i class="ph ph-arrow-right dash-kpi-arrow"></i>
+            </div>
+            <div>
+                <span class="dash-kpi-label">Published</span>
+                <strong class="dash-kpi-value">{{ published_count }}</strong>
+                <span class="dash-kpi-note">Released results</span>
+            </div>
+        </a>
+    </section>
+
+    {# ── 3 · WORKSPACE — mark entry left, calendar + tools right ──────── #}
+    <div class="dash-grid">
+
+        {# LEFT ─────────────────────────────────────────────────────────── #}
+        <div class="dash-col">
+
+            <section class="dash-panel" aria-label="Mark entry progress">
+                <div class="dash-panel-head">
+                    <div>
+                        <h2 class="dash-panel-title"><i class="ph ph-check-square"></i> Mark Entry</h2>
+                        <p class="dash-panel-sub">{% if exam_label %}{{ exam_label }} · {% endif %}{{ assignments|length }} of {{ assignment_count }} allocations shown</p>
+                    </div>
+                    <div class="dash-panel-tools">
+                        <a class="dash-btn dash-btn-primary" href="{{ capture_url}">
+                            <i class="ph ph-pencil-simple-line"></i> Capture
+                        </a>
+                    </div>
+                </div>
+
+                <div class="dash-panel-body">
+                    <ul class="dash-progress-list">
+                        {% for a in assignments %}
+                        {# total_students == 0 => allocation not covered by this exam (neutral dash, not red 0%) #}
+                        <li class="dash-progress-row {% if not a.total_students %}is-na{% elif a.progress_pct == 0 %}is-empty{% elif a.progress_pct < 100 %}is-partial{% endif %}">
+                            <div class="dash-progress-top">
+                                <span class="dash-progress-name">{{ a.subject.name|default:"Subject" }} · {{ a.class_name }} {{ a.stream }}</span>
+                                <span class="dash-progress-pct {% if not a.total_students %}is-na{% elif a.progress_pct == 0 %}is-empty{% elif a.progress_pct < 100 %}is-partial{% endif %}">{% if a.total_students %}{{ a.progress_pct }}%{% else %}&mdash;{% endif %}</span>
+                            </div>
+                            <div class="dash-progress-track"><i style="width: {% if a.total_students %}{{ a.progress_pct }}{% else %}0{% endif %}%"></i></div>
+                            <div class="dash-progress-meta">
+                                {% if a.total_students %}
+                                <span><i class="ph ph-users"></i> {{ a.marks_entered }} of {{ a.total_students }} learners</span>
+                                {% else %}
+                                <span><i class="ph ph-minus-circle"></i> Not covered by this exam</span>
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% empty %}
+                        <li class="dash-empty">
+                            <span class="dash-empty-icon"><i class="ph ph-books"></i></span>
+                            <p class="dash-empty-title">No allocations yet</p>
+                            <p class="dash-empty-desc">Your school admin assigns subjects and classes to you from the Faculty page.</p>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </section>
+
+            <section class="dash-panel" aria-label="Recent submissions">
+                <div class="dash-panel-head">
+                    <div>
+                        <h2 class="dash-panel-title"><i class="ph ph-activity tone-blue"></i> Recent Submissions</h2>
+                        <p class="dash-panel-sub">Your last {{ recent_submissions|length }} sheet movements</p>
+                    </div>
+                </div>
+                <ul class="dash-activity">
+                    {% for s in recent_submissions %}
+                    <li class="dash-activity-item">
+                        <span class="dash-activity-icon
+                            {% if s.status == 'returned' %}tone-rose
+                            {% elif s.status == 'submitted' %}tone-blue
+                            {% elif s.status == 'approved' %}tone-amber
+                            {% endif %}">
+                            <i class="ph {% if s.status == 'published' %}ph-check-circle
+                                        {% elif s.status == 'returned' %}ph-arrow-u-up-left
+                                        {% elif s.status == 'submitted' %}ph-paper-plane-tilt
+                                        {% else %}ph-clock{% endif %}"></i>
+                        </span>
+                        <div class="dash-activity-body">
+                            <p class="dash-activity-title">{{ s.subject.name|default:"Marks" }} · {{ s.class_name }} {{ s.stream }}</p>
+                            <p class="dash-activity-sub">{{ s.exam_name }} · {{ s.term }} {{ s.year }}</p>
+                        </div>
+                        <div class="dash-activity-side">
+                            <span class="dash-badge
+                                {% if s.status == 'returned' %}is-danger
+                                {% elif s.status == 'submitted' %}is-blue
+                                {% elif s.status == 'approved' %}is-warning
+                                {% endif %}">{{ s.get_status_display }}</span>
+                            {% if s.reviewed_at or s.submitted_at %}
+                            <span class="dash-activity-time">{{ s.reviewed_at|default:s.submitted_at|timesince }} ago</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="dash-empty">
+                        <span class="dash-empty-icon"><i class="ph ph-paper-plane-tilt"></i></span>
+                        <p class="dash-empty-title">No submissions yet</p>
+                        <p class="dash-empty-desc">Sheets you capture and submit will be listed here.</p>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+
         </div>
 
-        <!-- STAT CARDS -->
-        <div class="dash-section-label">Overview</div>
-        <section class="dash-stat-cards" aria-label="Statistics">
-            <a class="dash-stat-card" href="{% url 'class_lists' %}">
-                <div class="dash-stat-icon-wrap blue">
-                    <i class="ph ph-books"></i>
-                </div>
-                <div class="dash-stat-info">
-                    <div class="dash-stat-number" data-count="{{ assignment_count }}">{{ assignment_count }}</div>
-                    <div class="dash-stat-label">Allocations</div>
-                </div>
-                <i class="ph ph-arrow-right dash-stat-arrow"></i>
-            </a>
-            <a class="dash-stat-card" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
-                <div class="dash-stat-icon-wrap green">
-                    <i class="ph ph-clipboard-text"></i>
-                </div>
-                <div class="dash-stat-info">
-                    <div class="dash-stat-number" data-count="{{ active_exam_count }}">{{ active_exam_count }}</div>
-                    <div class="dash-stat-label">Active Exams</div>
-                </div>
-                <i class="ph ph-arrow-right dash-stat-arrow"></i>
-            </a>
-            <a class="dash-stat-card" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
-                <div class="dash-stat-icon-wrap emerald">
-                    <i class="ph ph-paper-plane-tilt"></i>
-                </div>
-                <div class="dash-stat-info">
-                    <div class="dash-stat-number" data-count="{{ submitted_count }}">{{ submitted_count }}</div>
-                    <div class="dash-stat-label">Submitted</div>
-                </div>
-                <i class="ph ph-arrow-right dash-stat-arrow"></i>
-            </a>
-            <a class="dash-stat-card" href="{% if section == 'JSS' %}{% url 'select_exam' %}{% else %}{% url 'select_exam_primary' %}{% endif %}">
-                <div class="dash-stat-icon-wrap amber">
-                    <i class="ph ph-arrow-u-up-left"></i>
-                </div>
-                <div class="dash-stat-info">
-                    <div class="dash-stat-number" data-count="{{ returned_count }}">{{ returned_count }}</div>
-                    <div class="dash-stat-label">Returned</div>
-                </div>
-                <i class="ph ph-arrow-right dash-stat-arrow"></i>
-            </a>
-            <a class="dash-stat-card" href="{% url 'results_list' %}">
-                <div class="dash-stat-icon-wrap purple">
-                    <i class="ph ph-chart-line-up"></i>
-                </div>
-                <div class="dash-stat-info">
-                    <div class="dash-stat-number" data-count="{{ published_count }}">{{ published_count }}</div>
-                    <div class="dash-stat-label">Published</div>
-                </div>
-                <i class="ph ph-arrow-right dash-stat-arrow"></i>
-            </a>
-        </section>
+        {# RIGHT ────────────────────────────────────────────────────────── #}
+        <div class="dash-col">
 
-        <!-- UPCOMING EVENTS -->
-        <div class="dash-section-label">Calendar</div>
-        <section class="dash-events-card" aria-label="Upcoming Events">
-            <div class="dash-events-head">
-                <h3 class="dash-events-title">Upcoming Events</h3>
-                <div class="dash-events-head-actions">
-                    <button class="dash-events-cal-btn" onclick="setCalView('list',null)" title="List view"><i class="ph ph-list-bullets"></i></button>
-                    <button class="dash-events-cal-btn active" onclick="setCalView('month',null)" title="Calendar view"><i class="ph ph-calendar"></i></button>
+            {# Read-only calendar: no data-add-url, no data-delete-pattern. #}
+            {# dashboard_calendar.js therefore exposes no write endpoint. #}
+            <section class="dash-panel" id="dashCalendar" aria-label="Upcoming Events">
+                <div class="dash-panel-head">
+                    <div>
+                        <h2 class="dash-panel-title"><i class="ph ph-calendar-dots"></i> Upcoming Events</h2>
+                        <p class="dash-panel-sub">Term windows and school events</p>
+                    </div>
                 </div>
-            </div>
-            <div class="dash-events-nav">
-                <button class="dash-events-arrow" onclick="calNav(-1)"><i class="ph ph-caret-left"></i></button>
-                <div class="dash-events-date">
-                    <span class="dash-events-main" id="calMain"></span>
-                    <span class="dash-events-sub" id="calSub"></span>
+
+                <div class="dash-cal-nav">
+                    <button class="dash-cal-arrow" type="button" data-cal-prev aria-label="Previous period">
+                        <i class="ph ph-caret-left"></i>
+                    </button>
+                    <div class="dash-cal-date">
+                        <span class="dash-cal-main" data-cal-main></span>
+                        <span class="dash-cal-sub" data-cal-sub></span>
+                    </div>
+                    <button class="dash-cal-arrow" type="button" data-cal-next aria-label="Next period">
+                        <i class="ph ph-caret-right"></i>
+                    </button>
+                    <div class="dash-cal-pills">
+                        <button class="dash-pill is-active" type="button" data-cal-view="month">Month</button>
+                        <button class="dash-pill" type="button" data-cal-view="week">Week</button>
+                        <button class="dash-pill" type="button" data-cal-view="day">Day</button>
+                        <button class="dash-pill" type="button" data-cal-view="list">List</button>
+                    </div>
                 </div>
-                <button class="dash-events-arrow" onclick="calNav(1)"><i class="ph ph-caret-right"></i></button>
-                <div class="dash-events-pills">
-                    <button class="dash-pill active" onclick="setCalView('month',this)">Month</button>
-                    <button class="dash-pill" onclick="setCalView('week',this)">Week</button>
-                    <button class="dash-pill" onclick="setCalView('day',this)">Day</button>
-                    <button class="dash-pill" onclick="setCalView('list',this)">List</button>
+
+                <div class="dash-cal-viewport" data-cal-viewport></div>
+            </section>
+
+            <section class="dash-panel" aria-label="Quick links">
+                <div class="dash-panel-head">
+                    <div>
+                        <h2 class="dash-panel-title"><i class="ph ph-squares-four tone-amber"></i> Quick Links</h2>
+                        <p class="dash-panel-sub">Everything you can do</p>
+                    </div>
                 </div>
-            </div>
-            <div class="dash-events-viewport" id="eventsViewport">
-                <div class="cal-grid" id="calGrid"></div>
-            </div>
-        </section>
+                <div class="dash-panel-body">
+                    <nav class="dash-actions">
+                        <a class="dash-action" href="{{ capture_url }}">
+                            <span class="dash-action-icon"><i class="ph ph-pencil-simple-line"></i></span>
+                            <span class="dash-action-text"><strong>Capture Scores</strong><small>Enter marks for a class</small></span>
+                            <i class="ph ph-arrow-right dash-action-arrow"></i>
+                        </a>
+                        <a class="dash-action" href="{% url 'results_list' %}">
+                            <span class="dash-action-icon tone-blue"><i class="ph ph-chart-line-up"></i></span>
+                            <span class="dash-action-text"><strong>Results</strong><small>Published broadsheets</small></span>
+                            <i class="ph ph-arrow-right dash-action-arrow"></i>
+                        </a>
+                        <a class="dash-action" href="{% url 'class_lists' %}">
+                            <span class="dash-action-icon tone-navy"><i class="ph ph-list-numbers"></i></span>
+                            <span class="dash-action-text"><strong>Class Lists</strong><small>Learners in your classes</small></span>
+                            <i class="ph ph-arrow-right dash-action-arrow"></i>
+                        </a>
+                        <a class="dash-action" href="{% url 'report_card_lookup' %}">
+                            <span class="dash-action-icon tone-amber"><i class="ph ph-magnifying-glass"></i></span>
+                            <span class="dash-action-text"><strong>Find Report</strong><small>Look up a learner's report</small></span>
+                            <i class="ph ph-arrow-right dash-action-arrow"></i>
+                        </a>
+                        <a class="dash-action" href="{% url 'home_alt' %}">
+                            <span class="dash-action-icon tone-blue"><i class="ph ph-user"></i></span>
+                            <span class="dash-action-text"><strong>Profile</strong><small>Your details and password</small></span>
+                            <i class="ph ph-arrow-right dash-action-arrow"></i>
+                        </a>
+                    </nav>
+                </div>
+            </section>
 
+            {% if class_teacher_scope %}
+            <section class="dash-panel" aria-label="Class teacher">
+                <div class="dash-panel-body">
+                    <div class="dash-insight">
+                        <span class="dash-insight-label">Class Teacher</span>
+                        <strong class="dash-insight-value is-text">{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</strong>
+                        <span class="dash-insight-note">You hold the register for this stream</span>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
 
-
-        <!-- ACADEMIC PERFORMANCE -->
-        {% if grade_performance_cards %}
-        <section aria-label="Academic Performance">
-            <div class="dash-section-head">
-                <h2 class="dash-section-title">Academic Performance</h2>
-                {% if exam_label %}
-                <span class="dash-section-sub">{{ exam_label }}</span>
-                {% endif %}
-            </div>
-            <div class="dash-perf-cards">
-                {% for card in grade_performance_cards %}
-                {% include 'students/partials/grade_performance_card.html' %}
-                {% endfor %}
-            </div>
-        </section>
-        {% else %}
-        <div class="dash-empty">
-            <div class="dash-empty-icon"><i class="ph ph-chart-line-up"></i></div>
-            <div class="dash-empty-title">No Performance Data</div>
-            <div class="dash-empty-desc">Publish exam results to see grade performance cards here.</div>
         </div>
-        {% endif %}
+    </div>
 
-        <!-- PUBLISHED RESULTS -->
-        {% if published_contexts %}
-        <section aria-label="Published Results">
-            <div class="dash-section-head">
-                <h2 class="dash-section-title">Published Results</h2>
+    {# ── 4 · PUBLISHED RESULTS (read-only) ─────────────────────────────── #}
+    <section class="dash-panel" aria-label="Published results">
+        <div class="dash-panel-head">
+            <div>
+                <h2 class="dash-panel-title"><i class="ph ph-trophy"></i> Published Results</h2>
+                <p class="dash-panel-sub">Released by your school admin — read only</p>
+            </div>
+            <div class="dash-panel-tools">
                 <a class="dash-section-link" href="{% url 'results_list' %}">View all <i class="ph ph-arrow-right"></i></a>
             </div>
+        </div>
+        <div class="dash-panel-body">
             <div class="dash-results">
                 {% for item in published_contexts %}
-                    <a class="dash-result" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}">
-                        <div class="dash-result-left">
-                            <div class="dash-result-icon">
-                                <i class="ph ph-chart-line-up"></i>
-                            </div>
-                            <div>
-                                <div class="dash-result-name">{{ item.class_name }} {{ item.stream }}</div>
-                                <div class="dash-result-meta">{{ item.term }} {{ item.year }}</div>
-                            </div>
-                        </div>
-                        <i class="ph ph-chevron-right dash-result-chevron"></i>
-                    </a>
+                <a class="dash-result" href="{% url 'results_list' %}?context={{ item.context_key|urlencode }}">
+                    <span class="dash-result-left">
+                        <span class="dash-result-icon"><i class="ph ph-chart-line-up"></i></span>
+                        <span class="dash-result-text">
+                            <span class="dash-result-name">{{ item.class_name }} {{ item.stream }}</span>
+                            <span class="dash-result-meta">{{ item.exam_name }} · {{ item.term }} {{ item.year }}</span>
+                        </span>
+                    </span>
+                    <i class="ph ph-caret-right dash-result-chevron"></i>
+                </a>
+                {% empty %}
+                <div class="dash-empty" style="grid-column: 1 / -1;">
+                    <span class="dash-empty-icon"><i class="ph ph-trophy"></i></span>
+                    <p class="dash-empty-title">No published results</p>
+                    <p class="dash-empty-desc">Results appear here once your admin publishes them.</p>
+                </div>
                 {% endfor %}
             </div>
-        </section>
-        {% else %}
-        <div class="dash-empty">
-            <div class="dash-empty-icon"><i class="ph ph-trophy"></i></div>
-            <div class="dash-empty-title">No Published Results</div>
-            <div class="dash-empty-desc">Results will appear here once published by your admin.</div>
         </div>
-        {% endif %}
+    </section>
 
-        <!-- CLASS TEACHER SCOPE -->
-        {% if class_teacher_scope %}
-        <div class="dash-ct-card">
-            <div class="dash-ct-label">Class Teacher</div>
-            <div class="dash-ct-value">{{ class_teacher_scope.0 }} {{ class_teacher_scope.1 }}</div>
+    {# ── 5 · ACADEMIC PERFORMANCE (shared partial, shared styles) ──────── #}
+    <section aria-label="Academic performance">
+        <div class="dash-section-head">
+            <h2 class="dash-section-title">Academic Performance</h2>
+            {% if exam_label %}<span class="dash-section-sub">{{ exam_label }}</span>{% endif %}
+            <a class="dash-section-link" href="{% url 'results_list' %}">All results <i class="ph ph-arrow-right"></i></a>
         </div>
-        {% endif %}
+        <div class="dash-perf">
+            <div class="performance-analysis-grid">
+                {% for card in grade_performance_cards %}
+                    {% include 'students/partials/grade_performance_card.html' %}
+                {% empty %}
+                    <div class="dash-perf-empty" style="grid-column: 1 / -1;">
+                        <i class="ph ph-chart-line-up"></i>
+                        <p>No performance data yet</p>
+                        <p>Publish exam results to see grade performance cards here.</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
 
-        <!-- FOOTER -->
-        <div class="dash-footer">&copy; 2026 EduNexus. All Rights Reserved.</div>
-    </main>
-</div>
+    {# ── 6 · FOOTER ────────────────────────────────────────────────────── #}
+    <footer class="dash-footer">
+        <p>&copy; 2026 EduNexus. All Rights Reserved.</p>
+        <p class="dash-footer-meta"><i class="ph ph-shield-check"></i> Signed in as {{ user.username }}</p>
+    </footer>
+
+</div>{# /.dash-shell #}
+
+{# Event payloads travel as JSON text, never interpolated into script. #}
+{{ term_events|json_script:"dash-term-events" }}
+{{ school_events|json_script:"dash-school-events" }}
+
 {% endblock %}
 
 {% block extra_js %}
-<script>
-(function(){
-    var menu = document.getElementById('dashUserMenu');
-    var dropdown = document.getElementById('dashDropdown');
-    if(!menu || !dropdown) return;
-
-    menu.querySelector('.dash-avatar-btn').addEventListener('click', function(e){
-        e.stopPropagation();
-        dropdown.classList.toggle('open');
-    });
-
-    document.addEventListener('click', function(e){
-        if(!menu.contains(e.target)){
-            dropdown.classList.remove('open');
-        }
-    });
-
-    dropdown.addEventListener('click', function(e){
-        e.stopPropagation();
-    });
-})();
-
-(function(){
-    var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    var FULL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    var DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    var baseDate = new Date();
-    var offset = 0;
-    var view = 'month';
-    var termEvents = {{ term_events_json|safe }};
-    var schoolEvents = {{ school_events_json|default:"[]"|safe }};
-
-    function startOfWeek(d){ var s=new Date(d); var day=s.getDay(); s.setDate(s.getDate()-(day===0?6:day-1)); s.setHours(0,0,0,0); return s; }
-    function endOfWeek(d){ var e=startOfWeek(d); e.setDate(e.getDate()+6); e.setHours(23,59,59,999); return e; }
-    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
-    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
-
-    function getEventDates(){
-        var now = new Date();
-        now.setHours(0,0,0,0);
-        var evDates = {};
-        termEvents.forEach(function(te){
-            var sd = new Date(te.start);
-            var ed = new Date(te.end);
-            var cur = new Date(sd);
-            while(cur <= ed){
-                var key = cur.getFullYear()+'-'+(cur.getMonth()+1)+'-'+cur.getDate();
-                evDates[key] = {term: te.term, year: te.year, start: sd, end: ed};
-                cur.setDate(cur.getDate()+1);
-            }
-        });
-        return evDates;
-    }
-
-    function getVisibleViewport(){
-        var els = document.querySelectorAll('#eventsViewport');
-        for(var i=0;i<els.length;i++){
-            if(els[i].offsetParent !== null) return els[i];
-        }
-        return els[0]||null;
-    }
-    function getVisibleCalGrid(){
-        var vp = getVisibleViewport();
-        if(!vp) return null;
-        var g = vp.querySelector('.cal-grid');
-        if(!g){
-            vp.innerHTML = '<div class="cal-grid" id="calGrid"></div>';
-            g = vp.querySelector('.cal-grid');
-        }
-        return g;
-    }
-
-    function renderCalendarGrid(){
-        var grid = getVisibleCalGrid();
-        if(!grid) return;
-        var now = new Date();
-        now.setHours(0,0,0,0);
-        var ref = new Date(now);
-        ref.setMonth(ref.getMonth() + offset);
-
-        var firstDay = startOfMonth(ref);
-        var lastDay = endOfMonth(ref);
-
-        var startDayOfWeek = firstDay.getDay();
-        var startIdx = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
-
-        var html = '';
-        DAYS.forEach(function(d){
-            html += '<div class="cal-header-cell">'+d+'</div>';
-        });
-
-        var totalCells = startIdx + lastDay.getDate();
-        var rows = Math.ceil(totalCells / 7);
-
-        for(var i = 0; i < rows * 7; i++){
-            var dayNum = i - startIdx + 1;
-            var classes = ['cal-day-cell'];
-            var cellDate = new Date(ref.getFullYear(), ref.getMonth(), dayNum);
-            var isCurrentMonth = cellDate.getMonth() === ref.getMonth();
-            var isToday = cellDate.getTime() === now.getTime();
-
-            if(!isCurrentMonth) classes.push('outside');
-            if(isToday) classes.push('today');
-
-            html += '<div class="'+classes.join(' ')+'">';
-            if(isCurrentMonth){
-                html += '<span class="cal-day-num">'+cellDate.getDate()+'</span>';
-            }
-            html += '</div>';
-        }
-        grid.innerHTML = html;
-    }
-
-    function renderWeekView(){
-        var vp = getVisibleViewport();
-        if(!vp) return;
-        var now = new Date();
-        var ref = new Date(now);
-        ref.setDate(now.getDate() + offset*7);
-        var ws = startOfWeek(ref), we = endOfWeek(ref);
-        var html = '<div class="cal-week-list">';
-        var d = new Date(ws);
-        while(d <= we){
-            var isToday = d.toDateString() === now.toDateString();
-            html += '<div class="cal-week-row'+(isToday?' today':'')+'">';
-            html += '<span class="cal-week-day">'+DAYS[d.getDay()===0?6:d.getDay()-1]+'</span>';
-            html += '<span class="cal-week-date">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</span>';
-            html += '</div>';
-            d.setDate(d.getDate()+1);
-        }
-        html += '</div>';
-        vp.innerHTML = html;
-    }
-
-    function renderDayView(){
-        var vp = getVisibleViewport();
-        if(!vp) return;
-        var now = new Date();
-        var ref = new Date(now);
-        ref.setDate(now.getDate() + offset);
-        var evDates = getEventDates();
-        var dateKey = ref.getFullYear()+'-'+(ref.getMonth()+1)+'-'+ref.getDate();
-        var ev = evDates[dateKey];
-        var html = '<div class="cal-day-detail">';
-        html += '<div class="cal-day-detail-date">'+DAYS[ref.getDay()===0?6:ref.getDay()-1]+', '+ref.getDate()+' '+MONTHS[ref.getMonth()]+' '+ref.getFullYear()+'</div>';
-        if(ev){
-            html += '<div class="cal-day-event-badge">'+ev.term+' '+ev.year+'</div>';
-        }
-        var dayEvents = schoolEvents.filter(function(sEv){
-            var sd = new Date(sEv.start);
-            var ed = new Date(sEv.end);
-            var check = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
-            return check >= new Date(sd.getFullYear(),sd.getMonth(),sd.getDate()) && check <= new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());
-        });
-        dayEvents.forEach(function(sEv){
-            var timeStr = sEv.time ? ' at '+sEv.time : '';
-            html += '<div class="cal-day-event-badge custom-event">'+sEv.name+timeStr+'</div>';
-        });
-        if(!ev && dayEvents.length === 0){
-            html += '<p class="empty-events-text">No events on this day</p>';
-        }
-        html += '</div>';
-        vp.innerHTML = html;
-    }
-
-    function renderListView(){
-        var vp = getVisibleViewport();
-        if(!vp) return;
-        var now = new Date();
-        now.setHours(0,0,0,0);
-        if(termEvents.length === 0 && schoolEvents.length === 0){
-            vp.innerHTML = '<p class="empty-events-text">No events yet</p>';
-            return;
-        }
-        var html = '<div class="cal-list-view">';
-        termEvents.forEach(function(te){
-            var sd = new Date(te.start);
-            var ed = new Date(te.end);
-            var status = (now >= sd && now <= ed) ? 'active' : (now < sd ? 'upcoming' : 'past');
-            var color = status === 'active' ? '#22c55e' : (status === 'upcoming' ? '#3b82f6' : '#94a3b8');
-            var bg = status === 'active' ? '#f0fdf4' : (status === 'upcoming' ? '#eff6ff' : '#f8fafc');
-            html += '<div class="cal-list-item" style="background:'+bg+';border-left:3px solid '+color+'">';
-            html += '<div class="cal-list-label">'+te.term+' '+te.year+'</div>';
-            html += '<div class="cal-list-dates">'+sd.getDate()+' '+MONTHS[sd.getMonth()]+' – '+ed.getDate()+' '+MONTHS[ed.getMonth()]+' '+ed.getFullYear()+'</div>';
-            html += '<span class="cal-list-status" style="color:'+color+'">'+status.charAt(0).toUpperCase()+status.slice(1)+'</span>';
-            html += '</div>';
-        });
-        schoolEvents.forEach(function(ev){
-            var sd = new Date(ev.start);
-            var ed = new Date(ev.end);
-            var status = (now >= sd && now <= ed) ? 'active' : (now < sd ? 'upcoming' : 'past');
-            var color = status === 'active' ? '#22c55e' : (status === 'upcoming' ? '#8b5cf6' : '#94a3b8');
-            var bg = status === 'active' ? '#f0fdf4' : (status === 'upcoming' ? '#f5f3ff' : '#f8fafc');
-            var dateStr = ev.date_mode==='range' ? sd.getDate()+' '+MONTHS[sd.getMonth()]+' – '+ed.getDate()+' '+MONTHS[ed.getMonth()]+' '+ed.getFullYear() : sd.getDate()+' '+MONTHS[sd.getMonth()]+' '+sd.getFullYear();
-            var timeStr = ev.time ? ' at '+ev.time : '';
-            html += '<div class="cal-list-item" style="background:'+bg+';border-left:3px solid '+color+'">';
-            html += '<div class="cal-list-label">'+ev.name+'</div>';
-            html += '<div class="cal-list-dates">'+dateStr+timeStr+' — '+ev.participants+'</div>';
-            html += '<span class="cal-list-status" style="color:'+color+'">'+status.charAt(0).toUpperCase()+status.slice(1)+'</span>';
-            html += '</div>';
-        });
-        html += '</div>';
-        vp.innerHTML = html;
-    }
-
-    function renderDateText(){
-        var now = new Date();
-        var ref = new Date(now);
-        var mainEls = document.querySelectorAll('#calMain');
-        var subEls = document.querySelectorAll('#calSub');
-        if(mainEls.length===0) return;
-        var mainText = '', subText = '';
-
-        if(view==='month'){
-            ref.setMonth(now.getMonth() + offset);
-            mainText = FULL_MONTHS[ref.getMonth()];
-            subText = ''+ref.getFullYear();
-        } else if(view==='week'){
-            ref.setDate(now.getDate() + offset*7);
-            var ws = startOfWeek(ref), we = endOfWeek(ref);
-            mainText = ws.getDate()+' '+MONTHS[ws.getMonth()]+' – '+we.getDate()+' '+MONTHS[we.getMonth()];
-            subText = ''+we.getFullYear();
-        } else if(view==='day'){
-            ref.setDate(now.getDate() + offset);
-            mainText = ref.getDate()+' '+MONTHS[ref.getMonth()];
-            subText = ''+ref.getFullYear();
-        } else {
-            mainText = 'Upcoming Events';
-            subText = '';
-        }
-        for(var i=0;i<mainEls.length;i++){mainEls[i].textContent=mainText;}
-        for(var i=0;i<subEls.length;i++){subEls[i].textContent=subText;}
-    }
-
-    function renderViewport(){
-        var vp = getVisibleViewport();
-        if(!vp) return;
-        if(view==='month'){
-            vp.innerHTML = '<div class="cal-grid" id="calGrid"></div>';
-            renderCalendarGrid();
-        } else if(view==='week'){
-            renderWeekView();
-        } else if(view==='day'){
-            renderDayView();
-        } else {
-            renderListView();
-        }
-    }
-
-    function render(){
-        renderDateText();
-        renderViewport();
-    }
-
-    window.calNav = function(dir){ offset+=dir; render(); };
-    window.setCalView = function(v, btn){
-        view = v; offset = 0;
-        document.querySelectorAll('.view-filter-pills .view-pill, .dash-events-pills .dash-pill').forEach(function(p){p.classList.remove('active');});
-        if(btn) btn.classList.add('active');
-        else {
-            document.querySelectorAll('.view-filter-pills .view-pill, .dash-events-pills .dash-pill').forEach(function(p){
-                if(p.textContent.trim().toLowerCase() === v) p.classList.add('active');
-            });
-        }
-        var listBtn = document.getElementById('calViewListBtn');
-        var gridBtn = document.getElementById('calViewGridBtn');
-        if(listBtn) listBtn.classList.toggle('active', v==='list');
-        if(gridBtn) gridBtn.classList.toggle('active', v!=='list');
-        render();
-    };
-
-    render();
-})();
-</script>
-
-<!-- ═══ Event Modal JS ════════════════════════════════════════ -->
-<script>
-(function(){
-    var edpDate = new Date();
-    var edpHour = 14, edpMin = 0;
-    var selectedDateStr = '';
-    var EDPMONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    var EDPFULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-    window.openEventModal = function(){
-        var overlay = document.getElementById('eventModalOverlay');
-        if(overlay) overlay.classList.add('open');
-        document.body.style.overflow = 'hidden';
-    };
-
-    window.closeEventModal = function(){
-        var overlay = document.getElementById('eventModalOverlay');
-        if(overlay) overlay.classList.remove('open');
-        document.body.style.overflow = '';
-        var popup = document.getElementById('datePickerPopup');
-        if(popup) popup.classList.remove('open');
-    };
-
-    window.toggleDateMode = function(){
-        var mode = document.querySelector('input[name="dateMode"]:checked').value;
-        var label = document.getElementById('pickDateLabel');
-        if(label) label.textContent = mode === 'range' ? 'Start date' : 'Pick date';
-    };
-
-    window.toggleParticipantDropdown = function(){
-        var dd = document.getElementById('participantDropdown');
-        if(dd) dd.classList.toggle('open');
-    };
-
-    window.selectParticipant = function(val, e){
-        if(e) e.stopPropagation();
-        var display = document.getElementById('participantDisplay');
-        if(display) display.textContent = val;
-        var dd = document.getElementById('participantDropdown');
-        if(dd) dd.classList.remove('open');
-    };
-
-    document.addEventListener('click', function(e){
-        var dd = document.getElementById('participantDropdown');
-        if(dd && !dd.parentElement.contains(e.target)) dd.classList.remove('open');
-    });
-
-    window.openDatePicker = function(){
-        var popup = document.getElementById('datePickerPopup');
-        if(popup) popup.classList.add('open');
-        renderEDP();
-    };
-
-    window.closeDatePicker = function(){
-        var popup = document.getElementById('datePickerPopup');
-        if(popup) popup.classList.remove('open');
-    };
-
-    window.edpNavMonth = function(dir){
-        edpDate.setMonth(edpDate.getMonth() + dir);
-        renderEDP();
-    };
-
-    window.edpTimeAdj = function(unit, dir){
-        if(unit==='h'){ edpHour = (edpHour + dir + 24) % 24; }
-        else { edpMin = (edpMin + dir*15 + 60) % 60; }
-        var hEl = document.getElementById('edpHour');
-        var mEl = document.getElementById('edpMin');
-        if(hEl) hEl.textContent = edpHour < 10 ? '0'+edpHour : edpHour;
-        if(mEl) mEl.textContent = edpMin < 10 ? '0'+edpMin : edpMin;
-    };
-
-    window.setDatePicker = function(){
-        var h = edpHour < 10 ? '0'+edpHour : edpHour;
-        var m = edpMin < 10 ? '0'+edpMin : edpMin;
-        selectedDateStr = edpDate.getFullYear()+'-'+(edpDate.getMonth()+1<10?'0':'')+(edpDate.getMonth()+1)+'-'+(edpDate.getDate()<10?'0':'')+' '+h+':'+m;
-        var display = document.getElementById('datePickerDisplay');
-        if(display) display.textContent = EDPMONTHS[edpDate.getMonth()]+' '+edpDate.getDate()+', '+edpDate.getFullYear()+' '+h+':'+m;
-        closeDatePicker();
-    };
-
-    function renderEDP(){
-        var myEl = document.getElementById('edpMonthYear');
-        var grid = document.getElementById('edpGrid');
-        if(!myEl || !grid) return;
-
-        myEl.textContent = EDPFULL[edpDate.getMonth()]+' '+edpDate.getFullYear();
-
-        var first = new Date(edpDate.getFullYear(), edpDate.getMonth(), 1);
-        var last = new Date(edpDate.getFullYear(), edpDate.getMonth()+1, 0);
-        var startDay = first.getDay();
-        var today = new Date();
-        today.setHours(0,0,0,0);
-
-        var html = '';
-        for(var i = 0; i < startDay; i++){
-            var d = new Date(edpDate.getFullYear(), edpDate.getMonth(), -(startDay-i-1));
-            html += '<div class="edp-day outside">'+d.getDate()+'</div>';
-        }
-        for(var j = 1; j <= last.getDate(); j++){
-            var cls = 'edp-day';
-            var cell = new Date(edpDate.getFullYear(), edpDate.getMonth(), j);
-            if(cell.getTime() === today.getTime()) cls += ' today';
-            if(cell.getTime() === edpDate.setHours(0,0,0,0) && edpDate.getDate() === j) cls += ' selected';
-            html += '<div class="'+cls+'" onclick="edpPickDay('+j+')">'+j+'</div>';
-        }
-        var remaining = 42 - (startDay + last.getDate());
-        for(var k = 1; k <= remaining; k++){
-            html += '<div class="edp-day outside">'+k+'</div>';
-        }
-        grid.innerHTML = html;
-    }
-
-    window.edpPickDay = function(day){
-        edpDate = new Date(edpDate.getFullYear(), edpDate.getMonth(), day);
-        renderEDP();
-    };
-
-    window.saveEvent = function(){
-        var name = document.getElementById('evtName').value.trim();
-        if(!name){ alert('Please enter an event name.'); return; }
-
-        var mode = document.querySelector('input[name="dateMode"]:checked');
-        var dateMode = mode ? mode.value : 'single';
-
-        var dateParts = selectedDateStr.split(' ');
-        var eventDate = dateParts[0] || '';
-        var eventTime = dateParts[1] || '';
-
-        if(!eventDate){ alert('Please pick a date.'); return; }
-
-        var endDate = '';
-        if(dateMode === 'range'){
-            endDate = prompt('Enter end date (YYYY-MM-DD):', eventDate);
-            if(!endDate) return;
-        }
-
-        var participants = document.getElementById('participantDisplay').textContent.trim();
-        if(participants === 'Select participants') participants = 'All';
-
-        var fd = new FormData();
-        fd.append('name', name);
-        fd.append('date_mode', dateMode);
-        fd.append('event_date', eventDate);
-        fd.append('end_date', endDate);
-        fd.append('time', eventTime);
-        fd.append('participants', participants);
-
-        fetch("{% url 'add_event' %}", {
-            method: 'POST',
-            headers: {'X-CSRFToken': '{{ csrf_token }}'},
-            body: fd
-        })
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-            if(data.ok){
-                schoolEvents.push(data.event);
-                closeEventModal();
-                render();
-            } else {
-                alert(data.error || 'Failed to save event');
-            }
-        })
-        .catch(function(e){ alert('Network error: '+e); });
-    };
-
-    window.deleteEvent = function(id){
-        if(!confirm('Delete this event?')) return;
-        fetch("{% url 'delete_event' event_id=0 %}".replace('/0/','/'+id+'/'), {
-            method: 'POST',
-            headers: {'X-CSRFToken': '{{ csrf_token }}'}
-        })
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-            if(data.ok){
-                schoolEvents = schoolEvents.filter(function(ev){ return ev.id !== id; });
-                render();
-            } else {
-                alert(data.error || 'Failed to delete');
-            }
-        })
-        .catch(function(e){ alert('Network error: '+e); });
-    };
-})();
-
-(function(){
-    var counters = document.querySelectorAll('.dash-stat-number[data-count]');
-    counters.forEach(function(el){
-        var target = parseInt(el.getAttribute('data-count'), 10);
-        if(isNaN(target) || target === 0) return;
-        var duration = 600;
-        var start = performance.now();
-        function step(now){
-            var progress = Math.min((now - start) / duration, 1);
-            var ease = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.round(target * ease);
-            if(progress < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
-    });
-})();
-</script>
+<script src="{% static 'js/dashboard_calendar.js' %}?v=1"></script>
 {% endblock %}
